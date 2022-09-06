@@ -1,0 +1,5 @@
+[default]
+src = 'src/'
+out = 'out'
+solc-version = "0.8.16"
+fuzz_runs=1000
