@@ -10,7 +10,8 @@
     "deploy:local": "hardhat deploy",
     "runScript": "hardhat run",
     "compile": "hardhat compile",
-    "coverage": "forge coverage --report lcov",
+    "coverage": "forge coverage",
+    "coverage:lcov": "forge coverage --report lcov",
     "slither": "slither ./src --solc-remaps '@openzeppelin=node_modules/@openzeppelin' --exclude ./packages/contracts/src/test"
   },
   "dependencies": {
