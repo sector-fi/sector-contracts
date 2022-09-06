@@ -36,7 +36,10 @@ contract Auth is AccessControl {
 	) {
 		/// Set up the roles
 		// owner can manage all roles
-		_grantRole(DEFAULT_ADMIN_ROLE, _owner);
+		owner = _owner;
+		emit OwnershipTransferred(address(0), owner);
+
+		_grantRole(DEFAULT_ADMIN_ROLE, owner);
 		_grantRole(GUARDIAN, guardian);
 		_grantRole(MANAGER, manager);
 

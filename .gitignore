@@ -16,6 +16,7 @@ cache
 hh-cache
 artifacts
 out
+typechain
 
 # local contracts
 deployments/localhost/* 

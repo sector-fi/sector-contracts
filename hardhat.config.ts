@@ -1,11 +1,13 @@
-import "@nomiclabs/hardhat-waffle";
-import "hardhat-deploy";
-import "hardhat-contract-sizer";
-import "hardhat-gas-reporter";
-import env from "dotenv";
-import { subtask } from "hardhat/config";
-import { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } from "hardhat/builtin-tasks/task-names";
-import "@nomiclabs/hardhat-etherscan";
+import '@nomiclabs/hardhat-waffle';
+import 'hardhat-deploy';
+import 'hardhat-contract-sizer';
+import 'hardhat-gas-reporter';
+import 'hardhat-gas-reporter';
+import env from 'dotenv';
+import { subtask } from 'hardhat/config';
+import { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } from 'hardhat/builtin-tasks/task-names';
+import '@nomiclabs/hardhat-etherscan';
+import '@typechain/hardhat';
 
 Error.stackTraceLimit = Infinity;
 
@@ -13,7 +15,7 @@ Error.stackTraceLimit = Infinity;
 subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(
   async (_, __, runSuper) => {
     const paths = await runSuper();
-    return paths.filter((p) => !p.includes("src/tests"));
+    return paths.filter((p) => !p.includes('src/tests'));
   }
 );
 
@@ -56,10 +58,10 @@ export default {
       // hardhat: DEPLOYER,
     },
     managerProd: {
-      default: "0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A",
+      default: '0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A',
     },
     manager: {
-      default: "0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A",
+      default: '0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A',
       hardhat: MANAGER,
       localhost: MANAGER,
     },
@@ -99,38 +101,38 @@ export default {
       tags: [FORK_CHAIN],
     },
     fantom: {
-      url: "https://rpc.ftm.tools/",
+      url: 'https://rpc.ftm.tools/',
       gasPrice: 700e9,
       chainId: 250,
       accounts: keys.length ? keys : undefined,
-      tags: ["fantom"],
+      tags: ['fantom'],
       verify: {
         etherscan: {
           apiKey: FTM_API_KEY,
-          apiUrl: "https://api.ftmscan.com/",
+          apiUrl: 'https://api.ftmscan.com/',
         },
       },
     },
     avalanche: {
-      url: "https://api.avax.network/ext/bc/C/rpc",
+      url: 'https://api.avax.network/ext/bc/C/rpc',
       gasPrice: 27e9,
       chainId: 43114,
       accounts: keys.length ? keys : undefined,
-      tags: ["avalanche"],
+      tags: ['avalanche'],
       verify: {
         etherscan: {
           apiKey: SNOWTRACE_API_KEY,
-          apiUrl: "https://api.snowtrace.io/",
+          apiUrl: 'https://api.snowtrace.io/',
         },
       },
     },
     moonriver: {
-      url: "https://rpc.api.moonriver.moonbeam.network",
+      url: 'https://rpc.api.moonriver.moonbeam.network',
       accounts: keys.length ? keys : undefined,
       chainId: 1285,
       gasPrice: 1.1e9,
-      name: "moonriver",
-      tags: ["moonriver"],
+      name: 'moonriver',
+      tags: ['moonriver'],
       verify: {
         etherscan: {
           apiKey: MOONRIVER_API_KEY,
@@ -138,22 +140,22 @@ export default {
       },
     },
     moonbeam: {
-      url: "https://rpc.api.moonbeam.network",
+      url: 'https://rpc.api.moonbeam.network',
       accounts: keys.length ? keys : undefined,
       chainId: 1284,
       gasPrice: 101e9,
-      name: "moonbeam",
-      tags: ["moonbeam"],
+      name: 'moonbeam',
+      tags: ['moonbeam'],
       verify: {
         etherscan: {
           apiKey: MOONBEAM_API_KEY,
-          apiUrl: "https://api-moonbeam.moonscan.io",
+          apiUrl: 'https://api-moonbeam.moonscan.io',
         },
       },
     },
     mainnet: {
       accounts: keys.length ? keys : undefined,
-      url: "https://mainnet.infura.io/v3/" + INFURA_API_KEY,
+      url: 'https://mainnet.infura.io/v3/' + INFURA_API_KEY,
       gasPrice: 2.1e9,
       chainId: 1,
     },
@@ -162,7 +164,7 @@ export default {
   solidity: {
     compilers: [
       {
-        version: "0.8.16",
+        version: '0.8.16',
         settings: {
           optimizer: {
             enabled: true,
@@ -178,18 +180,18 @@ export default {
     disambiguatePaths: false,
   },
   gasReporter: {
-    enabled: SHOW_GAS === "true",
-    currency: "USD",
+    enabled: SHOW_GAS === 'true',
+    currency: 'USD',
     gasPrice: 30,
     coinmarketcap: COIN_MARKET_CAP_API,
   },
   paths: {
-    sources: "./src",
-    cache: "./hh-cache",
+    sources: './src',
+    cache: './hh-cache',
   },
   typechain: {
-    outDir: "typechain",
-    target: "ethers-v5",
+    outDir: 'typechain',
+    target: 'ethers-v5',
   },
   etherscan: {
     apiKey: {

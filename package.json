@@ -12,6 +12,7 @@
     "compile": "hardhat compile",
     "coverage": "forge coverage",
     "coverage:lcov": "forge coverage --report lcov",
+    "typechain": "hardhat typechain",
     "slither": "slither ./src --solc-remaps '@openzeppelin=node_modules/@openzeppelin' --exclude ./packages/contracts/src/test"
   },
   "dependencies": {
@@ -22,6 +23,8 @@
     "@openzeppelin/contracts": "^4.7.3",
     "@openzeppelin/contracts-upgradeable": "^4.7.3",
     "@typechain/ethers-v5": "^10.1.0",
+    "@types/chai": "^4.2.22",
+    "@types/mocha": "^9.0.0",
     "chai": "^4.3.4",
     "dotenv": "^16.0.2",
     "ethereum-waffle": "^3.4.0",
@@ -36,11 +39,13 @@
     "ts-generator": "^0.1.1",
     "tsconfig-paths": "^4.1.0",
     "typechain": "^8.1.0",
-    "@types/chai": "^4.2.22",
-    "@types/mocha": "^9.0.0",
     "typescript": "^4.8.2"
   },
   "resolutions": {
     "hardhat/**/@ethereumjs/tx": "3.5.0"
+  },
+  "devDependencies": {
+    "@typechain/hardhat": "^6.1.2",
+    "ts-node": "^10.9.1"
   }
 }
