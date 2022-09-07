@@ -3,7 +3,6 @@ pragma solidity 0.8.16;
 
 import { Test } from "forge-std/Test.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
-import "hardhat/console.sol";
 
 contract SectorTest is Test {
 	// using UniUtils for IUniswapV2Pair;

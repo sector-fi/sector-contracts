@@ -32,11 +32,11 @@ contract AuthU is AccessControlUpgradeable {
 	/// security no undefined constructor
 	constructor() {}
 
-	function __Auth__init(
+	function __Auth_init_(
 		address _owner,
 		address guardian,
 		address manager
-	) public {
+	) public onlyInitializing {
 		/// Set up the roles
 		// owner can manage all roles
 		owner = _owner;

@@ -38,6 +38,7 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		_collateralToken = ICollateral(collateralToken_);
 		_uBorrowable = IBorrowable(_collateralToken.borrowable0());
 		_sBorrowable = IBorrowable(_collateralToken.borrowable1());
+
 		if (underlying_ != _uBorrowable.underlying()) {
 			flip = true;
 			(_uBorrowable, _sBorrowable) = (_sBorrowable, _uBorrowable);

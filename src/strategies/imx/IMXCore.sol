@@ -58,13 +58,17 @@ abstract contract IMXCore is
 
 		_underlying.safeApprove(vault, type(uint256).max);
 
-		// init params
-		setMaxTvl(maxTvl_);
-
 		// init default params
-		setRebalanceThreshold(400);
+		// deployer is not owner so we set these manually
+		_maxTvl = maxTvl_;
+		emit SetMaxTvl(maxTvl_);
 
-		setSafetyMarginSqrt(1.118033989e18);
+		// TODO param?
+		rebalanceThreshold = 400;
+		emit SetRebalanceThreshold(400);
+
+		_safetyMarginSqrt = 1.118033989e18;
+		emit SetSafetyMarginSqrt(_safetyMarginSqrt);
 	}
 
 	function safetyMarginSqrt() internal view override returns (uint256) {

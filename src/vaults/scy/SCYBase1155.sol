@@ -6,7 +6,6 @@ import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { SafeERC20Upgradeable as SafeERC20, IERC20Upgradeable as IERC20 } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import { IBank } from "../../bank/IBank.sol";
 
 import "hardhat/console.sol";
 
@@ -16,11 +15,9 @@ abstract contract SCYBase1155 is Initializable, ISuperComposableYield, Reentranc
 	uint256 internal constant ONE = 1e18;
 
 	address public yieldToken;
-	IBank public bank;
 
-	function __SCYBase_init_(address _yieldToken, address _bank) public onlyInitializing {
+	function __SCYBase_init_(address _yieldToken) public onlyInitializing {
 		yieldToken = _yieldToken;
-		bank = IBank(_bank);
 	}
 
 	// solhint-disable no-empty-blocks

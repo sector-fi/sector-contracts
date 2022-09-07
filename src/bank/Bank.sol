@@ -9,6 +9,10 @@ import { IBank, Pool } from "./IBank.sol";
 // TODO: should fees be computed in the bank or in vaults?
 // we can simplify this contract if so
 contract Bank is IBank, ERC1155Supply, Auth {
+	/// ERRORS
+	error PoolNotFound();
+	error PoolExists();
+
 	uint256 constant BASIS_POINTS = 10000;
 	uint256 internal constant ONE = 1e18;
 
@@ -44,8 +48,8 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		uint256 tokenId = getTokenId(msg.sender, id);
 
 		/// Get the pool by its index
-		Pool memory pool = pools[tokenId]; // storage or memory for gas optimization?
-		require(pool.exists, "POOL_NOT_FOUND");
+		Pool storage pool = pools[tokenId]; // storage is cheaper
+		if (!pool.exists) revert PoolNotFound();
 
 		/// Get the current total amount of shares of the pool
 		uint256 _totalSupply = totalSupply(tokenId);
@@ -88,8 +92,8 @@ contract Bank is IBank, ERC1155Supply, Auth {
 	) external override returns (uint256 poolTokens) {
 		uint256 tokenId = getTokenId(msg.sender, id);
 
-		Pool storage pool = pools[tokenId];
-		require(pool.exists, "POOL_NOT_FOUND");
+		Pool storage pool = pools[tokenId]; // storage is cheaper
+		if (!pool.exists) revert PoolNotFound();
 
 		uint256 _totalSupply = totalSupply(tokenId);
 
@@ -129,7 +133,7 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		uint256 tokenId = getTokenId(msg.sender, id);
 
 		Pool storage pool = pools[tokenId];
-		require(pool.exists, "POOL_NOT_FOUND");
+		if (!pool.exists) revert PoolNotFound();
 
 		/// Check if there is a management fee
 		if (pool.managementFee == 0) return shares;
@@ -169,7 +173,7 @@ contract Bank is IBank, ERC1155Supply, Auth {
 	///
 	function addPool(Pool calldata newPool) external onlyOwner {
 		uint256 tokenId = getTokenId(newPool.vault, newPool.id);
-		require(false == pools[tokenId].exists, "POOL_FOUND");
+		if (pools[tokenId].exists) revert PoolExists();
 
 		/// Validate the fees before adding the pool
 		// _validateFees(newPool.depositFee, newPool.withdrawFee, newPool.compoundFee);

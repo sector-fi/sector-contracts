@@ -7,8 +7,6 @@ import { MockVault } from "../mocks/MockVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
-import "hardhat/console.sol";
-
 contract BankTest is SectorTest, ERC1155Holder {
 	Bank bank;
 	MockVault vault;
@@ -25,10 +23,10 @@ contract BankTest is SectorTest, ERC1155Holder {
 		bank.addPool(
 			Pool({
 				id: 0,
-				vault: address(vault),
 				exists: true,
 				decimals: token.decimals(),
-				managementFee: 10000 // 10%
+				managementFee: 1000, // 10%
+				vault: address(vault)
 			})
 		);
 		token.approve(address(vault), type(uint256).max);
@@ -36,6 +34,18 @@ contract BankTest is SectorTest, ERC1155Holder {
 
 	function testInit() public {
 		assertEq(bank.owner(), address(this));
+	}
+
+	function testAddPool() public {
+		bank.addPool(
+			Pool({
+				vault: address(vault),
+				id: 1,
+				managementFee: 1000, // 10%
+				decimals: token.decimals(),
+				exists: true
+			})
+		);
 	}
 
 	function testTokenConversion() public {
@@ -60,5 +70,13 @@ contract BankTest is SectorTest, ERC1155Holder {
 
 		assertEq(bank.balanceOf(address(this), tokenId), 0);
 		assertEq(token.balanceOf(address(this)), amount);
+	}
+
+	function testPoolNotFound() public {
+		uint256 amount = 10e18;
+		token.mint(address(this), amount);
+		vault.addPool(address(token));
+		vm.expectRevert("POOL_NOT_FOUND");
+		vault.deposit(1, address(this), amount);
 	}
 }
