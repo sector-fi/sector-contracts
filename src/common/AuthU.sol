@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.16;
 
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-contract Auth is AccessControl {
+contract AuthU is AccessControlUpgradeable {
 	event OwnershipTransferInitiated(address owner, address pendingOwner);
 	event OwnershipTransferred(address oldOwner, address newOwner);
 
@@ -29,11 +29,14 @@ contract Auth is AccessControl {
 		_;
 	}
 
-	constructor(
+	/// security no undefined constructor
+	constructor() {}
+
+	function __Auth__init(
 		address _owner,
 		address guardian,
 		address manager
-	) {
+	) public {
 		/// Set up the roles
 		// owner can manage all roles
 		owner = _owner;

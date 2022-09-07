@@ -49,7 +49,7 @@ interface IBank {
 	/// @param treasury new treasury address
 	event SetTreasury(address treasury);
 
-	// function balance(address vault, uint96 id) external view returns (uint256);
+	function totalShares(address vault, uint96 id) external view returns (uint256);
 
 	function decimals(uint256 tokenId) external view returns (uint8);
 
@@ -71,8 +71,8 @@ interface IBank {
 
 	function takeFees(
 		uint96 id,
+		address recipient,
 		uint256 profit,
-		uint256 totalTokens,
-		address recipient
+		uint256 totalTokens
 	) external returns (uint256);
 }

@@ -10,6 +10,7 @@ import { IBank, Pool } from "./IBank.sol";
 // we can simplify this contract if so
 contract Bank is IBank, ERC1155Supply, Auth {
 	uint256 constant BASIS_POINTS = 10000;
+	uint256 internal constant ONE = 1e18;
 
 	/// List of pools
 	mapping(uint256 => Pool) public pools;
@@ -43,12 +44,12 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		uint256 tokenId = getTokenId(msg.sender, id);
 
 		/// Get the pool by its index
-		Pool storage pool = pools[tokenId]; // storage or memory for gas optimization?
+		Pool memory pool = pools[tokenId]; // storage or memory for gas optimization?
 		require(pool.exists, "POOL_NOT_FOUND");
 
 		/// Get the current total amount of shares of the pool
-		uint256 totalShares = totalSupply(tokenId);
-		if (totalShares == 0) {
+		uint256 _totalSupply = totalSupply(tokenId);
+		if (_totalSupply == 0) {
 			// todo add multiple for precision?
 			shares = poolTokens;
 		} else {
@@ -61,7 +62,7 @@ contract Bank is IBank, ERC1155Supply, Auth {
 			/// Since the pool tokens have already been deposited before we mint the shares,
 			/// we subtract these tokens from the total. This gives us the total before depositing:
 			/// shares = (totalShares * poolTokens) / (totalTokens - poolTokens)
-			shares = (totalShares * poolTokens) / (totalTokens - poolTokens);
+			shares = (_totalSupply * poolTokens) / (totalTokens - poolTokens);
 		}
 
 		/// Mint the shares to the owner
@@ -90,6 +91,8 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		Pool storage pool = pools[tokenId];
 		require(pool.exists, "POOL_NOT_FOUND");
 
+		uint256 _totalSupply = totalSupply(tokenId);
+
 		/// Burn the shares from the owner
 		_burn(account, tokenId, shares);
 
@@ -101,10 +104,9 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		/// When withdrawing pool tokens and burning shares, this formula can be rearranged to:
 		/// poolTokens = (totalTokens * shares) / totalShares
 		///
-		/// Since the shares have already been burned before we withdraw the pool tokens,
-		/// we add these shares to the total. This gives us the total before burning:
-		/// poolTokens = (totalTokens * shares) / (totalShares + shares)
-		poolTokens = (totalTokens * shares) / (totalSupply(tokenId) + shares);
+		/// Since the shares have already been burned before
+		/// we withdraw use totalSupply before burn
+		poolTokens = (totalTokens * shares) / _totalSupply;
 
 		emit Withdraw(id, msg.sender, account, shares);
 
@@ -120,9 +122,9 @@ contract Bank is IBank, ERC1155Supply, Auth {
 	/// @return shares amount of shares minted
 	function takeFees(
 		uint96 id,
+		address recipient,
 		uint256 poolTokens,
-		uint256 totalTokens,
-		address recipient
+		uint256 totalTokens
 	) external override returns (uint256 shares) {
 		uint256 tokenId = getTokenId(msg.sender, id);
 
@@ -184,10 +186,15 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		emit SetTreasury(_treasury);
 	}
 
-	// function balance(address vault, uint96 poolId) external view override(IBank) returns (uint256) {
-	// 	uint256 tokenId = getTokenId(vault, poolId);
-	// 	return totalSupply(tokenId);
-	// }
+	function totalShares(address vault, uint96 poolId)
+		external
+		view
+		override(IBank)
+		returns (uint256)
+	{
+		uint256 tokenId = getTokenId(vault, poolId);
+		return totalSupply(tokenId);
+	}
 
 	/// TODO: make sure this is superior to a lookup table
 	/// token ids are a combination of vault address + poolId
