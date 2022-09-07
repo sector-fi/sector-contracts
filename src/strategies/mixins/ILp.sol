@@ -10,6 +10,8 @@ abstract contract ILp {
 
 	function _getLiquidity() internal view virtual returns (uint256);
 
+	function _getLiquidity(uint256) internal view virtual returns (uint256);
+
 	function _addLiquidity(uint256 amountToken0, uint256 amountToken1)
 		internal
 		virtual

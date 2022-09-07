@@ -43,7 +43,10 @@ contract AuthU is AccessControlUpgradeable {
 		emit OwnershipTransferred(address(0), owner);
 
 		_grantRole(DEFAULT_ADMIN_ROLE, owner);
+		_grantRole(GUARDIAN, owner);
 		_grantRole(GUARDIAN, guardian);
+		_grantRole(MANAGER, owner);
+		_grantRole(MANAGER, guardian);
 		_grantRole(MANAGER, manager);
 
 		/// Allow the guardian role to manage manager

@@ -76,7 +76,7 @@ contract BankTest is SectorTest, ERC1155Holder {
 		uint256 amount = 10e18;
 		token.mint(address(this), amount);
 		vault.addPool(address(token));
-		vm.expectRevert("POOL_NOT_FOUND");
+		vm.expectRevert(Bank.PoolNotFound.selector);
 		vault.deposit(1, address(this), amount);
 	}
 }

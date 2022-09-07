@@ -6,6 +6,8 @@ import { ERC1155Supply, ERC1155, IERC165 } from "@openzeppelin/contracts/token/E
 import { Auth, AccessControl } from "../common/Auth.sol";
 import { IBank, Pool } from "./IBank.sol";
 
+// import "hardhat/console.sol";
+
 // TODO: should fees be computed in the bank or in vaults?
 // we can simplify this contract if so
 contract Bank is IBank, ERC1155Supply, Auth {
@@ -111,7 +113,6 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		/// Since the shares have already been burned before
 		/// we withdraw use totalSupply before burn
 		poolTokens = (totalTokens * shares) / _totalSupply;
-
 		emit Withdraw(id, msg.sender, account, shares);
 
 		return poolTokens;
