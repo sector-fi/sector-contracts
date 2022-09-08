@@ -29,6 +29,7 @@ interface ISuperComposableYield {
 
 	/// @dev Emitted when any base tokens is deposited to mint shares
 	event Deposit(
+		uint96 id,
 		address indexed caller,
 		address indexed receiver,
 		address indexed tokenIn,
@@ -38,6 +39,7 @@ interface ISuperComposableYield {
 
 	/// @dev Emitted when any shares are redeemed for base tokens
 	event Redeem(
+		uint96 id,
 		address indexed caller,
 		address indexed receiver,
 		address indexed tokenOut,
@@ -78,6 +80,7 @@ interface ISuperComposableYield {
 	 * at least `amountTokenToPull` base tokens.
 	 */
 	function deposit(
+		uint96 id,
 		address receiver,
 		address tokenIn,
 		uint256 amountTokenToPull,
@@ -108,6 +111,7 @@ interface ISuperComposableYield {
 	 * at least `amountSharesToPull` shares.
 	 */
 	function redeem(
+		uint96 id,
 		address receiver,
 		uint256 amountSharesToPull,
 		address tokenOut,
@@ -123,14 +127,14 @@ interface ISuperComposableYield {
      *
      * May emit a {NewExchangeRate} event
      */
-	function exchangeRateCurrent() external returns (uint256 res);
+	function exchangeRateCurrent(uint96 id) external returns (uint256 res);
 
 	/**
 	 * @notice returns the previously updated and stored shares exchange rate
 	 * @dev the returned value may be outdated if exchangeRateCurrent() was not called for a
 	 * extended period of time
 	 */
-	function exchangeRateStored() external view returns (uint256 res);
+	function exchangeRateStored(uint96 id) external view returns (uint256 res);
 
 	/**
 	 * @notice claims reward for (`user`)
@@ -157,18 +161,18 @@ interface ISuperComposableYield {
 	/**
 	 * @notice returns the address of the underlying yield token
 	 */
-	function yieldToken() external view returns (address);
+	function yieldToken(uint96 id) external view returns (address);
 
 	/**
 	 * @notice returns a list of all the base tokens that can be deposited to mint shares
 	 */
-	function getBaseTokens() external view returns (address[] memory res);
+	function getBaseTokens(uint96 id) external view returns (address[] memory res);
 
 	/**
 	 * @notice checks whether a token is a valid base token
 	 * @notice returns a boolean indicating whether this is a valid token
 	 */
-	function isValidBaseToken(address token) external view returns (bool);
+	function isValidBaseToken(uint96 id, address token) external view returns (bool);
 
 	/**
     * @notice This function contains information to interpret what the asset is
@@ -178,7 +182,7 @@ interface ISuperComposableYield {
     assetAddress is the address of the LP token
     * @notice assetDecimals is the decimals of the asset
     */
-	function assetInfo()
+	function assetInfo(uint96 id)
 		external
 		view
 		returns (

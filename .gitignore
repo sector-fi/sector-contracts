@@ -17,6 +17,7 @@ hh-cache
 artifacts
 out
 typechain
+.gas-snapshot
 
 # local contracts
 deployments/localhost/* 

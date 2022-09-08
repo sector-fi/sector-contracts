@@ -8,62 +8,79 @@ import { FeesU } from "../../common/FeesU.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { TreasuryU } from "../../common/TreasuryU.sol";
 import { Bank } from "../../bank/Bank.sol";
+import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
+
+struct Strategy {
+	IMX imx;
+	bool exists;
+	uint256 strategyId; // this is strategy specific token if 1155
+	address yieldToken;
+	IERC20 underlying;
+	uint128 maxTvl; // pack all params and balances
+	uint128 balance; // strategy balance in underlying
+	uint128 uBalance; // underlying balance
+	uint128 yBalance; // yield token balance
+}
 
 contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 	using SafeERC20 for IERC20;
+	using SafeCast for uint256;
 
 	Bank public bank;
 
-	IMX private _strategy;
-	IERC20 private _underlying;
-	uint256 public strategyBalance;
-	uint256 private _maxTvl;
+	Strategy[] public strategies;
+	// mapping should account for masterChef and other 1155 contracts
+	mapping(address => mapping(uint256 => uint96)) public strategyIndexes;
+
+	// TOOD: strategy-specific?
 	uint256 public maxDust; // minimal amount of underlying token allowed before deposits are paused
 
 	event MaxDustUpdated(uint256 maxDust);
-	event MaxTvlUpdated(uint256 maxTvl);
-	event StrategyUpdated(address strategy);
+	event MaxTvlUpdated(uint96 id, uint256 maxTvl);
+	event StrategyUpdated(uint96 id, address strategy);
 
-	modifier hasStrategy() {
-		require(address(_strategy) != address(0), "SCYVault: NO STRAT");
+	modifier strategyExists(uint96 id) {
+		if (!strategies[id].exists) revert StrategyDoesntExist();
 		_;
 	}
 
 	function initialize(
-		address _yieldToken,
 		address _bank,
 		address _owner,
 		address guardian,
 		address manager,
 		address _treasury
 	) public initializer {
-		__SCYBase_init_(_yieldToken);
 		__Auth_init_(_owner, guardian, manager);
 		treasury = _treasury;
 		bank = Bank(_bank);
 	}
 
-	function setStrategy(IMX strategy_) public onlyOwner {
-		// TODO allow replacing strat
-		require(address(_strategy) == address(0), "SCYVault: STRAT IS SET");
-		_strategy = strategy_;
-		_underlying = _strategy.underlying();
-		emit StrategyUpdated(address(strategy_));
+	function addStrategy(Strategy calldata strategy) public onlyOwner returns (uint96 id) {
+		address addr = address(strategy.imx);
+		uint256 index = strategyIndexes[addr][strategy.strategyId];
+		id = (strategies.length).toUint96();
+		if (index < id && strategies[index].exists) revert StrategyExists();
+		strategies.push(strategy);
+		strategyIndexes[addr][strategy.strategyId] = id;
+		emit StrategyUpdated(id, addr);
 	}
 
 	/*///////////////////////////////////////////////////////////////
                     CONFIG
     //////////////////////////////////////////////////////////////*/
 
-	function getMaxTvl() public view returns (uint256 maxTvl) {
-		return min(_maxTvl, _strategy.getMaxTvl());
+	function getMaxTvl(uint96 id) public view returns (uint256 maxTvl) {
+		Strategy storage strategy = strategies[id];
+		return min(strategy.maxTvl, strategy.imx.getMaxTvl());
 	}
 
-	function setMaxTvl(uint256 maxTvl_) public onlyRole(GUARDIAN) {
-		_maxTvl = maxTvl_;
-		emit MaxTvlUpdated(min(_maxTvl, _strategy.getMaxTvl()));
+	function setMaxTvl(uint96 id, uint256 maxTvl) public strategyExists(id) onlyRole(GUARDIAN) {
+		Strategy storage strategy = strategies[id];
+		strategy.maxTvl = maxTvl.toUint128();
+		emit MaxTvlUpdated(id, min(maxTvl, strategy.imx.getMaxTvl()));
 	}
 
 	function setMaxDust(uint256 maxDust_) public onlyRole(GUARDIAN) {
@@ -72,101 +89,130 @@ contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 	}
 
 	function _deposit(
+		uint96 id,
 		address receiver,
 		address,
 		uint256 amount
-	) internal override hasStrategy returns (uint256 amountSharesOut) {
+	) internal override strategyExists(id) returns (uint256 amountSharesOut) {
 		// if we have any float in the contract we cannot do deposit accounting
-		require(!isPaused(), "Vault: DEPOSITS_PAUSED");
-		// uint256 exchangeRate = exchangeRateCurrent();
-		uint256 startYieldToken = _selfBalance(yieldToken);
-		_strategy.deposit(amount);
-		uint256 endYieldToken = _selfBalance(yieldToken);
+		require(!isPaused(id), "Vault: DEPOSITS_PAUSED");
 
-		amountSharesOut = bank.deposit(0, receiver, endYieldToken - startYieldToken, endYieldToken);
+		Strategy storage strategy = strategies[id];
+		// Strategy storage strategy = strategies[id];
+		address yToken = strategy.yieldToken;
+		// TODO use stored balance?
+		uint256 startYieldToken = _selfBalance(id, yToken);
+		strategy.imx.deposit(amount);
+		uint256 endYieldToken = _selfBalance(id, yToken);
+
+		amountSharesOut = bank.deposit(
+			id,
+			receiver,
+			endYieldToken - startYieldToken,
+			endYieldToken
+		);
+		strategy.yBalance = endYieldToken.toUint128();
 	}
 
 	function _redeem(
+		uint96 id,
 		address receiver,
 		address,
 		uint256 sharesToRedeem
-	) internal override hasStrategy returns (uint256 amountTokenOut) {
-		uint256 _totalSupply = _selfBalance(yieldToken);
-		uint256 yeildTokenAmnt = bank.withdraw(0, receiver, sharesToRedeem, _totalSupply);
+	) internal override strategyExists(id) returns (uint256 amountTokenOut) {
+		Strategy storage strategy = strategies[id];
+		address yToken = strategy.yieldToken;
+
+		uint256 _totalSupply = _selfBalance(id, yToken);
+		uint256 yeildTokenAmnt = bank.withdraw(id, receiver, sharesToRedeem, _totalSupply);
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
-		uint256 reserves = _underlying.balanceOf(address(this));
+		uint256 reserves = strategy.underlying.balanceOf(address(this));
 		uint256 shareOfReserves = (reserves * sharesToRedeem) / _totalSupply;
 
-		amountTokenOut = shareOfReserves + _strategy.redeem(yeildTokenAmnt);
+		amountTokenOut = shareOfReserves + strategy.imx.redeem(yeildTokenAmnt);
 	}
 
 	// DoS attack is possible by depositing small amounts of underlying
 	// can make it costly by using a maxDust amnt, ex: $100
-	function isPaused() public view returns (bool) {
-		return _underlying.balanceOf(address(this)) > maxDust;
+	// TODO: make sure we don't need check
+	function isPaused(uint96 id) public view returns (bool) {
+		return strategies[id].underlying.balanceOf(address(this)) > maxDust;
 	}
 
 	/// @notice Harvest a set of trusted strategies.
 	/// strategiesparam is for backwards compatibility.
 	/// @dev Will always revert if called outside of an active
 	/// harvest window or before the harvest delay has passed.
-	function harvest(address[] calldata) external onlyRole(MANAGER) {
-		uint256 tvl = _strategy.getAndUpdateTVL();
-		if (tvl > strategyBalance)
-			bank.takeFees(0, address(this), tvl - strategyBalance, _selfBalance(yieldToken));
-		strategyBalance = tvl;
+	function harvest(uint96 id, address[] calldata) external onlyRole(MANAGER) {
+		Strategy storage strategy = strategies[id];
+		uint256 tvl = strategy.imx.getAndUpdateTVL();
+		uint256 strategyBalance = strategy.balance;
+		if (tvl <= strategyBalance) return;
+
+		bank.takeFees(
+			id,
+			address(this),
+			tvl - strategyBalance,
+			_selfBalance(id, strategy.yieldToken)
+		);
+		strategy.balance = tvl.toUint128();
 	}
 
 	// TODO: add slippage
-	function depositIntoStrategy(address, uint256 underlyingAmount) public onlyRole(GUARDIAN) {
-		_underlying.safeTransfer(address(_strategy), underlyingAmount);
-		_strategy.deposit(underlyingAmount);
+	function depositIntoStrategy(uint96 id, uint256 underlyingAmount) public onlyRole(GUARDIAN) {
+		Strategy storage strategy = strategies[id];
+		strategy.underlying.safeTransfer(address(strategy.imx), underlyingAmount);
+		strategy.imx.deposit(underlyingAmount);
 	}
 
 	// TODO: add slippage
-	function withdrawFromStrategy(address, uint256 shares) public onlyRole(GUARDIAN) {
-		uint256 totalShares = bank.totalShares(address(this), 0);
-		uint256 yieldTokenAmnt = (shares * _selfBalance(yieldToken)) / totalShares;
-		_strategy.redeem(yieldTokenAmnt);
+	function withdrawFromStrategy(uint96 id, uint256 shares) public onlyRole(GUARDIAN) {
+		Strategy storage strategy = strategies[id];
+		uint256 totalShares = bank.totalShares(address(this), id);
+		uint256 yieldTokenAmnt = (shares * _selfBalance(id, strategy.yieldToken)) / totalShares;
+		strategy.imx.redeem(yieldTokenAmnt);
 	}
 
-	function closePosition() public onlyRole(GUARDIAN) {
-		_strategy.closePosition();
+	function closePosition(uint96 id) public onlyRole(GUARDIAN) {
+		strategies[id].imx.closePosition();
 	}
 
-	function underlying() public view returns (IERC20) {
-		return _underlying;
+	function underlying(uint96 id) public view returns (IERC20) {
+		return strategies[id].underlying;
 	}
 
-	function strategy() public view override returns (address) {
-		return address(_strategy);
+	function getStrategy(uint96 id) public view returns (Strategy memory) {
+		return strategies[id];
 	}
 
 	// used for estimate only
-	function exchangeRateUnderlying() external view returns (uint256) {
-		uint256 totalShares = bank.totalShares(address(this), 0);
+	function exchangeRateUnderlying(uint96 id) external view returns (uint256) {
+		Strategy storage strategy = strategies[id];
+		uint256 totalShares = bank.totalShares(address(this), id);
 		if (totalShares == 0) return ONE;
 		return
-			((_underlying.balanceOf(address(this)) + _strategy.getTotalTVL()) * ONE) / totalShares;
+			((strategy.underlying.balanceOf(address(this)) + strategy.imx.getTotalTVL()) * ONE) /
+			totalShares;
 	}
 
-	function underlyingBalance(address user) external view returns (uint256) {
-		uint256 token = bank.getTokenId(address(this), 0);
+	function underlyingBalance(uint96 id, address user) external view returns (uint256) {
+		Strategy storage strategy = strategies[id];
+		uint256 token = bank.getTokenId(address(this), id);
 		uint256 balance = bank.balanceOf(user, token);
-		uint256 totalShares = bank.totalShares(address(this), 0);
+		uint256 totalShares = bank.totalShares(address(this), id);
 		if (totalShares == 0 || balance == 0) return 0;
 		return
-			(((_underlying.balanceOf(address(this)) * balance) /
+			(((strategy.underlying.balanceOf(address(this)) * balance) /
 				totalShares +
-				_strategy.getTotalTVL()) * balance) / totalShares;
+				strategy.imx.getTotalTVL()) * balance) / totalShares;
 	}
 
 	///
 	///  Yield Token Overrides
 	///
 
-	function assetInfo()
+	function assetInfo(uint96 id)
 		public
 		view
 		returns (
@@ -175,49 +221,56 @@ contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 			uint8 assetDecimals
 		)
 	{
-		return (AssetType.LIQUIDITY, yieldToken, IERC20Metadata(yieldToken).decimals());
+		address yToken = strategies[id].yieldToken;
+		return (AssetType.LIQUIDITY, yToken, IERC20Metadata(yToken).decimals());
 	}
 
-	function underlyingDecimals() public view returns (uint8) {
-		return _strategy.decimals();
+	function underlyingDecimals(uint96 id) public view returns (uint8) {
+		return strategies[id].imx.decimals();
 	}
 
 	/**
 	 * @dev See {ISuperComposableYield-exchangeRateCurrent}
 	 */
-	function exchangeRateCurrent() public view virtual override returns (uint256) {
-		uint256 totalShares = bank.totalShares(address(this), 0);
+	function exchangeRateCurrent(uint96 id) public view virtual override returns (uint256) {
+		uint256 totalShares = bank.totalShares(address(this), id);
 		if (totalShares == 0) return ONE;
-		return (_selfBalance(yieldToken) * ONE) / totalShares;
+		return (_selfBalance(id, strategies[id].yieldToken) * ONE) / totalShares;
 	}
 
 	/**
 	 * @dev See {ISuperComposableYield-exchangeRateStored}
 	 */
-	function exchangeRateStored() external view virtual override returns (uint256) {
-		return exchangeRateCurrent();
+	function yieldToken(uint96 id) external view returns (address) {
+		return strategies[id].yieldToken;
 	}
 
-	function getBaseTokens() external view override returns (address[] memory res) {
-		res[0] = address(_underlying);
+	function exchangeRateStored(uint96 id) external view virtual override returns (uint256) {
+		return exchangeRateCurrent(id);
 	}
 
-	function isValidBaseToken(address token) public view override returns (bool) {
-		return token == address(_underlying);
+	function getBaseTokens(uint96 id) external view override returns (address[] memory res) {
+		res[0] = address(strategies[id].underlying);
+	}
+
+	function isValidBaseToken(uint96 id, address token) public view override returns (bool) {
+		return token == address(strategies[id].underlying);
 	}
 
 	// send funds to strategy
 	function _transferIn(
+		uint96 id,
 		address token,
 		address from,
 		uint256 amount
 	) internal override {
-		if (token == NATIVE) SafeETH.safeTransferETH(address(_strategy), amount);
-		else IERC20(token).safeTransferFrom(from, address(_strategy), amount);
+		if (token == NATIVE) SafeETH.safeTransferETH(address(strategies[id].imx), amount);
+		else IERC20(token).safeTransferFrom(from, address(strategies[id].imx), amount);
 	}
 
 	// send funds to user
 	function _transferOut(
+		uint96 id,
 		address token,
 		address to,
 		uint256 amount
@@ -225,16 +278,16 @@ contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 		if (token == NATIVE) {
 			SafeETH.safeTransferETH(to, amount);
 		} else {
-			IERC20(token).safeTransferFrom(address(_strategy), to, amount);
+			IERC20(token).safeTransferFrom(address(strategies[id].imx), to, amount);
 		}
 	}
 
 	// todo handle internal float balances
-	function _selfBalance(address token) internal view override returns (uint256) {
+	function _selfBalance(uint96 id, address token) internal view override returns (uint256) {
 		return
 			(token == NATIVE)
-				? address(_strategy).balance
-				: IERC20(token).balanceOf(address(_strategy));
+				? address(strategies[id].imx).balance
+				: IERC20(token).balanceOf(address(strategies[id].imx));
 	}
 
 	/**
@@ -243,4 +296,7 @@ contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 	function min(uint256 a, uint256 b) internal pure returns (uint256) {
 		return a < b ? a : b;
 	}
+
+	error StrategyExists();
+	error StrategyDoesntExist();
 }
