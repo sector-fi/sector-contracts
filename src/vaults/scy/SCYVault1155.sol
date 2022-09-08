@@ -7,11 +7,14 @@ import { AuthU } from "../../common/AuthU.sol";
 import { FeesU } from "../../common/FeesU.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { TreasuryU } from "../../common/TreasuryU.sol";
+import { Bank } from "../../bank/Bank.sol";
 
 // import "hardhat/console.sol";
 
 contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 	using SafeERC20 for IERC20;
+
+	Bank public bank;
 
 	IMX private _strategy;
 	IERC20 private _underlying;
@@ -31,10 +34,15 @@ contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 	function initialize(
 		address _yieldToken,
 		address _bank,
+		address _owner,
+		address guardian,
+		address manager,
 		address _treasury
 	) public initializer {
-		__SCYBase_init_(_yieldToken, _bank);
+		__SCYBase_init_(_yieldToken);
+		__Auth_init_(_owner, guardian, manager);
 		treasury = _treasury;
+		bank = Bank(_bank);
 	}
 
 	function setStrategy(IMX strategy_) public onlyOwner {
@@ -141,6 +149,17 @@ contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 		if (totalShares == 0) return ONE;
 		return
 			((_underlying.balanceOf(address(this)) + _strategy.getTotalTVL()) * ONE) / totalShares;
+	}
+
+	function underlyingBalance(address user) external view returns (uint256) {
+		uint256 token = bank.getTokenId(address(this), 0);
+		uint256 balance = bank.balanceOf(user, token);
+		uint256 totalShares = bank.totalShares(address(this), 0);
+		if (totalShares == 0 || balance == 0) return 0;
+		return
+			(((_underlying.balanceOf(address(this)) * balance) /
+				totalShares +
+				_strategy.getTotalTVL()) * balance) / totalShares;
 	}
 
 	///

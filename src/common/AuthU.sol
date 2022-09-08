@@ -32,18 +32,21 @@ contract AuthU is AccessControlUpgradeable {
 	/// security no undefined constructor
 	constructor() {}
 
-	function __Auth__init(
+	function __Auth_init_(
 		address _owner,
 		address guardian,
 		address manager
-	) public {
+	) public onlyInitializing {
 		/// Set up the roles
 		// owner can manage all roles
 		owner = _owner;
 		emit OwnershipTransferred(address(0), owner);
 
 		_grantRole(DEFAULT_ADMIN_ROLE, owner);
+		_grantRole(GUARDIAN, owner);
 		_grantRole(GUARDIAN, guardian);
+		_grantRole(MANAGER, owner);
+		_grantRole(MANAGER, guardian);
 		_grantRole(MANAGER, manager);
 
 		/// Allow the guardian role to manage manager

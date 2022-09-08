@@ -12,7 +12,7 @@ import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 
 import { IMXAuthU } from "./IMXAuthU.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract IMXCore is
 	Initializable,
@@ -58,13 +58,17 @@ abstract contract IMXCore is
 
 		_underlying.safeApprove(vault, type(uint256).max);
 
-		// init params
-		setMaxTvl(maxTvl_);
-
 		// init default params
-		setRebalanceThreshold(400);
+		// deployer is not owner so we set these manually
+		_maxTvl = maxTvl_;
+		emit SetMaxTvl(maxTvl_);
 
-		setSafetyMarginSqrt(1.118033989e18);
+		// TODO param?
+		rebalanceThreshold = 400;
+		emit SetRebalanceThreshold(400);
+
+		_safetyMarginSqrt = 1.118033989e18;
+		emit SetSafetyMarginSqrt(_safetyMarginSqrt);
 	}
 
 	function safetyMarginSqrt() internal view override returns (uint256) {
@@ -125,10 +129,9 @@ abstract contract IMXCore is
 	}
 
 	// redeem lp for underlying
-	function redeem(uint256 lpAmnt) public onlyVault returns (uint256 amountTokenOut) {
+	function redeem(uint256 removeCollateral) public onlyVault returns (uint256 amountTokenOut) {
 		// this is the full amount of LP tokens totalSupply of shares is entitled to
-		uint256 lpBalance = _getLiquidity();
-		_decreasePosition(lpBalance, lpAmnt);
+		_decreasePosition(removeCollateral);
 
 		// TODO make sure we never have any extra underlying dust sitting around
 		// all 'extra' underlying should allways be transferred back to the vault
@@ -142,12 +145,16 @@ abstract contract IMXCore is
 	// decreases position based to desired LP amount
 	// ** does not rebalance remaining portfolio
 	// ** make sure to update lending positions before calling this
-	function _decreasePosition(uint256 lpBalance, uint256 removeLp) internal {
+	function _decreasePosition(uint256 removeCollateral) internal {
 		(uint256 uBorrowBalance, uint256 sBorrowBalance) = _updateAndGetBorrowBalances();
 
+		uint256 balance = collateralToken().balanceOf(address(this));
+		uint256 lp = _getLiquidity(balance);
+
 		// remove lp & repay underlying loan
-		uint256 uRepay = (uBorrowBalance * removeLp) / lpBalance;
-		uint256 sRepay = removeLp == lpBalance ? sBorrowBalance : type(uint256).max;
+		uint256 removeLp = (lp * removeCollateral) / balance;
+		uint256 uRepay = (uBorrowBalance * removeCollateral) / balance;
+		uint256 sRepay = removeCollateral == balance ? sBorrowBalance : type(uint256).max;
 
 		_removeIMXLiquidity(removeLp, uRepay, sRepay);
 
@@ -178,9 +185,8 @@ abstract contract IMXCore is
 	}
 
 	// TODO: add slippage param
-	function decreasePosition(uint256 lp) external nonReentrant onlyRole(GUARDIAN) {
-		uint256 lpBalance = _getLiquidity();
-		_decreasePosition(lpBalance, lp);
+	function decreasePosition(uint256 collateralAmnt) external nonReentrant onlyRole(GUARDIAN) {
+		_decreasePosition(collateralAmnt);
 	}
 
 	// use prev harvest interface?
@@ -211,7 +217,8 @@ abstract contract IMXCore is
 		uint256 positionOffset = getPositionOffset();
 
 		// don't rebalance unless we exceeded the threshold
-		require(positionOffset > rebalanceThreshold, "HLP: REB-THRESH"); // maybe next time...
+		// require(positionOffset > rebalanceThreshold, "HLP: REB-THRESH"); // maybe next time...
+		if (positionOffset <= rebalanceThreshold) revert RebalanceThreshold();
 
 		if (tvl == 0) return;
 		uint256 targetUBorrow = (tvl * _optimalUBorrow()) / 1e18;
@@ -231,9 +238,8 @@ abstract contract IMXCore is
 			uint256 sRepay = sBorrowBalance > targetShortLp ? sBorrowBalance - targetShortLp : 0;
 
 			// TODO check this
-			uint256 removeLp = _getLiquidity() -
-				(_getLiquidity() * targetUnderlyingLP) /
-				underlyingLp;
+			uint256 lp = _getLiquidity();
+			uint256 removeLp = lp - (lp * targetUnderlyingLP) / underlyingLp;
 			_removeIMXLiquidity(removeLp, uRepay, sRepay);
 		} else if (targetUnderlyingLP > underlyingLp) {
 			uint256 uBorrow = targetUBorrow > uBorrowBalance ? targetUBorrow - uBorrowBalance : 0;
@@ -254,7 +260,8 @@ abstract contract IMXCore is
 	// TODO partial close / deleverage?
 	function closePosition() public onlyVault {
 		(uint256 uRepay, uint256 sRepay) = _updateAndGetBorrowBalances();
-		_removeIMXLiquidity(_getLiquidity(), uRepay, sRepay);
+		uint256 removeLp = _getLiquidity();
+		_removeIMXLiquidity(removeLp, uRepay, sRepay);
 		// transfer funds to vault
 		_underlying.safeTransfer(vault, _underlying.balanceOf(address(this)));
 	}
@@ -343,4 +350,6 @@ abstract contract IMXCore is
 	function min(uint256 a, uint256 b) internal pure returns (uint256) {
 		return a < b ? a : b;
 	}
+
+	error RebalanceThreshold();
 }

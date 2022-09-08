@@ -45,7 +45,6 @@ struct IMXConfig {
 	address owner;
 	address manager;
 	address guardian;
-	address treasury;
 }
 
 struct Config {

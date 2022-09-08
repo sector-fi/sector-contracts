@@ -3,11 +3,11 @@
 pragma solidity 0.8.16;
 
 struct Pool {
-	uint96 id;
-	bool exists;
-	uint8 decimals; // above are packed
 	address vault;
-	uint256 managementFee; // in basis points
+	uint96 id; // slot 0
+	uint16 managementFee;
+	uint8 decimals;
+	bool exists; // slot 1
 }
 
 interface IBank {
@@ -54,6 +54,10 @@ interface IBank {
 	function decimals(uint256 tokenId) external view returns (uint8);
 
 	function getPool(uint256 tokenId) external view returns (Pool memory pool);
+
+	function getTokenId(address vault, uint96 id) external pure returns (uint256 tokenId);
+
+	function getTokenInfo(uint256 tokenId) external pure returns (address vault, uint256 poolId);
 
 	function deposit(
 		uint96 id,

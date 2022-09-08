@@ -38,6 +38,7 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		_collateralToken = ICollateral(collateralToken_);
 		_uBorrowable = IBorrowable(_collateralToken.borrowable0());
 		_sBorrowable = IBorrowable(_collateralToken.borrowable1());
+
 		if (underlying_ != _uBorrowable.underlying()) {
 			flip = true;
 			(_uBorrowable, _sBorrowable) = (_sBorrowable, _uBorrowable);
@@ -284,11 +285,13 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 	}
 
 	function _getLiquidity() internal view override returns (uint256) {
-		if (_collateralToken.balanceOf(address(this)) == 0) return 0;
+		return _getLiquidity(_collateralToken.balanceOf(address(this)));
+	}
+
+	function _getLiquidity(uint256 balance) internal view override returns (uint256) {
+		if (balance == 0) return 0;
 		return
-			(stakedToken.exchangeRate() *
-				(_collateralToken.exchangeRate() *
-					(_collateralToken.balanceOf(address(this)) - 1))) /
+			(stakedToken.exchangeRate() * (_collateralToken.exchangeRate() * (balance - 1))) /
 			1e18 /
 			1e18;
 	}
