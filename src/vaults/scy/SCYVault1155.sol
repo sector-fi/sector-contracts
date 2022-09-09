@@ -233,6 +233,10 @@ contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 		return strategies[id].imx.decimals();
 	}
 
+	function decimals(uint96 id) public view returns (uint8) {
+		return IERC20Metadata(strategies[id].yieldToken).decimals();
+	}
+
 	/**
 	 * @dev See {ISuperComposableYield-exchangeRateCurrent}
 	 */
