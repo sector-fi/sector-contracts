@@ -11,14 +11,14 @@ import "hardhat/console.sol";
 
 abstract contract SCYBase1155 is Initializable, ISuperComposableYield, ReentrancyGuardUpgradeable {
 	using SafeERC20 for IERC20;
+
 	address internal constant NATIVE = address(0);
 	uint256 internal constant ONE = 1e18;
 
-	address public yieldToken;
-
-	function __SCYBase_init_(address _yieldToken) public onlyInitializing {
-		yieldToken = _yieldToken;
-	}
+	// address public yieldToken;
+	// function __SCYBase_init_(address _yieldToken) public onlyInitializing {
+	// 	yieldToken = _yieldToken;
+	// }
 
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
@@ -31,43 +31,45 @@ abstract contract SCYBase1155 is Initializable, ISuperComposableYield, Reentranc
 	 * @dev See {ISuperComposableYield-deposit}
 	 */
 	function deposit(
+		uint96 id,
 		address receiver,
 		address tokenIn,
 		uint256 amountIn,
 		uint256 minSharesOut
 	) external payable nonReentrant returns (uint256 amountSharesOut) {
-		require(isValidBaseToken(tokenIn), "SCY: Invalid tokenIn");
+		require(isValidBaseToken(id, tokenIn), "SCY: Invalid tokenIn");
 
 		if (tokenIn == NATIVE) require(amountIn == 0, "can't pull eth");
-		else if (amountIn != 0) _transferIn(tokenIn, msg.sender, amountIn);
+		else if (amountIn != 0) _transferIn(id, tokenIn, msg.sender, amountIn);
 		// SCY standard allows for tokens to be sent to this contract prior to calling deposit
 		// this improves composability, but add complexity and potential gas fees
 
-		amountSharesOut = _deposit(receiver, tokenIn, amountIn);
+		amountSharesOut = _deposit(id, receiver, tokenIn, amountIn);
 		require(amountSharesOut >= minSharesOut, "insufficient out");
 
 		// _mint(receiver, amountSharesOut);
 
-		emit Deposit(msg.sender, receiver, tokenIn, amountIn, amountSharesOut);
+		emit Deposit(id, msg.sender, receiver, tokenIn, amountIn, amountSharesOut);
 	}
 
 	/**
 	 * @dev See {ISuperComposableYield-redeem}
 	 */
 	function redeem(
+		uint96 id,
 		address receiver,
 		uint256 amountSharesToRedeem,
 		address tokenOut,
 		uint256 minTokenOut
 	) external nonReentrant returns (uint256 amountTokenOut) {
-		require(isValidBaseToken(tokenOut), "SCY: invalid tokenOut");
+		require(isValidBaseToken(id, tokenOut), "SCY: invalid tokenOut");
 
-		amountTokenOut = _redeem(receiver, tokenOut, amountSharesToRedeem);
+		amountTokenOut = _redeem(id, receiver, tokenOut, amountSharesToRedeem);
 		require(amountTokenOut >= minTokenOut, "insufficient out");
 
-		_transferOut(tokenOut, receiver, amountTokenOut);
+		_transferOut(id, tokenOut, receiver, amountTokenOut);
 
-		emit Redeem(msg.sender, receiver, tokenOut, amountSharesToRedeem, amountTokenOut);
+		emit Redeem(id, msg.sender, receiver, tokenOut, amountSharesToRedeem, amountTokenOut);
 	}
 
 	/**
@@ -77,6 +79,7 @@ abstract contract SCYBase1155 is Initializable, ISuperComposableYield, Reentranc
 	 * @return amountSharesOut amount of shares minted
 	 */
 	function _deposit(
+		uint96 id,
 		address receiver,
 		address tokenIn,
 		uint256 amountDeposited
@@ -89,6 +92,7 @@ abstract contract SCYBase1155 is Initializable, ISuperComposableYield, Reentranc
 	 * @return amountTokenOut amount of base tokens redeemed
 	 */
 	function _redeem(
+		uint96 id,
 		address receiver,
 		address tokenOut,
 		uint256 amountSharesToRedeem
@@ -101,12 +105,12 @@ abstract contract SCYBase1155 is Initializable, ISuperComposableYield, Reentranc
 	/**
 	 * @dev See {ISuperComposableYield-exchangeRateCurrent}
 	 */
-	function exchangeRateCurrent() external virtual override returns (uint256 res);
+	function exchangeRateCurrent(uint96 id) external virtual override returns (uint256 res);
 
 	/**
 	 * @dev See {ISuperComposableYield-exchangeRateStored}
 	 */
-	function exchangeRateStored() external view virtual override returns (uint256 res);
+	function exchangeRateStored(uint96 id) external view virtual override returns (uint256 res);
 
 	/*///////////////////////////////////////////////////////////////
                                REWARDS-RELATED
@@ -169,28 +173,28 @@ abstract contract SCYBase1155 is Initializable, ISuperComposableYield, Reentranc
 	/**
 	 * @notice See {ISuperComposableYield-getBaseTokens}
 	 */
-	function getBaseTokens() external view virtual override returns (address[] memory res);
+	function getBaseTokens(uint96 id) external view virtual override returns (address[] memory res);
 
 	/**
 	 * @dev See {ISuperComposableYield-isValidBaseToken}
 	 */
-	function isValidBaseToken(address token) public view virtual override returns (bool);
+	function isValidBaseToken(uint96 id, address token) public view virtual override returns (bool);
 
 	function _transferIn(
+		uint96 id,
 		address token,
 		address to,
 		uint256 amount
 	) internal virtual;
 
 	function _transferOut(
+		uint96 id,
 		address token,
 		address to,
 		uint256 amount
 	) internal virtual;
 
-	function _selfBalance(address token) internal view virtual returns (uint256);
-
-	function strategy() public virtual returns (address);
+	function _selfBalance(uint96 id, address token) internal view virtual returns (uint256);
 
 	uint256[50] private __gap;
 }
