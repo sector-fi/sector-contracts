@@ -7,7 +7,7 @@ import { IMXUtils, UniUtils, IUniswapV2Pair } from "../utils/IMXUtils.sol";
 
 import { SectorTest } from "../utils/SectorTest.sol";
 import { IMXConfig, HarvestSwapParms } from "../../interfaces/Structs.sol";
-import { SCYVault1155, Strategy } from "../../vaults/scy/SCYVault1155.sol";
+import { SCYVault, Strategy } from "../../vaults/scy/SCYVault.sol";
 import { Bank, Pool } from "../../bank/Bank.sol";
 import { IMX, IMXCore } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -24,7 +24,7 @@ contract IMXIntegrationTest is SectorTest, IMXUtils, ERC1155Holder {
 	uint256 avaxFork;
 
 	Bank bank;
-	SCYVault1155 vault;
+	SCYVault vault;
 	IMX strategy;
 
 	IMXConfig config;
@@ -59,7 +59,7 @@ contract IMXIntegrationTest is SectorTest, IMXUtils, ERC1155Holder {
 
 		bank = new Bank("api.sector.finance/<id>.json", address(this), guardian, manager, treasury);
 
-		vault = new SCYVault1155();
+		vault = new SCYVault();
 		vault.initialize(address(bank), owner, guardian, manager, treasury);
 
 		config.vault = address(vault);

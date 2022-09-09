@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import { SCYBase1155, Initializable, IERC20, IERC20Metadata, SafeERC20 } from "./SCYBase1155.sol";
+import { SCYBase, Initializable, IERC20, IERC20Metadata, SafeERC20 } from "./SCYBase.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { AuthU } from "../../common/AuthU.sol";
 import { FeesU } from "../../common/FeesU.sol";
@@ -24,7 +24,7 @@ struct Strategy {
 	uint128 yBalance; // yield token balance
 }
 
-contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
+contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 	using SafeERC20 for IERC20;
 	using SafeCast for uint256;
 
@@ -182,8 +182,8 @@ contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 		return strategies[id].underlying;
 	}
 
-	function getStrategyId(address strategy, uint256 id) public view returns (uint96) {
-		return strategyIndexes[strategy][id];
+	function getStrategyId(address strategy, uint256 strategyId) public view returns (uint96) {
+		return strategyIndexes[strategy][strategyId];
 	}
 
 	function getStrategy(uint96 id) public view returns (Strategy memory) {

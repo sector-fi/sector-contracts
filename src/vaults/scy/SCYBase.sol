@@ -9,7 +9,7 @@ import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contr
 
 import "hardhat/console.sol";
 
-abstract contract SCYBase1155 is Initializable, ISuperComposableYield, ReentrancyGuardUpgradeable {
+abstract contract SCYBase is Initializable, ISuperComposableYield, ReentrancyGuardUpgradeable {
 	using SafeERC20 for IERC20;
 
 	address internal constant NATIVE = address(0);
