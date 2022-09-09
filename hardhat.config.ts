@@ -1,7 +1,5 @@
-import '@nomiclabs/hardhat-waffle';
 import 'hardhat-deploy';
 import 'hardhat-contract-sizer';
-import 'hardhat-gas-reporter';
 import 'hardhat-gas-reporter';
 import env from 'dotenv';
 import { subtask } from 'hardhat/config';
@@ -19,7 +17,6 @@ subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(
   }
 );
 
-// import 'hardhat-typechain'; // doesn't work rn
 env.config();
 
 const {
