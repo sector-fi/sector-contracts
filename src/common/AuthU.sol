@@ -10,17 +10,15 @@ contract AuthU is AccessControlUpgradeable {
 
 	////////// CONSTANTS //////////
 
-	/// Add and remove vaults and strategies and other critical operations behind timelock
-	/// Default admin role
-	bytes32 public constant GOVERNANCE = keccak256("GOVERNANCE");
-
 	/// Update vault params, perform time-sensitive operations, set manager
 	bytes32 public constant GUARDIAN = keccak256("GUARDIAN");
 
 	/// Hot-wallet bots that route funds between vaults, rebalance and harvest strategies
 	bytes32 public constant MANAGER = keccak256("MANAGER");
 
-	// we want only a single owner, hence its not a role
+	/// Add and remove vaults and strategies and other critical operations behind timelock
+	/// Default admin role
+	/// There should only be one owner, so it is not a role
 	address public owner;
 	address public pendingOwner;
 

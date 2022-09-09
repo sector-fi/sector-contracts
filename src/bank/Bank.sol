@@ -170,9 +170,9 @@ contract Bank is IBank, ERC1155Supply, Auth {
 
 	///
 	/// Add a new pool to the bank
-	/// Only owner can call this function
+	/// This
 	///
-	function addPool(Pool calldata newPool) external onlyOwner {
+	function addPool(Pool calldata newPool) external onlyRole(GUARDIAN) {
 		uint256 tokenId = getTokenId(newPool.vault, newPool.id);
 		if (pools[tokenId].exists) revert PoolExists();
 
@@ -186,7 +186,7 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		emit AddPool(newPool.id, newPool.vault, tokenId);
 	}
 
-	function setTreasury(address _treasury) external onlyRole(GOVERNANCE) {
+	function setTreasury(address _treasury) external onlyRole(GUARDIAN) {
 		treasury = _treasury;
 		emit SetTreasury(_treasury);
 	}

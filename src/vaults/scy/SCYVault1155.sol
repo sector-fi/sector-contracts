@@ -182,6 +182,10 @@ contract SCYVault1155 is Initializable, SCYBase1155, FeesU, TreasuryU {
 		return strategies[id].underlying;
 	}
 
+	function getStrategyId(address strategy, uint256 id) public view returns (uint96) {
+		return strategyIndexes[strategy][id];
+	}
+
 	function getStrategy(uint96 id) public view returns (Strategy memory) {
 		return strategies[id];
 	}

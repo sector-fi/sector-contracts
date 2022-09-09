@@ -79,8 +79,8 @@ contract IMXIntegrationTest is SectorTest, IMXUtils, ERC1155Holder {
 
 		bank.addPool(
 			Pool({
-				id: stratId,
 				vault: address(vault),
+				id: stratId,
 				exists: true,
 				decimals: usdc.decimals(),
 				managementFee: 1000 // 10%
