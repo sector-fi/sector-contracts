@@ -9,22 +9,11 @@ import { SafeETH } from "../../libraries/SafeETH.sol";
 import { TreasuryU } from "../../common/TreasuryU.sol";
 import { Bank } from "../../bank/Bank.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 
 import "hardhat/console.sol";
 
-struct Strategy {
-	IMX imx;
-	bool exists;
-	uint256 strategyId; // this is strategy specific token if 1155
-	address yieldToken;
-	IERC20 underlying;
-	uint128 maxTvl; // pack all params and balances
-	uint128 balance; // strategy balance in underlying
-	uint128 uBalance; // underlying balance
-	uint128 yBalance; // yield token balance
-}
-
-contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
+abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, TreasuryU {
 	using SafeERC20 for IERC20;
 	using SafeCast for uint256;
 
@@ -59,7 +48,7 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 	}
 
 	function addStrategy(Strategy calldata strategy) public onlyOwner returns (uint96 id) {
-		address addr = address(strategy.imx);
+		address addr = strategy.addr;
 		uint256 index = strategyIndexes[addr][strategy.strategyId];
 		id = (strategies.length).toUint96();
 		if (index < id && strategies[index].exists) revert StrategyExists();
@@ -74,13 +63,13 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 
 	function getMaxTvl(uint96 id) public view returns (uint256 maxTvl) {
 		Strategy storage strategy = strategies[id];
-		return min(strategy.maxTvl, strategy.imx.getMaxTvl());
+		return min(strategy.maxTvl, _stratMaxTvl(strategy));
 	}
 
 	function setMaxTvl(uint96 id, uint256 maxTvl) public strategyExists(id) onlyRole(GUARDIAN) {
 		Strategy storage strategy = strategies[id];
 		strategy.maxTvl = maxTvl.toUint128();
-		emit MaxTvlUpdated(id, min(maxTvl, strategy.imx.getMaxTvl()));
+		emit MaxTvlUpdated(id, min(maxTvl, _stratMaxTvl(strategy)));
 	}
 
 	function setMaxDust(uint256 maxDust_) public onlyRole(GUARDIAN) {
@@ -98,20 +87,11 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 		require(!isPaused(id), "Vault: DEPOSITS_PAUSED");
 
 		Strategy storage strategy = strategies[id];
-		// Strategy storage strategy = strategies[id];
-		address yToken = strategy.yieldToken;
-		// TODO use stored balance?
-		uint256 startYieldToken = _selfBalance(id, yToken);
-		strategy.imx.deposit(amount);
-		uint256 endYieldToken = _selfBalance(id, yToken);
+		uint256 yAdded = _stratDeposit(strategy, amount);
+		uint256 endYieldToken = yAdded + strategy.yBalance;
 
-		amountSharesOut = bank.deposit(
-			id,
-			receiver,
-			endYieldToken - startYieldToken,
-			endYieldToken
-		);
-		strategy.yBalance = endYieldToken.toUint128();
+		amountSharesOut = bank.deposit(id, receiver, yAdded, endYieldToken);
+		strategy.yBalance += yAdded.toUint128();
 	}
 
 	function _redeem(
@@ -127,17 +107,22 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 		uint256 yeildTokenAmnt = bank.withdraw(id, receiver, sharesToRedeem, _totalSupply);
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
-		uint256 reserves = strategy.underlying.balanceOf(address(this));
+		uint256 reserves = strategy.uBalance;
 		uint256 shareOfReserves = (reserves * sharesToRedeem) / _totalSupply;
 
-		amountTokenOut = shareOfReserves + strategy.imx.redeem(yeildTokenAmnt);
+		// Update strategy underlying reserves balance
+		if (shareOfReserves > 0) strategy.uBalance -= shareOfReserves.toUint128();
+
+		// decrease yeild token amnt
+		strategy.yBalance -= yeildTokenAmnt.toUint128();
+		amountTokenOut = shareOfReserves + _stratRedeem(strategy, yeildTokenAmnt);
 	}
 
 	// DoS attack is possible by depositing small amounts of underlying
 	// can make it costly by using a maxDust amnt, ex: $100
 	// TODO: make sure we don't need check
 	function isPaused(uint96 id) public view returns (bool) {
-		return strategies[id].underlying.balanceOf(address(this)) > maxDust;
+		return strategies[id].uBalance > maxDust;
 	}
 
 	/// @notice Harvest a set of trusted strategies.
@@ -146,24 +131,24 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 	/// harvest window or before the harvest delay has passed.
 	function harvest(uint96 id, address[] calldata) external onlyRole(MANAGER) {
 		Strategy storage strategy = strategies[id];
-		uint256 tvl = strategy.imx.getAndUpdateTVL();
+		uint256 tvl = _stratGetAndUpdateTvl(strategy);
 		uint256 strategyBalance = strategy.balance;
 		if (tvl <= strategyBalance) return;
 
-		bank.takeFees(
-			id,
-			address(this),
-			tvl - strategyBalance,
-			_selfBalance(id, strategy.yieldToken)
-		);
+		address yToken = strategy.yieldToken;
+		bank.takeFees(id, address(this), tvl - strategyBalance, _selfBalance(id, yToken));
+		strategy.yBalance -= _selfBalance(id, yToken).toUint128();
 		strategy.balance = tvl.toUint128();
 	}
 
 	// TODO: add slippage
 	function depositIntoStrategy(uint96 id, uint256 underlyingAmount) public onlyRole(GUARDIAN) {
 		Strategy storage strategy = strategies[id];
-		strategy.underlying.safeTransfer(address(strategy.imx), underlyingAmount);
-		strategy.imx.deposit(underlyingAmount);
+		if (underlyingAmount > strategy.uBalance) revert NotEnoughUnderlying();
+		strategy.uBalance -= underlyingAmount.toUint128();
+		strategy.underlying.safeTransfer(strategy.addr, underlyingAmount);
+		uint256 yAdded = _stratDeposit(strategy, underlyingAmount);
+		strategy.yBalance += yAdded.toUint128();
 	}
 
 	// TODO: add slippage
@@ -171,11 +156,16 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 		Strategy storage strategy = strategies[id];
 		uint256 totalShares = bank.totalShares(address(this), id);
 		uint256 yieldTokenAmnt = (shares * _selfBalance(id, strategy.yieldToken)) / totalShares;
-		strategy.imx.redeem(yieldTokenAmnt);
+		strategy.yBalance -= yieldTokenAmnt.toUint128();
+		uint256 underlyingWithdrawn = _stratRedeem(strategy, yieldTokenAmnt);
+		strategy.uBalance += underlyingWithdrawn.toUint128();
 	}
 
 	function closePosition(uint96 id) public onlyRole(GUARDIAN) {
-		strategies[id].imx.closePosition();
+		Strategy storage strategy = strategies[id];
+		strategy.yBalance = 0;
+		uint256 underlyingWithdrawn = _stratClosePosition(strategy);
+		strategy.uBalance += underlyingWithdrawn.toUint128();
 	}
 
 	function underlying(uint96 id) public view returns (IERC20) {
@@ -196,7 +186,7 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 		uint256 totalShares = bank.totalShares(address(this), id);
 		if (totalShares == 0) return ONE;
 		return
-			((strategy.underlying.balanceOf(address(this)) + strategy.imx.getTotalTVL()) * ONE) /
+			((strategy.underlying.balanceOf(address(this)) + _stratGetTvl(strategy)) * ONE) /
 			totalShares;
 	}
 
@@ -209,7 +199,7 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 		return
 			(((strategy.underlying.balanceOf(address(this)) * balance) /
 				totalShares +
-				strategy.imx.getTotalTVL()) * balance) / totalShares;
+				_stratGetTvl(strategy)) * balance) / totalShares;
 	}
 
 	///
@@ -230,7 +220,7 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 	}
 
 	function underlyingDecimals(uint96 id) public view returns (uint8) {
-		return strategies[id].imx.decimals();
+		return IERC20Metadata(address(strategies[id].underlying)).decimals();
 	}
 
 	function decimals(uint96 id) public view returns (uint8) {
@@ -272,8 +262,12 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 		address from,
 		uint256 amount
 	) internal override {
-		if (token == NATIVE) SafeETH.safeTransferETH(address(strategies[id].imx), amount);
-		else IERC20(token).safeTransferFrom(from, address(strategies[id].imx), amount);
+		if (token == NATIVE) {
+			// if strategy logic lives in this contract, don't do anything
+			address stratAddr = strategies[id].addr;
+			if (stratAddr == address(this))
+				return SafeETH.safeTransferETH(strategies[id].addr, amount);
+		} else IERC20(token).safeTransferFrom(from, strategies[id].addr, amount);
 	}
 
 	// send funds to user
@@ -286,7 +280,7 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 		if (token == NATIVE) {
 			SafeETH.safeTransferETH(to, amount);
 		} else {
-			IERC20(token).safeTransferFrom(address(strategies[id].imx), to, amount);
+			IERC20(token).safeTransferFrom(strategies[id].addr, to, amount);
 		}
 	}
 
@@ -294,8 +288,8 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 	function _selfBalance(uint96 id, address token) internal view override returns (uint256) {
 		return
 			(token == NATIVE)
-				? address(strategies[id].imx).balance
-				: IERC20(token).balanceOf(address(strategies[id].imx));
+				? strategies[id].addr.balance
+				: IERC20(token).balanceOf(strategies[id].addr);
 	}
 
 	/**
@@ -307,4 +301,5 @@ contract SCYVault is Initializable, SCYBase, FeesU, TreasuryU {
 
 	error StrategyExists();
 	error StrategyDoesntExist();
+	error NotEnoughUnderlying();
 }
