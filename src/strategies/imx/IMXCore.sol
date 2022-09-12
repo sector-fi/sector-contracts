@@ -115,17 +115,14 @@ abstract contract IMXCore is
 	// }
 
 	// deposit underlying and recieve lp tokens
-	function deposit(uint256 underlyingAmnt) external onlyVault nonReentrant {
-		if (underlyingAmnt <= 0) return; // cannot deposit 0
+	function deposit(uint256 underlyingAmnt) external onlyVault nonReentrant returns (uint256) {
+		if (underlyingAmnt == 0) return 0; // cannot deposit 0
 		uint256 tvl = getAndUpdateTVL();
 		require(underlyingAmnt + tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
-
-		// if we have any un-allocated underlying,
-		// it means we are over capacity or in a paused state
-		// TODO: ensure this doesn't fail because of dust
-		require(_underlying.balanceOf(address(this)) <= underlyingAmnt, "STRAT: OVER CAPACITY");
-
+		uint256 startBalance = collateralToken().balanceOf(address(this));
 		_increasePosition(underlyingAmnt);
+		uint256 endBalance = collateralToken().balanceOf(address(this));
+		return endBalance - startBalance;
 	}
 
 	// redeem lp for underlying
@@ -258,12 +255,13 @@ abstract contract IMXCore is
 
 	// TODO add slippage
 	// TODO partial close / deleverage?
-	function closePosition() public onlyVault {
+	function closePosition() public onlyVault returns (uint256 balance) {
 		(uint256 uRepay, uint256 sRepay) = _updateAndGetBorrowBalances();
 		uint256 removeLp = _getLiquidity();
 		_removeIMXLiquidity(removeLp, uRepay, sRepay);
 		// transfer funds to vault
-		_underlying.safeTransfer(vault, _underlying.balanceOf(address(this)));
+		balance = _underlying.balanceOf(address(this));
+		_underlying.safeTransfer(vault, balance);
 	}
 
 	// TVL
