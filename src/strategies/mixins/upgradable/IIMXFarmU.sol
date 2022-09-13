@@ -8,6 +8,8 @@ import { IUniLpU, IUniswapV2Pair, SafeERC20, IERC20 } from "./IUniLpU.sol";
 import { IFarmableU, IUniswapV2Router01 } from "./IFarmableU.sol";
 
 abstract contract IIMXFarmU is IBaseU, IFarmableU, IUniLpU {
+	function loanHealth() public view virtual returns (uint256);
+
 	function sBorrowable() public view virtual returns (IBorrowable);
 
 	function uBorrowable() public view virtual returns (IBorrowable);
@@ -35,7 +37,7 @@ abstract contract IIMXFarmU is IBaseU, IFarmableU, IUniLpU {
 
 	function _harvestFarm(HarvestSwapParms calldata swapParams) internal virtual returns (uint256);
 
-	function safetyMarginSqrt() internal view virtual returns (uint256);
+	function safetyMarginSqrt() public view virtual returns (uint256);
 
 	function accrueInterest() public virtual;
 
@@ -51,4 +53,6 @@ abstract contract IIMXFarmU is IBaseU, IFarmableU, IUniLpU {
 		uint256 repayUnderlying,
 		uint256 repayShort
 	) internal virtual;
+
+	// function _shortToUnderlyingOracle(uint256 amount) internal view virtual returns (uint256);
 }
