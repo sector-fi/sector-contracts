@@ -15,11 +15,6 @@ abstract contract SCYBase is Initializable, ISuperComposableYield, ReentrancyGua
 	address internal constant NATIVE = address(0);
 	uint256 internal constant ONE = 1e18;
 
-	// address public yieldToken;
-	// function __SCYBase_init_(address _yieldToken) public onlyInitializing {
-	// 	yieldToken = _yieldToken;
-	// }
-
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
 
@@ -46,8 +41,6 @@ abstract contract SCYBase is Initializable, ISuperComposableYield, ReentrancyGua
 
 		amountSharesOut = _deposit(id, receiver, tokenIn, amountIn);
 		require(amountSharesOut >= minSharesOut, "insufficient out");
-
-		// _mint(receiver, amountSharesOut);
 
 		emit Deposit(id, msg.sender, receiver, tokenIn, amountIn, amountSharesOut);
 	}

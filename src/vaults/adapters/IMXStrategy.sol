@@ -36,4 +36,13 @@ contract IMXStrategy is SCYStrategy {
 	function _stratMaxTvl(Strategy storage strategy) internal view override returns (uint256) {
 		return IMX(strategy.addr).getMaxTvl();
 	}
+
+	function _stratCollateralToUnderlying(Strategy storage strategy)
+		internal
+		view
+		override
+		returns (uint256)
+	{
+		return IMX(strategy.addr).collateralToUnderlying();
+	}
 }

@@ -10,6 +10,7 @@ import { TreasuryU } from "../../common/TreasuryU.sol";
 import { Bank } from "../../bank/Bank.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
+import { IMX } from "../../strategies/imx/IMX.sol";
 
 import "hardhat/console.sol";
 
@@ -196,11 +197,11 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		return _strategyTvl(strategies[id]);
 	}
 
-	// used for estimate only
-	function exchangeRateUnderlying(uint96 id) external view returns (uint256) {
+	// used for estimates only
+	function exchangeRateUnderlying(uint96 id) public view returns (uint256) {
 		Strategy storage strategy = strategies[id];
 		uint256 totalShares = bank.totalShares(address(this), id);
-		if (totalShares == 0) return ONE;
+		if (totalShares == 0) return _stratCollateralToUnderlying(strategy);
 		return
 			((strategy.underlying.balanceOf(address(this)) + _strategyTvl(strategy)) * ONE) /
 			totalShares;
@@ -216,6 +217,14 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 			(((strategy.underlying.balanceOf(address(this)) * balance) /
 				totalShares +
 				_strategyTvl(strategy)) * balance) / totalShares;
+	}
+
+	function underlyingToShares(uint96 id, uint256 uAmnt) public view returns (uint256) {
+		return ((ONE * uAmnt) / exchangeRateUnderlying(id));
+	}
+
+	function sharesToUnderlying(uint96 id, uint256 shares) public view returns (uint256) {
+		return (shares * exchangeRateUnderlying(id)) / ONE;
 	}
 
 	///
@@ -319,4 +328,5 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 	error StrategyDoesntExist();
 	error NotEnoughUnderlying();
 	error SlippageExceeded();
+	error BadStaticCall();
 }
