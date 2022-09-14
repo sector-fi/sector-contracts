@@ -64,13 +64,13 @@ interface IBorrowable {
 }
 
 interface ICollateral {
-	function borrowable0() external view returns (address);
-
 	function safetyMarginSqrt() external view returns (uint256);
 
 	function liquidationIncentive() external view returns (uint256);
 
 	function underlying() external view returns (address);
+
+	function borrowable0() external view returns (address);
 
 	function borrowable1() external view returns (address);
 

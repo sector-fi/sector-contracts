@@ -141,30 +141,42 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		strategy.balance = tvl.toUint128();
 	}
 
-	// TODO: add slippage
-	function depositIntoStrategy(uint96 id, uint256 underlyingAmount) public onlyRole(GUARDIAN) {
+	/// ***Note: slippage is computed in yield token amnt, not shares
+	function depositIntoStrategy(
+		uint96 id,
+		uint256 underlyingAmount,
+		uint256 minAmountOut
+	) public onlyRole(GUARDIAN) {
 		Strategy storage strategy = strategies[id];
 		if (underlyingAmount > strategy.uBalance) revert NotEnoughUnderlying();
 		strategy.uBalance -= underlyingAmount.toUint128();
 		strategy.underlying.safeTransfer(strategy.addr, underlyingAmount);
 		uint256 yAdded = _stratDeposit(strategy, underlyingAmount);
+		if (yAdded < minAmountOut) revert SlippageExceeded();
 		strategy.yBalance += yAdded.toUint128();
 	}
 
-	// TODO: add slippage
-	function withdrawFromStrategy(uint96 id, uint256 shares) public onlyRole(GUARDIAN) {
+	// note: slippage is computed in underlying
+	function withdrawFromStrategy(
+		uint96 id,
+		uint256 shares,
+		uint256 minAmountOut
+	) public onlyRole(GUARDIAN) {
 		Strategy storage strategy = strategies[id];
 		uint256 totalShares = bank.totalShares(address(this), id);
 		uint256 yieldTokenAmnt = (shares * _selfBalance(id, strategy.yieldToken)) / totalShares;
 		strategy.yBalance -= yieldTokenAmnt.toUint128();
 		uint256 underlyingWithdrawn = _stratRedeem(strategy, yieldTokenAmnt);
+		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
+
 		strategy.uBalance += underlyingWithdrawn.toUint128();
 	}
 
-	function closePosition(uint96 id) public onlyRole(GUARDIAN) {
+	function closePosition(uint96 id, uint256 minAmountOut) public onlyRole(GUARDIAN) {
 		Strategy storage strategy = strategies[id];
 		strategy.yBalance = 0;
 		uint256 underlyingWithdrawn = _stratClosePosition(strategy);
+		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
 		strategy.uBalance += underlyingWithdrawn.toUint128();
 	}
 
@@ -180,13 +192,17 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		return strategies[id];
 	}
 
+	function getStrategyTvl(uint96 id) public view returns (uint256) {
+		return _strategyTvl(strategies[id]);
+	}
+
 	// used for estimate only
 	function exchangeRateUnderlying(uint96 id) external view returns (uint256) {
 		Strategy storage strategy = strategies[id];
 		uint256 totalShares = bank.totalShares(address(this), id);
 		if (totalShares == 0) return ONE;
 		return
-			((strategy.underlying.balanceOf(address(this)) + _stratGetTvl(strategy)) * ONE) /
+			((strategy.underlying.balanceOf(address(this)) + _strategyTvl(strategy)) * ONE) /
 			totalShares;
 	}
 
@@ -199,7 +215,7 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		return
 			(((strategy.underlying.balanceOf(address(this)) * balance) /
 				totalShares +
-				_stratGetTvl(strategy)) * balance) / totalShares;
+				_strategyTvl(strategy)) * balance) / totalShares;
 	}
 
 	///
@@ -302,4 +318,5 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 	error StrategyExists();
 	error StrategyDoesntExist();
 	error NotEnoughUnderlying();
+	error SlippageExceeded();
 }

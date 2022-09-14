@@ -8,7 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { CallType, CalleeData, AddLiquidityAndMintCalldata, BorrowBCalldata, RemoveLiqAndRepayCalldata } from "../../interfaces/Structs.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract IMXFarm is Initializable, IIMXFarmU {
 	using SafeERC20 for IERC20;
@@ -319,6 +319,19 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		// this is the adjusted safety margin - how far we stay from liquidation
 		uint256 s = (_collateralToken.safetyMarginSqrt() * safetyMarginSqrt()) / 1e18;
 		uBorrow = (1e18 * (2e18 - (l * s) / 1e18)) / ((l * 1e18) / s + (l * s) / 1e18 - 2e18);
+	}
+
+	function loanHealth() public view override returns (uint256) {
+		uint256 balance = IERC20(address(_collateralToken)).balanceOf(address(this));
+		if (balance == 0) return 100e18;
+		uint256 liq = (balance * _collateralToken.exchangeRate()) / 1e18;
+		(uint256 available, uint256 shortfall) = _collateralToken.accountLiquidity(address(this));
+		return shortfall == 0 ? (1e18 * (liq + available)) / liq : (1e18 * (liq - shortfall)) / liq;
+	}
+
+	function _shortToUnderlyingOracle(uint256 amount) internal view override returns (uint256) {
+		(uint256 price0, uint256 price1) = collateralToken().getPrices();
+		return flip ? (amount * price0) / price1 : (amount * price1) / price0;
 	}
 
 	// TODO RM - can do this in JS or in tests

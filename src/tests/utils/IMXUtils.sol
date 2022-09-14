@@ -50,6 +50,7 @@ abstract contract IMXUtils is Test {
 
 	function movePrice(
 		address _pair,
+		address stakedToken,
 		address underlying,
 		address short,
 		address oracle,
@@ -57,9 +58,9 @@ abstract contract IMXUtils is Test {
 	) public {
 		IUniswapV2Pair pair = IUniswapV2Pair(_pair);
 		moveUniswapPrice(pair, underlying, short, fraction);
-		(uint256 uR, uint256 sR) = pair._getPairReserves(underlying, short);
-		uint224 price = uint112(uR).encode().uqdiv(uint112(sR));
-		mockOraclePrice(oracle, _pair, price);
+		(uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(stakedToken).getReserves();
+		uint224 price = uint112(reserve1).encode().uqdiv(uint112(reserve0));
+		mockOraclePrice(oracle, stakedToken, price);
 	}
 
 	// function logTvl(HedgedLP strategy) internal view {
