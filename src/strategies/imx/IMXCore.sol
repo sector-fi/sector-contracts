@@ -34,6 +34,7 @@ abstract contract IMXCore is
 
 	event Harvest(uint256 harvested); // this is actual the tvl before harvest
 	event Rebalance(uint256 shortPrice, uint256 tvlBeforeRebalance, uint256 positionOffset);
+	event SetMaxPriceOffset(uint256 maxPriceOffset);
 
 	uint256 constant MINIMUM_LIQUIDITY = 1000;
 	uint256 constant BPS_ADJUST = 10000;
@@ -46,13 +47,25 @@ abstract contract IMXCore is
 	uint16 public rebalanceThreshold = 400; // 4% of lp
 	// price move before liquidation
 	uint256 private _safetyMarginSqrt = 1.140175425e18; // sqrt of 130%
+	uint256 public maxPriceOffset = .2e18;
 
 	modifier checkPrice(uint256 expectedPrice, uint256 maxDelta) {
+		// parameter validation
+		// to prevent manipulation by manager
+		if (!hasRole(GUARDIAN, msg.sender)) {
+			uint256 oraclePrice = _shortToUnderlyingOracle(1e18);
+			uint256 oracleDelta = oraclePrice > expectedPrice
+				? oraclePrice - expectedPrice
+				: expectedPrice - oraclePrice;
+			if ((1e18 * (oracleDelta + maxDelta)) / expectedPrice > maxPriceOffset)
+				revert OverMaxPriceOffset();
+		}
+
 		uint256 currentPrice = _shortToUnderlying(1e18);
 		uint256 delta = expectedPrice > currentPrice
 			? expectedPrice - currentPrice
 			: currentPrice - expectedPrice;
-		if (delta < maxDelta) revert LargeSlippage();
+		if (delta > maxDelta) revert SlippageExceeded();
 		_;
 	}
 
@@ -77,8 +90,17 @@ abstract contract IMXCore is
 		rebalanceThreshold = 400;
 		emit SetRebalanceThreshold(400);
 
+		maxPriceOffset = .2e18;
+		emit SetMaxPriceOffset(maxPriceOffset);
+
 		_safetyMarginSqrt = 1.140175425e18;
 		emit SetSafetyMarginSqrt(_safetyMarginSqrt);
+	}
+
+	// guardian can adjust max price offset if needed
+	function setMaxPriceOffset(uint256 _maxPriceOffset) public onlyRole(GUARDIAN) {
+		maxPriceOffset = _maxPriceOffset;
+		emit SetMaxPriceOffset(_maxPriceOffset);
 	}
 
 	function safetyMarginSqrt() public view override returns (uint256) {
@@ -174,29 +196,22 @@ abstract contract IMXCore is
 	}
 
 	// MANAGER + OWNER METHODS
+	// function increasePosition(
+	// 	uint256 amount,
+	// 	uint256 expectedPrice,
+	// 	uint256 maxDelta
+	// ) external checkPrice(expectedPrice, maxDelta) nonReentrant onlyRole(GUARDIAN) {
+	// 	require(_underlying.balanceOf(address(this)) >= amount, "STRAT: NOT ENOUGH U");
+	// 	_increasePosition(amount);
+	// }
 
-	function increasePosition(
-		uint256 amount,
-		uint256 expectedPrice,
-		uint256 maxDelta
-	) external checkPrice(expectedPrice, maxDelta) nonReentrant onlyRole(GUARDIAN) {
-		require(_underlying.balanceOf(address(this)) >= amount, "STRAT: NOT ENOUGH U");
-		_increasePosition(amount);
-	}
-
-	function decreasePosition(
-		uint256 collateralAmnt,
-		uint256 expectedPrice,
-		uint256 maxDelta
-	) external checkPrice(expectedPrice, maxDelta) nonReentrant onlyRole(GUARDIAN) {
-		_decreasePosition(collateralAmnt);
-	}
-
-	// use prev harvest interface?
-	// function harvest(
-	// 	HarvestSwapParms[] calldata uniParams,
-	// 	HarvestSwapParms[] calldata lendingParams
-	// ) external onlyRole(MANAGER) nonReentrant {}
+	// function decreasePosition(
+	// 	uint256 collateralAmnt,
+	// 	uint256 expectedPrice,
+	// 	uint256 maxDelta
+	// ) external checkPrice(expectedPrice, maxDelta) nonReentrant onlyRole(GUARDIAN) {
+	// 	_decreasePosition(collateralAmnt);
+	// }
 
 	// use the return of the function to estimate pending harvest via staticCall
 	function harvest(HarvestSwapParms calldata harvestParams)
@@ -233,7 +248,6 @@ abstract contract IMXCore is
 	// 	_removeIMXLiquidity(removeLp, uRepay, sRepay);
 	// }
 
-	// TODO: add slippage
 	function rebalance(uint256 expectedPrice, uint256 maxDelta)
 		external
 		onlyRole(MANAGER)
@@ -245,7 +259,6 @@ abstract contract IMXCore is
 		uint256 positionOffset = getPositionOffset();
 
 		// don't rebalance unless we exceeded the threshold
-		// require(positionOffset > rebalanceThreshold, "HLP: REB-THRESH"); // maybe next time...
 		if (positionOffset <= rebalanceThreshold) revert RebalanceThreshold();
 
 		if (tvl == 0) return;
@@ -284,13 +297,8 @@ abstract contract IMXCore is
 		emit Rebalance(_shortToUnderlying(1e18), positionOffset, tvl);
 	}
 
-	// TODO partial close / deleverage?
-	function closePosition(uint256 expectedPrice, uint256 maxDelta)
-		public
-		onlyVault
-		checkPrice(expectedPrice, maxDelta)
-		returns (uint256 balance)
-	{
+	// vault handles slippage
+	function closePosition() public onlyVault returns (uint256 balance) {
 		(uint256 uRepay, uint256 sRepay) = _updateAndGetBorrowBalances();
 		uint256 removeLp = _getLiquidity();
 		_removeIMXLiquidity(removeLp, uRepay, sRepay);
@@ -404,5 +412,6 @@ abstract contract IMXCore is
 
 	error RebalanceThreshold();
 	error LowLoanHealth();
-	error LargeSlippage();
+	error SlippageExceeded();
+	error OverMaxPriceOffset();
 }

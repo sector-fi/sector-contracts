@@ -25,7 +25,7 @@ contract IMXStrategy is SCYStrategy {
 		return IMX(strategy.addr).getAndUpdateTVL();
 	}
 
-	function _stratGetTvl(Strategy storage strategy) internal view override returns (uint256) {
+	function _strategyTvl(Strategy storage strategy) internal view override returns (uint256) {
 		return IMX(strategy.addr).getTotalTVL();
 	}
 

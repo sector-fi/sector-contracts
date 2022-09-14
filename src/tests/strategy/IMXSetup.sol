@@ -19,6 +19,7 @@ import "hardhat/console.sol";
 contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 	using UniUtils for IUniswapV2Pair;
 
+	uint256 BASIS = 10000;
 	string AVAX_RPC_URL = vm.envString("AVAX_RPC_URL");
 	uint256 AVAX_BLOCK = vm.envUint("AVAX_BLOCK");
 	uint256 avaxFork;
@@ -114,8 +115,18 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 	}
 
 	function rebalance() public {
+		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
 		assertGt(strategy.getPositionOffset(), strategy.rebalanceThreshold());
-		strategy.rebalance();
+		strategy.rebalance(expectedPrice, maxDelta);
 		assertEq(strategy.getPositionOffset(), 0);
+	}
+
+	// slippage in basis points
+	function getSlippageParams(uint256 slippage)
+		public
+		returns (uint256 expectedPrice, uint256 maxDelta)
+	{
+		expectedPrice = strategy.getExpectedPrice();
+		maxDelta = (expectedPrice * slippage) / BASIS;
 	}
 }

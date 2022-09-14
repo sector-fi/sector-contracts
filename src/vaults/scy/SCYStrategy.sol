@@ -39,7 +39,7 @@ abstract contract SCYStrategy {
 
 	function _stratGetAndUpdateTvl(Strategy storage strategy) internal virtual returns (uint256);
 
-	function _stratGetTvl(Strategy storage strategy) internal view virtual returns (uint256);
+	function _strategyTvl(Strategy storage strategy) internal view virtual returns (uint256);
 
 	function _stratMaxTvl(Strategy storage strategy) internal view virtual returns (uint256);
 }

@@ -46,7 +46,10 @@ contract IMXIntegrationTest is IMXSetup {
 			.8e18
 		);
 
-		strategy.rebalance();
+		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
+		strategy.rebalance(expectedPrice, maxDelta);
 		assertGt(strategy.loanHealth(), 1.002e18);
 	}
+
+	function testBadRebalanceSlippage() public {}
 }

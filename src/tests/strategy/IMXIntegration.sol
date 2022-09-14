@@ -25,8 +25,9 @@ contract IMXIntegrationTest is IMXSetup {
 	}
 
 	function noRebalance() public {
+		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
 		vm.expectRevert(IMXCore.RebalanceThreshold.selector);
-		strategy.rebalance();
+		strategy.rebalance(expectedPrice, maxDelta);
 	}
 
 	function withdrawCheck(uint256 fraction) public {
