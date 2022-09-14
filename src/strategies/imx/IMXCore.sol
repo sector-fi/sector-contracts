@@ -12,7 +12,7 @@ import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 
 import { IMXAuthU } from "./IMXAuthU.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract IMXCore is
 	Initializable,
@@ -401,6 +401,15 @@ abstract contract IMXCore is
 
 	function getLiquidity() external view returns (uint256) {
 		return _getLiquidity();
+	}
+
+	// used to estimate price of collateral token in underlying
+	function collateralToUnderlying() external view returns (uint256) {
+		(uint256 uR, uint256 sR, ) = pair().getReserves();
+		(uR, sR) = address(_underlying) == pair().token0() ? (uR, sR) : (sR, uR);
+		uint256 lp = pair().totalSupply();
+		// for deposit of 1 underlying we get 1+_optimalUBorrow worth or lp -> collateral token
+		return (1e18 * (uR * _getLiquidity(1e18))) / lp / (1e18 + _optimalUBorrow());
 	}
 
 	/**

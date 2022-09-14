@@ -92,8 +92,8 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 	function deposit(uint256 amount) public {
 		uint256 startTvl = strategy.getTotalTVL();
 		deal(address(usdc), address(this), amount);
-		// TODO use min amount
-		vault.deposit(stratId, address(this), address(usdc), amount, 0);
+		uint256 minSharesOut = vault.underlyingToShares(stratId, amount);
+		vault.deposit(stratId, address(this), address(usdc), amount, (minSharesOut * 9990) / 10000);
 		uint256 tvl = strategy.getTotalTVL();
 		assertApproxEqAbs(tvl, startTvl + amount, 10);
 		uint256 token = bank.getTokenId(address(vault), 0);
@@ -104,8 +104,15 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 
 	function withdraw(uint256 fraction) public {
 		uint256 token = bank.getTokenId(address(vault), 0);
-		uint256 balance = bank.balanceOf(address(this), token);
-		vault.redeem(stratId, address(this), (balance * fraction) / 1e18, address(usdc), 0);
+		uint256 sharesToWithdraw = (bank.balanceOf(address(this), token) * fraction) / 1e18;
+		uint256 minUnderlyingOut = vault.sharesToUnderlying(stratId, sharesToWithdraw);
+		vault.redeem(
+			stratId,
+			address(this),
+			sharesToWithdraw,
+			address(usdc),
+			(minUnderlyingOut * 9990) / 10000
+		);
 	}
 
 	function adjustPrice(uint256 fraction) public {
