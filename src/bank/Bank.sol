@@ -55,6 +55,7 @@ contract Bank is IBank, ERC1155Supply, Auth {
 
 		/// Get the current total amount of shares of the pool
 		uint256 _totalSupply = totalSupply(tokenId);
+
 		if (_totalSupply == 0) {
 			// todo add multiple for precision?
 			shares = poolTokens;
@@ -156,13 +157,10 @@ contract Bank is IBank, ERC1155Supply, Auth {
 			((totalSupply(tokenId) * poolTokens) * pool.managementFee) /
 			((totalTokens - poolTokens) * BASIS_POINTS);
 
-		/// Mint the shares to the treasury
 		_mint(recipient, tokenId, shares, "");
 
-		/// Emit an event
 		emit TakeFees(id, msg.sender, shares);
 
-		/// TODO: docs
 		return shares;
 	}
 
@@ -170,14 +168,10 @@ contract Bank is IBank, ERC1155Supply, Auth {
 
 	///
 	/// Add a new pool to the bank
-	/// This
 	///
 	function addPool(Pool calldata newPool) external onlyRole(GUARDIAN) {
 		uint256 tokenId = getTokenId(newPool.vault, newPool.id);
 		if (pools[tokenId].exists) revert PoolExists();
-
-		/// Validate the fees before adding the pool
-		// _validateFees(newPool.depositFee, newPool.withdrawFee, newPool.compoundFee);
 
 		/// Add pool to the pools array
 		pools[tokenId] = newPool;

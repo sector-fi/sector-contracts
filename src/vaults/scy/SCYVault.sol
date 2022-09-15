@@ -53,7 +53,19 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		uint256 index = strategyIndexes[addr][strategy.strategyId];
 		id = (strategies.length).toUint96();
 		if (index < id && strategies[index].exists) revert StrategyExists();
-		strategies.push(strategy);
+		strategies.push(
+			Strategy({
+				addr: strategy.addr,
+				exists: true,
+				strategyId: strategy.strategyId,
+				yieldToken: strategy.yieldToken,
+				underlying: strategy.underlying,
+				maxTvl: strategy.maxTvl,
+				balance: 0,
+				uBalance: 0,
+				yBalance: 0
+			})
+		);
 		strategyIndexes[addr][strategy.strategyId] = id;
 		emit StrategyUpdated(id, addr);
 	}
