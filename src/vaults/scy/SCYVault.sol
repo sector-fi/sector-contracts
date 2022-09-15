@@ -12,7 +12,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, TreasuryU {
 	using SafeERC20 for IERC20;
@@ -112,7 +112,12 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		address receiver,
 		address,
 		uint256 sharesToRedeem
-	) internal override strategyExists(id) returns (uint256 amountTokenOut) {
+	)
+		internal
+		override
+		strategyExists(id)
+		returns (uint256 amountTokenOut, uint256 amountToTransfer)
+	{
 		Strategy storage strategy = strategies[id];
 		address yToken = strategy.yieldToken;
 
@@ -128,7 +133,15 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 
 		// decrease yeild token amnt
 		strategy.yBalance -= yeildTokenAmnt.toUint128();
-		amountTokenOut = shareOfReserves + _stratRedeem(strategy, yeildTokenAmnt);
+
+		// if we also need to send the user share of reserves, we allways withdraw to vault first
+		// if we don't we can have strategy withdraw directly to user if possible
+		if (shareOfReserves > 0) {
+			(amountTokenOut, amountToTransfer) = _stratRedeem(strategy, receiver, yeildTokenAmnt);
+			amountTokenOut += shareOfReserves;
+			amountToTransfer += amountToTransfer;
+		} else
+			(amountTokenOut, amountToTransfer) = _stratRedeem(strategy, receiver, yeildTokenAmnt);
 	}
 
 	// DoS attack is possible by depositing small amounts of underlying
@@ -179,9 +192,8 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		uint256 totalShares = bank.totalShares(address(this), id);
 		uint256 yieldTokenAmnt = (shares * _selfBalance(id, strategy.yieldToken)) / totalShares;
 		strategy.yBalance -= yieldTokenAmnt.toUint128();
-		uint256 underlyingWithdrawn = _stratRedeem(strategy, yieldTokenAmnt);
+		(uint256 underlyingWithdrawn, ) = _stratRedeem(strategy, address(this), yieldTokenAmnt);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
-
 		strategy.uBalance += underlyingWithdrawn.toUint128();
 	}
 
@@ -298,7 +310,7 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		address token,
 		address from,
 		uint256 amount
-	) internal override {
+	) internal virtual override {
 		if (token == NATIVE) {
 			// if strategy logic lives in this contract, don't do anything
 			address stratAddr = strategies[id].addr;
@@ -313,7 +325,7 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		address token,
 		address to,
 		uint256 amount
-	) internal override {
+	) internal virtual override {
 		if (token == NATIVE) {
 			SafeETH.safeTransferETH(to, amount);
 		} else {
@@ -322,7 +334,13 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 	}
 
 	// todo handle internal float balances
-	function _selfBalance(uint96 id, address token) internal view override returns (uint256) {
+	function _selfBalance(uint96 id, address token)
+		internal
+		view
+		virtual
+		override
+		returns (uint256)
+	{
 		return
 			(token == NATIVE)
 				? strategies[id].addr.balance

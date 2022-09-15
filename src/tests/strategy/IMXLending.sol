@@ -7,7 +7,7 @@ import { IMXUtils, UniUtils, IUniswapV2Pair } from "../utils/IMXUtils.sol";
 
 import { SectorTest } from "../utils/SectorTest.sol";
 import { IMXConfig, HarvestSwapParms } from "../../interfaces/Structs.sol";
-import { IMXVault, Strategy } from "../../vaults/IMXVault.sol";
+import { IMXLend, Strategy } from "../../vaults/IMXLend.sol";
 import { Bank, Pool } from "../../bank/Bank.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -16,7 +16,7 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 
 import "hardhat/console.sol";
 
-contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
+contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 	using UniUtils for IUniswapV2Pair;
 
 	uint256 BASIS = 10000;
@@ -25,8 +25,7 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 	uint256 avaxFork;
 
 	Bank bank;
-	IMXVault vault;
-	IMX strategy;
+	IMXLend vault;
 
 	IMXConfig config;
 	HarvestSwapParms harvestParams;
@@ -39,39 +38,27 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 	uint96 stratId;
 
 	IERC20 usdc = IERC20(0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664);
+	IERC20 avax = IERC20(0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7);
+
+	address strategy = 0x3b611a8E02908607c409b382D5671e8b3e39755d;
+	address strategyEth = 0xBE48d2910a8908d33A1fE11d4F156eEf87ED563c;
 
 	function setUp() public {
 		avaxFork = vm.createFork(AVAX_RPC_URL, AVAX_BLOCK);
 		vm.selectFork(avaxFork);
 
-		// TODO use JSON
-		config.underlying = address(usdc);
-		config.short = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
-		config.uniPair = 0xA389f9430876455C36478DeEa9769B7Ca4E3DDB1;
-		config.poolToken = 0xEE2A27B7c3165A5E2a3FEB113A77B26b46dB0baE; // collateral token
-		config.farmToken = 0xeA6887e4a9CdA1B77E70129E5Fba830CdB5cdDef;
-		config.farmRouter = 0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106;
-		config.maxTvl = type(uint128).max;
-		config.owner = owner;
-		config.manager = manager;
-		config.guardian = guardian;
-
 		bank = new Bank("api.sector.finance/<id>.json", address(this), guardian, manager, treasury);
 
-		vault = new IMXVault();
+		vault = new IMXLend();
 		vault.initialize(address(bank), owner, guardian, manager, treasury);
 
 		config.vault = address(vault);
 
-		strategy = new IMX();
-		strategy.initialize(config);
-
 		/// todo should be able to do this via address and mixin
 		strategyConfig.addr = address(strategy);
-		strategyConfig.yieldToken = config.poolToken;
-		strategyConfig.underlying = IERC20Upgradeable(config.underlying);
-		strategyConfig.maxTvl = uint128(config.maxTvl);
-		strategyConfig.exists = true;
+		strategyConfig.yieldToken = address(strategy);
+		strategyConfig.underlying = IERC20Upgradeable(address(usdc));
+		strategyConfig.maxTvl = type(uint128).max;
 		stratId = vault.addStrategy(strategyConfig);
 
 		usdc.approve(address(vault), type(uint256).max);
@@ -87,17 +74,34 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		);
 	}
 
+	function testDeposit() public {
+		deposit(1000e6);
+	}
+
+	function testWithdraw() public {
+		deposit(1000e6);
+		withdrawCheck(.4e18);
+	}
+
 	function deposit(uint256 amount) public {
-		uint256 startTvl = strategy.getTotalTVL();
+		uint256 startTvl = vault.getStrategyTvl(stratId);
 		deal(address(usdc), address(this), amount);
 		uint256 minSharesOut = vault.underlyingToShares(stratId, amount);
 		vault.deposit(stratId, address(this), address(usdc), amount, (minSharesOut * 9990) / 10000);
-		uint256 tvl = strategy.getTotalTVL();
-		assertApproxEqAbs(tvl, startTvl + amount, 10, "tvl should be update");
+		uint256 tvl = vault.getStrategyTvl(stratId);
+		assertApproxEqAbs(tvl, startTvl + amount, 10, "tvl should be correct");
 		uint256 token = bank.getTokenId(address(vault), 0);
-		uint256 vaultBalance = IERC20(vault.yieldToken(stratId)).balanceOf(address(strategy));
-		assertApproxEqAbs(bank.balanceOf(address(this), token), vaultBalance, 10, "bank balance");
-		assertEq(vault.underlyingBalance(stratId, address(this)), tvl, "underlying balance");
+		uint256 vaultBalance = IERC20(vault.yieldToken(stratId)).balanceOf(address(vault));
+		assertEq(
+			bank.balanceOf(address(this), token),
+			vaultBalance,
+			"vault balance should match user"
+		);
+		assertEq(
+			vault.underlyingBalance(stratId, address(this)),
+			tvl,
+			"underlying balance should match tvl"
+		);
 	}
 
 	function withdraw(uint256 fraction) public {
@@ -113,25 +117,15 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		);
 	}
 
-	function adjustPrice(uint256 fraction) public {
-		address oracle = ICollateral(config.poolToken).simpleUniswapOracle();
-		address stakedToken = ICollateral(config.poolToken).underlying();
-		movePrice(config.uniPair, stakedToken, config.underlying, config.short, oracle, fraction);
-	}
+	function withdrawCheck(uint256 fraction) public {
+		uint256 startTvl = vault.getStrategyTvl(stratId);
+		withdraw(fraction);
 
-	function rebalance() public {
-		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
-		assertGt(strategy.getPositionOffset(), strategy.rebalanceThreshold());
-		strategy.rebalance(expectedPrice, maxDelta);
-		assertApproxEqAbs(strategy.getPositionOffset(), 0, 2, "position offset after rebalance");
-	}
-
-	// slippage in basis points
-	function getSlippageParams(uint256 slippage)
-		public
-		returns (uint256 expectedPrice, uint256 maxDelta)
-	{
-		expectedPrice = strategy.getExpectedPrice();
-		maxDelta = (expectedPrice * slippage) / BASIS;
+		uint256 token = bank.getTokenId(address(vault), 0);
+		uint256 tvl = vault.getStrategyTvl(stratId);
+		assertApproxEqAbs(tvl, (startTvl * (1e18 - fraction)) / 1e18, 10);
+		uint256 vaultBalance = IERC20(vault.yieldToken(stratId)).balanceOf(address(vault));
+		assertApproxEqAbs(bank.balanceOf(address(this), token), vaultBalance, 10);
+		assertApproxEqAbs(vault.underlyingBalance(stratId, address(this)), tvl, 10);
 	}
 }

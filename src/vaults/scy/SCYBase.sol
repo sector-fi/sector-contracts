@@ -57,10 +57,12 @@ abstract contract SCYBase is Initializable, ISuperComposableYield, ReentrancyGua
 	) external nonReentrant returns (uint256 amountTokenOut) {
 		require(isValidBaseToken(id, tokenOut), "SCY: invalid tokenOut");
 
-		amountTokenOut = _redeem(id, receiver, tokenOut, amountSharesToRedeem);
+		// this is to handle a case where the strategy sends funds directly to user
+		uint256 amountToTransfer;
+		(amountTokenOut, amountToTransfer) = _redeem(id, receiver, tokenOut, amountSharesToRedeem);
 		require(amountTokenOut >= minTokenOut, "insufficient out");
 
-		_transferOut(id, tokenOut, receiver, amountTokenOut);
+		_transferOut(id, tokenOut, receiver, amountToTransfer);
 
 		emit Redeem(id, msg.sender, receiver, tokenOut, amountSharesToRedeem, amountTokenOut);
 	}
@@ -89,7 +91,7 @@ abstract contract SCYBase is Initializable, ISuperComposableYield, ReentrancyGua
 		address receiver,
 		address tokenOut,
 		uint256 amountSharesToRedeem
-	) internal virtual returns (uint256 amountTokenOut);
+	) internal virtual returns (uint256 amountTokenOut, uint256 tokensToTransfer);
 
 	/*///////////////////////////////////////////////////////////////
                                EXCHANGE-RATE

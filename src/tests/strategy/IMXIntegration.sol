@@ -11,6 +11,9 @@ import "hardhat/console.sol";
 
 contract IMXIntegrationTest is IMXSetup {
 	function testIntegrationFlow() public {
+		deposit(2e6);
+		withdraw(1e18);
+
 		deposit(100e6);
 		noRebalance();
 		withdrawCheck(.5e18);

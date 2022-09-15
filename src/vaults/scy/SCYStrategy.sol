@@ -30,10 +30,11 @@ abstract contract SCYStrategy {
 		virtual
 		returns (uint256);
 
-	function _stratRedeem(Strategy storage strategy, uint256 amount)
-		internal
-		virtual
-		returns (uint256);
+	function _stratRedeem(
+		Strategy storage strategy,
+		address to,
+		uint256 amount
+	) internal virtual returns (uint256 amntOut, uint256 amntToTransfer);
 
 	function _stratClosePosition(Strategy storage strategy) internal virtual returns (uint256);
 
