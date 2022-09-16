@@ -65,7 +65,7 @@ contract IMXLend is SCYStrategy, SCYVault {
 	// send funds to user
 	// send funds to user
 	function _transferOut(
-		uint96 id,
+		uint96,
 		address token,
 		address to,
 		uint256 amount
@@ -78,7 +78,7 @@ contract IMXLend is SCYStrategy, SCYVault {
 	}
 
 	// todo handle internal float balances
-	function _selfBalance(uint96 id, address token) internal view override returns (uint256) {
+	function _selfBalance(uint96, address token) internal view override returns (uint256) {
 		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
 	}
 }

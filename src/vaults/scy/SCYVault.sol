@@ -227,7 +227,7 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		uint256 totalShares = bank.totalShares(address(this), id);
 		if (totalShares == 0) return _stratCollateralToUnderlying(strategy);
 		return
-			((strategy.underlying.balanceOf(address(this)) + _strategyTvl(strategy)) * ONE) /
+			((strategy.underlying.balanceOf(address(this)) + _strategyTvl(strategy) + 1) * ONE) /
 			totalShares;
 	}
 

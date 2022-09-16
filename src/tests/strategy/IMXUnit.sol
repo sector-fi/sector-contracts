@@ -9,7 +9,7 @@ import { IMXSetup, IUniswapV2Pair } from "./IMXSetup.sol";
 
 import "hardhat/console.sol";
 
-contract IMXIntegrationTest is IMXSetup {
+contract IMXUnitTest is IMXSetup {
 	function testLoanHealth() public {
 		deposit(100e6);
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
