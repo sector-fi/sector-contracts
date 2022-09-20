@@ -7,7 +7,7 @@ import { ERC4626 } from "./ERC4626/ERC4626.sol";
 
 // import "hardhat/console.sol";
 
-contract VaultUpgradable is ERC4626 {
+contract SectorVault is ERC4626 {
 	constructor(
 		ERC20 _asset,
 		Bank _bank,
