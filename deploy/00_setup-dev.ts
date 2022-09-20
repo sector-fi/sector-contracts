@@ -8,8 +8,10 @@ const func: DeployFunction = async function ({
 }: HardhatRuntimeEnvironment) {
   if (network.live) return;
 
-  const { deployer, manager } = await getNamedAccounts();
+  const { deployer, manager, guardian, owner } = await getNamedAccounts();
 
+  await setupAccount(owner);
+  await setupAccount(guardian);
   await setupAccount(manager);
   await setupAccount(deployer);
 };

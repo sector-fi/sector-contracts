@@ -61,7 +61,7 @@ export default {
     manager: {
       default: MANAGER,
     },
-    guaridan: {
+    guardian: {
       default: GUARDIAN,
     },
     timelockAdmin: {
