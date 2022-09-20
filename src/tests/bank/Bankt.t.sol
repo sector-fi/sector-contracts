@@ -64,12 +64,16 @@ contract BankTest is SectorTest, ERC1155Holder {
 
 		uint256 tokenId = bank.getTokenId(address(vault), 0);
 
-		assertEq(bank.balanceOf(address(this), tokenId), amount);
+		assertEq(
+			bank.balanceOf(address(this), tokenId),
+			amount - bank.MIN_LIQUIDITY(),
+			"user balance after deposit"
+		);
 
-		vault.withdraw(0, address(this), amount);
+		vault.withdraw(0, address(this), amount - bank.MIN_LIQUIDITY());
 
 		assertEq(bank.balanceOf(address(this), tokenId), 0);
-		assertEq(token.balanceOf(address(this)), amount);
+		assertEq(token.balanceOf(address(this)), amount - bank.MIN_LIQUIDITY());
 	}
 
 	function testPoolNotFound() public {

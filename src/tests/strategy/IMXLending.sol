@@ -94,7 +94,7 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 		uint256 vaultBalance = IERC20(vault.yieldToken(stratId)).balanceOf(address(vault));
 		assertEq(
 			bank.balanceOf(address(this), token),
-			vaultBalance,
+			vaultBalance - bank.MIN_LIQUIDITY(),
 			"vault balance should match user"
 		);
 		assertEq(
@@ -124,8 +124,6 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 		uint256 token = bank.getTokenId(address(vault), 0);
 		uint256 tvl = vault.getStrategyTvl(stratId);
 		assertApproxEqAbs(tvl, (startTvl * (1e18 - fraction)) / 1e18, 10);
-		uint256 vaultBalance = IERC20(vault.yieldToken(stratId)).balanceOf(address(vault));
-		assertApproxEqAbs(bank.balanceOf(address(this), token), vaultBalance, 10);
 		assertApproxEqAbs(vault.underlyingBalance(stratId, address(this)), tvl, 10);
 	}
 }
