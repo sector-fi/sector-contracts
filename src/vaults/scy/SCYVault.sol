@@ -55,6 +55,7 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		if (index < id && strategies[index].exists) revert StrategyExists();
 		strategies.push(
 			Strategy({
+				symbol: strategy.symbol,
 				addr: strategy.addr,
 				exists: true,
 				strategyId: strategy.strategyId,
@@ -274,6 +275,10 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 
 	function underlyingDecimals(uint96 id) public view returns (uint8) {
 		return IERC20Metadata(address(strategies[id].underlying)).decimals();
+	}
+
+	function symbol(uint96 id) public view returns (string memory) {
+		return string(abi.encodePacked(strategies[id].symbol));
 	}
 
 	function decimals(uint96 id) public view returns (uint8) {

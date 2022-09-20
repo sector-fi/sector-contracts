@@ -67,6 +67,7 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		strategy.initialize(config);
 
 		/// todo should be able to do this via address and mixin
+		strategyConfig.symbol = bytes32(bytes("Test Strategy"));
 		strategyConfig.addr = address(strategy);
 		strategyConfig.yieldToken = config.poolToken;
 		strategyConfig.underlying = IERC20Upgradeable(config.underlying);

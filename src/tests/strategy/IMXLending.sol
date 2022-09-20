@@ -55,6 +55,7 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 		config.vault = address(vault);
 
 		/// todo should be able to do this via address and mixin
+		strategyConfig.symbol = bytes32(bytes("Test Strategy"));
 		strategyConfig.addr = address(strategy);
 		strategyConfig.yieldToken = address(strategy);
 		strategyConfig.underlying = IERC20Upgradeable(address(usdc));

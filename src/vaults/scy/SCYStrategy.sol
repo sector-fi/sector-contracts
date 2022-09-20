@@ -13,6 +13,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "hardhat/console.sol";
 
 struct Strategy {
+	bytes32 symbol;
 	address addr;
 	bool exists;
 	uint256 strategyId; // this is strategy specific token if 1155
