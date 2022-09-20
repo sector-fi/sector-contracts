@@ -6,6 +6,7 @@ import { subtask } from 'hardhat/config';
 import { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } from 'hardhat/builtin-tasks/task-names';
 import '@nomiclabs/hardhat-etherscan';
 import '@typechain/hardhat';
+import '@nomiclabs/hardhat-ethers';
 
 Error.stackTraceLimit = Infinity;
 

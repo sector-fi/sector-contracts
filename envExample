@@ -2,3 +2,5 @@ AVAX_RPC_URL = 'https://api.avax.network/ext/bc/C/rpc'
 AVAX_BLOCK = 19910210
 ETHERSCAN_API_KEY=
 
+DEPLOYER = 0x0
+MANGER = 0x1
