@@ -1,6 +1,18 @@
+
+# fork params for forge tests
 AVAX_RPC_URL = 'https://api.avax.network/ext/bc/C/rpc'
 AVAX_BLOCK = 19910210
 ETHERSCAN_API_KEY=
 
-DEPLOYER = 0x0
-MANGER = 0x1
+OWNER = 0x0
+DEPLOYER = 0x1
+MANAGER = 0x2
+MANAGER2 = 0x3
+GUARDIAN = 0x4
+
+# gas stats
+SHOW_GAS = false
+
+# this is used when we want to access and interact with
+# previously deployed contracts
+FORK_CHAIN = avalanche

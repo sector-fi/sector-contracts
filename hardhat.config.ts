@@ -21,23 +21,31 @@ subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(
 env.config();
 
 const {
-  DEPLOYER_KEY,
-  MANAGER_KEY,
-  INFURA_API_KEY,
-  COIN_MARKET_CAP_API,
-  SHOW_GAS,
+  // roles
+  OWNER,
   DEPLOYER,
   MANAGER,
-  FORK_CHAIN,
-  TEAM_1,
+  MANAGER2,
+  GUARDIAN,
   TIMELOCK_ADMIN,
-  SNOWTRACE_API_KEY,
+
+  // key for prod deployment
+  DEPLOYER_KEY,
+
+  // config
+  SHOW_GAS,
+  FORK_CHAIN,
+
+  // api keys for contract verification
+  COIN_MARKET_CAP_API,
   FTM_API_KEY,
+  SNOWTRACE_API_KEY,
   MOONRIVER_API_KEY,
   MOONBEAM_API_KEY,
+  INFURA_API_KEY,
 } = process.env;
 
-const keys = [DEPLOYER_KEY, MANAGER_KEY].filter((k) => k != null);
+const keys = [DEPLOYER_KEY].filter((k) => k != null);
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -46,34 +54,21 @@ export default {
   namedAccounts: {
     deployer: {
       default: DEPLOYER,
-      // default: 'ledger://0x157875C30F83729Ce9c1E7A1568ec00250237862',
-      hardhat: DEPLOYER,
-      localhost: DEPLOYER,
     },
     owner: {
-      default: 0,
-      // default: 'ledger://0x157875C30F83729Ce9c1E7A1568ec00250237862',
-      // hardhat: DEPLOYER,
-    },
-    managerProd: {
-      default: '0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A',
+      default: OWNER,
     },
     manager: {
-      default: '0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A',
-      hardhat: MANAGER,
-      localhost: MANAGER,
+      default: MANAGER,
+    },
+    guaridan: {
+      default: GUARDIAN,
     },
     timelockAdmin: {
       default: TIMELOCK_ADMIN,
     },
-    team1: {
-      default: TEAM_1,
-    },
-    addr1: {
-      default: 1,
-    },
-    addr2: {
-      default: 2,
+    manager2: {
+      default: MANAGER2,
     },
   },
   networks: {
