@@ -17,6 +17,7 @@ contract Bank is IBank, ERC1155Supply, Auth {
 
 	uint256 constant BASIS_POINTS = 10000;
 	uint256 internal constant ONE = 1e18;
+	uint256 public constant MIN_LIQUIDITY = 10**3;
 
 	/// List of pools
 	mapping(uint256 => Pool) public pools;
@@ -48,17 +49,62 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		uint256 totalTokens
 	) external override returns (uint256 shares) {
 		uint256 tokenId = getTokenId(msg.sender, id);
+		if (!pools[tokenId].exists) revert PoolNotFound();
+		shares = _assetToShares(tokenId, poolTokens, totalTokens);
+		/// Mint the shares to the owner
+		_mint(account, tokenId, shares, "");
+		emit Deposit(id, msg.sender, account, shares);
+	}
 
-		/// Get the pool by its index
-		Pool storage pool = pools[tokenId]; // storage is cheaper
-		if (!pool.exists) revert PoolNotFound();
+	///
+	/// @param id          id of vault's pool
+	/// @param shares  amount of pool tokens deposited
+	/// @param recipient recipient
+	///
+	function mint(
+		uint96 id,
+		address recipient,
+		uint256 shares
+	) public {
+		uint256 tokenId = getTokenId(msg.sender, id);
+		if (!pools[tokenId].exists) revert PoolNotFound();
+		_mint(recipient, tokenId, shares, "");
+		emit Deposit(id, msg.sender, recipient, shares);
+	}
 
+	/// @dev should only be called by vault
+	///
+	/// @param id          id of vault's pool
+	/// @param poolTokens  amount of pool tokens deposited
+	/// @param totalTokens balance of pool tokens in the vault
+	///
+	/// @return shares amount of shares minted
+	function assetToShares(
+		uint96 id,
+		uint256 poolTokens,
+		uint256 totalTokens
+	) public view returns (uint256 shares) {
+		uint256 tokenId = getTokenId(msg.sender, id);
+		shares = _assetToShares(tokenId, poolTokens, totalTokens);
+	}
+
+	///
+	/// @param tokenId     id token
+	/// @param poolTokens  amount of pool tokens deposited
+	/// @param totalTokens balance of pool tokens in the vault
+	///
+	/// @return shares amount of shares minted
+	function _assetToShares(
+		uint256 tokenId,
+		uint256 poolTokens,
+		uint256 totalTokens
+	) internal view returns (uint256 shares) {
 		/// Get the current total amount of shares of the pool
 		uint256 _totalSupply = totalSupply(tokenId);
 
 		if (_totalSupply == 0) {
-			// todo add multiple for precision?
-			shares = poolTokens;
+			// MIN_LIQUIDITY amount gets locked on first deposit
+			shares = poolTokens - MIN_LIQUIDITY;
 		} else {
 			/// When converting between pool tokens and shares, we always maintain this formula:
 			/// (shares / totalShares) = (poolTokens / totalTokens)
@@ -71,13 +117,6 @@ contract Bank is IBank, ERC1155Supply, Auth {
 			/// shares = (totalShares * poolTokens) / (totalTokens - poolTokens)
 			shares = (_totalSupply * poolTokens) / (totalTokens - poolTokens);
 		}
-
-		/// Mint the shares to the owner
-		_mint(account, tokenId, shares, "");
-
-		emit Deposit(id, msg.sender, account, shares);
-
-		return shares;
 	}
 
 	///
@@ -94,9 +133,7 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		uint256 totalTokens
 	) external override returns (uint256 poolTokens) {
 		uint256 tokenId = getTokenId(msg.sender, id);
-
-		Pool storage pool = pools[tokenId]; // storage is cheaper
-		if (!pool.exists) revert PoolNotFound();
+		if (!pools[tokenId].exists) revert PoolNotFound();
 
 		uint256 _totalSupply = totalSupply(tokenId);
 
@@ -117,6 +154,22 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		emit Withdraw(id, msg.sender, account, shares);
 
 		return poolTokens;
+	}
+
+	///
+	/// @param id      id of vault's asset
+	/// @param shares  amount of pool tokens deposited
+	/// @param account user account
+	///
+	function burn(
+		uint96 id,
+		uint256 shares,
+		address account
+	) public {
+		uint256 tokenId = getTokenId(msg.sender, id);
+		if (!pools[tokenId].exists) revert PoolNotFound();
+		_burn(account, tokenId, shares);
+		emit Withdraw(id, msg.sender, account, shares);
 	}
 
 	///
@@ -174,7 +227,13 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		if (pools[tokenId].exists) revert PoolExists();
 
 		/// Add pool to the pools array
-		pools[tokenId] = newPool;
+		pools[tokenId] = Pool({
+			vault: newPool.vault,
+			id: newPool.id,
+			decimals: newPool.decimals,
+			managementFee: newPool.managementFee,
+			exists: true
+		});
 
 		/// Emit an event
 		emit AddPool(newPool.id, newPool.vault, tokenId);
@@ -216,7 +275,7 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		return pools[tokenId].decimals;
 	}
 
-	// overrides
+	// OVERRIDES
 	function supportsInterface(bytes4 interfaceId)
 		public
 		pure
@@ -224,5 +283,26 @@ contract Bank is IBank, ERC1155Supply, Auth {
 		returns (bool)
 	{
 		return interfaceId == type(IERC165).interfaceId;
+	}
+
+	function _beforeTokenTransfer(
+		address operator,
+		address from,
+		address to,
+		uint256[] memory ids,
+		uint256[] memory amounts,
+		bytes memory data
+	) internal override {
+		super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+
+		// when minting tokens for the first time
+		// we lock the MIN_LIQUIDITY amount to
+		// prevent rounding error manipulation
+		for (uint256 i; i < ids.length; i++) {
+			uint256 id = ids[i];
+			if (from == address(0) && to != address(1) && totalSupply(id) == 0) {
+				_mint(address(1), id, MIN_LIQUIDITY, "");
+			}
+		}
 	}
 }

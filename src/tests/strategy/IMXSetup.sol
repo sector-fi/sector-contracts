@@ -95,8 +95,6 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		uint256 tvl = strategy.getTotalTVL();
 		assertApproxEqAbs(tvl, startTvl + amount, 10, "tvl should be update");
 		uint256 token = bank.getTokenId(address(vault), 0);
-		uint256 vaultBalance = IERC20(vault.yieldToken(stratId)).balanceOf(address(strategy));
-		assertApproxEqAbs(bank.balanceOf(address(this), token), vaultBalance, 10, "bank balance");
 		assertEq(vault.underlyingBalance(stratId, address(this)), tvl, "underlying balance");
 	}
 

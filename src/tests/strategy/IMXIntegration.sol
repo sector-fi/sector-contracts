@@ -37,8 +37,6 @@ contract IMXIntegrationTest is IMXSetup {
 		uint256 token = bank.getTokenId(address(vault), 0);
 		uint256 tvl = strategy.getTotalTVL();
 		assertApproxEqAbs(tvl, (startTvl * (1e18 - fraction)) / 1e18, 10);
-		uint256 vaultBalance = IERC20(vault.yieldToken(stratId)).balanceOf(address(strategy));
-		assertApproxEqAbs(bank.balanceOf(address(this), token), vaultBalance, 10);
 		assertApproxEqAbs(vault.underlyingBalance(stratId, address(this)), tvl, 10);
 	}
 
