@@ -213,6 +213,10 @@ abstract contract SCYVault is Initializable, SCYStrategy, SCYBase, FeesU, Treasu
 		return strategyIndexes[strategy][strategyId];
 	}
 
+	function totalStrategies() public view returns (uint256) {
+		return strategies.length;
+	}
+
 	function getStrategy(uint96 id) public view returns (Strategy memory) {
 		return strategies[id];
 	}
