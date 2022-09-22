@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICollateral } from "../../interfaces/imx/IImpermax.sol";
-import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOracle.sol";
-import { IMXUtils, UniUtils, IUniswapV2Pair } from "../utils/IMXUtils.sol";
+import { ICollateral } from "../../../interfaces/imx/IImpermax.sol";
+import { ISimpleUniswapOracle } from "../../../interfaces/uniswap/ISimpleUniswapOracle.sol";
+import { IMXUtils, UniUtils, IUniswapV2Pair } from "../../utils/IMXUtils.sol";
 
-import { SectorTest } from "../utils/SectorTest.sol";
-import { IMXConfig, HarvestSwapParms } from "../../interfaces/Structs.sol";
-import { IMXVault, Strategy } from "../../vaults/IMXVault.sol";
-import { Bank, Pool } from "../../bank/Bank.sol";
-import { IMX } from "../../strategies/imx/IMX.sol";
+import { SectorTest } from "../../utils/SectorTest.sol";
+import { IMXConfig, HarvestSwapParms } from "../../../interfaces/Structs.sol";
+import { IMXVaultMulti, Strategy } from "../../../vaults/IMXVaultMulti.sol";
+import { Bank, Pool } from "../../../bank/Bank.sol";
+import { IMX } from "../../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
 import "hardhat/console.sol";
 
-contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
+contract IMXSetupM is SectorTest, IMXUtils, ERC1155Holder {
 	using UniUtils for IUniswapV2Pair;
 
 	uint256 BASIS = 10000;
@@ -25,17 +25,16 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 	uint256 avaxFork;
 
 	Bank bank;
-	IMXVault vault;
+	IMXVaultMulti vault;
 	IMX strategy;
 
 	IMXConfig config;
 	HarvestSwapParms harvestParams;
 
-	address manager = address(101);
-	address guardian = address(102);
-	address treasury = address(103);
+	address manager = address(1);
+	address guardian = address(2);
+	address treasury = address(3);
 	address owner = address(this);
-
 	Strategy strategyConfig;
 	uint96 stratId;
 
@@ -59,20 +58,22 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 
 		bank = new Bank("api.sector.finance/<id>.json", address(this), guardian, manager, treasury);
 
-		/// todo should be able to do this via address and mixin
-		strategyConfig.symbol = bytes32(bytes("Test Strategy"));
-		strategyConfig.yieldToken = config.poolToken;
-		strategyConfig.underlying = IERC20Upgradeable(config.underlying);
-		strategyConfig.maxTvl = uint128(config.maxTvl);
-
-		vault = new IMXVault(address(bank), owner, guardian, manager, treasury, strategyConfig);
+		vault = new IMXVaultMulti();
+		vault.initialize(address(bank), owner, guardian, manager, treasury);
 
 		config.vault = address(vault);
 
 		strategy = new IMX();
 		strategy.initialize(config);
 
-		stratId = vault.setStrategy(address(strategy));
+		/// todo should be able to do this via address and mixin
+		strategyConfig.symbol = bytes32(bytes("Test Strategy"));
+		strategyConfig.addr = address(strategy);
+		strategyConfig.yieldToken = config.poolToken;
+		strategyConfig.underlying = IERC20Upgradeable(config.underlying);
+		strategyConfig.maxTvl = uint128(config.maxTvl);
+		strategyConfig.exists = true;
+		stratId = vault.addStrategy(strategyConfig);
 
 		usdc.approve(address(vault), type(uint256).max);
 

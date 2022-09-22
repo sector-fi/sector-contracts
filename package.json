@@ -42,7 +42,9 @@
     "hardhat/**/@ethereumjs/tx": "3.5.0"
   },
   "devDependencies": {
+    "@perp/curie-contract": "^2.1.1",
     "@typechain/hardhat": "^6.1.2",
+    "@uniswap/v3-core": "^1.0.1",
     "ts-node": "^10.9.1"
   }
 }
