@@ -8,14 +8,12 @@ import { Fees } from "../../common/Fees.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { Treasury } from "../../common/Treasury.sol";
 import { Bank } from "../../bank/Bank.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 
 // import "hardhat/console.sol";
 
 abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 	using SafeERC20 for IERC20;
-	using SafeCast for uint256;
 
 	Bank public bank;
 	address public strategy;
@@ -71,7 +69,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 	}
 
 	function setMaxTvl(uint256 _maxTvl) public onlyRole(GUARDIAN) {
-		maxTvl = _maxTvl.toUint128();
+		maxTvl = _maxTvl;
 		emit MaxTvlUpdated(min(maxTvl, _stratMaxTvl()));
 	}
 
@@ -107,7 +105,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		uint256 endYieldToken = yAdded + yBalance;
 
 		amountSharesOut = bank.deposit(0, receiver, yAdded, endYieldToken);
-		yBalance += yAdded.toUint128();
+		yBalance += yAdded;
 	}
 
 	function _redeem(
@@ -123,10 +121,10 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		uint256 shareOfReserves = (reserves * sharesToRedeem) / _totalSupply;
 
 		// Update strategy underlying reserves balance
-		if (shareOfReserves > 0) uBalance -= shareOfReserves.toUint128();
+		if (shareOfReserves > 0) uBalance -= shareOfReserves;
 
 		// decrease yeild token amnt
-		yBalance -= yeildTokenAmnt.toUint128();
+		yBalance -= yeildTokenAmnt;
 
 		// if we also need to send the user share of reserves, we allways withdraw to vault first
 		// if we don't we can have strategy withdraw directly to user if possible
@@ -154,8 +152,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		if (tvl <= strategyBalance) return;
 
 		bank.takeFees(0, address(this), tvl - strategyBalance, _selfBalance(yieldToken));
-		yBalance -= _selfBalance(yieldToken).toUint128();
-		strategyTvl = tvl.toUint128();
+		yBalance -= _selfBalance(yieldToken);
+		strategyTvl = tvl;
 	}
 
 	/// ***Note: slippage is computed in yield token amnt, not shares
@@ -164,28 +162,28 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		onlyRole(GUARDIAN)
 	{
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
-		uBalance -= underlyingAmount.toUint128();
+		uBalance -= underlyingAmount;
 		underlying.safeTransfer(strategy, underlyingAmount);
 		uint256 yAdded = _stratDeposit(underlyingAmount);
 		if (yAdded < minAmountOut) revert SlippageExceeded();
-		yBalance += yAdded.toUint128();
+		yBalance += yAdded;
 	}
 
 	// note: slippage is computed in underlying
 	function withdrawFromStrategy(uint256 shares, uint256 minAmountOut) public onlyRole(GUARDIAN) {
 		uint256 totalShares = bank.totalShares(address(this), 0);
 		uint256 yieldTokenAmnt = (shares * _selfBalance(yieldToken)) / totalShares;
-		yBalance -= yieldTokenAmnt.toUint128();
+		yBalance -= yieldTokenAmnt;
 		(uint256 underlyingWithdrawn, ) = _stratRedeem(address(this), yieldTokenAmnt);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
-		uBalance += underlyingWithdrawn.toUint128();
+		uBalance += underlyingWithdrawn;
 	}
 
 	function closePosition(uint256 minAmountOut) public onlyRole(GUARDIAN) {
 		yBalance = 0;
 		uint256 underlyingWithdrawn = _stratClosePosition();
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
-		uBalance += underlyingWithdrawn.toUint128();
+		uBalance += underlyingWithdrawn;
 	}
 
 	function getStrategyTvl() public view returns (uint256) {
@@ -234,7 +232,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		return (AssetType.LIQUIDITY, yToken, IERC20Metadata(yToken).decimals());
 	}
 
-	function underlyingDecimals(uint96) public view returns (uint8) {
+	function underlyingDecimals() public view returns (uint8) {
 		return IERC20Metadata(address(underlying)).decimals();
 	}
 
@@ -242,7 +240,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		return string(abi.encodePacked(_symbol));
 	}
 
-	function decimals(uint96) public view returns (uint8) {
+	function decimals() public view returns (uint8) {
 		return IERC20Metadata(yieldToken).decimals();
 	}
 
