@@ -15,6 +15,13 @@ contract IMXVault is SCYStrategy, SCYVault {
 		Strategy memory _strategy
 	) SCYVault(_bank, _owner, guardian, manager, _treasury, _strategy) {}
 
+	function _stratValidate() internal view override {
+		if (
+			address(underlying) != address(IMX(strategy).underlying()) ||
+			yieldToken != address(IMX(strategy).collateralToken())
+		) revert InvalidStrategy();
+	}
+
 	function _stratDeposit(uint256 amount) internal override returns (uint256) {
 		return IMX(strategy).deposit(amount);
 	}

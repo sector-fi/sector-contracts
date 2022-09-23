@@ -42,4 +42,6 @@ abstract contract SCYStrategy {
 	function _stratMaxTvl() internal view virtual returns (uint256);
 
 	function _stratCollateralToUnderlying() internal view virtual returns (uint256);
+
+	function _stratValidate() internal virtual;
 }

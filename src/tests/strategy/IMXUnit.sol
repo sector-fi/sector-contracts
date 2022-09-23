@@ -31,7 +31,7 @@ contract IMXUnitTest is IMXSetup {
 		uint256 token = bank.getTokenId(address(vault), 0);
 		uint256 balance = bank.balanceOf(address(this), token);
 		vm.expectRevert(IMXCore.LowLoanHealth.selector);
-		vault.redeem(stratId, address(this), (balance * .2e18) / 1e18, address(usdc), 0);
+		vault.redeem(address(this), (balance * .2e18) / 1e18, address(usdc), 0);
 	}
 
 	function testExtremeDivergence() public {

@@ -37,7 +37,7 @@ contract IMXIntegrationTest is IMXSetup {
 		uint256 token = bank.getTokenId(address(vault), 0);
 		uint256 tvl = strategy.getTotalTVL();
 		assertApproxEqAbs(tvl, (startTvl * (1e18 - fraction)) / 1e18, 10);
-		assertApproxEqAbs(vault.underlyingBalance(stratId, address(this)), tvl, 10);
+		assertApproxEqAbs(vault.underlyingBalance(address(this)), tvl, 10);
 	}
 
 	function harvest() public {
@@ -61,11 +61,11 @@ contract IMXIntegrationTest is IMXSetup {
 		uint256 token = bank.getTokenId(address(vault), 0);
 		uint256 balance = bank.balanceOf(address(this), token);
 
-		vault.redeem(stratId, address(this), balance, address(usdc), 0);
+		vault.redeem(address(this), balance, address(usdc), 0);
 
 		uint256 tvl = strategy.getTotalTVL();
 		assertEq(tvl, 0);
 		assertEq(bank.balanceOf(address(this), token), 0);
-		assertEq(vault.underlyingBalance(stratId, address(this)), 0);
+		assertEq(vault.underlyingBalance(address(this)), 0);
 	}
 }

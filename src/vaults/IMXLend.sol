@@ -21,6 +21,13 @@ contract IMXLend is SCYStrategy, SCYVault {
 		Strategy memory _strategy
 	) SCYVault(_bank, _owner, guardian, manager, _treasury, _strategy) {}
 
+	function _stratValidate() internal view override {
+		if (
+			address(underlying) != IPoolToken(strategy).underlying() ||
+			yieldToken != address(strategy)
+		) revert InvalidStrategy();
+	}
+
 	function _stratDeposit(uint256) internal override returns (uint256) {
 		return IPoolToken(strategy).mint(address(this));
 	}

@@ -18,11 +18,11 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 	using SafeCast for uint256;
 
 	Bank public bank;
+	address public strategy;
 
 	// immutables
-	bytes32 private _symbol;
-	address public immutable strategy;
-	uint256 public immutable strategyId; // this is strategy specific token if 1155
+	bytes32 private immutable _symbol;
+	uint256 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
 	address public immutable yieldToken;
 	IERC20 public immutable underlying;
 
@@ -36,6 +36,11 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 	event MaxTvlUpdated(uint256 maxTvl);
 	event StrategyUpdated(address strategy);
 
+	modifier isInitialized() {
+		if (strategy == address(0)) revert NotInitialized();
+		_;
+	}
+
 	constructor(
 		address _bank,
 		address _owner,
@@ -47,7 +52,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		treasury = _treasury;
 		bank = Bank(_bank);
 
-		// strategy ini
+		// strategy init
 		_symbol = _strategy.symbol;
 		strategy = _strategy.addr;
 		maxDust = _strategy.maxDust;
@@ -75,11 +80,26 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		emit MaxDustUpdated(_maxDust);
 	}
 
+	function initStrategy(address _strategy) public onlyRole(GUARDIAN) {
+		if (strategy != address(0)) revert NoReInit();
+		strategy = _strategy;
+		_stratValidate();
+		emit StrategyUpdated(_strategy);
+	}
+
+	function updateStrategy(address _strategy) public onlyOwner {
+		uint256 tvl = _stratGetAndUpdateTvl();
+		if (tvl > 0) revert InvalidStrategyUpdate();
+		strategy = _strategy;
+		_stratValidate();
+		emit StrategyUpdated(_strategy);
+	}
+
 	function _deposit(
 		address receiver,
 		address,
 		uint256 amount
-	) internal override returns (uint256 amountSharesOut) {
+	) internal override isInitialized returns (uint256 amountSharesOut) {
 		// if we have any float in the contract we cannot do deposit accounting
 		if (isPaused()) revert DepositsPaused();
 
@@ -289,6 +309,10 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		return a < b ? a : b;
 	}
 
+	error InvalidStrategyUpdate();
+	error NoReInit();
+	error InvalidStrategy();
+	error NotInitialized();
 	error DepositsPaused();
 	error StrategyExists();
 	error StrategyDoesntExist();
