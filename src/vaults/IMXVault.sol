@@ -6,49 +6,54 @@ import { IMX } from "../strategies/imx/IMX.sol";
 import { SCYVault } from "./scy/SCYVault.sol";
 
 contract IMXVault is SCYStrategy, SCYVault {
-	// constructor() {};
+	constructor(
+		address _bank,
+		address _owner,
+		address guardian,
+		address manager,
+		address _treasury,
+		Strategy memory _strategy
+	) SCYVault(_bank, _owner, guardian, manager, _treasury, _strategy) {}
 
-	function _stratDeposit(Strategy storage strategy, uint256 amount)
-		internal
-		override
-		returns (uint256)
-	{
-		return IMX(strategy.addr).deposit(amount);
+	function _stratValidate() internal view override {
+		if (
+			address(underlying) != address(IMX(strategy).underlying()) ||
+			yieldToken != address(IMX(strategy).collateralToken())
+		) revert InvalidStrategy();
 	}
 
-	function _stratRedeem(
-		Strategy storage strategy,
-		address,
-		uint256 yeildTokenAmnt
-	) internal override returns (uint256 amountOut, uint256 amntToTransfer) {
+	function _stratDeposit(uint256 amount) internal override returns (uint256) {
+		return IMX(strategy).deposit(amount);
+	}
+
+	function _stratRedeem(address, uint256 yeildTokenAmnt)
+		internal
+		override
+		returns (uint256 amountOut, uint256 amntToTransfer)
+	{
 		// strategy doesn't transfer tokens to user
 		// TODO it should?
-		amountOut = IMX(strategy.addr).redeem(yeildTokenAmnt);
+		amountOut = IMX(strategy).redeem(yeildTokenAmnt);
 		amntToTransfer = amountOut;
 	}
 
-	function _stratGetAndUpdateTvl(Strategy storage strategy) internal override returns (uint256) {
-		return IMX(strategy.addr).getAndUpdateTVL();
+	function _stratGetAndUpdateTvl() internal override returns (uint256) {
+		return IMX(strategy).getAndUpdateTVL();
 	}
 
-	function _strategyTvl(Strategy storage strategy) internal view override returns (uint256) {
-		return IMX(strategy.addr).getTotalTVL();
+	function _strategyTvl() internal view override returns (uint256) {
+		return IMX(strategy).getTotalTVL();
 	}
 
-	function _stratClosePosition(Strategy storage strategy) internal override returns (uint256) {
-		return IMX(strategy.addr).closePosition();
+	function _stratClosePosition() internal override returns (uint256) {
+		return IMX(strategy).closePosition();
 	}
 
-	function _stratMaxTvl(Strategy storage strategy) internal view override returns (uint256) {
-		return IMX(strategy.addr).getMaxTvl();
+	function _stratMaxTvl() internal view override returns (uint256) {
+		return IMX(strategy).getMaxTvl();
 	}
 
-	function _stratCollateralToUnderlying(Strategy storage strategy)
-		internal
-		view
-		override
-		returns (uint256)
-	{
-		return IMX(strategy.addr).collateralToUnderlying();
+	function _stratCollateralToUnderlying() internal view override returns (uint256) {
+		return IMX(strategy).collateralToUnderlying();
 	}
 }

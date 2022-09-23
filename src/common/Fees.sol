@@ -6,7 +6,7 @@ import { Auth } from "./Auth.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract FeesU is Auth {
+abstract contract Fees is Auth {
 	using SafeERC20 for IERC20;
 
 	/// @notice The percentage of profit recognized each harvest to reserve as fees.

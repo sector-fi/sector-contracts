@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICollateral } from "../../interfaces/imx/IImpermax.sol";
-import { IMX, IMXCore } from "../../strategies/imx/IMX.sol";
+import { ICollateral } from "../../../interfaces/imx/IImpermax.sol";
+import { IMX, IMXCore } from "../../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IMXSetup, IUniswapV2Pair } from "./IMXSetup.sol";
+import { IMXSetupM, IUniswapV2Pair } from "./IMXSetupM.sol";
 
 import "hardhat/console.sol";
 
-contract IMXUnitTest is IMXSetup {
+contract IMXUnitTest is IMXSetupM {
 	function testLoanHealth() public {
 		deposit(100e6);
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
@@ -31,7 +31,7 @@ contract IMXUnitTest is IMXSetup {
 		uint256 token = bank.getTokenId(address(vault), 0);
 		uint256 balance = bank.balanceOf(address(this), token);
 		vm.expectRevert(IMXCore.LowLoanHealth.selector);
-		vault.redeem(address(this), (balance * .2e18) / 1e18, address(usdc), 0);
+		vault.redeem(stratId, address(this), (balance * .2e18) / 1e18, address(usdc), 0);
 	}
 
 	function testExtremeDivergence() public {
