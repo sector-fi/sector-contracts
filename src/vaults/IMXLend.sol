@@ -7,19 +7,17 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { SCYVault } from "./scy/SCYVault.sol";
 import { SafeETH } from "./../libraries/SafeETH.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract IMXLend is SCYStrategy, SCYVault {
 	using SafeERC20 for IERC20;
 
 	constructor(
-		address _bank,
 		address _owner,
 		address guardian,
 		address manager,
-		address _treasury,
 		Strategy memory _strategy
-	) SCYVault(_bank, _owner, guardian, manager, _treasury, _strategy) {}
+	) SCYVault(_owner, guardian, manager, _strategy) {}
 
 	function _stratValidate() internal view override {
 		if (
@@ -89,4 +87,10 @@ contract IMXLend is SCYStrategy, SCYVault {
 	function _selfBalance(address token) internal view override returns (uint256) {
 		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
 	}
+
+	// function _getFloatingAmount(address token) internal view override returns (uint256) {
+	// 	if (token == address(underlying))
+	// 		return underlying.balanceOf(strategy) - IPoolToken(strategy).totalBalance();
+	// 	return _selfBalance(token);
+	// }
 }

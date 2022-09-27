@@ -27,6 +27,8 @@ interface IMXRouter2 {
 }
 
 interface IPoolToken {
+	function totalBalance() external view returns (uint256);
+
 	function mint(address minter) external returns (uint256 mintTokens);
 
 	function underlying() external view returns (address);

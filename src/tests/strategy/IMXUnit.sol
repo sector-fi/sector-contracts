@@ -28,8 +28,7 @@ contract IMXUnitTest is IMXSetup {
 		deposit(100e6);
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
 		adjustPrice((maxAdjust * 9) / 10);
-		uint256 token = bank.getTokenId(address(vault), 0);
-		uint256 balance = bank.balanceOf(address(this), token);
+		uint256 balance = vault.balanceOf(address(this));
 		vm.expectRevert(IMXCore.LowLoanHealth.selector);
 		vault.redeem(address(this), (balance * .2e18) / 1e18, address(usdc), 0);
 	}
