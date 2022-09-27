@@ -8,7 +8,6 @@ import { IMXUtils, UniUtils, IUniswapV2Pair } from "../utils/IMXUtils.sol";
 import { SectorTest } from "../utils/SectorTest.sol";
 import { IMXConfig, HarvestSwapParms } from "../../interfaces/Structs.sol";
 import { IMXLend, Strategy } from "../../vaults/IMXLend.sol";
-import { Bank, Pool } from "../../bank/Bank.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
@@ -23,7 +22,6 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 	uint256 AVAX_BLOCK = vm.envUint("AVAX_BLOCK");
 	uint256 avaxFork;
 
-	Bank bank;
 	IMXLend vault;
 
 	HarvestSwapParms harvestParams;
@@ -44,29 +42,19 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 		avaxFork = vm.createFork(AVAX_RPC_URL, AVAX_BLOCK);
 		vm.selectFork(avaxFork);
 
-		bank = new Bank("api.sector.finance/<id>.json", address(this), guardian, manager, treasury);
-
 		/// todo should be able to do this via address and mixin
-		strategyConfig.symbol = bytes32(bytes("Test Strategy"));
+		strategyConfig.symbol = "";
 		strategyConfig.addr = strategy;
 		strategyConfig.yieldToken = strategy;
 		strategyConfig.underlying = IERC20(address(usdc));
 		strategyConfig.maxTvl = type(uint128).max;
 		strategyConfig.maxDust = 1e18;
+		strategyConfig.treasury = treasury;
+		strategyConfig.performanceFee = .1e18;
 
-		vault = new IMXLend(address(bank), owner, guardian, manager, treasury, strategyConfig);
+		vault = new IMXLend(owner, guardian, manager, strategyConfig);
 
 		usdc.approve(address(vault), type(uint256).max);
-
-		bank.addPool(
-			Pool({
-				vault: address(vault),
-				id: 0,
-				exists: true,
-				decimals: usdc.decimals(),
-				managementFee: 1000 // 10%
-			})
-		);
 	}
 
 	function testDeposit() public {

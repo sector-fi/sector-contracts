@@ -5,46 +5,40 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IERC4626 } from "../../interfaces/IERC4626.sol";
-import { Bank, Pool } from "../../bank/Bank.sol";
 import { Auth } from "../../common/Auth.sol";
+import { Accounting } from "../../common/Accounting.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract ERC4626 is IERC4626, Auth {
+abstract contract ERC4626 is IERC4626, Auth, Accounting, ERC20 {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 	using SafeCast for uint256;
+
+	/*//////////////////////////////////////////////////////////////
+                               CONSTANTS
+    //////////////////////////////////////////////////////////////*/
+
+	// locked liquidity to prevent rounding errors
+	uint256 constant MIN_LIQUIDITY = 1e3;
 
 	/*//////////////////////////////////////////////////////////////
                                IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
 	ERC20 public immutable asset;
-	Bank public immutable bank;
 
-	// TODO do we want to store this in the contract?
-	// string memory _name,
-	// string memory _symbol
 	constructor(
 		ERC20 _asset,
-		Bank _bank,
-		uint256 _managementFee,
-		address _owner,
-		address _guardian,
-		address _manager
-	) Auth(_owner, _guardian, _manager) {
+		string memory _name,
+		string memory _symbol
+	) ERC20(_name, _symbol) {
 		asset = _asset;
-		bank = _bank;
-		bank.addPool(
-			Pool({
-				vault: address(this),
-				id: 0,
-				managementFee: _managementFee.toUint16(),
-				decimals: asset.decimals(),
-				exists: true
-			})
-		);
+	}
+
+	function decimals() public view override returns (uint8) {
+		return asset.decimals();
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -52,15 +46,22 @@ abstract contract ERC4626 is IERC4626, Auth {
     //////////////////////////////////////////////////////////////*/
 
 	function deposit(uint256 assets, address receiver) public virtual returns (uint256 shares) {
+		// This check is no longer necessary because we use MIN_LIQUIDITY
+		// Check for rounding error since we round down in previewDeposit.
+		// require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
+		shares = previewDeposit(assets);
+
 		// Need to transfer before minting or ERC777s could reenter.
 		asset.safeTransferFrom(msg.sender, address(this), assets);
 
-		// TODO make sure totalAssets is adjusted for lockedProfit
-		uint256 total = totalAssets();
-		shares = bank.deposit(0, receiver, assets, total);
+		// lock minimum liquidity if totalSupply is 0
+		if (totalSupply() == 0) {
+			if (MIN_LIQUIDITY > shares) revert MinLiquidity();
+			shares -= MIN_LIQUIDITY;
+			_mint(address(1), MIN_LIQUIDITY);
+		}
 
-		// don't need to do this if we have MIN_LIQUiDITY
-		// if (shares == 0) revert ZeroShares();
+		_mint(receiver, shares);
 
 		emit Deposit(msg.sender, receiver, assets, shares);
 
@@ -73,7 +74,7 @@ abstract contract ERC4626 is IERC4626, Auth {
 		// Need to transfer before minting or ERC777s could reenter.
 		asset.safeTransferFrom(msg.sender, address(this), assets);
 
-		bank.mint(0, receiver, shares);
+		_mint(receiver, shares);
 
 		emit Deposit(msg.sender, receiver, assets, shares);
 
@@ -87,14 +88,12 @@ abstract contract ERC4626 is IERC4626, Auth {
 	) public virtual returns (uint256 shares) {
 		shares = previewWithdraw(assets); // No need to check for rounding error, previewWithdraw rounds up.
 
-		if (msg.sender != owner) {
-			// TODO granular approvals?
-			if (!bank.isApprovedForAll(owner, msg.sender)) revert MissingApproval();
-		}
+		// if not owner, allowance must be enforced
+		if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
 
 		beforeWithdraw(assets, shares);
 
-		bank.burn(0, shares, owner);
+		_burn(owner, shares);
 
 		emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
@@ -106,59 +105,21 @@ abstract contract ERC4626 is IERC4626, Auth {
 		address receiver,
 		address owner
 	) public virtual returns (uint256 assets) {
-		if (msg.sender != owner) {
-			// TODO granula approvals?
-			if (!bank.isApprovedForAll(owner, msg.sender)) revert MissingApproval();
-		}
+		// if not owner, allowance must be enforced
+		if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
+
+		// This check is no longer necessary because we use MIN_LIQUIDITY
 		// Check for rounding error since we round down in previewRedeem.
-		// don't need to do this if we have MIN_LIQUiDITY
 		// require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+		assets = previewRedeem(shares);
+
 		beforeWithdraw(assets, shares);
 
-		// remove locked profit on redeem
-		uint256 total = totalAssets() - lockedProfit();
-		shares = bank.withdraw(0, owner, shares, total);
+		_burn(owner, shares);
+
 		emit Withdraw(msg.sender, receiver, owner, assets, shares);
+
 		asset.safeTransfer(receiver, assets);
-	}
-
-	/*//////////////////////////////////////////////////////////////
-                            ACCOUNTING LOGIC
-    //////////////////////////////////////////////////////////////*/
-
-	function totalAssets() public view virtual returns (uint256);
-
-	function lockedProfit() public view virtual returns (uint256) {
-		return 0;
-	}
-
-	function convertToShares(uint256 assets) public view virtual returns (uint256) {
-		return bank.assetToShares(0, assets, totalAssets());
-	}
-
-	function convertToAssets(uint256 shares) public view virtual returns (uint256) {
-		uint256 supply = bank.totalShares(address(this), 0);
-		return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
-	}
-
-	function previewDeposit(uint256 assets) public view virtual returns (uint256) {
-		return bank.assetToShares(0, assets, totalAssets());
-	}
-
-	function previewMint(uint256 shares) public view virtual returns (uint256) {
-		uint256 supply = bank.totalShares(address(this), 0);
-		return supply == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
-	}
-
-	function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
-		uint256 supply = bank.totalShares(address(this), 0);
-		// remove locked profit on redeem
-		uint256 total = totalAssets() - lockedProfit();
-		return supply == 0 ? assets : assets.mulDivUp(supply, total);
-	}
-
-	function previewRedeem(uint256 shares) public view virtual returns (uint256) {
-		return bank.assetToShares(0, shares, totalAssets());
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -174,15 +135,11 @@ abstract contract ERC4626 is IERC4626, Auth {
 	}
 
 	function maxWithdraw(address owner) public view virtual returns (uint256) {
-		// TODO add a lib to avoid external calls
-		uint256 tokenId = bank.getTokenId(address(this), 0);
-		return convertToAssets(bank.balanceOf(owner, tokenId));
+		return convertToAssets(balanceOf(owner));
 	}
 
 	function maxRedeem(address owner) public view virtual returns (uint256) {
-		// TODO add a lib to avoid external calls
-		uint256 tokenId = bank.getTokenId(address(this), 0);
-		return bank.balanceOf(owner, tokenId);
+		return balanceOf(owner);
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -193,5 +150,10 @@ abstract contract ERC4626 is IERC4626, Auth {
 
 	function afterDeposit(uint256 assets, uint256 shares) internal virtual {}
 
-	error MissingApproval();
+	// OVERRIDES
+	function totalSupply() public view override(Accounting, ERC20) returns (uint256) {
+		return ERC20.totalSupply();
+	}
+
+	error MinLiquidity();
 }

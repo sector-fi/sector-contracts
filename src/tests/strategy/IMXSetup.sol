@@ -8,7 +8,6 @@ import { IMXUtils, UniUtils, IUniswapV2Pair } from "../utils/IMXUtils.sol";
 import { SectorTest } from "../utils/SectorTest.sol";
 import { IMXConfig, HarvestSwapParms } from "../../interfaces/Structs.sol";
 import { IMXVault, Strategy } from "../../vaults/IMXVault.sol";
-import { Bank, Pool } from "../../bank/Bank.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
@@ -23,7 +22,6 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 	uint256 AVAX_BLOCK = vm.envUint("AVAX_BLOCK");
 	uint256 avaxFork;
 
-	Bank bank;
 	IMXVault vault;
 	IMX strategy;
 
@@ -55,16 +53,16 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		config.manager = manager;
 		config.guardian = guardian;
 
-		bank = new Bank("api.sector.finance/<id>.json", address(this), guardian, manager, treasury);
-
 		/// todo should be able to do this via address and mixin
 		strategyConfig.symbol = bytes32(bytes("Test Strategy"));
 		strategyConfig.yieldToken = config.poolToken;
 		strategyConfig.underlying = IERC20(config.underlying);
 		strategyConfig.maxTvl = uint128(config.maxTvl);
 		strategyConfig.maxDust = 1e18;
+		strategyConfig.treasury = treasury;
+		strategyConfig.performanceFee = .1e18;
 
-		vault = new IMXVault(address(bank), owner, guardian, manager, treasury, strategyConfig);
+		vault = new IMXVault(owner, guardian, manager, strategyConfig);
 
 		config.vault = address(vault);
 
@@ -72,18 +70,7 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		strategy.initialize(config);
 
 		vault.initStrategy(address(strategy));
-
 		usdc.approve(address(vault), type(uint256).max);
-
-		bank.addPool(
-			Pool({
-				vault: address(vault),
-				id: 0,
-				exists: true,
-				decimals: usdc.decimals(),
-				managementFee: 1000 // 10%
-			})
-		);
 	}
 
 	function deposit(uint256 amount) public {
@@ -93,13 +80,11 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		vault.deposit(address(this), address(usdc), amount, (minSharesOut * 9990) / 10000);
 		uint256 tvl = strategy.getTotalTVL();
 		assertApproxEqAbs(tvl, startTvl + amount, 10, "tvl should be update");
-		uint256 token = bank.getTokenId(address(vault), 0);
 		assertEq(vault.underlyingBalance(address(this)), tvl, "underlying balance");
 	}
 
 	function withdraw(uint256 fraction) public {
-		uint256 token = bank.getTokenId(address(vault), 0);
-		uint256 sharesToWithdraw = (bank.balanceOf(address(this), token) * fraction) / 1e18;
+		uint256 sharesToWithdraw = (vault.balanceOf(address(this)) * fraction) / 1e18;
 		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
 		vault.redeem(
 			address(this),

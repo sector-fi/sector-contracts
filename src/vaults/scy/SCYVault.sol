@@ -6,29 +6,35 @@ import { IMX } from "../../strategies/imx/IMX.sol";
 import { Auth } from "../../common/Auth.sol";
 import { Fees } from "../../common/Fees.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
-import { Treasury } from "../../common/Treasury.sol";
 import { Bank } from "../../bank/Bank.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
+import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
+abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	using SafeERC20 for IERC20;
+	using FixedPointMathLib for uint256;
 
-	Bank public bank;
+	event Harvest(
+		address indexed treasury,
+		uint256 underlyingProfit,
+		uint256 underlyingFees,
+		uint256 sharesFees
+	);
+
+	// Bank public bank;
 	address public strategy;
 
 	// immutables
-	bytes32 private immutable _symbol;
-	uint256 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
 	address public immutable yieldToken;
+	uint256 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
 	IERC20 public immutable underlying;
 
 	uint96 public maxDust; // minimal amount of underlying token allowed before deposits are paused
 	uint256 public maxTvl; // pack all params and balances
-	uint256 public strategyTvl; // strategy balance in underlying
+	uint256 public vaultTvl; // strategy balance in underlying
 	uint256 public uBalance; // underlying balance held by vault
-	uint256 public yBalance; // yield token balance held by vault
 
 	event MaxDustUpdated(uint256 maxDust);
 	event MaxTvlUpdated(uint256 maxTvl);
@@ -40,22 +46,20 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 	}
 
 	constructor(
-		address _bank,
 		address _owner,
-		address guardian,
-		address manager,
-		address _treasury,
+		address _guardian,
+		address _manager,
 		Strategy memory _strategy
-	) Auth(_owner, guardian, manager) {
-		treasury = _treasury;
-		bank = Bank(_bank);
-
+	)
+		SCYBase(_strategy.name, _strategy.symbol)
+		Auth(_owner, _guardian, _manager)
+		Fees(_strategy.treasury, _strategy.performanceFee)
+	{
 		// strategy init
-		_symbol = _strategy.symbol;
+		yieldToken = _strategy.yieldToken;
 		strategy = _strategy.addr;
 		maxDust = _strategy.maxDust;
 		strategyId = _strategy.strategyId;
-		yieldToken = _strategy.yieldToken;
 		underlying = _strategy.underlying;
 		maxTvl = _strategy.maxTvl;
 	}
@@ -94,18 +98,15 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 	}
 
 	function _deposit(
-		address receiver,
+		address,
 		address,
 		uint256 amount
-	) internal override isInitialized returns (uint256 amountSharesOut) {
+	) internal override isInitialized returns (uint256 sharesOut) {
 		// if we have any float in the contract we cannot do deposit accounting
 		if (isPaused()) revert DepositsPaused();
-
-		uint256 yAdded = _stratDeposit(amount);
-		uint256 endYieldToken = yAdded + yBalance;
-
-		amountSharesOut = bank.deposit(0, receiver, yAdded, endYieldToken);
-		yBalance += yAdded;
+		uint256 yieldTokenAdded = _stratDeposit(amount);
+		sharesOut = toSharesAfterDeposit(yieldTokenAdded);
+		vaultTvl += amount;
 	}
 
 	function _redeem(
@@ -113,26 +114,25 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		address,
 		uint256 sharesToRedeem
 	) internal override returns (uint256 amountTokenOut, uint256 amountToTransfer) {
-		uint256 _totalSupply = _selfBalance(yieldToken);
-		uint256 yeildTokenAmnt = bank.withdraw(0, receiver, sharesToRedeem, _totalSupply);
+		uint256 _totalAssets = totalAssets();
+
+		uint256 yeildTokenRedeem = convertToAssets(sharesToRedeem);
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
 		uint256 reserves = uBalance;
-		uint256 shareOfReserves = (reserves * sharesToRedeem) / _totalSupply;
+		uint256 shareOfReserves = (reserves * sharesToRedeem) / _totalAssets;
 
 		// Update strategy underlying reserves balance
 		if (shareOfReserves > 0) uBalance -= shareOfReserves;
 
-		// decrease yeild token amnt
-		yBalance -= yeildTokenAmnt;
-
 		// if we also need to send the user share of reserves, we allways withdraw to vault first
 		// if we don't we can have strategy withdraw directly to user if possible
 		if (shareOfReserves > 0) {
-			(amountTokenOut, amountToTransfer) = _stratRedeem(receiver, yeildTokenAmnt);
+			(amountTokenOut, amountToTransfer) = _stratRedeem(receiver, yeildTokenRedeem);
 			amountTokenOut += shareOfReserves;
-			amountToTransfer += amountToTransfer;
-		} else (amountTokenOut, amountToTransfer) = _stratRedeem(receiver, yeildTokenAmnt);
+			amountToTransfer += shareOfReserves;
+		} else (amountTokenOut, amountToTransfer) = _stratRedeem(receiver, yeildTokenRedeem);
+		vaultTvl -= amountTokenOut;
 	}
 
 	// DoS attack is possible by depositing small amounts of underlying
@@ -143,20 +143,23 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 	}
 
 	/// @notice Harvest a set of trusted strategies.
-	/// strategiesparam is for backwards compatibility.
-	/// @dev Will always revert if called outside of an active
-	/// harvest window or before the harvest delay has passed.
+	/// @dev strategies param is for backwards compatibility.
+	/// TODO slippage parameter to prevent sandwitch attack to inflate fees?
 	function harvest(address[] calldata) external onlyRole(MANAGER) {
-		uint256 tvl = _stratGetAndUpdateTvl();
-		uint256 strategyBalance = strategyTvl;
-		if (tvl <= strategyBalance) return;
+		uint256 tvl = _stratGetAndUpdateTvl() + underlying.balanceOf(address(this));
+		uint256 prevTvl = vaultTvl;
+		if (tvl <= prevTvl) return;
 
-		bank.takeFees(0, address(this), tvl - strategyBalance, _selfBalance(yieldToken));
-		yBalance -= _selfBalance(yieldToken);
-		strategyTvl = tvl;
+		uint256 underlyingEarned = tvl - prevTvl;
+		uint256 underlyingFees = (underlyingEarned * performanceFee) / 1e18;
+		uint256 feeShares = convertToShares(underlyingFees);
+
+		_mint(treasury, feeShares);
+		vaultTvl = tvl;
+		emit Harvest(treasury, underlyingEarned, underlyingFees, feeShares);
 	}
 
-	/// ***Note: slippage is computed in yield token amnt, not shares
+	/// @notice slippage is computed in shares
 	function depositIntoStrategy(uint256 underlyingAmount, uint256 minAmountOut)
 		public
 		onlyRole(GUARDIAN)
@@ -165,22 +168,19 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		uBalance -= underlyingAmount;
 		underlying.safeTransfer(strategy, underlyingAmount);
 		uint256 yAdded = _stratDeposit(underlyingAmount);
-		if (yAdded < minAmountOut) revert SlippageExceeded();
-		yBalance += yAdded;
+		uint256 virtualSharesOut = toSharesAfterDeposit(yAdded);
+		if (virtualSharesOut < minAmountOut) revert SlippageExceeded();
 	}
 
-	// note: slippage is computed in underlying
+	/// @notice slippage is computed in underlying
 	function withdrawFromStrategy(uint256 shares, uint256 minAmountOut) public onlyRole(GUARDIAN) {
-		uint256 totalShares = bank.totalShares(address(this), 0);
-		uint256 yieldTokenAmnt = (shares * _selfBalance(yieldToken)) / totalShares;
-		yBalance -= yieldTokenAmnt;
+		uint256 yieldTokenAmnt = convertToAssets(shares);
 		(uint256 underlyingWithdrawn, ) = _stratRedeem(address(this), yieldTokenAmnt);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
 		uBalance += underlyingWithdrawn;
 	}
 
 	function closePosition(uint256 minAmountOut) public onlyRole(GUARDIAN) {
-		yBalance = 0;
 		uint256 underlyingWithdrawn = _stratClosePosition();
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
 		uBalance += underlyingWithdrawn;
@@ -190,21 +190,24 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		return _strategyTvl();
 	}
 
+	function totalAssets() public view override returns (uint256) {
+		return _selfBalance(yieldToken);
+	}
+
 	// used for estimates only
 	function exchangeRateUnderlying() public view returns (uint256) {
-		uint256 totalShares = bank.totalShares(address(this), 0);
-		if (totalShares == 0) return _stratCollateralToUnderlying();
-		return ((underlying.balanceOf(address(this)) + _strategyTvl() + 1) * ONE) / totalShares;
+		uint256 _totalSupply = totalSupply();
+		if (_totalSupply == 0) return _stratCollateralToUnderlying();
+		uint256 tvl = underlying.balanceOf(address(this)) + _strategyTvl();
+		return tvl.mulDivUp(ONE, _totalSupply);
 	}
 
 	function underlyingBalance(address user) external view returns (uint256) {
-		uint256 token = bank.getTokenId(address(this), 0);
-		uint256 userBalance = bank.balanceOf(user, token);
-		uint256 totalShares = bank.totalShares(address(this), 0);
-		if (totalShares == 0 || userBalance == 0) return 0;
-		return
-			(((underlying.balanceOf(address(this)) * userBalance) / totalShares + _strategyTvl()) *
-				userBalance) / totalShares;
+		uint256 userBalance = balanceOf(user);
+		uint256 _totalSupply = totalSupply();
+		if (_totalSupply == 0 || userBalance == 0) return 0;
+		uint256 tvl = underlying.balanceOf(address(this)) + _strategyTvl();
+		return (tvl * userBalance) / _totalSupply;
 	}
 
 	function underlyingToShares(uint256 uAmnt) public view returns (uint256) {
@@ -236,11 +239,16 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 		return IERC20Metadata(address(underlying)).decimals();
 	}
 
-	function symbol() public view returns (string memory) {
-		return string(abi.encodePacked(_symbol));
+	// function symbol() public view returns (string memory) {
+	// 	return string(abi.encodePacked(_symbol));
+	// }
+
+	function _getFloatingAmount(address token) internal view override returns (uint256) {
+		if (token == address(underlying)) return _selfBalance(token) - uBalance;
+		return _selfBalance(token);
 	}
 
-	function decimals() public view returns (uint8) {
+	function decimals() public view override returns (uint8) {
 		return IERC20Metadata(yieldToken).decimals();
 	}
 
@@ -248,9 +256,9 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 	 * @dev See {ISuperComposableYield-exchangeRateCurrent}
 	 */
 	function exchangeRateCurrent() public view virtual override returns (uint256) {
-		uint256 totalShares = bank.totalShares(address(this), 0);
-		if (totalShares == 0) return ONE;
-		return (_selfBalance(yieldToken) * ONE) / totalShares;
+		uint256 _totalSupply = totalSupply();
+		if (_totalSupply == 0) return ONE;
+		return (_selfBalance(yieldToken) * ONE) / _totalSupply;
 	}
 
 	/**
@@ -296,8 +304,9 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, Treasury {
 
 	// TODO handle internal float balances
 	function _selfBalance(address token) internal view virtual override returns (uint256) {
-		if (token == strategy) return IERC20(token).balanceOf(address(this));
-		return (token == NATIVE) ? strategyTvl : IERC20(token).balanceOf(strategy);
+		if (token == yieldToken || token == address(underlying))
+			return IERC20(token).balanceOf(address(this));
+		return (token == NATIVE) ? strategy.balance : IERC20(token).balanceOf(strategy);
 	}
 
 	/**

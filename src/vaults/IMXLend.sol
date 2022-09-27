@@ -13,13 +13,11 @@ contract IMXLend is SCYStrategy, SCYVault {
 	using SafeERC20 for IERC20;
 
 	constructor(
-		address _bank,
 		address _owner,
 		address guardian,
 		address manager,
-		address _treasury,
 		Strategy memory _strategy
-	) SCYVault(_bank, _owner, guardian, manager, _treasury, _strategy) {}
+	) SCYVault(_owner, guardian, manager, _treasury, _strategy) {}
 
 	function _stratValidate() internal view override {
 		if (

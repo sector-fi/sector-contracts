@@ -7,13 +7,11 @@ import { SCYVault } from "./scy/SCYVault.sol";
 
 contract IMXVault is SCYStrategy, SCYVault {
 	constructor(
-		address _bank,
 		address _owner,
 		address guardian,
 		address manager,
-		address _treasury,
 		Strategy memory _strategy
-	) SCYVault(_bank, _owner, guardian, manager, _treasury, _strategy) {}
+	) SCYVault(_owner, guardian, manager, _strategy) {}
 
 	function _stratValidate() internal view override {
 		if (
