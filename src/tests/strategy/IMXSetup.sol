@@ -21,6 +21,7 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 	string AVAX_RPC_URL = vm.envString("AVAX_RPC_URL");
 	uint256 AVAX_BLOCK = vm.envUint("AVAX_BLOCK");
 	uint256 avaxFork;
+	uint256 minLp;
 
 	IMXVault vault;
 	IMX strategy;
@@ -54,7 +55,8 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		config.guardian = guardian;
 
 		/// todo should be able to do this via address and mixin
-		strategyConfig.symbol = bytes32(bytes("Test Strategy"));
+		strategyConfig.symbol = "TST";
+		strategyConfig.name = "TEST";
 		strategyConfig.yieldToken = config.poolToken;
 		strategyConfig.underlying = IERC20(config.underlying);
 		strategyConfig.maxTvl = uint128(config.maxTvl);
@@ -64,6 +66,7 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 
 		vault = new IMXVault(owner, guardian, manager, strategyConfig);
 
+		minLp = vault.MIN_LIQUIDITY();
 		config.vault = address(vault);
 
 		strategy = new IMX();
@@ -79,8 +82,8 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		uint256 minSharesOut = vault.underlyingToShares(amount);
 		vault.deposit(address(this), address(usdc), amount, (minSharesOut * 9990) / 10000);
 		uint256 tvl = strategy.getTotalTVL();
-		assertApproxEqAbs(tvl, startTvl + amount, 10, "tvl should be update");
-		assertEq(vault.underlyingBalance(address(this)), tvl, "underlying balance");
+		assertApproxEqAbs(tvl, startTvl + amount, 10, "tvl should update");
+		assertApproxEqAbs(vault.underlyingBalance(address(this)), tvl, minLp, "underlying balance");
 	}
 
 	function withdraw(uint256 fraction) public {

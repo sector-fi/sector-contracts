@@ -8,13 +8,14 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { Accounting } from "../../common/Accounting.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting, ERC20 {
 	using SafeERC20 for IERC20;
 
 	address internal constant NATIVE = address(0);
 	uint256 internal constant ONE = 1e18;
+	uint256 public constant MIN_LIQUIDITY = 1e3;
 
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
@@ -39,10 +40,20 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 		if (tokenIn == NATIVE) require(amountTokenToPull == 0, "can't pull eth");
 		else if (amountTokenToPull != 0) _transferIn(tokenIn, msg.sender, amountTokenToPull);
 
+		// this depends on strategy
+		// this supports depositing directly into strategy
 		uint256 amountIn = _getFloatingAmount(tokenIn);
+		if (amountIn == 0) revert ZeroAmount();
 
 		amountSharesOut = _deposit(receiver, tokenIn, amountIn);
 		require(amountSharesOut >= minSharesOut, "insufficient out");
+
+		// lock minimum liquidity if totalSupply is 0
+		if (totalSupply() == 0) {
+			if (MIN_LIQUIDITY > amountSharesOut) revert MinLiquidity();
+			amountSharesOut -= MIN_LIQUIDITY;
+			_mint(address(1), MIN_LIQUIDITY);
+		}
 
 		_mint(receiver, amountSharesOut);
 		emit Deposit(msg.sender, receiver, tokenIn, amountIn, amountSharesOut);
@@ -68,7 +79,7 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 		require(amountTokenOut >= minTokenOut, "insufficient out");
 
 		_burn(msg.sender, amountSharesToRedeem);
-		_transferOut(tokenOut, receiver, amountToTransfer);
+		if (amountToTransfer > 0) _transferOut(tokenOut, receiver, amountToTransfer);
 
 		emit Redeem(msg.sender, receiver, tokenOut, amountSharesToRedeem, amountTokenOut);
 	}
@@ -115,57 +126,57 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
                                REWARDS-RELATED
     //////////////////////////////////////////////////////////////*/
 
-	// /**
-	//  * @dev See {ISuperComposableYield-claimRewards}
-	//  */
-	// function claimRewards(
-	// 	address /*user*/
-	// ) external virtual override returns (uint256[] memory rewardAmounts) {
-	// 	rewardAmounts = new uint256[](0);
-	// }
+	/**
+	 * @dev See {ISuperComposableYield-claimRewards}
+	 */
+	function claimRewards(
+		address /*user*/
+	) external virtual override returns (uint256[] memory rewardAmounts) {
+		rewardAmounts = new uint256[](0);
+	}
 
-	// /**
-	//  * @dev See {ISuperComposableYield-getRewardTokens}
-	//  */
-	// function getRewardTokens()
-	// 	external
-	// 	view
-	// 	virtual
-	// 	override
-	// 	returns (address[] memory rewardTokens)
-	// {
-	// 	rewardTokens = new address[](0);
-	// }
+	/**
+	 * @dev See {ISuperComposableYield-getRewardTokens}
+	 */
+	function getRewardTokens()
+		external
+		view
+		virtual
+		override
+		returns (address[] memory rewardTokens)
+	{
+		rewardTokens = new address[](0);
+	}
 
-	// /**
-	//  * @dev See {ISuperComposableYield-accruredRewards}
-	//  */
-	// function accruedRewards(
-	// 	address /*user*/
-	// ) external view virtual override returns (uint256[] memory rewardAmounts) {
-	// 	rewardAmounts = new uint256[](0);
-	// }
+	/**
+	 * @dev See {ISuperComposableYield-accruredRewards}
+	 */
+	function accruedRewards(
+		address /*user*/
+	) external view virtual override returns (uint256[] memory rewardAmounts) {
+		rewardAmounts = new uint256[](0);
+	}
 
 	/*///////////////////////////////////////////////////////////////
                 MISC METADATA FUNCTIONS
     //////////////////////////////////////////////////////////////*/
 
-	// /**
-	//  * @notice See {ISuperComposableYield-decimals}
-	//  */
-	// function decimals() public view virtual returns (uint8) {
+	/**
+	 * @notice See {ISuperComposableYield-decimals}
+	 */
+	// function decimals() public pure override returns (uint8) {
 	// 	return 18;
 	// }
 
 	// UTILS
 
-	// function scyToAsset(uint256 exchangeRate, uint256 scyAmount) internal pure returns (uint256) {
-	// 	return (scyAmount * exchangeRate) / ONE;
-	// }
+	function scyToAsset(uint256 exchangeRate, uint256 scyAmount) internal pure returns (uint256) {
+		return (scyAmount * exchangeRate) / ONE;
+	}
 
-	// function assetToScy(uint256 exchangeRate, uint256 assetAmount) internal pure returns (uint256) {
-	// 	return (assetAmount * ONE) / exchangeRate;
-	// }
+	function assetToScy(uint256 exchangeRate, uint256 assetAmount) internal pure returns (uint256) {
+		return (assetAmount * ONE) / exchangeRate;
+	}
 
 	// VIRTUALS
 
@@ -199,4 +210,7 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 	function totalSupply() public view override(Accounting, ERC20) returns (uint256) {
 		return ERC20.totalSupply();
 	}
+
+	error MinLiquidity();
+	error ZeroAmount();
 }

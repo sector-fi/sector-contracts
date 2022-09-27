@@ -6,11 +6,10 @@ import { IMX } from "../../strategies/imx/IMX.sol";
 import { Auth } from "../../common/Auth.sol";
 import { Fees } from "../../common/Fees.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
-import { Bank } from "../../bank/Bank.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	using SafeERC20 for IERC20;
@@ -23,7 +22,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uint256 sharesFees
 	);
 
-	// Bank public bank;
 	address public strategy;
 
 	// immutables
@@ -239,12 +237,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		return IERC20Metadata(address(underlying)).decimals();
 	}
 
-	// function symbol() public view returns (string memory) {
-	// 	return string(abi.encodePacked(_symbol));
-	// }
-
-	function _getFloatingAmount(address token) internal view override returns (uint256) {
-		if (token == address(underlying)) return _selfBalance(token) - uBalance;
+	function _getFloatingAmount(address token) internal view virtual override returns (uint256) {
+		if (token == address(underlying)) return underlying.balanceOf(strategy);
 		return _selfBalance(token);
 	}
 
@@ -304,8 +298,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 	// TODO handle internal float balances
 	function _selfBalance(address token) internal view virtual override returns (uint256) {
-		if (token == yieldToken || token == address(underlying))
-			return IERC20(token).balanceOf(address(this));
+		if (token == address(underlying)) return IERC20(token).balanceOf(address(this));
 		return (token == NATIVE) ? strategy.balance : IERC20(token).balanceOf(strategy);
 	}
 

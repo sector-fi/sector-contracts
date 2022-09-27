@@ -8,13 +8,13 @@ import { IERC4626 } from "../../interfaces/IERC4626.sol";
 import { Auth } from "../../common/Auth.sol";
 import { Accounting } from "../../common/Accounting.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import { Fees } from "../../common/Fees.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract ERC4626 is IERC4626, Auth, Accounting, ERC20 {
+abstract contract ERC4626 is IERC4626, Auth, Accounting, Fees, ERC20 {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
-	using SafeCast for uint256;
 
 	/*//////////////////////////////////////////////////////////////
                                CONSTANTS
@@ -32,8 +32,13 @@ abstract contract ERC4626 is IERC4626, Auth, Accounting, ERC20 {
 	constructor(
 		ERC20 _asset,
 		string memory _name,
-		string memory _symbol
-	) ERC20(_name, _symbol) {
+		string memory _symbol,
+		address _owner,
+		address _guardian,
+		address _manager,
+		address _treasury,
+		uint256 _performanceFee
+	) ERC20(_name, _symbol) Auth(_owner, _guardian, _manager) Fees(_treasury, _performanceFee) {
 		asset = _asset;
 	}
 
