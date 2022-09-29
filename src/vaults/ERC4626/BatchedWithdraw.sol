@@ -37,7 +37,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 		uint256,
 		address,
 		address
-	) public pure override returns (uint256) {
+	) public pure virtual override returns (uint256) {
 		revert NotImplemented();
 	}
 
@@ -45,7 +45,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 		uint256,
 		address receiver,
 		address
-	) public override returns (uint256 amountOut) {
+	) public virtual override returns (uint256 amountOut) {
 		WithdrawRecord storage withdrawRecord = withdrawLedger[msg.sender];
 		if (withdrawRecord.amount == 0) revert ZeroAmount();
 		if (withdrawRecord.timestamp < withdrawTimestamp) revert NotReady();

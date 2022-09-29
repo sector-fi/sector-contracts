@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ISuperComposableYield } from "../../interfaces/ISuperComposableYield.sol";
+import { ISuperComposableYield } from "../../interfaces/scy/ISuperComposableYield.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
@@ -121,62 +121,6 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 	 * @dev See {ISuperComposableYield-exchangeRateStored}
 	 */
 	function exchangeRateStored() external view virtual override returns (uint256 res);
-
-	/*///////////////////////////////////////////////////////////////
-                               REWARDS-RELATED
-    //////////////////////////////////////////////////////////////*/
-
-	/**
-	 * @dev See {ISuperComposableYield-claimRewards}
-	 */
-	function claimRewards(
-		address /*user*/
-	) external virtual override returns (uint256[] memory rewardAmounts) {
-		rewardAmounts = new uint256[](0);
-	}
-
-	/**
-	 * @dev See {ISuperComposableYield-getRewardTokens}
-	 */
-	function getRewardTokens()
-		external
-		view
-		virtual
-		override
-		returns (address[] memory rewardTokens)
-	{
-		rewardTokens = new address[](0);
-	}
-
-	/**
-	 * @dev See {ISuperComposableYield-accruredRewards}
-	 */
-	function accruedRewards(
-		address /*user*/
-	) external view virtual override returns (uint256[] memory rewardAmounts) {
-		rewardAmounts = new uint256[](0);
-	}
-
-	/*///////////////////////////////////////////////////////////////
-                MISC METADATA FUNCTIONS
-    //////////////////////////////////////////////////////////////*/
-
-	/**
-	 * @notice See {ISuperComposableYield-decimals}
-	 */
-	// function decimals() public pure override returns (uint8) {
-	// 	return 18;
-	// }
-
-	// UTILS
-
-	function scyToAsset(uint256 exchangeRate, uint256 scyAmount) internal pure returns (uint256) {
-		return (scyAmount * exchangeRate) / ONE;
-	}
-
-	function assetToScy(uint256 exchangeRate, uint256 assetAmount) internal pure returns (uint256) {
-		return (assetAmount * ONE) / exchangeRate;
-	}
 
 	// VIRTUALS
 

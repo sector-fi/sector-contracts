@@ -24,5 +24,5 @@ interface ISCYStrategy {
 
 	function getAndUpdateTvl() external returns (uint256 tvl);
 
-	function getTvl() external returns (uint256 tvl);
+	function getTvl() external view returns (uint256 tvl);
 }
