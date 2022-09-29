@@ -183,7 +183,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		address receiver,
 		address owner
 	) public virtual override(ERC4626, BatchedWithdraw) returns (uint256 assets) {
-		return super.withdraw(shares, receiver, owner);
+		return super.redeem(shares, receiver, owner);
 	}
 
 	error WrongUnderlying();
