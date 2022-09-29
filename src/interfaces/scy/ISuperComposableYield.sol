@@ -23,13 +23,12 @@
 
 pragma solidity 0.8.16;
 
-interface ISuperComposableYieldMulti {
+interface ISuperComposableYield {
 	/// @dev Emitted whenever the exchangeRate is updated
 	event ExchangeRateUpdated(uint256 oldExchangeRate, uint256 newExchangeRate);
 
 	/// @dev Emitted when any base tokens is deposited to mint shares
 	event Deposit(
-		uint96 id,
 		address indexed caller,
 		address indexed receiver,
 		address indexed tokenIn,
@@ -39,7 +38,6 @@ interface ISuperComposableYieldMulti {
 
 	/// @dev Emitted when any shares are redeemed for base tokens
 	event Redeem(
-		uint96 id,
 		address indexed caller,
 		address indexed receiver,
 		address indexed tokenOut,
@@ -52,9 +50,6 @@ interface ISuperComposableYieldMulti {
 		TOKEN,
 		LIQUIDITY
 	}
-
-	/// @dev Emitted when (`user`) claims their rewards
-	event ClaimRewards(address indexed user, address[] rewardTokens, uint256[] rewardAmounts);
 
 	/**
 	 * @notice mints an amount of shares by depositing a base token.
@@ -80,7 +75,6 @@ interface ISuperComposableYieldMulti {
 	 * at least `amountTokenToPull` base tokens.
 	 */
 	function deposit(
-		uint96 id,
 		address receiver,
 		address tokenIn,
 		uint256 amountTokenToPull,
@@ -111,7 +105,6 @@ interface ISuperComposableYieldMulti {
 	 * at least `amountSharesToPull` shares.
 	 */
 	function redeem(
-		uint96 id,
 		address receiver,
 		uint256 amountSharesToPull,
 		address tokenOut,
@@ -127,52 +120,30 @@ interface ISuperComposableYieldMulti {
      *
      * May emit a {NewExchangeRate} event
      */
-	function exchangeRateCurrent(uint96 id) external returns (uint256 res);
+	function exchangeRateCurrent() external returns (uint256 res);
 
 	/**
 	 * @notice returns the previously updated and stored shares exchange rate
 	 * @dev the returned value may be outdated if exchangeRateCurrent() was not called for a
 	 * extended period of time
 	 */
-	function exchangeRateStored(uint96 id) external view returns (uint256 res);
-
-	/**
-	 * @notice claims reward for (`user`)
-	 * @param user the user receiving their rewards
-	 * @return rewardAmounts an array of reward amounts in the same order as `getRewardTokens`
-	 * @dev
-	 * Emits a `ClaimRewardss` event
-	 * See {getRewardTokens} for list of reward tokens
-	 */
-	function claimRewards(address user) external returns (uint256[] memory rewardAmounts);
-
-	/**
-	 * @notice get the amount of unclaimed rewards for (`user`)
-	 * @param user the user to check for
-	 * @return rewardAmounts an array of reward amounts in the same order as `getRewardTokens`
-	 */
-	function accruedRewards(address user) external view returns (uint256[] memory rewardAmounts);
-
-	/**
-	 * @notice returns the list of reward token addresses
-	 */
-	function getRewardTokens() external view returns (address[] memory);
+	function exchangeRateStored() external view returns (uint256 res);
 
 	/**
 	 * @notice returns the address of the underlying yield token
 	 */
-	function yieldToken(uint96 id) external view returns (address);
+	function yieldToken() external view returns (address);
 
 	/**
 	 * @notice returns a list of all the base tokens that can be deposited to mint shares
 	 */
-	function getBaseTokens(uint96 id) external view returns (address[] memory res);
+	function getBaseTokens() external view returns (address[] memory res);
 
 	/**
 	 * @notice checks whether a token is a valid base token
 	 * @notice returns a boolean indicating whether this is a valid token
 	 */
-	function isValidBaseToken(uint96 id, address token) external view returns (bool);
+	function isValidBaseToken(address token) external view returns (bool);
 
 	/**
     * @notice This function contains information to interpret what the asset is
@@ -182,7 +153,7 @@ interface ISuperComposableYieldMulti {
     assetAddress is the address of the LP token
     * @notice assetDecimals is the decimals of the asset
     */
-	function assetInfo(uint96 id)
+	function assetInfo()
 		external
 		view
 		returns (

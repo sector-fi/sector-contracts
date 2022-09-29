@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { FixedPointMathLib } from "../libraries/FixedPointMathLib.sol";
-import { IERC4626Accounting } from "../interfaces/IERC4626Accounting.sol";
+import { IERC4626Accounting } from "../interfaces/ERC4626/IERC4626Accounting.sol";
 import "hardhat/console.sol";
 
 abstract contract Accounting is IERC4626Accounting {

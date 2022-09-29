@@ -188,6 +188,31 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		return _strategyTvl();
 	}
 
+	/// no slippage check - slippage can be done on vault level
+	/// against total expected balance of all strategies
+	function getAndUpdateTvl() public returns (uint256 tvl) {
+		uint256 stratTvl = _stratGetAndUpdateTvl();
+		uint256 balance = underlying.balanceOf(address(this));
+		tvl = balance + stratTvl;
+	}
+
+	function getTvl() public view returns (uint256 tvl) {
+		uint256 stratTvl = _strategyTvl();
+		uint256 balance = underlying.balanceOf(address(this));
+		tvl = balance + stratTvl;
+	}
+
+	// function _checkSlippage(
+	// 	uint256 expectedRate,
+	// 	uint256 actualRate,
+	// 	uint256 maxDelta
+	// ) internal pure {
+	// 	uint256 delta = expectedRate > actualRate
+	// 		? expectedRate - actualRate
+	// 		: actualRate - expectedRate;
+	// 	if (delta > maxDelta) revert SlippageExceeded();
+	// }
+
 	function totalAssets() public view override returns (uint256) {
 		return _selfBalance(yieldToken);
 	}

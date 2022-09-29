@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
-import { IERC4626 } from "../../interfaces/IERC4626.sol";
+import { IERC4626 } from "../../interfaces/ERC4626/IERC4626.sol";
 import { Auth } from "../../common/Auth.sol";
 import { Accounting } from "../../common/Accounting.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
