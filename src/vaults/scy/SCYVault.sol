@@ -9,7 +9,7 @@ import { SafeETH } from "../../libraries/SafeETH.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	using SafeERC20 for IERC20;
@@ -201,17 +201,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uint256 balance = underlying.balanceOf(address(this));
 		tvl = balance + stratTvl;
 	}
-
-	// function _checkSlippage(
-	// 	uint256 expectedRate,
-	// 	uint256 actualRate,
-	// 	uint256 maxDelta
-	// ) internal pure {
-	// 	uint256 delta = expectedRate > actualRate
-	// 		? expectedRate - actualRate
-	// 		: actualRate - expectedRate;
-	// 	if (delta > maxDelta) revert SlippageExceeded();
-	// }
 
 	function totalAssets() public view override returns (uint256) {
 		return _selfBalance(yieldToken);

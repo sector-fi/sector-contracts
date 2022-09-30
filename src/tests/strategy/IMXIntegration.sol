@@ -12,16 +12,53 @@ import "hardhat/console.sol";
 contract IMXIntegrationTest is IMXSetup {
 	function testIntegrationFlow() public {
 		deposit(100e6);
-		// noRebalance();
-		// withdrawCheck(.5e18);
-		// deposit(100e6);
-		// harvest();
-		// adjustPrice(0.9e18);
-		// strategy.getAndUpdateTVL();
-		// rebalance();
-		// adjustPrice(1.2e18);
-		// rebalance();
-		// withdrawAll();
+		noRebalance();
+		withdrawCheck(.5e18);
+		deposit(100e6);
+		harvest();
+		adjustPrice(0.9e18);
+		strategy.getAndUpdateTVL();
+		rebalance();
+		adjustPrice(1.2e18);
+		rebalance();
+		withdrawAll();
+	}
+
+	function testAccounting() public {
+		uint256 amnt = 1000e6;
+		vm.startPrank(address(2));
+		deposit(amnt, address(2));
+		vm.stopPrank();
+		adjustPrice(1.2e18);
+		deposit(amnt);
+		assertApproxEqAbs(
+			vault.underlyingBalance(address(this)),
+			amnt,
+			(amnt * 3) / 1000, // withthin .003% (slippage)
+			"second balance"
+		);
+		adjustPrice(.833e18);
+		uint256 balance = vault.underlyingBalance(address(2));
+		assertGt(balance, amnt, "first balance should not decrease"); // within .1%
+	}
+
+	function testFlashSwap() public {
+		uint256 amnt = 1000e6;
+		vm.startPrank(address(2));
+		deposit(amnt, address(2));
+		vm.stopPrank();
+		// trackCost();
+		moveUniPrice(1.5e18);
+		deposit(amnt);
+		assertApproxEqAbs(
+			vault.underlyingBalance(address(this)),
+			amnt,
+			(amnt * 3) / 1000, // withthin .003% (slippage)
+			"second balance"
+		);
+		moveUniPrice(.666e18);
+		uint256 balance = vault.underlyingBalance(address(2));
+		assertGt(balance, amnt, "first balance should not decrease"); // within .1%
 	}
 
 	function noRebalance() public {
@@ -59,7 +96,7 @@ contract IMXIntegrationTest is IMXSetup {
 	function withdrawAll() public {
 		uint256 balance = vault.balanceOf(address(this));
 
-		vault.redeem(address(this), balance, address(usdc), 0);
+		vault.redeem(address(this), balance, address(underlying), 0);
 
 		uint256 tvl = strategy.getTotalTVL();
 		assertEq(tvl, 0);

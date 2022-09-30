@@ -46,7 +46,7 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 		if (amountIn == 0) revert ZeroAmount();
 
 		amountSharesOut = _deposit(receiver, tokenIn, amountIn);
-		require(amountSharesOut >= minSharesOut, "insufficient out");
+		if (amountSharesOut < minSharesOut) revert InsufficientOut(amountSharesOut, minSharesOut);
 
 		// lock minimum liquidity if totalSupply is 0
 		if (totalSupply() == 0) {
@@ -157,4 +157,5 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 
 	error MinLiquidity();
 	error ZeroAmount();
+	error InsufficientOut(uint256 amountOut, uint256 minOut);
 }

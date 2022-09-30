@@ -9,6 +9,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { IBaseU, HarvestSwapParms } from "../mixins/upgradable/IBaseU.sol";
 import { IIMXFarmU } from "../mixins/upgradable/IIMXFarmU.sol";
 import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
+import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
 import { IMXAuthU } from "./IMXAuthU.sol";
 
@@ -21,6 +22,7 @@ abstract contract IMXCore is
 	IBaseU,
 	IIMXFarmU
 {
+	using FixedPointMathLib for uint256;
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
 
@@ -167,51 +169,53 @@ abstract contract IMXCore is
 	// ** does not rebalance remaining portfolio
 	// ** make sure to update lending positions before calling this
 	function _decreasePosition(uint256 removeCollateral) internal {
+		// make sure we are not close to liquidation
+		if (loanHealth() < MIN_LOAN_HEALTH) revert LowLoanHealth();
+
 		(uint256 uBorrowBalance, uint256 sBorrowBalance) = _updateAndGetBorrowBalances();
 
 		uint256 balance = collateralToken().balanceOf(address(this));
 		uint256 lp = _getLiquidity(balance);
 
 		// remove lp & repay underlying loan
-		uint256 removeLp = (lp * removeCollateral) / balance;
-		uint256 uRepay = (uBorrowBalance * removeCollateral) / balance;
-		uint256 sRepay = removeCollateral == balance ? sBorrowBalance : type(uint256).max;
+		// round up to avoid under-repaying
+		uint256 removeLp = lp.mulDivUp(removeCollateral, balance);
+		uint256 uRepay = uBorrowBalance.mulDivUp(removeCollateral, balance);
+		uint256 sRepay = sBorrowBalance.mulDivUp(removeCollateral, balance);
 
 		_removeIMXLiquidity(removeLp, uRepay, sRepay);
-
-		// make sure we are not close to liquidation
-		if (loanHealth() < MIN_LOAN_HEALTH) revert LowLoanHealth();
 	}
 
 	// increases the position based on current desired balance
 	// ** does not rebalance remaining portfolio
 	function _increasePosition(uint256 amntUnderlying) internal {
 		if (amntUnderlying < MINIMUM_LIQUIDITY) return; // avoid imprecision
-		uint256 amntShort = _underlyingToShort(amntUnderlying);
+		(uint256 uLp, ) = _getLPBalances();
+		(uint256 uBorrowBalance, uint256 sBorrowBalance) = _getBorrowBalances();
 
-		uint256 uBorrow = (_optimalUBorrow() * amntUnderlying) / 1e18;
-		uint256 sBorrow = amntShort + _underlyingToShort(uBorrow);
+		uint256 tvl = getAndUpdateTVL() - amntUnderlying;
 
-		_addIMXLiquidity(amntUnderlying + uBorrow, sBorrow, uBorrow, sBorrow);
+		uint256 uBorrow;
+		uint256 sBorrow;
+		uint256 aUddLp;
+		uint256 sAddLp;
+
+		if (tvl == 0) {
+			uBorrow = (_optimalUBorrow() * amntUnderlying) / 1e18;
+			aUddLp = amntUnderlying + uBorrow;
+			sBorrow = _underlyingToShort(aUddLp);
+			sAddLp = sBorrow;
+		} else {
+			// if tvl > 0 we need to keep the exact proportions of current position
+			// to ensure we have correct accounting independent of price moves
+			uBorrow = (uBorrowBalance * amntUnderlying) / tvl;
+			aUddLp = (uLp * amntUnderlying) / tvl;
+			sBorrow = (sBorrowBalance * amntUnderlying) / tvl;
+			sAddLp = _underlyingToShort(aUddLp);
+		}
+
+		_addIMXLiquidity(aUddLp, sAddLp, uBorrow, sBorrow);
 	}
-
-	// MANAGER + OWNER METHODS
-	// function increasePosition(
-	// 	uint256 amount,
-	// 	uint256 expectedPrice,
-	// 	uint256 maxDelta
-	// ) external checkPrice(expectedPrice, maxDelta) nonReentrant onlyRole(GUARDIAN) {
-	// 	require(_underlying.balanceOf(address(this)) >= amount, "STRAT: NOT ENOUGH U");
-	// 	_increasePosition(amount);
-	// }
-
-	// function decreasePosition(
-	// 	uint256 collateralAmnt,
-	// 	uint256 expectedPrice,
-	// 	uint256 maxDelta
-	// ) external checkPrice(expectedPrice, maxDelta) nonReentrant onlyRole(GUARDIAN) {
-	// 	_decreasePosition(collateralAmnt);
-	// }
 
 	// use the return of the function to estimate pending harvest via staticCall
 	function harvest(HarvestSwapParms calldata harvestParams)

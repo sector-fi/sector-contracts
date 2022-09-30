@@ -77,6 +77,7 @@ library UniUtils {
 		address outToken
 	) internal returns (uint256) {
 		uint256 amountOut = _getAmountOut(pair, amountIn, inToken, outToken);
+		if (amountOut == 0) return 0;
 		(address token0, ) = _sortTokens(outToken, inToken);
 		(uint256 amount0Out, uint256 amount1Out) = inToken == token0
 			? (uint256(0), amountOut)

@@ -27,7 +27,7 @@ contract IMXUnitTest is IMXSetup {
 	function testLoanHealthWithdraw() public {
 		deposit(100e6);
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
-		adjustPrice((maxAdjust * 9) / 10);
+		adjustPrice(maxAdjust);
 		uint256 balance = vault.balanceOf(address(this));
 		vm.expectRevert(IMXCore.LowLoanHealth.selector);
 		vault.redeem(address(this), (balance * .2e18) / 1e18, address(usdc), 0);

@@ -108,7 +108,7 @@ export default {
     },
     avalanche: {
       url: 'https://api.avax.network/ext/bc/C/rpc',
-      gasPrice: 27e9,
+      gasPrice: 26.5e9,
       chainId: 43114,
       accounts: keys.length ? keys : undefined,
       tags: ['avalanche'],

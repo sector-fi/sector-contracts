@@ -37,12 +37,14 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 	Strategy strategyConfig;
 
 	IERC20 usdc = IERC20(0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664);
+	IERC20 underlying;
 
 	function setUp() public {
 		avaxFork = vm.createFork(AVAX_RPC_URL, AVAX_BLOCK);
 		vm.selectFork(avaxFork);
 
 		// TODO use JSON
+		underlying = usdc;
 		config.underlying = address(usdc);
 		config.short = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
 		config.uniPair = 0xA389f9430876455C36478DeEa9769B7Ca4E3DDB1;
@@ -77,13 +79,27 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 	}
 
 	function deposit(uint256 amount) public {
-		uint256 startTvl = strategy.getTotalTVL();
-		deal(address(usdc), address(this), amount);
+		deposit(amount, address(this));
+	}
+
+	function deposit(uint256 amount, address acc) public {
+		// uint256 startTvl = strategy.getTotalTVL();
+		uint256 startTvl = strategy.getAndUpdateTVL();
+		uint256 startAccBalance = vault.underlyingBalance(acc);
+		deal(address(underlying), acc, amount);
 		uint256 minSharesOut = vault.underlyingToShares(amount);
-		vault.deposit(address(this), address(usdc), amount, (minSharesOut * 9990) / 10000);
+		underlying.approve(address(vault), amount);
+		vault.deposit(acc, address(underlying), amount, (minSharesOut * 9930) / 10000);
 		uint256 tvl = strategy.getTotalTVL();
-		assertApproxEqAbs(tvl, startTvl + amount, 10, "tvl should update");
-		assertApproxEqAbs(vault.underlyingBalance(address(this)), tvl, minLp, "underlying balance");
+		uint256 endAccBalance = vault.underlyingBalance(acc);
+		assertApproxEqAbs(tvl, startTvl + amount, (amount * 3) / 1000, "tvl should update");
+		assertApproxEqAbs(
+			tvl - startTvl,
+			endAccBalance - startAccBalance,
+			(amount * 3) / 1000,
+			"underlying balance"
+		);
+		assertEq(underlying.balanceOf(address(strategy)), 0);
 	}
 
 	function withdraw(uint256 fraction) public {
@@ -101,6 +117,11 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		address oracle = ICollateral(config.poolToken).simpleUniswapOracle();
 		address stakedToken = ICollateral(config.poolToken).underlying();
 		movePrice(config.uniPair, stakedToken, config.underlying, config.short, oracle, fraction);
+	}
+
+	function moveUniPrice(uint256 fraction) public {
+		IUniswapV2Pair pair = IUniswapV2Pair(config.uniPair);
+		moveUniswapPrice(pair, config.underlying, config.short, fraction);
 	}
 
 	function rebalance() public {

@@ -37,6 +37,7 @@ contract Auth is AccessControl {
 		owner = _owner;
 		emit OwnershipTransferred(address(0), owner);
 
+		// TODO do we want cascading roles like this?
 		_grantRole(DEFAULT_ADMIN_ROLE, owner);
 		_grantRole(GUARDIAN, owner);
 		_grantRole(GUARDIAN, guardian);
@@ -67,7 +68,12 @@ contract Auth is AccessControl {
 
 		// revoke the DEFAULT ADMIN ROLE from prev owner
 		_revokeRole(DEFAULT_ADMIN_ROLE, oldOwner);
+		_revokeRole(GUARDIAN, oldOwner);
+		_revokeRole(MANAGER, oldOwner);
+
 		_grantRole(DEFAULT_ADMIN_ROLE, owner);
+		_grantRole(GUARDIAN, owner);
+		_grantRole(MANAGER, owner);
 
 		emit OwnershipTransferred(oldOwner, owner);
 	}

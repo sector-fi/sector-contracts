@@ -8,7 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { CallType, CalleeData, AddLiquidityAndMintCalldata, BorrowBCalldata, RemoveLiqAndRepayCalldata } from "../../interfaces/Structs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract IMXFarm is Initializable, IIMXFarmU {
 	using SafeERC20 for IERC20;
@@ -132,8 +132,6 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 	}
 
 	function _addLp(uint256 uAmnt, uint256 sAmnt) internal {
-		// TODO this block is only used on rebalance
-		// use additional param to save gas?
 		{
 			uint256 sBalance = short().balanceOf(address(this));
 			uint256 uBalance = underlying().balanceOf(address(this));
