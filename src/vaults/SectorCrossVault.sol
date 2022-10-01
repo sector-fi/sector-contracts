@@ -95,10 +95,6 @@ contract SectorCrossVault is ERC4626 {
 		}
 	}
 
-	function approveForManager(uint256 amount, address manager) public {
-		_asset.approve(manager, amount);
-	}
-
 	// Added function to emit event
 	function bridgeAssets(
 		uint32 _fromChainId,
@@ -110,7 +106,6 @@ contract SectorCrossVault is ERC4626 {
 
     /// @notice Sends tokens using Bungee middleware. Assumes tokens already present in contract. Manages allowance and transfer.
     /// @dev Currently not verifying the middleware request calldata. Use very carefully
-    /// @param token address of IERC20 token to be sent
     /// @param allowanceTarget address to allow tokens to swipe
     /// @param socketRegistry address to send bridge txn to
     /// @param destinationAddress address of receiver
@@ -118,18 +113,17 @@ contract SectorCrossVault is ERC4626 {
     /// @param destinationChainId chain Id of receiving chain
     /// @param data calldata of txn to be sent
     function sendTokens(
-        address token,
         address allowanceTarget,
         address socketRegistry,
         address destinationAddress,
         uint256 amount,
         uint256 destinationChainId,
         bytes calldata data
-    ) internal {
+    ) public onlyRole(MANAGER) {
         verifySocketCalldata(
             data,
             destinationChainId,
-            token,
+            address(_asset),
             destinationAddress
         );
 		_asset.approve(msg.sender, amount);

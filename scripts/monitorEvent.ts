@@ -62,23 +62,23 @@ async function main() {
 
         const route = quote.result.routes[1];
 
-        console.log("testing route: ", route);
+        // console.log("testing route: ", route);
 
         // Get transaction data
         const apiReturnData = await getRouteTransactionData(route);
-
-        await vault.approveForManager(amount, owner);
 
         // Call bridgeAssets on vault's contract
 
         try {
             const tx = await vault.sendTokens(
-                apiReturnData.result.txTarget,
-                apiReturnData.result.txData,
-                apiReturnData.result.approvalData.approvalTokenAddress,
                 apiReturnData.result.approvalData.allowanceTarget,
+                apiReturnData.result.txTarget,
+                userAddress,
                 apiReturnData.result.approvalData.minimumApprovalAmount,
+                toChainId,
+                apiReturnData.result.txData,
             );
+            console.log(tx);
         } catch (error) {
             console.log(error);
         }
