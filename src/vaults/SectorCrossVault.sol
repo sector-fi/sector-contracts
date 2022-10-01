@@ -3,15 +3,13 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { Bank } from "../bank/Bank.sol";
+import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { ERC4626 } from "./ERC4626/ERC4626.sol";
-
-// import { SectorVault } from "./SectorVault.sol";
 
 // import "hardhat/console.sol";
 
-contract SectorCrossVault is ERC4626 {
-	mapping(uint256 => address[]) public sectorVaults;
+contract SectorCrossVault is BatchedWithdraw {
+	mapping(uint256 => mapping(address => bool)) public sectorVaults;
 
 	constructor(
 		ERC20 _asset,
@@ -24,14 +22,65 @@ contract SectorCrossVault is ERC4626 {
 		uint256 _perforamanceFee
 	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
 
-	// function totalAssets() public view virtual override returns (uint256) {
-	// 	ERC4626.totalAssets();
+	/* CROSS VAULT */
+
+	function depositIntoVaults(
+		address[] calldata vaults,
+		uint256[] calldata amounts,
+		uint256[] calldata minSharesOut
+	) public onlyRole(MANAGER) checkInputSize([vaults.length, amounts.length, minSharesOut.length]) {
+		for (uint i = 0; i < vaults.length;) {
+			if (ERC4626(vaults[i]).deposit(amounts[i], address(this)) < minSharesOut[i]) {
+				revert InsufficientReturnOut();
+			}
+
+			unchecked { i++; }
+		}
+	}
+
+	// Sector vaults doesn't implement withdraw.
+	// TODO Change this to approprite function call
+	function withdrawFromVaults(
+		address[] calldata vaults,
+		uint256[] calldata shares,
+		uint256[] calldata minAmountOut
+	) public onlyRole(MANAGER) checkInputSize([vaults.length, shares.length, minAmountOut.length]) {
+		for (uint i = 0; i < vaults.length;) {
+			if (ERC4626(vaults[i]).withdraw(shares[i], address(this), address(this)) < minAmountOut[i]) {
+				revert InsufficientReturnOut();
+			}
+
+			unchecked { i++; }
+		}
+	}
+
+	/// TODO Has to update shares value looking into deposited vaults (including cross vault stuff)
+	// function harvestVaults(
+	// 	address[] calldata vaults,
+	// 	HarvestSwapParms[] calldata harvestParams
+	// ) public onlyRole(MANAGER) checkInputSize([vaults.length, harvestParams.length]) {
+	// 	for (uint i = 0; i < vaults.length;) {
+	// 		// No idea how to call harvest and how to map swap params with harvest call
+	// 		vaults[i].harvest(harvestParams.min, harvestStrategies.deadline);
+
+	// 		unchecked { i++; }
+	// 	}
 	// }
 
-	/* BRIDGE FUNCTIONALLITY */
+	// TODO Move modifier to end of file
+	// Solidity type system is not allowing me to use uint[]
+	modifier checkInputSize(uint[3] memory inputSizes) {
+		for (uint i = 1; i < inputSizes.length;) {
+			if (inputSizes[i - 1] != inputSizes[i]) {
+				revert InputSizeNotAppropriate();
+			}
 
-	event bridgeAsset(uint32 _fromChainId, uint32 _toChainId, uint256 amount);
-	event WhitelistedSectorVault(uint32 chainId, address sectorVault);
+			unchecked { i++; }
+		}
+		_;
+	}
+
+	/* BRIDGE FUNCTIONALLITY */
 
 	/// @notice Struct encoded in Bungee calldata
 	/// @dev Derived from socket registry contract
@@ -86,7 +135,6 @@ contract SectorCrossVault is ERC4626 {
 		address _receiverAddress
 	) internal view {
 		UserRequest memory userRequest;
-		bool isWhiteListed = false;
 		(userRequest) = decodeSocketRegistryCalldata(_data);
 
 		if (userRequest.toChainId != _chainId) {
@@ -98,54 +146,61 @@ contract SectorCrossVault is ERC4626 {
 		if (userRequest.bridgeRequest.inputToken != _inputToken) {
 			revert("Invalid input token");
 		}
-		for (uint256 i = 0; i < sectorVaults[_chainId].length; i++) {
-			if (sectorVaults[_chainId][i] == userRequest.receiverAddress) {
-				isWhiteListed = true;
-			}
-		}
-		require(isWhiteListed, "Receiver Not Whitelisted");
+
+		if (!sectorVaults[_chainId][userRequest.receiverAddress]) revert ReceiverNotWhiteslisted(_receiverAddress);
 	}
 
-	function whitelistSectorVault(uint32 chainId, address _vault) external onlyOwner {
-		sectorVaults[chainId].push(_vault);
+	// Who should be responsible for whitelist vaults?
+	// I believe it's the guardian
+	function whitelistSectorVault(uint32 chainId, address _vault) external onlyRole(GUARDIAN) {
+		sectorVaults[chainId][_vault] = true;
 		emit WhitelistedSectorVault(chainId, _vault);
 	}
 
-	function listChainVaults(uint32 chainId) external view returns (address[] memory) {
-		return sectorVaults[chainId];
+	function checkWhitelistVault(uint32 chainId, address vault) external view returns (bool) {
+		return sectorVaults[chainId][vault];
 	}
 
 	// Added function to emit event
-	function bridgeAssets(
+	// This one has to integrate with layerZero message sender
+	function startDepositCrosschainRequest(
 		uint32 _fromChainId,
 		uint32 _toChainId,
 		uint256 amount
 	) public {
-		emit bridgeAsset(_fromChainId, _toChainId, amount);
+		emit BridgeAsset(_fromChainId, _toChainId, amount);
 	}
 
-	/// @notice Sends tokens using Bungee middleware. Assumes tokens already present in contract. Manages allowance and transfer.
-	/// @dev Currently not verifying the middleware request calldata. Use very carefully
-	/// @param allowanceTarget address to allow tokens to swipe
-	/// @param socketRegistry address to send bridge txn to
-	/// @param destinationAddress address of receiver
-	/// @param amount amount of tokens to bridge
-	/// @param destinationChainId chain Id of receiving chain
-	/// @param data calldata of txn to be sent
-	function sendTokens(
-		address allowanceTarget,
-		address socketRegistry,
-		address destinationAddress,
-		uint256 amount,
-		uint256 destinationChainId,
-		bytes calldata data
-	) public onlyRole(MANAGER) {
-		verifySocketCalldata(data, destinationChainId, address(_asset), destinationAddress);
+	// This function will change to depositCrossChain
+    /// @notice Sends tokens using Bungee middleware. Assumes tokens already present in contract. Manages allowance and transfer.
+    /// @dev Currently not verifying the middleware request calldata. Use very carefully
+    /// @param allowanceTarget address to allow tokens to swipe
+    /// @param socketRegistry address to send bridge txn to
+    /// @param destinationAddress address of receiver
+    /// @param amount amount of tokens to bridge
+    /// @param destinationChainId chain Id of receiving chain
+    /// @param data calldata of txn to be sent
+    function sendTokens(
+        address allowanceTarget,
+        address socketRegistry,
+        address destinationAddress,
+        uint256 amount,
+        uint256 destinationChainId,
+        bytes calldata data
+    ) public onlyRole(MANAGER) {
+        verifySocketCalldata(
+            data,
+            destinationChainId,
+            address(_asset),
+            destinationAddress
+        );
+
 		_asset.approve(msg.sender, amount);
-		_asset.approve(allowanceTarget, amount);
-		(bool success, ) = socketRegistry.call(data);
-		require(success, "Failed to call socketRegistry");
-	}
+        _asset.approve(allowanceTarget, amount);
+        (bool success, ) = socketRegistry.call(data);
+
+        if (!success) revert BridgeError();
+    }
 
 	/*
 	 * @notice Helper to slice memory bytes
@@ -217,4 +272,14 @@ contract SectorCrossVault is ERC4626 {
 
 		return tempBytes;
 	}
+
+	/* EVENTS */
+	event BridgeAsset(uint32 _fromChainId, uint32 _toChainId, uint256 amount);
+	event WhitelistedSectorVault(uint32 chainId, address sectorVault);
+
+	/* ERRORS */
+	error InputSizeNotAppropriate();
+	error InsufficientReturnOut();
+	error BridgeError();
+	error ReceiverNotWhiteslisted(address receiver);
 }
