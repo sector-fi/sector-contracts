@@ -18,7 +18,7 @@ interface IERC4626 {
                                IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
-	function asset() external view returns (ERC20);
+	function asset() external view returns (address);
 
 	/*//////////////////////////////////////////////////////////////
                         DEPOSIT/WITHDRAWAL LOGIC

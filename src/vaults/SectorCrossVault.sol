@@ -40,13 +40,15 @@ contract SectorCrossVault is ERC4626 {
 	}
 
 	constructor(
-		ERC20 asset_,
-		Bank _bank,
-		// uint256 _managementFee,
+		ERC20 _asset,
+		string memory _name,
+		string memory _symbol,
 		address _owner,
 		address _guardian,
-		address _manager
-	) ERC4626(asset_, _bank, _owner, _guardian, _manager) {}
+		address _manager,
+		address _treasury,
+		uint256 _perforamanceFee
+	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
 
 	/// @notice Decode the socket request calldata
 	/// @dev Currently not in use due to undertainity in bungee api response
@@ -86,7 +88,7 @@ contract SectorCrossVault is ERC4626 {
 	}
 
 	function approveForManager(uint256 amount, address manager) public {
-		asset.approve(manager, amount);
+		_asset.approve(manager, amount);
 	}
 
 	// Added function to emit event
