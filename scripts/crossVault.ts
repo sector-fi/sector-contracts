@@ -4,31 +4,18 @@ import { Contract } from "ethers";
 import { forkNetwork, setupAccount, grantToken, parseToken } from "../utils";
 import fs from 'fs';
 
-async function deployBank(
+async function deployVault(
+  tokenAddress: string,
+  tokenName: string,
+  tokenSymbol: string,
   owner: string,
   guardian: string,
   manager: string,
-  treasury: string): Promise<Contract> {
-  const BANK = await ethers.getContractFactory("Bank");
-
-  const bank = await BANK.deploy('https://game.example/api/item/{id}.json', owner, guardian, manager, treasury);
-  await bank.deployed()
-
-  return bank;
-}
-
-async function deployVault(
-  tokenAddress: string,
-  bankAddress: string,
-  managementFee: number,
-  owner: string,
-  guardian: string,
-  manager: string): Promise<Contract> {
-
-  managementFee;
+  treasury: string,
+  managementFee: number,): Promise<Contract> {
 
   const VAULT = await ethers.getContractFactory("SectorCrossVault");
-  const vault = await VAULT.deploy(tokenAddress, bankAddress, owner, guardian, manager);
+  const vault = await VAULT.deploy(tokenAddress, tokenName, tokenSymbol, owner, guardian, manager, treasury, managementFee);
   await vault.deployed();
 
   return vault;
@@ -47,19 +34,9 @@ async function main() {
 
   let vaults: Array<Contract> = []
 
-  const bank = await deployBank(owner, owner, owner, owner)
-  const vault = await deployVault(USDC, bank.address, 0, owner, owner, owner)
+  const vault = await deployVault(USDC, 'CrossSectorEthereum', 'CSE', owner, owner, owner, owner, 0)
   vaults.push(vault)
 
-  await bank.addPool({
-    vault: vault.address,
-    id: 0,
-    managementFee: 0,
-    decimals: 18,
-    exists: true
-  })
-
-  console.log(`Bank deployed at ${bank.address}`);
   console.log(`Vault deployed at ${vault.address}`);
 
   // Write vault address to a file

@@ -90,7 +90,7 @@ export default {
       },
     },
     localhost: {
-      accounts: keys.length ? keys : undefined,
+      // accounts: keys.length ? keys : undefined,
       tags: [FORK_CHAIN],
     },
     fantom: {

@@ -23,7 +23,7 @@ async function main() {
         }
     }
 
-    const VAULT = await ethers.getContractFactory("SectorVault");
+    const VAULT = await ethers.getContractFactory("SectorCrossVault");
     const vault = VAULT.attach(vaultAddress);
 
     vault.on('bridgeAsset', async (_fromChainId, _toChainId, amount) => {
