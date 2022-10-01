@@ -5,11 +5,13 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Bank } from "../bank/Bank.sol";
 import { ERC4626 } from "./ERC4626/ERC4626.sol";
+
 // import { SectorVault } from "./SectorVault.sol";
 
 // import "hardhat/console.sol";
 
 contract SectorCrossVault is ERC4626 {
+	mapping(uint256 => address[]) public sectorVaults;
 
 	constructor(
 		ERC20 _asset,
@@ -29,6 +31,7 @@ contract SectorCrossVault is ERC4626 {
 	/* BRIDGE FUNCTIONALLITY */
 
 	event bridgeAsset(uint32 _fromChainId, uint32 _toChainId, uint256 amount);
+	event WhitelistedSectorVault(uint32 chainId, address sectorVault);
 
 	/// @notice Struct encoded in Bungee calldata
 	/// @dev Derived from socket registry contract
@@ -81,9 +84,11 @@ contract SectorCrossVault is ERC4626 {
 		uint256 _chainId,
 		address _inputToken,
 		address _receiverAddress
-	) internal pure {
+	) internal view {
 		UserRequest memory userRequest;
+		bool isWhiteListed = false;
 		(userRequest) = decodeSocketRegistryCalldata(_data);
+
 		if (userRequest.toChainId != _chainId) {
 			revert("Invalid chainId");
 		}
@@ -93,6 +98,21 @@ contract SectorCrossVault is ERC4626 {
 		if (userRequest.bridgeRequest.inputToken != _inputToken) {
 			revert("Invalid input token");
 		}
+		for (uint256 i = 0; i < sectorVaults[_chainId].length; i++) {
+			if (sectorVaults[_chainId][i] == userRequest.receiverAddress) {
+				isWhiteListed = true;
+			}
+		}
+		require(isWhiteListed, "Receiver Not whitelisted");
+	}
+
+	function whitelistSectorVault(uint32 chainId, address _vault) external onlyOwner {
+		sectorVaults[chainId].push(_vault);
+		emit WhitelistedSectorVault(chainId, _vault);
+	}
+
+	function listChainVaults(uint32 chainId) external view returns (address[] memory) {
+		return sectorVaults[chainId];
 	}
 
 	// Added function to emit event
@@ -104,33 +124,28 @@ contract SectorCrossVault is ERC4626 {
 		emit bridgeAsset(_fromChainId, _toChainId, amount);
 	}
 
-    /// @notice Sends tokens using Bungee middleware. Assumes tokens already present in contract. Manages allowance and transfer.
-    /// @dev Currently not verifying the middleware request calldata. Use very carefully
-    /// @param allowanceTarget address to allow tokens to swipe
-    /// @param socketRegistry address to send bridge txn to
-    /// @param destinationAddress address of receiver
-    /// @param amount amount of tokens to bridge
-    /// @param destinationChainId chain Id of receiving chain
-    /// @param data calldata of txn to be sent
-    function sendTokens(
-        address allowanceTarget,
-        address socketRegistry,
-        address destinationAddress,
-        uint256 amount,
-        uint256 destinationChainId,
-        bytes calldata data
-    ) public onlyRole(MANAGER) {
-        verifySocketCalldata(
-            data,
-            destinationChainId,
-            address(_asset),
-            destinationAddress
-        );
+	/// @notice Sends tokens using Bungee middleware. Assumes tokens already present in contract. Manages allowance and transfer.
+	/// @dev Currently not verifying the middleware request calldata. Use very carefully
+	/// @param allowanceTarget address to allow tokens to swipe
+	/// @param socketRegistry address to send bridge txn to
+	/// @param destinationAddress address of receiver
+	/// @param amount amount of tokens to bridge
+	/// @param destinationChainId chain Id of receiving chain
+	/// @param data calldata of txn to be sent
+	function sendTokens(
+		address allowanceTarget,
+		address socketRegistry,
+		address destinationAddress,
+		uint256 amount,
+		uint256 destinationChainId,
+		bytes calldata data
+	) public onlyRole(MANAGER) {
+		verifySocketCalldata(data, destinationChainId, address(_asset), destinationAddress);
 		_asset.approve(msg.sender, amount);
-        _asset.approve(allowanceTarget, amount);
-        (bool success, ) = socketRegistry.call(data);
-        require(success, "Failed to call socketRegistry");
-    }
+		_asset.approve(allowanceTarget, amount);
+		(bool success, ) = socketRegistry.call(data);
+		require(success, "Failed to call socketRegistry");
+	}
 
 	/*
 	 * @notice Helper to slice memory bytes

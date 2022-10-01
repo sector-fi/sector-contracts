@@ -67,8 +67,12 @@ async function main() {
         // Get transaction data
         const apiReturnData = await getRouteTransactionData(route);
 
-        // Call bridgeAssets on vault's contract
+        // Whitelists the receiver address on the destination chain
+        await vault.whitelistSectorVault(toChainId, vaultAddress)
 
+        const chainVaults = await vault.listChainVaults(42161);
+
+        // Call to sendTokens on vault's contract
         try {
             const tx = await vault.sendTokens(
                 apiReturnData.result.approvalData.allowanceTarget,
@@ -78,7 +82,7 @@ async function main() {
                 toChainId,
                 apiReturnData.result.txData,
             );
-            console.log(tx);
+            // console.log(tx);
         } catch (error) {
             console.log(error);
         }
