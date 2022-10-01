@@ -103,7 +103,7 @@ contract SectorCrossVault is ERC4626 {
 				isWhiteListed = true;
 			}
 		}
-		require(isWhiteListed, "Receiver Not whitelisted");
+		require(isWhiteListed, "Receiver Not Whitelisted");
 	}
 
 	function whitelistSectorVault(uint32 chainId, address _vault) external onlyOwner {

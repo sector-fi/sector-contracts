@@ -1,4 +1,5 @@
 import { ethers } from "hardhat";
+import { ConsoleLogger } from "ts-generator/dist/logger";
 import { getQuote, getRouteTransactionData } from '../utils';
 import vaultAddr from "../vaultAddress.json";
 
@@ -60,31 +61,30 @@ async function main() {
             sort, singleTxOnly
         );
 
-        const route = quote.result.routes[1];
-
-        // console.log("testing route: ", route);
-
-        // Get transaction data
-        const apiReturnData = await getRouteTransactionData(route);
+        const routes = quote.result.routes;
 
         // Whitelists the receiver address on the destination chain
         await vault.whitelistSectorVault(toChainId, vaultAddress)
 
-        const chainVaults = await vault.listChainVaults(42161);
-
-        // Call to sendTokens on vault's contract
-        try {
-            const tx = await vault.sendTokens(
-                apiReturnData.result.approvalData.allowanceTarget,
-                apiReturnData.result.txTarget,
-                userAddress,
-                apiReturnData.result.approvalData.minimumApprovalAmount,
-                toChainId,
-                apiReturnData.result.txData,
-            );
-            // console.log(tx);
-        } catch (error) {
-            console.log(error);
+        // loop routes
+        let apiReturnData: any = {}
+        for (const route of routes) {
+            try {
+                apiReturnData = await getRouteTransactionData(route);
+                await vault.sendTokens(
+                    apiReturnData.result.approvalData.allowanceTarget,
+                    apiReturnData.result.txTarget,
+                    userAddress,
+                    apiReturnData.result.approvalData.minimumApprovalAmount,
+                    toChainId,
+                    apiReturnData.result.txData,
+                );
+            }
+            catch (e) {
+                e;
+                continue;
+            }
+            break;
         }
     })
 }
