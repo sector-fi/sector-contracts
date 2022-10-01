@@ -164,7 +164,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		}
 	}
 
-	function totalAssets() public view override returns (uint256) {
+	function totalAssets() public view virtual override returns (uint256) {
 		return _asset.balanceOf(address(this)) + totalStrategyHoldings;
 	}
 

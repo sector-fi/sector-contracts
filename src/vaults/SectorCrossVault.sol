@@ -5,10 +5,29 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Bank } from "../bank/Bank.sol";
 import { ERC4626 } from "./ERC4626/ERC4626.sol";
+// import { SectorVault } from "./SectorVault.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract SectorCrossVault is ERC4626 {
+
+	constructor(
+		ERC20 _asset,
+		string memory _name,
+		string memory _symbol,
+		address _owner,
+		address _guardian,
+		address _manager,
+		address _treasury,
+		uint256 _perforamanceFee
+	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
+
+	// function totalAssets() public view virtual override returns (uint256) {
+	// 	ERC4626.totalAssets();
+	// }
+
+	/* BRIDGE FUNCTIONALLITY */
+
 	event bridgeAsset(uint32 _fromChainId, uint32 _toChainId, uint256 amount);
 
 	/// @notice Struct encoded in Bungee calldata
@@ -38,17 +57,6 @@ contract SectorCrossVault is ERC4626 {
 		MiddlewareRequest middlewareRequest;
 		BridgeRequest bridgeRequest;
 	}
-
-	constructor(
-		ERC20 _asset,
-		string memory _name,
-		string memory _symbol,
-		address _owner,
-		address _guardian,
-		address _manager,
-		address _treasury,
-		uint256 _perforamanceFee
-	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
 
 	/// @notice Decode the socket request calldata
 	/// @dev Currently not in use due to undertainity in bungee api response
@@ -100,25 +108,35 @@ contract SectorCrossVault is ERC4626 {
 		emit bridgeAsset(_fromChainId, _toChainId, amount);
 	}
 
-	// For ERC-20 tokens
-	// Approves Socket Impl spending & initiates bridging in single transaction
-	function sendTokens(
-		address payable _to,
-		bytes memory txData,
-		address _token,
-		address _allowanceTarget,
-		uint256 _amount
-	) public {
-		console.log(IERC20(_token).balanceOf(address(this)));
-		// verifySocketCalldata(txData, destinationChainId, _token, destinationAddress);
-		// First approve spent for manager
-		// IERC20(_token).approve(msg.sender, _amount);
-		// Then, for socket's registry
-		IERC20(_token).approve(_allowanceTarget, _amount);
-		console.log(_amount);
-		(bool success, ) = _to.call(txData);
-		require(success);
-	}
+    /// @notice Sends tokens using Bungee middleware. Assumes tokens already present in contract. Manages allowance and transfer.
+    /// @dev Currently not verifying the middleware request calldata. Use very carefully
+    /// @param token address of IERC20 token to be sent
+    /// @param allowanceTarget address to allow tokens to swipe
+    /// @param socketRegistry address to send bridge txn to
+    /// @param destinationAddress address of receiver
+    /// @param amount amount of tokens to bridge
+    /// @param destinationChainId chain Id of receiving chain
+    /// @param data calldata of txn to be sent
+    function sendTokens(
+        address token,
+        address allowanceTarget,
+        address socketRegistry,
+        address destinationAddress,
+        uint256 amount,
+        uint256 destinationChainId,
+        bytes calldata data
+    ) internal {
+        verifySocketCalldata(
+            data,
+            destinationChainId,
+            token,
+            destinationAddress
+        );
+		_asset.approve(msg.sender, amount);
+        _asset.approve(allowanceTarget, amount);
+        (bool success, ) = socketRegistry.call(data);
+        require(success, "Failed to call socketRegistry");
+    }
 
 	/*
 	 * @notice Helper to slice memory bytes
