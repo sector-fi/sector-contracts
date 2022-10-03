@@ -54,22 +54,4 @@ interface IERC4626 {
 	function maxWithdraw(address owner) external view returns (uint256 maxAssets);
 
 	function maxRedeem(address owner) external view returns (uint256 maxShares);
-
-	/*//////////////////////////////////////////////////////////////
-                    VAULT STATE VIEW INTERFACE
-    //////////////////////////////////////////////////////////////*/
-
-	function totalAssets() external view returns (uint256 totalManagedAssets);
-
-	function convertToShares(uint256 assets) external view returns (uint256 shares);
-
-	function convertToAssets(uint256 shares) external view returns (uint256 assets);
-
-	function previewDeposit(uint256 assets) external view returns (uint256 shares);
-
-	function previewMint(uint256 shares) external view returns (uint256 assets);
-
-	function previewWithdraw(uint256 assets) external view returns (uint256 shares);
-
-	function previewRedeem(uint256 shares) external view returns (uint256 assets);
 }
