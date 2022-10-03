@@ -9,8 +9,9 @@ import { ERC4626 } from "./ERC4626/ERC4626.sol";
 // import "hardhat/console.sol";
 
 contract SectorCrossVault is BatchedWithdraw {
-	mapping(uint256 => mapping(address => bool)) public sectorVaults;
+	mapping(uint256 => mapping(address => bool)) public sectorVaultsWhitelist;
 
+	// HAS TO REVERT FUNCTION CALLS FROM ERC20
 	constructor(
 		ERC20 _asset,
 		string memory _name,
@@ -38,8 +39,6 @@ contract SectorCrossVault is BatchedWithdraw {
 		}
 	}
 
-	// Sector vaults doesn't implement withdraw.
-	// TODO Change this to approprite function call
 	function withdrawFromVaults(
 		address[] calldata vaults,
 		uint256[] calldata shares,
@@ -147,18 +146,18 @@ contract SectorCrossVault is BatchedWithdraw {
 			revert("Invalid input token");
 		}
 
-		if (!sectorVaults[_chainId][userRequest.receiverAddress]) revert ReceiverNotWhiteslisted(_receiverAddress);
+		if (!sectorVaultsWhitelist[_chainId][userRequest.receiverAddress]) revert ReceiverNotWhiteslisted(_receiverAddress);
 	}
 
 	// Who should be responsible for whitelist vaults?
 	// I believe it's the guardian
 	function whitelistSectorVault(uint32 chainId, address _vault) external onlyRole(GUARDIAN) {
-		sectorVaults[chainId][_vault] = true;
+		sectorVaultsWhitelist[chainId][_vault] = true;
 		emit WhitelistedSectorVault(chainId, _vault);
 	}
 
 	function checkWhitelistVault(uint32 chainId, address vault) external view returns (bool) {
-		return sectorVaults[chainId][vault];
+		return sectorVaultsWhitelist[chainId][vault];
 	}
 
 	// Added function to emit event

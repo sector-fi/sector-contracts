@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity 0.8.16;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-
 interface IERC4626 {
-	event Deposit(address indexed caller, address indexed owner, uint256 assets, uint256 shares);
+	event Deposit(
+		address indexed sender,
+		address indexed owner,
+		uint256 assets,
+		uint256 shares
+	);
 
 	event Withdraw(
-		address indexed caller,
+		address indexed sender,
 		address indexed receiver,
 		address indexed owner,
 		uint256 assets,
@@ -18,7 +21,7 @@ interface IERC4626 {
                                IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
-	function asset() external view returns (address);
+	function asset() external view returns (address assetTokenAddress);
 
 	/*//////////////////////////////////////////////////////////////
                         DEPOSIT/WITHDRAWAL LOGIC
@@ -44,11 +47,29 @@ interface IERC4626 {
                      DEPOSIT/WITHDRAWAL LIMIT LOGIC
     //////////////////////////////////////////////////////////////*/
 
-	function maxDeposit(address) external view returns (uint256);
+	function maxDeposit(address receiver) external view returns (uint256 maxAssets);
 
-	function maxMint(address) external view returns (uint256);
+	function maxMint(address receiver) external view returns (uint256 maxShares);
 
-	function maxWithdraw(address owner) external view returns (uint256);
+	function maxWithdraw(address owner) external view returns (uint256 maxAssets);
 
-	function maxRedeem(address owner) external view returns (uint256);
+	function maxRedeem(address owner) external view returns (uint256 maxShares);
+
+	/*//////////////////////////////////////////////////////////////
+                    VAULT STATE VIEW INTERFACE
+    //////////////////////////////////////////////////////////////*/
+
+	function totalAssets() external view returns (uint256 totalManagedAssets);
+
+	function convertToShares(uint256 assets) external view returns (uint256 shares);
+
+	function convertToAssets(uint256 shares) external view returns (uint256 assets);
+
+	function previewDeposit(uint256 assets) external view returns (uint256 shares);
+
+	function previewMint(uint256 shares) external view returns (uint256 assets);
+
+	function previewWithdraw(uint256 assets) external view returns (uint256 shares);
+
+	function previewRedeem(uint256 shares) external view returns (uint256 assets);
 }

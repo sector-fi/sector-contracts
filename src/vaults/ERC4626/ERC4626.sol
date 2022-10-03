@@ -50,7 +50,7 @@ abstract contract ERC4626 is IERC4626, Auth, Accounting, Fees, ERC20 {
 		return address(_asset);
 	}
 
-	function totalAssets() public view virtual override returns (uint256) {
+	function totalAssets() public view virtual override(Accounting, IERC4626) returns (uint256) {
 		return _asset.balanceOf(address(this));
 	}
 
@@ -154,6 +154,18 @@ abstract contract ERC4626 is IERC4626, Auth, Accounting, Fees, ERC20 {
 	function maxRedeem(address owner) public view virtual returns (uint256) {
 		return balanceOf(owner);
 	}
+
+	function convertToShares(uint256 assets) external view returns (uint256 shares);
+
+	function convertToAssets(uint256 shares) external view returns (uint256 assets);
+
+	function previewDeposit(uint256 assets) external view returns (uint256 shares);
+
+	function previewMint(uint256 shares) external view returns (uint256 assets);
+
+	function previewWithdraw(uint256 assets) external view returns (uint256 shares);
+
+	function previewRedeem(uint256 shares) external view returns (uint256 assets);
 
 	/*//////////////////////////////////////////////////////////////
                           INTERNAL HOOKS LOGIC
