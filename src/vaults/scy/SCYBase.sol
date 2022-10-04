@@ -39,10 +39,8 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 	) external payable nonReentrant returns (uint256 amountSharesOut) {
 		require(isValidBaseToken(tokenIn), "SCY: Invalid tokenIn");
 
-		if (tokenIn == NATIVE) {
-			require(amountTokenToPull == 0, "can't pull eth");
-			_depositNative();
-		} else if (amountTokenToPull != 0) _transferIn(tokenIn, msg.sender, amountTokenToPull);
+		if (tokenIn == NATIVE && amountTokenToPull != 0) revert CantPullEth();
+		else if (amountTokenToPull != 0) _transferIn(tokenIn, msg.sender, amountTokenToPull);
 
 		// this depends on strategy
 		// this supports depositing directly into strategy to save gas
@@ -161,6 +159,7 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 		return ERC20.totalSupply();
 	}
 
+	error CantPullEth();
 	error MinLiquidity();
 	error ZeroAmount();
 	error InsufficientOut(uint256 amountOut, uint256 minOut);

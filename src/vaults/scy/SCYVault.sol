@@ -91,17 +91,18 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 	function _depositNative() internal override {
 		uint256 balance = address(this).balance;
-		IWETH(yieldToken).deposit{ value: balance }();
-		if (sendERC20ToStrategy) IERC20(yieldToken).safeTransfer(strategy, balance);
+		IWETH(address(underlying)).deposit{ value: balance }();
+		if (sendERC20ToStrategy) IERC20(underlying).safeTransfer(strategy, balance);
 	}
 
 	function _deposit(
 		address,
-		address,
+		address token,
 		uint256 amount
 	) internal override isInitialized returns (uint256 sharesOut) {
 		// if we have any float in the contract we cannot do deposit accounting
 		if (uBalance > 0) revert DepositsPaused();
+		if (token == NATIVE) _depositNative();
 		if (!sendERC20ToStrategy) underlying.safeTransfer(strategy, amount);
 		uint256 yieldTokenAdded = _stratDeposit(amount);
 		sharesOut = toSharesAfterDeposit(yieldTokenAdded);
@@ -110,7 +111,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 	function _redeem(
 		address receiver,
-		address,
+		address token,
 		uint256 sharesToRedeem
 	) internal override returns (uint256 amountTokenOut, uint256 amountToTransfer) {
 		uint256 _totalSupply = totalSupply();
@@ -125,6 +126,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		// Update strategy underlying reserves balance
 		if (shareOfReserves > 0) uBalance -= shareOfReserves;
 
+		receiver = token == NATIVE ? address(this) : receiver;
+
 		// if we also need to send the user share of reserves, we allways withdraw to vault first
 		// if we don't we can have strategy withdraw directly to user if possible
 		if (shareOfReserves > 0) {
@@ -133,6 +136,9 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 			amountToTransfer += shareOfReserves;
 		} else (amountTokenOut, amountToTransfer) = _stratRedeem(receiver, yeildTokenRedeem);
 		vaultTvl -= amountTokenOut;
+
+		// it requested token is native, convert to native
+		if (token == NATIVE) IWETH(address(underlying)).withdraw(amountToTransfer);
 	}
 
 	/// @notice harvest strategy
@@ -260,10 +266,15 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		return IERC20Metadata(address(underlying)).decimals();
 	}
 
-	// make sure to override this - actual logic should use floating strategy balances
-	function _getFloatingAmount(address token) internal view virtual override returns (uint256) {
+	/// make sure to override this - actual logic should use floating strategy balances
+	function _getFloatingAmount(address token)
+		internal
+		view
+		virtual
+		override
+		returns (uint256 fltAmnt)
+	{
 		if (token == address(underlying)) return underlying.balanceOf(strategy);
-		// if (token == address(underlying)) return _selfBalance(token) - uBalance;
 		if (token == NATIVE) return address(this).balance;
 	}
 
@@ -288,11 +299,11 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		return exchangeRateCurrent();
 	}
 
-	function getBaseTokens() external view override returns (address[] memory res) {
+	function getBaseTokens() external view virtual override returns (address[] memory res) {
 		res[0] = address(underlying);
 	}
 
-	function isValidBaseToken(address token) public view override returns (bool) {
+	function isValidBaseToken(address token) public view virtual override returns (bool) {
 		return token == address(underlying);
 	}
 
@@ -303,10 +314,11 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uint256 amount
 	) internal virtual override {
 		address to = sendERC20ToStrategy ? strategy : address(this);
-		if (token == NATIVE) {
-			// if strategy logic lives in this contract, don't do anything
-			if (strategy != address(this)) return SafeETH.safeTransferETH(to, amount);
-		} else IERC20(token).safeTransferFrom(from, to, amount);
+		IERC20(token).safeTransferFrom(from, to, amount);
+		// if (token == NATIVE) {
+		// 	// if strategy logic lives in this contract, don't do anything
+		// 	if (strategy != address(this)) return SafeETH.safeTransferETH(to, amount);
+		// } else IERC20(token).safeTransferFrom(from, to, amount);
 	}
 
 	// send funds to user

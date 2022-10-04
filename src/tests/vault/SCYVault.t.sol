@@ -5,13 +5,17 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { MockScyVault, SCYVault, Strategy } from "../mocks/MockScyVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { WETH } from "../mocks/WETH.sol";
+import { SafeETH } from "../../libraries/SafeETH.sol";
 
 import "hardhat/console.sol";
 
 contract SCYVaultTest is SectorTest {
 	MockScyVault vault;
 	MockERC20 strategy;
-	MockERC20 underlying;
+	WETH underlying;
+
+	address NATIVE = address(0); // SCY vault constant;
 
 	address manager = address(101);
 	address guardian = address(102);
@@ -25,8 +29,8 @@ contract SCYVaultTest is SectorTest {
 	Strategy strategyConfig;
 
 	function setUp() public {
-		strategy = new MockERC20("Strategy", "Strategy", 18);
-		underlying = new MockERC20("Underlying", "Underlying", 18);
+		strategy = new MockERC20("Strat", "Strat", 18);
+		underlying = new WETH();
 
 		strategyConfig.symbol = "TST";
 		strategyConfig.name = "TEST";
@@ -40,6 +44,30 @@ contract SCYVaultTest is SectorTest {
 		vault = new MockScyVault(owner, guardian, manager, strategyConfig);
 
 		deposit(address(this), vault.MIN_LIQUIDITY());
+	}
+
+	function testNativeFlow() public {
+		uint256 amnt = 100e18;
+
+		vm.startPrank(user1);
+		vm.deal(user1, amnt);
+		SafeETH.safeTransferETH(address(vault), amnt);
+		uint256 minSharesOut = vault.underlyingToShares(amnt);
+		vault.deposit(user1, NATIVE, 0, (minSharesOut * 9930) / 10000);
+
+		uint256 bal = vault.underlyingBalance(user1);
+		assertEq(bal, amnt, "deposit balance");
+		assertEq(user1.balance, 0, "eth balance");
+
+		uint256 sharesToWithdraw = vault.balanceOf(user1);
+		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
+		vault.redeem(user1, sharesToWithdraw, NATIVE, (minSharesOut * 9930) / 10000);
+
+		assertEq(vault.underlyingBalance(user1), 0, "deposit balance 0");
+		assertEq(user1.balance, amnt, "eth balance");
+		assertEq(address(vault).balance, 0, "vault eth balance");
+
+		vm.stopPrank();
 	}
 
 	function testSCYDeposit() public {

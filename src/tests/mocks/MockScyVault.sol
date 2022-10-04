@@ -7,10 +7,11 @@ import { MockERC20 } from "./MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "./../../libraries/SafeETH.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SectorTest } from "../utils/SectorTest.sol";
 
 import "hardhat/console.sol";
 
-contract MockScyVault is SCYStrategy, SCYVault {
+contract MockScyVault is SCYStrategy, SCYVault, SectorTest {
 	using SafeERC20 for IERC20;
 
 	uint256 underlyingBalance;
@@ -24,7 +25,7 @@ contract MockScyVault is SCYStrategy, SCYVault {
 
 	function _stratDeposit(uint256 amount) internal override returns (uint256) {
 		if (underlyingBalance + amount < underlying.balanceOf(strategy)) revert MissingFunds();
-		MockERC20(strategy).mint(address(this), amount);
+		MockERC20(yieldToken).mint(address(this), amount);
 		underlyingBalance = underlying.balanceOf(strategy);
 		return amount;
 	}
@@ -34,21 +35,21 @@ contract MockScyVault is SCYStrategy, SCYVault {
 		override
 		returns (uint256 amntOut, uint256 amntToTransfer)
 	{
-		MockERC20(strategy).burn(address(this), amount);
+		MockERC20(yieldToken).burn(address(this), amount);
 		MockERC20(address(underlying)).burn(strategy, amount);
 		MockERC20(address(underlying)).mint(to, amount);
-
-		underlyingBalance = underlying.balanceOf(strategy);
-		return (amount, 0);
+		underlyingBalance -= amount;
+		amntToTransfer = to == address(this) ? amount : 0;
+		return (amount, amntToTransfer);
 	}
 
 	function _stratClosePosition() internal override returns (uint256) {
-		uint256 tvl = MockERC20(strategy).totalSupply();
-		MockERC20(strategy).burn(address(this), totalSupply());
-		MockERC20(address(underlying)).burn(strategy, tvl);
-		MockERC20(address(underlying)).mint(address(this), tvl);
-		underlyingBalance = underlying.balanceOf(strategy);
-		return tvl;
+		uint256 amount = underlying.balanceOf(strategy);
+		MockERC20(yieldToken).burn(strategy, amount);
+		MockERC20(address(underlying)).burn(strategy, amount);
+		MockERC20(address(underlying)).mint(address(this), amount);
+		underlyingBalance = 0;
+		return amount;
 	}
 
 	function _stratGetAndUpdateTvl() internal view override returns (uint256) {
@@ -72,6 +73,15 @@ contract MockScyVault is SCYStrategy, SCYVault {
 	function _getFloatingAmount(address token) internal view override returns (uint256) {
 		if (token == address(underlying)) return underlying.balanceOf(strategy) - underlyingBalance;
 		return _selfBalance(token);
+	}
+
+	function getBaseTokens() external view override returns (address[] memory res) {
+		res[0] = address(underlying);
+		res[1] = NATIVE;
+	}
+
+	function isValidBaseToken(address token) public view override returns (bool) {
+		return token == address(underlying) || token == NATIVE;
 	}
 
 	error MissingFunds();
