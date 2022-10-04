@@ -7,10 +7,17 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { Accounting } from "../../common/Accounting.sol";
+import { ERC20Permit, EIP712 } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
 import "hardhat/console.sol";
 
-abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting, ERC20 {
+abstract contract SCYBase is
+	ISuperComposableYield,
+	ReentrancyGuard,
+	Accounting,
+	ERC20,
+	ERC20Permit
+{
 	using SafeERC20 for IERC20;
 
 	address internal constant NATIVE = address(0);
@@ -22,7 +29,10 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
 
-	constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {}
+	constructor(string memory _name, string memory _symbol)
+		ERC20(_name, _symbol)
+		ERC20Permit(_name)
+	{}
 
 	/*///////////////////////////////////////////////////////////////
                     DEPOSIT/REDEEM USING BASE TOKENS

@@ -30,7 +30,7 @@ contract IMXUnitTest is IMXSetup {
 		adjustPrice(maxAdjust);
 		uint256 balance = vault.balanceOf(address(this));
 		vm.expectRevert(IMXCore.LowLoanHealth.selector);
-		vault.redeem(address(this), (balance * .2e18) / 1e18, address(usdc), 0);
+		vault.redeem(address(this), (balance * .2e18) / 1e18, address(underlying), 0);
 	}
 
 	function testExtremeDivergence() public {
