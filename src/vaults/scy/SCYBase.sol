@@ -16,6 +16,8 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 	address internal constant NATIVE = address(0);
 	uint256 internal constant ONE = 1e18;
 	uint256 public constant MIN_LIQUIDITY = 1e3;
+	// override if false
+	bool public sendERC20ToStrategy = true;
 
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
@@ -37,11 +39,13 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 	) external payable nonReentrant returns (uint256 amountSharesOut) {
 		require(isValidBaseToken(tokenIn), "SCY: Invalid tokenIn");
 
-		if (tokenIn == NATIVE) require(amountTokenToPull == 0, "can't pull eth");
-		else if (amountTokenToPull != 0) _transferIn(tokenIn, msg.sender, amountTokenToPull);
+		if (tokenIn == NATIVE) {
+			require(amountTokenToPull == 0, "can't pull eth");
+			_depositNative();
+		} else if (amountTokenToPull != 0) _transferIn(tokenIn, msg.sender, amountTokenToPull);
 
 		// this depends on strategy
-		// this supports depositing directly into strategy
+		// this supports depositing directly into strategy to save gas
 		uint256 amountIn = _getFloatingAmount(tokenIn);
 		if (amountIn == 0) revert ZeroAmount();
 
@@ -149,6 +153,8 @@ abstract contract SCYBase is ISuperComposableYield, ReentrancyGuard, Accounting,
 	) internal virtual;
 
 	function _selfBalance(address token) internal view virtual returns (uint256);
+
+	function _depositNative() internal virtual;
 
 	// OVERRIDES
 	function totalSupply() public view override(Accounting, ERC20) returns (uint256) {

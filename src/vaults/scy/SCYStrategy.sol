@@ -7,7 +7,6 @@ struct Strategy {
 	string symbol;
 	string name;
 	address addr;
-	uint96 maxDust;
 	uint256 strategyId; // this is strategy specific token if 1155
 	address yieldToken;
 	IERC20 underlying;

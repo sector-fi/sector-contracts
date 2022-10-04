@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import { SCYStrategy, Strategy } from "./scy/SCYStrategy.sol";
 import { IMX } from "../strategies/imx/IMX.sol";
-import { SCYVault } from "./scy/SCYVault.sol";
+import { SCYVault, IERC20 } from "./scy/SCYVault.sol";
 
 contract IMXVault is SCYStrategy, SCYVault {
 	constructor(
@@ -24,15 +24,15 @@ contract IMXVault is SCYStrategy, SCYVault {
 		return IMX(strategy).deposit(amount);
 	}
 
-	function _stratRedeem(address, uint256 yeildTokenAmnt)
+	function _stratRedeem(address recipient, uint256 yeildTokenAmnt)
 		internal
 		override
 		returns (uint256 amountOut, uint256 amntToTransfer)
 	{
 		// strategy doesn't transfer tokens to user
 		// TODO it should?
-		amountOut = IMX(strategy).redeem(yeildTokenAmnt);
-		amntToTransfer = amountOut;
+		amountOut = IMX(strategy).redeem(yeildTokenAmnt, recipient);
+		amntToTransfer = 0;
 	}
 
 	function _stratGetAndUpdateTvl() internal override returns (uint256) {
@@ -53,5 +53,10 @@ contract IMXVault is SCYStrategy, SCYVault {
 
 	function _stratCollateralToUnderlying() internal view override returns (uint256) {
 		return IMX(strategy).collateralToUnderlying();
+	}
+
+	function _selfBalance(address token) internal view virtual override returns (uint256) {
+		if (token == yieldToken) return IERC20(token).balanceOf(strategy);
+		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
 	}
 }

@@ -50,7 +50,6 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 		strategyConfig.yieldToken = strategy;
 		strategyConfig.underlying = IERC20(address(usdc));
 		strategyConfig.maxTvl = type(uint128).max;
-		strategyConfig.maxDust = 1e18;
 		strategyConfig.treasury = treasury;
 		strategyConfig.performanceFee = .1e18;
 

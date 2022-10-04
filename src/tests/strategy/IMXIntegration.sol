@@ -25,7 +25,7 @@ contract IMXIntegrationTest is IMXSetup {
 	}
 
 	function testAccounting() public {
-		uint256 amnt = 1000e6;
+		uint256 amnt = 100e6;
 		vm.startPrank(address(2));
 		deposit(amnt, address(2));
 		vm.stopPrank();
@@ -43,7 +43,7 @@ contract IMXIntegrationTest is IMXSetup {
 	}
 
 	function testFlashSwap() public {
-		uint256 amnt = 1000e6;
+		uint256 amnt = 100e6;
 		vm.startPrank(address(2));
 		deposit(amnt, address(2));
 		vm.stopPrank();

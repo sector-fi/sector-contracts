@@ -3,4 +3,4 @@ src = 'src/'
 out = 'out'
 solc-version = "0.8.16"
 fuzz_runs=1000
-gas_reports = ["Bank", "IMX", "IMXVault"]
+gas_reports = ["IMX", "IMXVault", "IMXLend", "MockScyVault"]

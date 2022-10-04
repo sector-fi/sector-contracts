@@ -10,11 +10,10 @@ import { IMXConfig, HarvestSwapParms } from "../../interfaces/Structs.sol";
 import { IMXVault, Strategy } from "../../vaults/IMXVault.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 
 import "hardhat/console.sol";
 
-contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
+contract IMXSetup is SectorTest, IMXUtils {
 	using UniUtils for IUniswapV2Pair;
 
 	uint256 BASIS = 10000;
@@ -62,7 +61,6 @@ contract IMXSetup is SectorTest, IMXUtils, ERC1155Holder {
 		strategyConfig.yieldToken = config.poolToken;
 		strategyConfig.underlying = IERC20(config.underlying);
 		strategyConfig.maxTvl = uint128(config.maxTvl);
-		strategyConfig.maxDust = 1e18;
 		strategyConfig.treasury = treasury;
 		strategyConfig.performanceFee = .1e18;
 

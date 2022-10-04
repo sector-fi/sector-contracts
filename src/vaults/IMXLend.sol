@@ -70,27 +70,9 @@ contract IMXLend is SCYStrategy, SCYVault {
 		return IBorrowable(strategy).exchangeRateLast();
 	}
 
-	// send funds to user
-	function _transferOut(
-		address token,
-		address to,
-		uint256 amount
-	) internal virtual override {
-		if (token == NATIVE) {
-			SafeETH.safeTransferETH(to, amount);
-		} else {
-			IERC20(token).safeTransfer(to, amount);
-		}
+	function _getFloatingAmount(address token) internal view override returns (uint256) {
+		if (token == address(underlying))
+			return underlying.balanceOf(strategy) - IPoolToken(strategy).totalBalance();
+		return _selfBalance(token);
 	}
-
-	// todo handle internal float balances
-	function _selfBalance(address token) internal view override returns (uint256) {
-		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
-	}
-
-	// function _getFloatingAmount(address token) internal view override returns (uint256) {
-	// 	if (token == address(underlying))
-	// 		return underlying.balanceOf(strategy) - IPoolToken(strategy).totalBalance();
-	// 	return _selfBalance(token);
-	// }
 }

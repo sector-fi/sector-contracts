@@ -8,8 +8,9 @@ import { Fees } from "../../common/Fees.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
+import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	using SafeERC20 for IERC20;
@@ -19,7 +20,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		address indexed treasury,
 		uint256 underlyingProfit,
 		uint256 underlyingFees,
-		uint256 sharesFees
+		uint256 sharesFees,
+		uint256 tvl
 	);
 
 	address public strategy;
@@ -29,12 +31,10 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	uint256 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
 	IERC20 public immutable underlying;
 
-	uint96 public maxDust; // minimal amount of underlying token allowed before deposits are paused
 	uint256 public maxTvl; // pack all params and balances
 	uint256 public vaultTvl; // strategy balance in underlying
 	uint256 public uBalance; // underlying balance held by vault
 
-	event MaxDustUpdated(uint256 maxDust);
 	event MaxTvlUpdated(uint256 maxTvl);
 	event StrategyUpdated(address strategy);
 
@@ -56,7 +56,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		// strategy init
 		yieldToken = _strategy.yieldToken;
 		strategy = _strategy.addr;
-		maxDust = _strategy.maxDust;
 		strategyId = _strategy.strategyId;
 		underlying = _strategy.underlying;
 		maxTvl = _strategy.maxTvl;
@@ -75,11 +74,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		emit MaxTvlUpdated(min(maxTvl, _stratMaxTvl()));
 	}
 
-	function setMaxDust(uint96 _maxDust) public onlyRole(GUARDIAN) {
-		maxDust = _maxDust;
-		emit MaxDustUpdated(_maxDust);
-	}
-
 	function initStrategy(address _strategy) public onlyRole(GUARDIAN) {
 		if (strategy != address(0)) revert NoReInit();
 		strategy = _strategy;
@@ -95,13 +89,20 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		emit StrategyUpdated(_strategy);
 	}
 
+	function _depositNative() internal override {
+		uint256 balance = address(this).balance;
+		IWETH(yieldToken).deposit{ value: balance }();
+		if (sendERC20ToStrategy) IERC20(yieldToken).safeTransfer(strategy, balance);
+	}
+
 	function _deposit(
 		address,
 		address,
 		uint256 amount
 	) internal override isInitialized returns (uint256 sharesOut) {
 		// if we have any float in the contract we cannot do deposit accounting
-		if (isPaused()) revert DepositsPaused();
+		if (uBalance > 0) revert DepositsPaused();
+		if (!sendERC20ToStrategy) underlying.safeTransfer(strategy, amount);
 		uint256 yieldTokenAdded = _stratDeposit(amount);
 		sharesOut = toSharesAfterDeposit(yieldTokenAdded);
 		vaultTvl += amount;
@@ -112,13 +113,14 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		address,
 		uint256 sharesToRedeem
 	) internal override returns (uint256 amountTokenOut, uint256 amountToTransfer) {
-		uint256 _totalAssets = totalAssets();
+		uint256 _totalSupply = totalSupply();
 
 		uint256 yeildTokenRedeem = convertToAssets(sharesToRedeem);
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
+		// TODO why not use underlying.balanceOf?
 		uint256 reserves = uBalance;
-		uint256 shareOfReserves = (reserves * sharesToRedeem) / _totalAssets;
+		uint256 shareOfReserves = (reserves * sharesToRedeem) / _totalSupply;
 
 		// Update strategy underlying reserves balance
 		if (shareOfReserves > 0) uBalance -= shareOfReserves;
@@ -133,18 +135,10 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		vaultTvl -= amountTokenOut;
 	}
 
-	// DoS attack is possible by depositing small amounts of underlying
-	// can make it costly by using a maxDust amnt, ex: $100
-	// TODO: make sure we don't need check
-	function isPaused() public view returns (bool) {
-		return uBalance > maxDust;
-	}
-
-	/// @notice Harvest a set of trusted strategies.
-	/// @dev strategies param is for backwards compatibility.
-	/// TODO slippage parameter to prevent sandwitch attack to inflate fees?
-	function harvest(address[] calldata) external onlyRole(MANAGER) {
+	/// @notice harvest strategy
+	function harvest(uint256 expectedTvl, uint256 maxDelta) external onlyRole(MANAGER) {
 		uint256 tvl = _stratGetAndUpdateTvl() + underlying.balanceOf(address(this));
+		_checkSlippage(expectedTvl, tvl, maxDelta);
 		uint256 prevTvl = vaultTvl;
 		if (tvl <= prevTvl) return;
 
@@ -154,7 +148,18 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 		_mint(treasury, feeShares);
 		vaultTvl = tvl;
-		emit Harvest(treasury, underlyingEarned, underlyingFees, feeShares);
+		emit Harvest(treasury, underlyingEarned, underlyingFees, feeShares, tvl);
+	}
+
+	function _checkSlippage(
+		uint256 expectedValue,
+		uint256 actualValue,
+		uint256 maxDelta
+	) internal pure {
+		uint256 delta = expectedValue > actualValue
+			? expectedValue - actualValue
+			: actualValue - actualValue;
+		if (delta > maxDelta) revert SlippageExceeded();
 	}
 
 	/// @notice slippage is computed in shares
@@ -206,6 +211,10 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		return _selfBalance(yieldToken);
 	}
 
+	function isPaused() public view returns (bool) {
+		return uBalance > 0;
+	}
+
 	// used for estimates only
 	function exchangeRateUnderlying() public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
@@ -251,9 +260,11 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		return IERC20Metadata(address(underlying)).decimals();
 	}
 
+	// make sure to override this - actual logic should use floating strategy balances
 	function _getFloatingAmount(address token) internal view virtual override returns (uint256) {
 		if (token == address(underlying)) return underlying.balanceOf(strategy);
-		return _selfBalance(token);
+		// if (token == address(underlying)) return _selfBalance(token) - uBalance;
+		if (token == NATIVE) return address(this).balance;
 	}
 
 	function decimals() public view override returns (uint8) {
@@ -291,10 +302,11 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		address from,
 		uint256 amount
 	) internal virtual override {
+		address to = sendERC20ToStrategy ? strategy : address(this);
 		if (token == NATIVE) {
 			// if strategy logic lives in this contract, don't do anything
-			if (strategy == address(this)) return SafeETH.safeTransferETH(strategy, amount);
-		} else IERC20(token).safeTransferFrom(from, strategy, amount);
+			if (strategy != address(this)) return SafeETH.safeTransferETH(to, amount);
+		} else IERC20(token).safeTransferFrom(from, to, amount);
 	}
 
 	// send funds to user
@@ -306,14 +318,13 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		if (token == NATIVE) {
 			SafeETH.safeTransferETH(to, amount);
 		} else {
-			IERC20(token).safeTransferFrom(strategy, to, amount);
+			IERC20(token).safeTransfer(to, amount);
 		}
 	}
 
-	// TODO handle internal float balances
+	// todo handle internal float balances
 	function _selfBalance(address token) internal view virtual override returns (uint256) {
-		if (token == address(underlying)) return IERC20(token).balanceOf(address(this));
-		return (token == NATIVE) ? strategy.balance : IERC20(token).balanceOf(strategy);
+		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
 	}
 
 	/**

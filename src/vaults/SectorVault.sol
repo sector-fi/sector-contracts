@@ -26,7 +26,13 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
 
-	event Harvest(uint256 strategyTvl, uint256 profit);
+	event Harvest(
+		address indexed treasury,
+		uint256 underlyingProfit,
+		uint256 underlyingFees,
+		uint256 sharesFees,
+		uint256 strategyTvl
+	);
 
 	/// if vaults accepts native asset we set asset to address 0;
 	address internal constant NATIVE = address(0);
@@ -87,16 +93,18 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		if (pendingWithdrawal != 0 && pendingWithdrawal < ERC20(asset).balanceOf(address(this)))
 			_processWithdraw(convertToShares(1e18));
 
-		// this is now used for deposit exchange rate
-		emit Harvest(tvl, profit);
-
 		// take vault fees
-		if (profit == 0) return;
+		if (profit == 0) {
+			emit Harvest(treasury, 0, 0, 0, tvl);
+			return;
+		}
 
 		// since profit > 0 we have not updated totalStrategyHoldings yet
 		totalStrategyHoldings = tvl;
 		uint256 underlyingFees = (profit * performanceFee) / 1e18;
 		uint256 feeShares = convertToShares(underlyingFees);
+
+		emit Harvest(treasury, profit, underlyingFees, feeShares, tvl);
 		_mint(treasury, feeShares);
 	}
 

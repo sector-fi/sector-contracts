@@ -81,7 +81,7 @@ abstract contract IMXCore is
 		_underlying = IERC20(underlying_);
 		_short = IERC20(short_);
 
-		_underlying.safeApprove(vault, type(uint256).max);
+		// _underlying.safeApprove(vault, type(uint256).max);
 
 		// init default params
 		// deployer is not owner so we set these manually
@@ -152,7 +152,11 @@ abstract contract IMXCore is
 	}
 
 	// redeem lp for underlying
-	function redeem(uint256 removeCollateral) public onlyVault returns (uint256 amountTokenOut) {
+	function redeem(uint256 removeCollateral, address recipient)
+		public
+		onlyVault
+		returns (uint256 amountTokenOut)
+	{
 		// this is the full amount of LP tokens totalSupply of shares is entitled to
 		_decreasePosition(removeCollateral);
 
@@ -162,6 +166,7 @@ abstract contract IMXCore is
 		unchecked {
 			amountTokenOut = _underlying.balanceOf(address(this));
 		}
+		_underlying.safeTransfer(recipient, amountTokenOut);
 		emit Redeem(msg.sender, amountTokenOut);
 	}
 
