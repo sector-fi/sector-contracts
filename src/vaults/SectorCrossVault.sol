@@ -9,12 +9,6 @@ import { IXAdapter } from "../interfaces/adapters/IXAdapter.sol";
 
 // import "hardhat/console.sol";
 
-struct vault {
-	uint16  chainId;
-	address adapter;
-	bool 	allowed;
-}
-
 contract SectorCrossVault is BatchedWithdraw {
 	enum msgType {
 		NONE,
@@ -24,8 +18,34 @@ contract SectorCrossVault is BatchedWithdraw {
 		REQUESTVALUEOFSHARES
 	}
 
+	struct Vault {
+		uint16  chainId;
+		address adapter;
+		bool 	allowed;
+	}
+
+	struct Request {
+		uint256 timestamp;
+		uint256 chainId;
+		address vault;
+	}
+
+	struct HarvestLedger {
+		uint256   depositValue;
+		bool 	  isOpen;
+		Request[] request;
+		uint256   openIndex;
+	}
+
+
 	// Controls deposits
-	mapping(address => vault) public depositedVaults;
+	mapping(address => Vault) public depositedVaults;
+
+	// Harvest state
+	HarvestLedger public harvestLedger;
+
+	// TODO add addVault function with proper access control
+	// Move sendTokens logic to another contract
 
 	constructor(
 		ERC20 _asset,
@@ -45,7 +65,7 @@ contract SectorCrossVault is BatchedWithdraw {
 		uint256[] calldata amounts
 	) public onlyRole(MANAGER) checkInputSize([vaults.length, amounts.length]) {
 		for (uint i = 0; i < vaults.length;) {
-			vault memory tmpVault = depositedVaults[vaults[i]];
+			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (!tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
 
@@ -67,7 +87,7 @@ contract SectorCrossVault is BatchedWithdraw {
 		uint256[] calldata shares
 	) public onlyRole(MANAGER) checkInputSize([vaults.length, shares.length]) {
 		for (uint i = 0; i < vaults.length;) {
-			vault memory tmpVault = depositedVaults[vaults[i]];
+			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (!tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
 
@@ -87,7 +107,7 @@ contract SectorCrossVault is BatchedWithdraw {
 		uint256[] calldata shares
 	) public onlyRole(MANAGER) checkInputSize([vaults.length, shares.length]) {
 		for (uint i = 0; i < vaults.length;) {
-			vault memory tmpVault = depositedVaults[vaults[i]];
+			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
 
@@ -103,28 +123,13 @@ contract SectorCrossVault is BatchedWithdraw {
 		}
 	}
 
-	struct Request {
-		uint256 timestamp;
-		uint256 chainId;
-		address vault;
-	}
-
-	struct HarvestLedger {
-		uint256   depositValue;
-		bool 	  isOpen;
-		Request[] request;
-		uint256   openIndex;
-	}
-
-	HarvestLedger public harvestLedger;
-
 	function harvestVaults(
 		address[] calldata vaults
 	) public onlyRole(MANAGER) {
 		uint256 depositValue = 0;
 
 		for (uint i = 0; i < vaults.length;) {
-			vault memory tmpVault = depositedVaults[vaults[i]];
+			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (tmpVault.adapter == address(0)) {
 				depositValue += BatchedWithdraw(vaults[i]).balanceOf(address(this)) * BatchedWithdraw(vaults[i]).sharesToUnderlying();
@@ -148,7 +153,7 @@ contract SectorCrossVault is BatchedWithdraw {
 
 		uint256 i = hLedger.openIndex;
 		while (i < hLedger.request.length) {
-			vault memory tmpVault = depositedVaults[hLedger.request[i].vault];
+			Vault memory tmpVault = depositedVaults[hLedger.request[i].vault];
 
 
 			// If timestamp > message.timestap transaction will revert
