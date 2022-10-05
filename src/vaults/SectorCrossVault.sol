@@ -5,15 +5,11 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { ERC4626 } from "./ERC4626/ERC4626.sol";
-import { ILayerZeroReceiver } from "../interfaces/LayerZero/ILayerZeroReceiver.sol";
-import { ILayerZeroEndpoint } from "../interfaces/LayerZero/ILayerZeroEndpoint.sol";
-import { ILayerZeroUserApplicationConfig } from "../interfaces/LayerZero/ILayerZeroUserApplicationConfig.sol";
 
 // import "hardhat/console.sol";
 
-contract SectorCrossVault is BatchedWithdraw, ILayerZeroReceiver, ILayerZeroUserApplicationConfig {
+contract SectorCrossVault is BatchedWithdraw {
 	mapping(uint256 => mapping(address => bool)) public sectorVaultsWhitelist;
-	ILayerZeroEndpoint public endpoint;
 
 	// HAS TO REVERT FUNCTION CALLS FROM ERC20
 	constructor(
@@ -24,11 +20,8 @@ contract SectorCrossVault is BatchedWithdraw, ILayerZeroReceiver, ILayerZeroUser
 		address _guardian,
 		address _manager,
 		address _treasury,
-		uint256 _perforamanceFee,
-		address _layerZeroEndpoint
-	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {
-		endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
-	}
+		uint256 _perforamanceFee
+	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
 
 	/* CROSS VAULT */
 
@@ -288,127 +281,11 @@ contract SectorCrossVault is BatchedWithdraw, ILayerZeroReceiver, ILayerZeroUser
 		return tempBytes;
 	}
 
-	/* CROSS CHAIN MESSAGING */
-
-	function sendMessage(
-		uint16 _dstChainId,
-		address _dstVaultAddress,
-		uint256 _amount
-	) public {
-		if (address(this).balance == 0) revert NoBalance();
-
-		bytes memory payload = abi.encode(_amount);
-
-		// encode adapterParams to specify more gas for the destination
-		uint16 version = 1;
-		uint256 gasForDestinationLzReceive = 350000;
-		bytes memory adapterParams = abi.encodePacked(version, gasForDestinationLzReceive);
-
-		(uint256 messageFee, ) = endpoint.estimateFees(
-			_dstChainId,
-			address(this),
-			payload,
-			false,
-			adapterParams
-		);
-		if (address(this).balance < messageFee) revert InsufficientBalanceToSendMessage();
-
-		// send LayerZero message
-		endpoint.send{ value: messageFee }( // {value: messageFee} will be paid out of this contract!
-			_dstChainId, // destination chainId
-			abi.encodePacked(_dstVaultAddress), // destination address of PingPong
-			payload, // abi.encode()'ed bytes
-			payable(this), // (msg.sender will be this contract) refund address (LayerZero will refund any extra gas back to caller of send()
-			address(0x0), // 'zroPaymentAddress' unused for this mock/example
-			adapterParams // 'adapterParams' unused for this mock/example
-		);
-	}
-
-	// receive the bytes payload from the source chain via LayerZero
-	// _srcChainId: the chainId that we are receiving the message from.
-	// _fromAddress: the source PingPong address
-	function lzReceive(
-		uint16 _srcChainId,
-		bytes memory _fromAddress,
-		uint64, /*_nonce*/
-		bytes memory _payload
-	) external override {
-		require(msg.sender == address(endpoint)); // boilerplate! lzReceive must be called by the endpoint for security
-
-		// use assembly to extract the address from the bytes memory parameter
-		address fromAddress;
-		assembly {
-			fromAddress := mload(add(_fromAddress, 20))
-		}
-
-		// decode decode amount sent from source chain
-		uint256 _amount = abi.decode(_payload, (uint256));
-
-		emit MessageReceived(_srcChainId, fromAddress, _amount);
-	}
-
-	function setConfig(
-		uint16, /*_version*/
-		uint16 _dstChainId,
-		uint256 _configType,
-		bytes memory _config
-	) external override {
-		endpoint.setConfig(
-			_dstChainId,
-			endpoint.getSendVersion(address(this)),
-			_configType,
-			_config
-		);
-	}
-
-	function getConfig(
-		uint16, /*_dstChainId*/
-		uint16 _chainId,
-		address,
-		uint256 _configType
-	) external view returns (bytes memory) {
-		return
-			endpoint.getConfig(
-				endpoint.getSendVersion(address(this)),
-				_chainId,
-				address(this),
-				_configType
-			);
-	}
-
-	function setSendVersion(uint16 version) external override {
-		endpoint.setSendVersion(version);
-	}
-
-	function setReceiveVersion(uint16 version) external override {
-		endpoint.setReceiveVersion(version);
-	}
-
-	function getSendVersion() external view returns (uint16) {
-		return endpoint.getSendVersion(address(this));
-	}
-
-	function getReceiveVersion() external view returns (uint16) {
-		return endpoint.getReceiveVersion(address(this));
-	}
-
-	function forceResumeReceive(uint16 _srcChainId, bytes calldata _srcAddress) external override {
-		// do nth
-	}
-
-	// allow this contract to receive ether
-	fallback() external payable {}
-
-	receive() external payable {}
-
 	/* EVENTS */
 	event BridgeAsset(uint32 _fromChainId, uint32 _toChainId, uint256 amount);
 	event WhitelistedSectorVault(uint32 chainId, address sectorVault);
-	event MessageReceived(uint16 _srcChainId, address fromAddress, uint256 amount);
 
 	/* ERRORS */
-	error InsufficientBalanceToSendMessage();
-	error NoBalance();
 	error InputSizeNotAppropriate();
 	error InsufficientReturnOut();
 	error BridgeError();
