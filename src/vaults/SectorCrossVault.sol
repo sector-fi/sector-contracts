@@ -11,11 +11,25 @@ import { ILayerZeroUserApplicationConfig } from "../interfaces/LayerZero/ILayerZ
 
 // import "hardhat/console.sol";
 
+struct vault {
+	// uint256 assetAmount;
+	// uint256 shareAmount;
+	// uint256 pendingShareAmount;
+	// uint256 sharesToUnderlying;
+	uint256 chainId;
+	address adapter;
+	bool 	allowed;
+}
+
 contract SectorCrossVault is BatchedWithdraw, ILayerZeroReceiver, ILayerZeroUserApplicationConfig {
 	mapping(uint256 => mapping(address => bool)) public sectorVaultsWhitelist;
 	ILayerZeroEndpoint public endpoint;
 
-	// HAS TO REVERT FUNCTION CALLS FROM ERC20
+	// uint256 public totalDeposited;
+
+	// Controls deposits
+	mapping(address => vault) public depositedVaults;
+
 	constructor(
 		ERC20 _asset,
 		string memory _name,
@@ -34,44 +48,62 @@ contract SectorCrossVault is BatchedWithdraw, ILayerZeroReceiver, ILayerZeroUser
 
 	function depositIntoVaults(
 		address[] calldata vaults,
-		uint256[] calldata amounts,
-		uint256[] calldata minSharesOut
-	)
-		public
-		onlyRole(MANAGER)
-		checkInputSize([vaults.length, amounts.length, minSharesOut.length])
-	{
-		for (uint256 i = 0; i < vaults.length; ) {
-			if (ERC4626(vaults[i]).deposit(amounts[i], address(this)) < minSharesOut[i]) {
-				revert InsufficientReturnOut();
-			}
+		uint256[] calldata amounts
+		// uint256[] calldata minSharesOut
+	) public onlyRole(MANAGER) checkInputSize([vaults.length, amounts.length]) {
+		for (uint i = 0; i < vaults.length;) {
+			if (!depositedVaults[vaults[i]].allowed) revert VaultNotAllowed(vaults[i]);
 
-			unchecked {
-				i++;
-			}
+			depositedVaults[vaults[i]].adapter == address(0)
+				? ERC4626(vaults[i])
+					.deposit(amounts[i], address(this))
+				: IXMESSAGER(depositedVaults[vaults[i]].adapter)
+					.deposit(amounts[i], address(this), depositedVaults[vaults[i]].chainId);
+
+			// if (sharesOut < minSharesOut[i]) revert InsufficientReturnOut();
+
+			// totalDeposited += amounts[i];
+			// depositedVaults[vaults[i]].assetAmount += amounts[i];
+			// depositedVaults[vaults[i]].shareAmount += sharesOut;
+			unchecked { i++; }
 		}
 	}
 
-	function withdrawFromVaults(
+	function requestRedeemFromVaults(
 		address[] calldata vaults,
-		uint256[] calldata shares,
-		uint256[] calldata minAmountOut
-	) public onlyRole(MANAGER) checkInputSize([vaults.length, shares.length, minAmountOut.length]) {
-		for (uint256 i = 0; i < vaults.length; ) {
-			if (
-				ERC4626(vaults[i]).withdraw(shares[i], address(this), address(this)) <
-				minAmountOut[i]
-			) {
-				revert InsufficientReturnOut();
-			}
+		uint256[] calldata shares
+	) public onlyRole(MANAGER) checkInputSize([vaults.length, shares.length]) {
+		for (uint i = 0; i < vaults.length;) {
+			if (!depositedVaults[vaults[i]].allowed) revert VaultNotAllowed(vaults[i]);
 
-			unchecked {
-				i++;
-			}
+			depositedVaults[vaults[i]].adapter == address(0)
+				? ERC4626(vaults[i])
+					.requestRedeem(shares[i])
+				: IXMESSAGER(vaults[i])
+					.requestRedeem(shares[i], depositedVaults[vaults[i]].chainId);
+
+			unchecked { i++; }
 		}
 	}
 
-	/// TODO Has to update shares value looking into deposited vaults (including cross vault stuff)
+	function redeemFromVaults(
+		address[] calldata vaults,
+		uint256[] calldata shares
+	) public onlyRole(MANAGER) checkInputSize([vaults.length, shares.length]) {
+		for (uint i = 0; i < vaults.length;) {
+			if (!depositedVaults[vaults[i]].allowed) revert VaultNotAllowed(vaults[i]);
+
+			depositedVaults[vaults[i]].adapter == address(0)
+				? ERC4626(vaults[i])
+					.requestRedeem(shares[i])
+				: IXMESSAGER(vaults[i])
+					.requestRedeem(shares[i], depositedVaults[vaults[i]].chainId);
+			// Not sure if it should request manager intervention after redeem when in different chains
+
+			unchecked { i++; }
+		}
+	}
+
 	// function harvestVaults(
 	// 	address[] calldata vaults,
 	// 	HarvestSwapParms[] calldata harvestParams
@@ -84,10 +116,8 @@ contract SectorCrossVault is BatchedWithdraw, ILayerZeroReceiver, ILayerZeroUser
 	// 	}
 	// }
 
-	// TODO Move modifier to end of file
-	// Solidity type system is not allowing me to use uint[]
-	modifier checkInputSize(uint256[3] memory inputSizes) {
-		for (uint256 i = 1; i < inputSizes.length; ) {
+	modifier checkInputSize(uint[2] memory inputSizes) {
+		for (uint i = 1; i < inputSizes.length;) {
 			if (inputSizes[i - 1] != inputSizes[i]) {
 				revert InputSizeNotAppropriate();
 			}
@@ -172,14 +202,14 @@ contract SectorCrossVault is BatchedWithdraw, ILayerZeroReceiver, ILayerZeroUser
 
 	// Who should be responsible for whitelist vaults?
 	// I believe it's the guardian
-	function whitelistSectorVault(uint32 chainId, address _vault) external onlyRole(GUARDIAN) {
+	function whitelistSectorVault(uint32 chainId, address _vault) external onlyOwner {
 		sectorVaultsWhitelist[chainId][_vault] = true;
 		emit WhitelistedSectorVault(chainId, _vault);
 	}
 
-	function checkWhitelistVault(uint32 chainId, address vault) external view returns (bool) {
-		return sectorVaultsWhitelist[chainId][vault];
-	}
+	// function checkWhitelistVault(uint32 chainId, address vault) external view returns (bool) {
+	// 	return sectorVaultsWhitelist[chainId][vault];
+	// }
 
 	// Added function to emit event
 	// This one has to integrate with layerZero message sender
@@ -413,4 +443,5 @@ contract SectorCrossVault is BatchedWithdraw, ILayerZeroReceiver, ILayerZeroUser
 	error InsufficientReturnOut();
 	error BridgeError();
 	error ReceiverNotWhiteslisted(address receiver);
+	error VaultNotAllowed(address vault);
 }
