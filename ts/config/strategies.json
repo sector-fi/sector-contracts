@@ -1,0 +1,33 @@
+{
+  "strats": [
+    "USDCimxAVAX",
+    "USDC-OP-tarot-velo"
+  ],
+  "USDCimxAVAX": {
+    "a_underlying": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664",
+    "b_short": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
+    "c_uniPair": "0xA389f9430876455C36478DeEa9769B7Ca4E3DDB1",
+    "d_poolToken": "0xEE2A27B7c3165A5E2a3FEB113A77B26b46dB0baE",
+    "e_farmToken": "0xeA6887e4a9CdA1B77E70129E5Fba830CdB5cdDef",
+    "f_farmRouter": "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106",
+    "g_chain": "AVAX",
+    "h_harvestPath": [
+      "0xeA6887e4a9CdA1B77E70129E5Fba830CdB5cdDef",
+      "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
+      "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664"
+    ]
+  },
+  "USDC-OP-tarot-velo": {
+    "a_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+    "b_short": "0x4200000000000000000000000000000000000042",
+    "c_uniPair": "0x47029bc8f5CBe3b464004E87eF9c9419a48018cd",
+    "d_poolToken": "0x2F707cfB7b6C1EF2fE01b13f13379Ab0D6961189",
+    "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+    "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "g_chain": "OP",
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+      "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
+    ]
+  }
+}

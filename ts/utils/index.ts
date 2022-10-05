@@ -1,6 +1,3 @@
-import { getNamedAccounts, ethers } from 'hardhat';
-import { Contract } from 'ethers';
-
 export * from './network';
 export * from './timelock';
 

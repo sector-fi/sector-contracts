@@ -77,12 +77,8 @@ contract IMXIntegrationTest is IMXSetup {
 	}
 
 	function harvest() public {
+		if (!strategy.harvestIsEnabled()) return;
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
-		address[] memory path = new address[](3);
-		path[0] = 0xeA6887e4a9CdA1B77E70129E5Fba830CdB5cdDef;
-		path[1] = 0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7;
-		path[2] = 0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664;
-		harvestParams.path = path;
 		harvestParams.min = 0;
 		harvestParams.deadline = block.timestamp + 1;
 		strategy.getAndUpdateTVL();

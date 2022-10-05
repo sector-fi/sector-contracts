@@ -43,6 +43,9 @@ const {
   MOONRIVER_API_KEY,
   MOONBEAM_API_KEY,
   INFURA_API_KEY,
+
+  // rpc keys
+  ALCHEMY_OP,
 } = process.env;
 
 const keys = [DEPLOYER_KEY].filter((k) => k != null);
@@ -145,6 +148,13 @@ export default {
           apiUrl: 'https://api-moonbeam.moonscan.io',
         },
       },
+    },
+    optimism: {
+      url: `https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}`,
+      chainId: 10,
+      gasPrice: 0.001e9,
+      name: 'optimism',
+      tags: ['optimism'],
     },
     mainnet: {
       accounts: keys.length ? keys : undefined,
