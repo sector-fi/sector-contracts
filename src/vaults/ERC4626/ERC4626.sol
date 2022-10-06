@@ -21,7 +21,7 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
     //////////////////////////////////////////////////////////////*/
 
 	// locked liquidity to prevent rounding errors
-	uint256 constant MIN_LIQUIDITY = 1e3;
+	uint256 public constant MIN_LIQUIDITY = 1e3;
 
 	/*//////////////////////////////////////////////////////////////
                                IMMUTABLES

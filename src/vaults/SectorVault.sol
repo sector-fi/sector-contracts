@@ -6,7 +6,7 @@ import { ERC4626, FixedPointMathLib, SafeERC20 } from "./ERC4626/ERC4626.sol";
 import { ISCYStrategy } from "../interfaces/scy/ISCYStrategy.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 // TODO native asset deposit + flow
 
@@ -78,13 +78,17 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 
 	/// We compute expected tvl off-chain first, to ensure this transactions isn't sandwitched
 	function harvest(uint256 expectedTvl, uint256 maxDelta) public onlyRole(MANAGER) {
-		uint256 tvl = _getStrategyHoldings();
+		uint256 updatedStratHoldings = _getStrategyHoldings();
+		uint256 tvl = updatedStratHoldings + asset.balanceOf(address(this));
 		_checkSlippage(expectedTvl, tvl, maxDelta);
 
-		uint256 profit = tvl > totalStrategyHoldings ? tvl - totalStrategyHoldings : 0;
+		uint256 profit = updatedStratHoldings > totalStrategyHoldings
+			? updatedStratHoldings - totalStrategyHoldings
+			: 0;
 
 		// if we suffered losses, update totalStrategyHoldings BEFORE _processWithdraw
-		if (totalStrategyHoldings > tvl) totalStrategyHoldings = tvl;
+		if (totalStrategyHoldings > updatedStratHoldings)
+			totalStrategyHoldings = updatedStratHoldings;
 
 		// process withdrawals if we have enough balance
 		// withdrawFromStrategies should be called before this
@@ -100,7 +104,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		}
 
 		// since profit > 0 we have not updated totalStrategyHoldings yet
-		totalStrategyHoldings = tvl;
+		totalStrategyHoldings = updatedStratHoldings;
 		uint256 underlyingFees = (profit * performanceFee) / 1e18;
 		uint256 feeShares = convertToShares(underlyingFees);
 
@@ -130,22 +134,17 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 			DepositParams memory param = params[i];
 			ISCYStrategy strategy = param.strategy;
 			/// push funds to avoid approvals
-			asset.safeTransfer(strategy.strategy(), param.amountIn);
-			uint256 sharesOut = strategy.deposit(
-				address(this),
-				address(asset),
-				param.amountIn,
-				param.minSharesOut
-			);
+			ERC20(asset).safeTransfer(strategy.strategy(), param.amountIn);
+			strategy.deposit(address(this), address(asset), param.amountIn, param.minSharesOut);
 			totalStrategyHoldings += param.amountIn;
 		}
 	}
 
 	/// gets accurate strategy holdings denominated in asset
 	function _getStrategyHoldings() internal returns (uint256 tvl) {
-		uint256 lastIndex = strategyIndex.length - 1;
+		uint256 lastIndex = strategyIndex.length;
 		/// TODO compute realistic limit for strategy array lengh to stay within gas limit
-		for (uint256 i; i <= lastIndex; i++) {
+		for (uint256 i; i < lastIndex; i++) {
 			ISCYStrategy strategy = ISCYStrategy(payable(strategyIndex[i]));
 			tvl += strategy.getAndUpdateTvl();
 		}
@@ -158,7 +157,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 	) internal pure {
 		uint256 delta = expectedValue > actualValue
 			? expectedValue - actualValue
-			: actualValue - actualValue;
+			: actualValue - expectedValue;
 		if (delta > maxDelta) revert SlippageExceeded();
 	}
 
@@ -170,10 +169,40 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 			ISCYStrategy strategy = ISCYStrategy(payable(strategyIndex[i]));
 			tvl += strategy.getTvl();
 		}
+		tvl += asset.balanceOf(address(this));
 	}
 
 	function totalAssets() public view virtual override returns (uint256) {
 		return asset.balanceOf(address(this)) + totalStrategyHoldings;
+	}
+
+	/// INTERFACE UTILS
+
+	function balanceOfUnderlying(address user) public view returns (uint256) {
+		uint256 shares = balanceOf(user);
+		return sharesToUnderlying(shares);
+	}
+
+	/// @dev current exchange rate (different from previewDeposit rate)
+	/// this should be used for estiamtes of withdrawals
+	function sharesToUnderlying(uint256 shares) public view returns (uint256) {
+		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+		return supply == 0 ? shares : shares.mulDivDown(getTvl(), supply);
+	}
+
+	/// @dev current exchange rate (different from previewDeposit / previewWithdrawal rate)
+	/// this should be used estimate of deposit fee
+	function underlyingToShares(uint256 underlyingAmnt) public view returns (uint256) {
+		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+		return supply == 0 ? underlyingAmnt : underlyingAmnt.mulDivDown(supply, getTvl());
+	}
+
+	function underlyingDecimals() public view returns (uint8) {
+		return asset.decimals();
+	}
+
+	function underlying() public view returns (address) {
+		return address(asset);
 	}
 
 	/// OVERRIDES
