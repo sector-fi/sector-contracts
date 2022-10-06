@@ -76,9 +76,9 @@ abstract contract IMXUtils is Test {
 		address underlying,
 		address short,
 		uint256 fraction
-	) internal returns (uint256 cost) {
+	) internal {
 		uint256 adjustUnderlying;
-		(uint256 underlyingR, uint256 sR) = pair._getPairReserves(underlying, short);
+		(uint256 underlyingR, ) = pair._getPairReserves(underlying, short);
 		if (fraction < 1e18) {
 			adjustUnderlying = underlyingR - (underlyingR * fraction.sqrt()) / uint256(1e18).sqrt();
 			adjustUnderlying = (adjustUnderlying * 9990) / 10000;

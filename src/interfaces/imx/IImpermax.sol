@@ -98,6 +98,8 @@ interface ICollateral {
 	function getTwapPrice112x112() external view returns (uint224 twapPrice112x112);
 
 	function simpleUniswapOracle() external view returns (address);
+
+	function tarotPriceOracle() external view returns (address);
 }
 
 interface ImpermaxChef {

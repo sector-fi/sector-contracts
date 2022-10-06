@@ -61,7 +61,7 @@ contract SCYVaultTest is SectorTest {
 
 		uint256 sharesToWithdraw = vault.balanceOf(user1);
 		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
-		vault.redeem(user1, sharesToWithdraw, NATIVE, (minSharesOut * 9930) / 10000);
+		vault.redeem(user1, sharesToWithdraw, NATIVE, (minUnderlyingOut * 9930) / 10000);
 
 		assertEq(vault.underlyingBalance(user1), 0, "deposit balance 0");
 		assertEq(user1.balance, amnt, "eth balance");

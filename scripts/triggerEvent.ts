@@ -1,8 +1,13 @@
-import { ethers } from "hardhat";
-import vaultAddr from "../vaultAddress.json";
+import { ethers } from 'hardhat';
+import vaultAddr from '../vaultAddress.json';
 
-export async function triggerBridge(vaultAddress: string, fromChainId: number, toChainId: number, amount: number) {
-  const VAULT = await ethers.getContractFactory("SectorCrossVault");
+export async function triggerBridge(
+  vaultAddress: string,
+  fromChainId: number,
+  toChainId: number,
+  amount: number
+) {
+  const VAULT = await ethers.getContractFactory('SectorCrossVault');
   const vault = VAULT.attach(vaultAddress);
 
   // chainId, amount

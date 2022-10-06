@@ -22,4 +22,21 @@ contract IMX is IMXCore, IMXFarm {
 		// HedgedLP should allways be intialized last
 		__IMX_init_(config.vault, config.underlying, config.short, config.maxTvl);
 	}
+
+	function tarotBorrow(
+		address a,
+		address b,
+		uint256 c,
+		bytes calldata data
+	) external {
+		impermaxBorrow(a, b, c, data);
+	}
+
+	function tarotRedeem(
+		address a,
+		uint256 redeemAmount,
+		bytes calldata data
+	) external {
+		impermaxRedeem(a, redeemAmount, data);
+	}
 }

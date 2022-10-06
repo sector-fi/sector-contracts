@@ -29,8 +29,9 @@ const {
   GUARDIAN,
   TIMELOCK_ADMIN,
 
-  // key for prod deployment
-  DEPLOYER_KEY,
+  // keys
+  DEPLOYER_KEY, // key for prod deployment
+  GOERLI_KEY,
 
   // config
   SHOW_GAS,
@@ -43,9 +44,12 @@ const {
   MOONRIVER_API_KEY,
   MOONBEAM_API_KEY,
   INFURA_API_KEY,
-  GOERLI_KEY,
-  GOERLI_ALCHEMY,
+
   ETHERSCAN_API_KEY,
+
+  // rpc keys
+  GOERLI_ALCHEMY,
+  ALCHEMY_OP,
   FUJI_KEY,
 } = process.env;
 
@@ -169,6 +173,13 @@ export default {
           apiUrl: 'https://api-goerli.etherscan.io/',
         },
       },
+    },
+    optimism: {
+      url: `https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}`,
+      chainId: 10,
+      gasPrice: 0.001e9,
+      name: 'optimism',
+      tags: ['optimism'],
     },
     mainnet: {
       accounts: keys.length ? keys : undefined,

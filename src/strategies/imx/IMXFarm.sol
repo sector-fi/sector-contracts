@@ -8,7 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { CallType, CalleeData, AddLiquidityAndMintCalldata, BorrowBCalldata, RemoveLiqAndRepayCalldata } from "../../interfaces/Structs.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract IMXFarm is Initializable, IIMXFarmU {
 	using SafeERC20 for IERC20;
@@ -111,7 +111,7 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		address,
 		uint256,
 		bytes calldata data
-	) external {
+	) public {
 		// ensure that msg.sender is correct
 		require(
 			msg.sender == address(_sBorrowable) || msg.sender == address(_uBorrowable),
@@ -193,7 +193,7 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		address,
 		uint256 redeemAmount,
 		bytes calldata data
-	) external {
+	) public {
 		require(msg.sender == address(_collateralToken), "IMXFarm: NOT_COLLATERAL");
 
 		// (uint256 , uint256 shortfall) = _collateralToken.accountLiquidity(address(this));
@@ -259,9 +259,14 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 	}
 
 	function pendingHarvest() external view override returns (uint256 harvested) {
+		if (address(_impermaxChef) == address(0)) return 0;
 		harvested =
 			_impermaxChef.pendingReward(address(_sBorrowable), address(this)) +
 			_impermaxChef.pendingReward(address(_uBorrowable), address(this));
+	}
+
+	function harvestIsEnabled() public view returns (bool) {
+		return address(_impermaxChef) != address(0);
 	}
 
 	function _harvestFarm(HarvestSwapParms calldata harvestParams)
@@ -269,13 +274,17 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		override
 		returns (uint256 harvested)
 	{
+		// rewards are not enabled
+		if (address(_impermaxChef) == address(0)) return 0;
 		address[] memory borrowables = new address[](2);
 		borrowables[0] = address(_sBorrowable);
 		borrowables[1] = address(_uBorrowable);
 
+		console.log("chef", address(_impermaxChef));
 		_impermaxChef.massHarvest(borrowables, address(this));
 
 		harvested = _farmToken.balanceOf(address(this));
+		console.log("harvested", harvested);
 		if (harvested == 0) return harvested;
 
 		_swap(_farmRouter, harvestParams, address(_farmToken), harvested);

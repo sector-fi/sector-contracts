@@ -2,7 +2,7 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "lib": ["es6", "dom"],
-    "target": "es5",
+    "target": "es6",
     "jsx": "react-jsx",
     "allowJs": true,
     "strict": true,
@@ -15,6 +15,6 @@
     "baseUrl": ".",
     "noEmit": true
   },
-  "include": ["./scripts", "./deploy", "./test", "./utils"],
+  "include": ["./scripts", "./deploy", "./test", "./ts"],
   "files": ["./hardhat.config.ts"]
 }

@@ -19,8 +19,11 @@ contract IMXSetup is SectorTest, IMXUtils {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
+	// string TEST_STRATEGY = "USDCimxAVAX";
+	string TEST_STRATEGY = "USDC-OP-tarot-velo";
+
 	uint256 BASIS = 10000;
-	uint256 avaxFork;
+	uint256 currentFork;
 	uint256 minLp;
 
 	IMXVault vault;
@@ -46,13 +49,14 @@ contract IMXSetup is SectorTest, IMXUtils {
 		address e_farmToken;
 		address f_farmRouter;
 		string g_chain;
+		address[] h_harvestPath;
 	}
 
 	// TODO we can return a full array for a given chain
 	// and test all strats...
 	function getConfig(string memory symbol) public returns (IMXConfig memory _config) {
 		string memory root = vm.projectRoot();
-		string memory path = string.concat(root, "/config/strategies.json");
+		string memory path = string.concat(root, "/ts/config/strategies.json");
 		string memory json = vm.readFile(path);
 		// bytes memory names = json.parseRaw(".strats");
 		// string[] memory strats = abi.decode(names, (string[]));
@@ -70,15 +74,17 @@ contract IMXSetup is SectorTest, IMXUtils {
 		_config.manager = manager;
 		_config.guardian = guardian;
 
+		harvestParams.path = stratJson.h_harvestPath;
+
 		string memory RPC_URL = vm.envString(string.concat(stratJson.g_chain, "_RPC_URL"));
 		uint256 BLOCK = vm.envUint(string.concat(stratJson.g_chain, "_BLOCK"));
 
-		avaxFork = vm.createFork(RPC_URL, BLOCK);
-		vm.selectFork(avaxFork);
+		currentFork = vm.createFork(RPC_URL, BLOCK);
+		vm.selectFork(currentFork);
 	}
 
 	function setUp() public {
-		config = getConfig("USDCimxAVAX");
+		config = getConfig(TEST_STRATEGY);
 
 		// TODO use JSON
 		underlying = IERC20(config.underlying);
@@ -140,10 +146,24 @@ contract IMXSetup is SectorTest, IMXUtils {
 	}
 
 	function adjustPrice(uint256 fraction) public {
-		address oracle = ICollateral(config.poolToken).simpleUniswapOracle();
+		address oracle;
+		try ICollateral(config.poolToken).simpleUniswapOracle() returns (address _oracle) {
+			oracle = _oracle;
+		} catch {
+			oracle = ICollateral(config.poolToken).tarotPriceOracle();
+		}
 		address stakedToken = ICollateral(config.poolToken).underlying();
 		movePrice(config.uniPair, stakedToken, config.underlying, config.short, oracle, fraction);
 	}
+
+	// function getOracle() public returns (address oracle) {
+	// 	try ICollateral(config.poolToken).simpleUniswapOracle() returns (address _oracle) {
+	// 		oracle = _oracle;
+	// 	}
+	// 	catch {
+	// 		oracle = ICollateral(config.poolToken).tarotPriceOracle();
+	// 	}
+	// }
 
 	function moveUniPrice(uint256 fraction) public {
 		IUniswapV2Pair pair = IUniswapV2Pair(config.uniPair);
@@ -160,6 +180,7 @@ contract IMXSetup is SectorTest, IMXUtils {
 	// slippage in basis points
 	function getSlippageParams(uint256 slippage)
 		public
+		view
 		returns (uint256 expectedPrice, uint256 maxDelta)
 	{
 		expectedPrice = strategy.getExpectedPrice();
