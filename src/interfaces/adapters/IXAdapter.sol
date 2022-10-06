@@ -10,4 +10,10 @@ interface IXAdapter {
 		uint16 messageType,
         uint256 srcChainId
 	) external;
+
+	function readMessage(
+        address senderVautAddress,
+		uint256 senderChainId,
+		uint256 timestamp
+	) external returns (uint256);
 }
