@@ -1,5 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
+import { network } from 'hardhat';
 
 const func: DeployFunction = async function ({
     getNamedAccounts,
@@ -9,28 +10,32 @@ const func: DeployFunction = async function ({
     const { deployer, owner, guardian, manager, layerZeroEndpoint, multichainEndpoint } = await getNamedAccounts();
     const { deploy } = deployments;
 
-    // if there is no layerZeroEndpoint or MultichainEndpoint, throw an error
-    if (!layerZeroEndpoint || !multichainEndpoint) {
-        throw new Error('layerZeroEndpoint or MultichainEndpoint not set');
+    if (network.name === 'moonbean') {
+        if (!multichainEndpoint) {
+            throw new Error('multichainEndpoint not set');
+        }
+        const multichain = await deploy('MultichainAdapter', {
+            contract: 'MultichainAdapter',
+            from: deployer,
+            args: [multichainEndpoint, owner, guardian, manager],
+            skipIfAlreadyDeployed: false,
+            log: true,
+        })
+        console.log('multichain deployed to', multichain.address);
     }
-
-    const layerZero = await deploy('LayerZeroAdapter', {
-        contract: 'LayerZeroAdapter',
-        from: deployer,
-        args: [layerZeroEndpoint, owner, guardian, manager],
-        skipIfAlreadyDeployed: false,
-        log: true,
-    });
-    console.log('layerZero deployed to', layerZero.address);
-
-    const multichain = await deploy('MultichainAdapter', {
-        contract: 'MultichainAdapter',
-        from: deployer,
-        args: [multichainEndpoint, owner, guardian, manager],
-        skipIfAlreadyDeployed: false,
-        log: true,
-    })
-    console.log('multichain deployed to', multichain.address);
+    else {
+        if (!layerZeroEndpoint) {
+            throw new Error('layerZeroEndpoint not set');
+        }
+        const layerZero = await deploy('LayerZeroAdapter', {
+            contract: 'LayerZeroAdapter',
+            from: deployer,
+            args: [layerZeroEndpoint, owner, guardian, manager],
+            skipIfAlreadyDeployed: false,
+            log: true,
+        });
+        console.log('layerZero deployed to', layerZero.address);
+    }
 };
 
 export default func;

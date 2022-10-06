@@ -11,7 +11,7 @@ const func: DeployFunction = async function ({
 
   let USDC = usdc;
   if(!USDC) {
-    const usdcMock = await deployments.get('USDCMock');
+    const usdcMock = await deployments.get('USDC-0');
     USDC = usdcMock.address
   }
 
