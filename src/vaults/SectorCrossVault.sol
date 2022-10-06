@@ -100,10 +100,6 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		}
 	}
 
-	// function emergencyRedeem() public {
-
-	// }
-
 	function requestRedeemFromVaults(address[] calldata vaults, uint256[] calldata shares)
 		public
 		onlyRole(MANAGER)
