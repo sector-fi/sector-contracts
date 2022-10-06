@@ -18,11 +18,23 @@ interface ISCYStrategy {
 		uint256 minTokenOut
 	) external returns (uint256 amountTokenOut);
 
-	function underlying() external view returns (IERC20);
-
-	function strategy() external view returns (address);
-
 	function getAndUpdateTvl() external returns (uint256 tvl);
 
 	function getTvl() external view returns (uint256 tvl);
+
+	function MIN_LIQUIDITY() external view returns (uint256);
+
+	function underlying() external view returns (IERC20);
+
+	function sendERC20ToStrategy() external view returns (bool);
+
+	function strategy() external view returns (address);
+
+	function underlyingBalance(address) external view returns (uint256);
+
+	function underlyingToShares(uint256 amnt) external view returns (uint256);
+
+	function sharesToUnderlying(uint256 shares) external view returns (uint256);
+
+	function getUpdatedUnderlyingBalance(address) external returns (uint256);
 }

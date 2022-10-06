@@ -12,7 +12,7 @@ import "hardhat/console.sol";
 
 struct RedeemParams {
 	ISCYStrategy strategy;
-	uint256 amountSharesToRedeem;
+	uint256 shares;
 	uint256 minTokenOut;
 }
 
@@ -39,7 +39,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 
 	mapping(ISCYStrategy => bool) public strategyExists;
 	address[] strategyIndex;
-	uint256 totalStrategyHoldings;
+	uint256 public totalStrategyHoldings;
 
 	constructor(
 		ERC20 asset_,
@@ -113,30 +113,33 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 	}
 
 	/// this can be done in parts in case gas limit is reached
-	function withdrawFromStrategies(RedeemParams[] calldata params) public onlyRole(MANAGER) {
-		for (uint256 i; i <= params.length; i++) {
-			RedeemParams memory param = params[i];
+	function depositIntoStrategies(DepositParams[] calldata params) public onlyRole(MANAGER) {
+		for (uint256 i; i < params.length; i++) {
+			DepositParams memory param = params[i];
 			ISCYStrategy strategy = param.strategy;
-			// no need to push share tokens - contract can burn them
-			uint256 amountOut = strategy.redeem(
-				address(this),
-				param.amountSharesToRedeem,
-				address(asset), // token out is allways asset
-				param.minTokenOut
-			);
-			totalStrategyHoldings -= amountOut;
+			if (!strategyExists[strategy]) revert StrategyNotFound();
+			/// push funds to avoid approvals
+			asset.safeTransfer(strategy.strategy(), param.amountIn);
+			strategy.deposit(address(this), address(asset), 0, param.minSharesOut);
+			totalStrategyHoldings += param.amountIn;
 		}
 	}
 
 	/// this can be done in parts in case gas limit is reached
-	function despositIntoStrategies(DepositParams[] calldata params) public onlyRole(MANAGER) {
-		for (uint256 i; i <= params.length; i++) {
-			DepositParams memory param = params[i];
+	function withdrawFromStrategies(RedeemParams[] calldata params) public onlyRole(MANAGER) {
+		for (uint256 i; i < params.length; i++) {
+			RedeemParams memory param = params[i];
 			ISCYStrategy strategy = param.strategy;
-			/// push funds to avoid approvals
-			ERC20(asset).safeTransfer(strategy.strategy(), param.amountIn);
-			strategy.deposit(address(this), address(asset), param.amountIn, param.minSharesOut);
-			totalStrategyHoldings += param.amountIn;
+			if (!strategyExists[strategy]) revert StrategyNotFound();
+
+			// no need to push share tokens - contract can burn them
+			uint256 amountOut = strategy.redeem(
+				address(this),
+				param.shares,
+				address(asset), // token out is allways asset
+				param.minTokenOut
+			);
+			totalStrategyHoldings -= amountOut;
 		}
 	}
 
@@ -146,7 +149,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		/// TODO compute realistic limit for strategy array lengh to stay within gas limit
 		for (uint256 i; i < lastIndex; i++) {
 			ISCYStrategy strategy = ISCYStrategy(payable(strategyIndex[i]));
-			tvl += strategy.getAndUpdateTvl();
+			tvl += strategy.getUpdatedUnderlyingBalance(address(this));
 		}
 	}
 
@@ -167,7 +170,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		// there should be no untrusted strategies in this array
 		for (uint256 i; i < length; i++) {
 			ISCYStrategy strategy = ISCYStrategy(payable(strategyIndex[i]));
-			tvl += strategy.getTvl();
+			tvl += strategy.underlyingBalance(address(this));
 		}
 		tvl += asset.balanceOf(address(this));
 	}
@@ -178,7 +181,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 
 	/// INTERFACE UTILS
 
-	function balanceOfUnderlying(address user) public view returns (uint256) {
+	function underlyingBalance(address user) public view returns (uint256) {
 		uint256 shares = balanceOf(user);
 		return sharesToUnderlying(shares);
 	}
