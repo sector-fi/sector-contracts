@@ -1,11 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
 
-import { IXAdapter } from "../interfaces/adapters/IXAdapter.sol";
+// import { IXAdapter } from "../interfaces/adapters/IXAdapter.sol";
 import { CallProxy } from "../interfaces/adapters/IMultichainAdapter.sol";
 import { Auth } from "../common/Auth.sol";
+import { XAdapter } from "./XAdapter.sol";
 
-contract MultichainAdapter is IXAdapter, Auth {
+contract MultichainAdapter is XAdapter, Auth {
 	address public anyCall;
 	mapping(uint256 => address) public adapters;
 
@@ -31,7 +32,7 @@ contract MultichainAdapter is IXAdapter, Auth {
 		uint256 _dstChainId,
 		uint16 _messageType,
 		uint256 _srcChainId
-	) external onlyRole(MANAGER) {
+	) external override onlyRole(MANAGER) {
 		bytes memory payload = abi.encode(
 			_amount,
 			_srcVautAddress,

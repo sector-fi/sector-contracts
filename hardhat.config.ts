@@ -78,6 +78,9 @@ export default {
     manager2: {
       default: MANAGER2,
     },
+    usdc: {
+      goerli: "0x5FfbaC75EFc9547FBc822166feD19B05Cd5890bb",
+    }
   },
   networks: {
     hardhat: {
