@@ -26,14 +26,11 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 
 	HarvestSwapParms harvestParams;
 
-	address manager = address(1);
-	address guardian = address(2);
-	address treasury = address(3);
-	address owner = address(this);
 	Strategy strategyConfig;
 
 	IERC20 usdc = IERC20(0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664);
 	IERC20 avax = IERC20(0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7);
+	IERC20 underlying;
 
 	address strategy = 0x3b611a8E02908607c409b382D5671e8b3e39755d;
 	address strategyEth = 0xBE48d2910a8908d33A1fE11d4F156eEf87ED563c;
@@ -53,6 +50,8 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 		strategyConfig.treasury = treasury;
 		strategyConfig.performanceFee = .1e18;
 
+		underlying = IERC20(address(strategyConfig.underlying));
+
 		vault = new IMXLend(owner, guardian, manager, strategyConfig);
 		minLp = vault.MIN_LIQUIDITY();
 		usdc.approve(address(vault), type(uint256).max);
@@ -65,6 +64,17 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 	function testWithdraw() public {
 		deposit(1000e6);
 		withdrawCheck(.4e18);
+	}
+
+	function testManagerWithdraw() public {
+		uint256 amnt = 1000e6;
+		deposit(1000e6);
+		vault.closePosition(0);
+		uint256 floatBalance = vault.uBalance();
+		assertApproxEqAbs(floatBalance, amnt, 10);
+		assertEq(underlying.balanceOf(address(vault)), floatBalance);
+		vm.roll(block.number + 1);
+		vault.depositIntoStrategy(floatBalance, 0);
 	}
 
 	function deposit(uint256 amount) public {

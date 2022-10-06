@@ -22,6 +22,7 @@
  */
 
 pragma solidity 0.8.16;
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ISuperComposableYield {
 	/// @dev Emitted whenever the exchangeRate is updated
@@ -161,4 +162,16 @@ interface ISuperComposableYield {
 			address assetAddress,
 			uint8 assetDecimals
 		);
+
+	function MIN_LIQUIDITY() external view returns (uint256);
+
+	function underlying() external view returns (IERC20);
+
+	function sendERC20ToStrategy() external view returns (bool);
+
+	function strategy() external view returns (address);
+
+	function underlyingToShares(uint256 amnt) external view returns (uint256);
+
+	function sharesToUnderlying(uint256 shares) external view returns (uint256);
 }
