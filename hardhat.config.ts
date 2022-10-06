@@ -43,6 +43,10 @@ const {
   MOONRIVER_API_KEY,
   MOONBEAM_API_KEY,
   INFURA_API_KEY,
+  GOERLI_KEY,
+  GOERLI_ALCHEMY,
+  ETHERSCAN_API_KEY,
+  FUJI_KEY,
 } = process.env;
 
 const keys = [DEPLOYER_KEY].filter((k) => k != null);
@@ -90,7 +94,7 @@ export default {
       },
     },
     localhost: {
-      accounts: keys.length ? keys : undefined,
+      // accounts: keys.length ? keys : undefined,
       tags: [FORK_CHAIN],
     },
     fantom: {
@@ -146,6 +150,26 @@ export default {
         },
       },
     },
+    goerli: {
+      url: GOERLI_ALCHEMY,
+      accounts: [GOERLI_KEY],
+      verify: {
+        etherscan: {
+          apiKey: ETHERSCAN_API_KEY,
+          apiUrl: 'https://api-goerli.etherscan.io/',
+        },
+      },
+    },
+    fuji: {
+      url: 'https://api.avax-test.network/ext/bc/C/rpc',
+      accounts: [FUJI_KEY],
+      verify: {
+        etherscan: {
+          apiKey: ETHERSCAN_API_KEY,
+          apiUrl: 'https://api-goerli.etherscan.io/',
+        },
+      },
+    },
     mainnet: {
       accounts: keys.length ? keys : undefined,
       url: 'https://mainnet.infura.io/v3/' + INFURA_API_KEY,
@@ -189,6 +213,7 @@ export default {
   etherscan: {
     apiKey: {
       moonbeam: MOONBEAM_API_KEY,
+      goerli: ETHERSCAN_API_KEY,
     },
   },
   external: {

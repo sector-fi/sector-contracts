@@ -45,3 +45,6 @@ pids
 *.pid
 *.seed
 *.pid.lock
+
+# Our stuff
+vaultAddress.json

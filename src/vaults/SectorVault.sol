@@ -42,7 +42,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 	uint256 totalStrategyHoldings;
 
 	constructor(
-		ERC20 _asset,
+		ERC20 asset_,
 		string memory _name,
 		string memory _symbol,
 		address _owner,
@@ -50,13 +50,13 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		address _manager,
 		address _treasury,
 		uint256 _perforamanceFee
-	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
+	) ERC4626(asset_, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
 		if (strategyExists[strategy]) revert StrategyExists();
 
 		/// make sure underlying matches
-		if (address(strategy.underlying()) != address(asset)) revert WrongUnderlying();
+		if (address(strategy.underlying()) != address(_asset)) revert WrongUnderlying();
 
 		strategyExists[strategy] = true;
 		strategyIndex.push(address(strategy));
@@ -90,7 +90,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		// withdrawFromStrategies should be called before this
 		// note we are using the totalStrategyHoldings from previous harvest if there is a profit
 		// this prevents harvest front-running and adds a dynamic fee to withdrawals
-		if (pendingWithdrawal != 0 && pendingWithdrawal < ERC20(asset).balanceOf(address(this)))
+		if (pendingWithdrawal != 0 && pendingWithdrawal < ERC20(_asset).balanceOf(address(this)))
 			_processWithdraw(convertToShares(1e18));
 
 		// take vault fees
@@ -117,7 +117,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 			uint256 amountOut = strategy.redeem(
 				address(this),
 				param.amountSharesToRedeem,
-				address(asset), // token out is allways asset
+				address(_asset), // token out is allways asset
 				param.minTokenOut
 			);
 			totalStrategyHoldings -= amountOut;
@@ -130,10 +130,10 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 			DepositParams memory param = params[i];
 			ISCYStrategy strategy = param.strategy;
 			/// push funds to avoid approvals
-			ERC20(asset).safeTransfer(strategy.strategy(), param.amountIn);
+			ERC20(_asset).safeTransfer(strategy.strategy(), param.amountIn);
 			uint256 sharesOut = strategy.deposit(
 				address(this),
-				address(asset),
+				address(_asset),
 				param.amountIn,
 				param.minSharesOut
 			);
@@ -172,8 +172,8 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		}
 	}
 
-	function totalAssets() public view override returns (uint256) {
-		return asset.balanceOf(address(this)) + totalStrategyHoldings;
+	function totalAssets() public view virtual override returns (uint256) {
+		return _asset.balanceOf(address(this)) + totalStrategyHoldings;
 	}
 
 	/// OVERRIDES

@@ -53,7 +53,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 		_burn(address(this), withdrawRecord.amount);
 		pendingWithdrawal -= withdrawRecord.amount;
 		withdrawRecord.amount = 0;
-		ERC20(asset).transfer(receiver, amountOut);
+		ERC20(_asset).transfer(receiver, amountOut);
 	}
 
 	/// @notice enables withdrawal made prior to current timestamp
