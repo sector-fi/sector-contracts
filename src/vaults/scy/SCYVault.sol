@@ -10,7 +10,7 @@ import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	using SafeERC20 for IERC20;

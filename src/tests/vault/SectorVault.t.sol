@@ -6,7 +6,7 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorVault } from "../../vaults/SectorVault.sol";
+import { SectorVault, BatchedWithdraw } from "../../vaults/SectorVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 
 contract SectorVaultTest is SectorTest, SCYVaultSetup {
@@ -52,10 +52,27 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 	function testWithdraw() public {
 		uint256 amnt = 100e18;
 		sectDeposit(vault, user1, amnt);
-		sectInitWithdraw(vault, user1, 1e18 / 2);
+		uint256 shares = vault.balanceOf(user1);
+		sectInitRedeem(vault, user1, 1e18 / 2);
+
+		assertEq(vault.balanceOf(user1), shares / 2);
+
+		assertFalse(vault.redeemIsReady(user1), "redeem not ready");
+
+		vm.expectRevert(BatchedWithdraw.NotReady.selector);
+		vm.prank(user1);
+		vault.redeem();
+
 		sectHarvest(vault);
-		sectCompleteWithdraw(vault, user1);
+
+		assertTrue(vault.redeemIsReady(user1), "redeem ready");
+		sectCompleteRedeem(vault, user1);
 		assertEq(vault.balanceOfUnderlying(user1), 100e18 / 2);
+
+		// amount should reset
+		vm.expectRevert(BatchedWithdraw.ZeroAmount.selector);
+		vm.prank(user1);
+		vault.redeem();
 	}
 
 	function sectHarvest(SectorVault _vault) public {
@@ -79,7 +96,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vm.stopPrank();
 	}
 
-	function sectInitWithdraw(
+	function sectInitRedeem(
 		SectorVault _vault,
 		address acc,
 		uint256 fraction
@@ -90,7 +107,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vm.stopPrank();
 	}
 
-	function sectCompleteWithdraw(SectorVault _vault, address acc) public {
+	function sectCompleteRedeem(SectorVault _vault, address acc) public {
 		vm.startPrank(acc);
 		_vault.redeem();
 		vm.stopPrank();

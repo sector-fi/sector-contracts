@@ -63,7 +63,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 	function redeem(address receiver) public virtual returns (uint256 amountOut) {
 		WithdrawRecord storage withdrawRecord = withdrawLedger[msg.sender];
 		if (withdrawRecord.amount == 0) revert ZeroAmount();
-		if (withdrawRecord.timestamp < withdrawTimestamp) revert NotReady();
+		if (withdrawRecord.timestamp > withdrawTimestamp) revert NotReady();
 		amountOut = (withdrawRecord.amount * withdrawSharePrice) / 1e18;
 		uint256 burnShares = withdrawRecord.amount;
 		pendingWithdrawal -= withdrawRecord.amount;
@@ -81,9 +81,13 @@ abstract contract BatchedWithdraw is ERC4626 {
 	}
 
 	/// UTILS
-	function isReady(address user) external view returns (bool) {
+	function redeemIsReady(address user) external view returns (bool) {
 		WithdrawRecord storage withdrawRecord = withdrawLedger[user];
-		return withdrawRecord.timestamp <= withdrawRecord.timestamp;
+		return withdrawTimestamp >= withdrawRecord.timestamp;
+	}
+
+	function getWithdrawStatus(address user) external view returns (WithdrawRecord memory) {
+		return withdrawLedger[user];
 	}
 
 	error NotImplemented();
