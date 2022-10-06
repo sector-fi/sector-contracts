@@ -17,10 +17,10 @@ contract MultichainAdapter is XAdapter, Auth {
 	}
 
 	constructor(
+		address _anyCall,
 		address _owner,
 		address _guardian,
-		address _manager,
-		address _anyCall
+		address _manager
 	) Auth(_owner, _guardian, _manager) {
 		anyCall = _anyCall;
 	}

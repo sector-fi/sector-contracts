@@ -31,7 +31,6 @@ const {
 
   // keys
   DEPLOYER_KEY, // key for prod deployment
-  GOERLI_KEY,
 
   // config
   SHOW_GAS,
@@ -50,7 +49,6 @@ const {
   // rpc keys
   GOERLI_ALCHEMY,
   ALCHEMY_OP,
-  FUJI_KEY,
 } = process.env;
 
 const keys = [DEPLOYER_KEY].filter((k) => k != null);
@@ -79,8 +77,16 @@ export default {
       default: MANAGER2,
     },
     usdc: {
-      goerli: "0x5FfbaC75EFc9547FBc822166feD19B05Cd5890bb",
+    },
+    layerZeroEndpoint: {
+      goerli: "0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23",
+      fuji: "0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706"
+    },
+    multichainEndpoint: {
+      goerli: "",
+      fuji: ""
     }
+
   },
   networks: {
     hardhat: {
