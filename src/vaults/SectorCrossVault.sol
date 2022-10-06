@@ -168,8 +168,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 			if (tmpVault.adapter == address(0)) {
 				depositValue +=
 					BatchedWithdraw(vaults[i]).balanceOf(address(this)) *
-					BatchedWithdraw(vaults[i]).getValueOfShares();
-				// Check function name
+					BatchedWithdraw(vaults[i]).withdrawSharePrice();
 			} else {
 				IXAdapter(tmpVault.adapter).sendMessage(
 					0,
@@ -217,7 +216,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 			}
 		}
 
-		sharesToUnderlying = (hLedger.depositValue + xValue) / totalSupply();
+		withdrawSharePrice = (hLedger.depositValue + xValue) / totalSupply();
 
 		harvestLedger.openIndex = i;
 		harvestLedger.depositValue = 0;
