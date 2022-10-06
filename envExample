@@ -1,5 +1,7 @@
 ETHERSCAN_API_KEY=
 
+DEPLOYER_KEY =
+
 OWNER = 0x0
 DEPLOYER = 0x1
 GUARDIAN = 0x2
@@ -10,15 +12,14 @@ MANAGER2 = 0x4
 SHOW_GAS = false
 
 # this is used when we want to access and interact with
-# chain to fork
-FORK_CHAIN = mainnet
+# previously deployed contracts
+FORK_CHAIN = avalanche
 
 # RPC keys
 ALCHEMY_OP =
-INFURA_API_KEY = 
 
 # fork params for forge tests
 AVAX_RPC_URL = 'https://api.avax.network/ext/bc/C/rpc'
 AVAX_BLOCK = 19910210
-OP_RPC_URL = https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}
+OP_RPC_RUL = https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}
 OP_BLOCK = 27015671 # ETH Index, not OP block #
