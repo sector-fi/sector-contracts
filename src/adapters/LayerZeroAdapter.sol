@@ -40,9 +40,9 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		address _srcVautAddress,
 		uint256 _dstChainId,
 		uint16 _messageType,
-        uint256 _srcChainId
+		uint256 _srcChainId
 	) external override onlyRole(MANAGER) {
-        _srcChainId;
+		_srcChainId;
 		if (address(this).balance == 0) revert NoBalance();
 
 		bytes memory payload = abi.encode(_amount, _srcVautAddress, _dstVautAddress, _messageType);

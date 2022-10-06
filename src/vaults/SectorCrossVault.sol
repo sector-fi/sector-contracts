@@ -20,9 +20,9 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	}
 
 	struct Vault {
-		uint16  chainId;
+		uint16 chainId;
 		address adapter;
-		bool 	allowed;
+		bool allowed;
 	}
 
 	struct Request {
@@ -32,11 +32,16 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	}
 
 	struct HarvestLedger {
-		uint256   depositValue;
-		bool 	  isOpen;
-		uint256   openIndex;
+		uint256 depositValue;
+		bool isOpen;
+		uint256 openIndex;
 		Request[] request;
 	}
+
+	// emergencyWithdraw
+	// Keep track of depositedVaults
+	// Loop through them and transfer shares to user
+	// Do that xcross chain as well
 
 	// Controls deposits
 	mapping(address => Vault) public depositedVaults;
@@ -53,12 +58,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		address _manager,
 		address _treasury,
 		uint256 _perforamanceFee
-	) ERC4626(
-		_asset, _name,
-		_symbol, _owner,
-		_guardian, _manager,
-		_treasury, _perforamanceFee
-	) {
+	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {
 		// Not sure if needed
 		harvestLedger.openIndex = 0;
 		harvestLedger.isOpen = false;
@@ -69,129 +69,135 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 					Cross Vault Interface
 	/////////////////////////////////////////////////////*/
 
-	function depositIntoVaults(
-		address[] calldata vaults,
-		uint256[] calldata amounts
-	) public onlyRole(MANAGER) checkInputSize(vaults.length, amounts.length) {
-		for (uint i = 0; i < vaults.length;) {
+	function depositIntoVaults(address[] calldata vaults, uint256[] calldata amounts)
+		public
+		onlyRole(MANAGER)
+		checkInputSize(vaults.length, amounts.length)
+	{
+		for (uint256 i = 0; i < vaults.length; ) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (!tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
 
 			if (tmpVault.adapter == address(0)) {
-				BatchedWithdraw(vaults[i])
-					.deposit(amounts[i], address(this));
+				BatchedWithdraw(vaults[i]).deposit(amounts[i], address(this));
 			} else {
-				IXAdapter(tmpVault.adapter)
-					.sendMessage(
-						amounts[i],
-						vaults[i],
-						address(this),
-						tmpVault.chainId,
-						uint16(msgType.DEPOSIT),
-						uint16(block.chainid)
-					);
+				IXAdapter(tmpVault.adapter).sendMessage(
+					amounts[i],
+					vaults[i],
+					address(this),
+					tmpVault.chainId,
+					uint16(msgType.DEPOSIT),
+					uint16(block.chainid)
+				);
 
 				emit BridgeAsset(uint16(block.chainid), tmpVault.chainId, amounts[i]);
 			}
 
-			unchecked { i++; }
+			unchecked {
+				i++;
+			}
 		}
 	}
 
-	function requestRedeemFromVaults(
-		address[] calldata vaults,
-		uint256[] calldata shares
-	) public onlyRole(MANAGER) checkInputSize(vaults.length, shares.length) {
-		for (uint i = 0; i < vaults.length;) {
+	// function emergencyRedeem() public {
+
+	// }
+
+	function requestRedeemFromVaults(address[] calldata vaults, uint256[] calldata shares)
+		public
+		onlyRole(MANAGER)
+		checkInputSize(vaults.length, shares.length)
+	{
+		for (uint256 i = 0; i < vaults.length; ) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (!tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
 
 			if (tmpVault.adapter == address(0)) {
-				BatchedWithdraw(vaults[i])
-					.requestRedeem(shares[i]);
+				BatchedWithdraw(vaults[i]).requestRedeem(shares[i]);
 			} else {
-				IXAdapter(tmpVault.adapter)
-					.sendMessage(
-						shares[i],
-						vaults[i],
-						address(this),
-						tmpVault.chainId,
-						uint16(msgType.REQUESTREDEEM),
-						uint16(block.chainid)
-					);
+				IXAdapter(tmpVault.adapter).sendMessage(
+					shares[i],
+					vaults[i],
+					address(this),
+					tmpVault.chainId,
+					uint16(msgType.REQUESTREDEEM),
+					uint16(block.chainid)
+				);
 			}
 
-			unchecked { i++; }
+			unchecked {
+				i++;
+			}
 		}
 	}
 
-	function redeemFromVaults(
-		address[] calldata vaults,
-		uint256[] calldata shares
-	) public onlyRole(MANAGER) checkInputSize(vaults.length, shares.length) {
-		for (uint i = 0; i < vaults.length;) {
+	function redeemFromVaults(address[] calldata vaults, uint256[] calldata shares)
+		public
+		onlyRole(MANAGER)
+		checkInputSize(vaults.length, shares.length)
+	{
+		for (uint256 i = 0; i < vaults.length; ) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
 
 			if (tmpVault.adapter == address(0)) {
-				BatchedWithdraw(vaults[i])
-					.redeem(
-						shares[i],
-						address(this),
-						address(this)
-					);
+				BatchedWithdraw(vaults[i]).redeem(shares[i], address(this), address(this));
 			} else {
-				IXAdapter(tmpVault.adapter)
-					.sendMessage(
-						shares[i],
-						vaults[i],
-						address(this),
-						tmpVault.chainId,
-						uint16(msgType.REDEEM),
-						uint16(block.chainid)
-					);
+				IXAdapter(tmpVault.adapter).sendMessage(
+					shares[i],
+					vaults[i],
+					address(this),
+					tmpVault.chainId,
+					uint16(msgType.REDEEM),
+					uint16(block.chainid)
+				);
 			}
 			// Not sure if it should request manager intervention after redeem when in different chains
 
-			unchecked { i++; }
+			unchecked {
+				i++;
+			}
 		}
 	}
 
-	function harvestVaults(
-		address[] calldata vaults
-	) public onlyRole(MANAGER) {
+	function harvestVaults(address[] calldata vaults) public onlyRole(MANAGER) {
 		uint256 depositValue = 0;
 
-		for (uint i = 0; i < vaults.length;) {
+		for (uint256 i = 0; i < vaults.length; ) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (tmpVault.adapter == address(0)) {
-				depositValue += BatchedWithdraw(vaults[i]).balanceOf(address(this))
-								* BatchedWithdraw(vaults[i]).sharesToUnderlying();
+				depositValue +=
+					BatchedWithdraw(vaults[i]).balanceOf(address(this)) *
+					BatchedWithdraw(vaults[i]).getValueOfShares();
+				// Check function name
 			} else {
-				IXAdapter(
-					tmpVault.adapter
-					).sendMessage(
-						0, vaults[i],
-						address(this),
-						tmpVault.chainId,
-						uint16(msgType.REQUESTVALUEOFSHARES),
-						uint16(block.chainid)
-					);
-
-				harvestLedger.request.push(
-					Request(block.timestamp, tmpVault.chainId, vaults[i])
+				IXAdapter(tmpVault.adapter).sendMessage(
+					0,
+					vaults[i],
+					address(this),
+					tmpVault.chainId,
+					uint16(msgType.REQUESTVALUEOFSHARES),
+					uint16(block.chainid)
 				);
+
+				harvestLedger.request.push(Request(block.timestamp, tmpVault.chainId, vaults[i]));
 			}
-			unchecked { i++; }
+			unchecked {
+				i++;
+			}
 		}
+
 		harvestLedger.depositValue = depositValue;
 		harvestLedger.isOpen = true;
 	}
 
+	// Add lock to deposits and withdraws
+
+	// Has to pass slippage params here and revert in case of not fitting what is expected.
 	function finalizeHarvest() public onlyRole(MANAGER) {
 		HarvestLedger memory hLedger = harvestLedger;
 		uint256 xValue = 0;
@@ -203,15 +209,16 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 			Vault memory tmpVault = depositedVaults[hLedger.request[i].vault];
 
 			// If timestamp > message.timestamp transaction will revert
-			uint256 value = IXAdapter(tmpVault.adapter)
-								.readMessage(
-									hLedger.request[i].vault,
-									tmpVault.chainId,
-									hLedger.request[i].timestamp
-								);
+			uint256 value = IXAdapter(tmpVault.adapter).readMessage(
+				hLedger.request[i].vault,
+				tmpVault.chainId,
+				hLedger.request[i].timestamp
+			);
 			xValue += value;
 
-			unchecked { i++; }
+			unchecked {
+				i++;
+			}
 		}
 
 		sharesToUnderlying = (hLedger.depositValue + xValue) / totalSupply();
@@ -238,28 +245,20 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	) external onlyOwner {
 		Vault memory tmpVault = depositedVaults[vault];
 
-		if (tmpVault.chainId != 0
-			|| tmpVault.adapter != address(0)
-			|| tmpVault.allowed != false
-		) revert VaultAlreadyAdded();
+		if (tmpVault.chainId != 0 || tmpVault.adapter != address(0) || tmpVault.allowed != false)
+			revert VaultAlreadyAdded();
 
 		depositedVaults[vault] = Vault(chainId, adapter, allowed);
 		emit AddVault(vault, chainId, adapter);
 	}
 
-	function updateVaultAdapter(
-		address vault,
-		address adapter
-	) external onlyOwner {
+	function updateVaultAdapter(address vault, address adapter) external onlyOwner {
 		depositedVaults[vault].adapter = adapter;
 
 		emit UpdateVaultAdapter(vault, adapter);
 	}
 
-	function changeVaultStatus(
-		address vault,
-		bool allowed
-	) external onlyOwner {
+	function changeVaultStatus(address vault, bool allowed) external onlyOwner {
 		depositedVaults[vault].allowed = allowed;
 
 		emit ChangeVaultStatus(vault, allowed);

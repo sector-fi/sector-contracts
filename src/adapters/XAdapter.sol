@@ -11,15 +11,15 @@ abstract contract XAdapter {
 
 	function sendMessage(
 		uint256 amount,
-        address dstVautAddress,
+		address dstVautAddress,
 		address srcVaultAddress,
 		uint256 destChainId,
 		uint16 messageType,
-        uint256 srcChainId
+		uint256 srcChainId
 	) external virtual;
 
 	function readMessage(
-        address senderVaultAddress,
+		address senderVaultAddress,
 		uint16 senderChainId,
 		uint256 timestamp
 	) external view returns (uint256) {

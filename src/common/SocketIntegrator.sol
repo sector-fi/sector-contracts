@@ -37,9 +37,11 @@ abstract contract SocketIntegrator is Auth {
 	/// @dev Currently not in use due to undertainity in bungee api response
 	/// @param _data Bungee txn calldata
 	/// @return userRequest parsed calldata
-	function decodeSocketRegistryCalldata(
-		bytes memory _data
-	) internal pure returns (UserRequest memory userRequest) {
+	function decodeSocketRegistryCalldata(bytes memory _data)
+		internal
+		pure
+		returns (UserRequest memory userRequest)
+	{
 		bytes memory callDataWithoutSelector = slice(_data, 4, _data.length - 4);
 		(userRequest) = abi.decode(callDataWithoutSelector, (UserRequest));
 	}
