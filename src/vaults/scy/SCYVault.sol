@@ -229,6 +229,14 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		return tvl.mulDivUp(ONE, _totalSupply);
 	}
 
+	function getUpdatedUnderlyingBalance(address user) external returns (uint256) {
+		uint256 userBalance = balanceOf(user);
+		uint256 _totalSupply = totalSupply();
+		if (_totalSupply == 0 || userBalance == 0) return 0;
+		uint256 tvl = underlying.balanceOf(address(this)) + _stratGetAndUpdateTvl();
+		return (tvl * userBalance) / _totalSupply;
+	}
+
 	function underlyingBalance(address user) external view returns (uint256) {
 		uint256 userBalance = balanceOf(user);
 		uint256 _totalSupply = totalSupply();
