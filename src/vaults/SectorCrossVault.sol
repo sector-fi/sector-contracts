@@ -34,8 +34,8 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	struct HarvestLedger {
 		uint256   depositValue;
 		bool 	  isOpen;
-		Request[] request;
 		uint256   openIndex;
+		Request[] request;
 	}
 
 	// Controls deposits
@@ -53,7 +53,17 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		address _manager,
 		address _treasury,
 		uint256 _perforamanceFee
-	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
+	) ERC4626(
+		_asset, _name,
+		_symbol, _owner,
+		_guardian, _manager,
+		_treasury, _perforamanceFee
+	) {
+		// Not sure if needed
+		harvestLedger.openIndex = 0;
+		harvestLedger.isOpen = false;
+		harvestLedger.depositValue = 0;
+	}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
