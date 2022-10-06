@@ -19,9 +19,9 @@ contract SectorCrossVault is BatchedWithdraw {
 	}
 
 	struct Vault {
-		uint16  chainId;
+		uint16 chainId;
 		address adapter;
-		bool 	allowed;
+		bool allowed;
 	}
 
 	struct Request {
@@ -31,12 +31,11 @@ contract SectorCrossVault is BatchedWithdraw {
 	}
 
 	struct HarvestLedger {
-		uint256   depositValue;
-		bool 	  isOpen;
+		uint256 depositValue;
+		bool isOpen;
 		Request[] request;
-		uint256   openIndex;
+		uint256 openIndex;
 	}
-
 
 	// Controls deposits
 	mapping(address => Vault) public depositedVaults;
@@ -60,11 +59,12 @@ contract SectorCrossVault is BatchedWithdraw {
 
 	/* CROSS VAULT */
 
-	function depositIntoVaults(
-		address[] calldata vaults,
-		uint256[] calldata amounts
-	) public onlyRole(MANAGER) checkInputSize([vaults.length, amounts.length]) {
-		for (uint i = 0; i < vaults.length;) {
+	function depositIntoVaults(address[] calldata vaults, uint256[] calldata amounts)
+		public
+		onlyRole(MANAGER)
+		checkInputSize([vaults.length, amounts.length])
+	{
+		for (uint256 i = 0; i < vaults.length; ) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (!tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
@@ -72,74 +72,105 @@ contract SectorCrossVault is BatchedWithdraw {
 			if (tmpVault.adapter == address(0)) {
 				BatchedWithdraw(vaults[i]).deposit(amounts[i], address(this));
 			} else {
-				IXAdapter(tmpVault.adapter)
-					.sendMessage(amounts[i], vaults[i], address(this), tmpVault.chainId, uint16(msgType.DEPOSIT), uint16(block.chainid));
+				IXAdapter(tmpVault.adapter).sendMessage(
+					amounts[i],
+					vaults[i],
+					address(this),
+					tmpVault.chainId,
+					uint16(msgType.DEPOSIT),
+					uint16(block.chainid)
+				);
 
 				emit BridgeAsset(uint16(block.chainid), tmpVault.chainId, amounts[i]);
 			}
 
-			unchecked { i++; }
+			unchecked {
+				i++;
+			}
 		}
 	}
 
-	function requestRedeemFromVaults(
-		address[] calldata vaults,
-		uint256[] calldata shares
-	) public onlyRole(MANAGER) checkInputSize([vaults.length, shares.length]) {
-		for (uint i = 0; i < vaults.length;) {
+	function requestRedeemFromVaults(address[] calldata vaults, uint256[] calldata shares)
+		public
+		onlyRole(MANAGER)
+		checkInputSize([vaults.length, shares.length])
+	{
+		for (uint256 i = 0; i < vaults.length; ) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (!tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
 
-			if (tmpVault.adapter == address(0))
-				BatchedWithdraw(vaults[i])
-					.requestRedeem(shares[i]);
+			if (tmpVault.adapter == address(0)) BatchedWithdraw(vaults[i]).requestRedeem(shares[i]);
 			else
-				IXAdapter(tmpVault.adapter)
-					.sendMessage(shares[i], vaults[i], address(this), tmpVault.chainId, uint16(msgType.REQUESTREDEEM), uint16(block.chainid));
+				IXAdapter(tmpVault.adapter).sendMessage(
+					shares[i],
+					vaults[i],
+					address(this),
+					tmpVault.chainId,
+					uint16(msgType.REQUESTREDEEM),
+					uint16(block.chainid)
+				);
 
-			unchecked { i++; }
+			unchecked {
+				i++;
+			}
 		}
 	}
 
-	function redeemFromVaults(
-		address[] calldata vaults,
-		uint256[] calldata shares
-	) public onlyRole(MANAGER) checkInputSize([vaults.length, shares.length]) {
-		for (uint i = 0; i < vaults.length;) {
+	function redeemFromVaults(address[] calldata vaults, uint256[] calldata shares)
+		public
+		onlyRole(MANAGER)
+		checkInputSize([vaults.length, shares.length])
+	{
+		for (uint256 i = 0; i < vaults.length; ) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
 
 			if (tmpVault.adapter == address(0))
-				BatchedWithdraw(vaults[i])
-					.redeem(shares[i], address(this), address(this));
+				BatchedWithdraw(vaults[i]).redeem(shares[i], address(this), address(this));
 			else
-				IXAdapter(tmpVault.adapter)
-					.sendMessage(shares[i], vaults[i], address(this), tmpVault.chainId, uint16(msgType.REDEEM), uint16(block.chainid));
+				IXAdapter(tmpVault.adapter).sendMessage(
+					shares[i],
+					vaults[i],
+					address(this),
+					tmpVault.chainId,
+					uint16(msgType.REDEEM),
+					uint16(block.chainid)
+				);
 			// Not sure if it should request manager intervention after redeem when in different chains
 
-			unchecked { i++; }
+			unchecked {
+				i++;
+			}
 		}
 	}
 
-	function harvestVaults(
-		address[] calldata vaults
-	) public onlyRole(MANAGER) {
+	function harvestVaults(address[] calldata vaults) public onlyRole(MANAGER) {
 		uint256 depositValue = 0;
 
-		for (uint i = 0; i < vaults.length;) {
+		for (uint256 i = 0; i < vaults.length; ) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
 			if (tmpVault.adapter == address(0)) {
-				depositValue += BatchedWithdraw(vaults[i]).balanceOf(address(this)) * BatchedWithdraw(vaults[i]).sharesToUnderlying();
+				depositValue +=
+					BatchedWithdraw(vaults[i]).balanceOf(address(this)) *
+					BatchedWithdraw(vaults[i]).sharesToUnderlying();
 			} else {
-				IXAdapter(tmpVault.adapter)
-					.sendMessage(0, vaults[i], address(this), tmpVault.chainId, uint16(msgType.REQUESTVALUEOFSHARES), uint16(block.chainid));
+				IXAdapter(tmpVault.adapter).sendMessage(
+					0,
+					vaults[i],
+					address(this),
+					tmpVault.chainId,
+					uint16(msgType.REQUESTVALUEOFSHARES),
+					uint16(block.chainid)
+				);
 
 				harvestLedger.request.push(Request(block.timestamp, tmpVault.chainId, vaults[i]));
 			}
-			unchecked { i++; }
+			unchecked {
+				i++;
+			}
 		}
 		harvestLedger.depositValue = depositValue;
 		harvestLedger.isOpen = true;
@@ -155,11 +186,12 @@ contract SectorCrossVault is BatchedWithdraw {
 		while (i < hLedger.request.length) {
 			Vault memory tmpVault = depositedVaults[hLedger.request[i].vault];
 
-
 			// If timestamp > message.timestap transaction will revert
-			xValue += IXAdapter(tmpVault.adapter)
-						.checkMessage(tmpVault.chainId, hLedger.request[i].vault, hLedger.request[i].timestamp, msgType.REQUESTVALUEOFSHARES);
-			unchecked { i++; }
+			// xValue += IXAdapter(tmpVault.adapter)
+			// .checkMessage(tmpVault.chainId, hLedger.request[i].vault, hLedger.request[i].timestamp, msgType.REQUESTVALUEOFSHARES);
+			unchecked {
+				i++;
+			}
 		}
 
 		sharesToUnderlying = (hLedger.depositValue + xValue) / totalSupply();
@@ -175,7 +207,9 @@ contract SectorCrossVault is BatchedWithdraw {
 				revert InputSizeNotAppropriate();
 			}
 
-			unchecked { i++; }
+			unchecked {
+				i++;
+			}
 		}
 		_;
 	}

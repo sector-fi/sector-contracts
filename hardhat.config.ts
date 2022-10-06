@@ -156,7 +156,7 @@ export default {
     },
     goerli: {
       url: GOERLI_ALCHEMY,
-      accounts: [GOERLI_KEY],
+      accounts: keys.length ? keys : undefined,
       verify: {
         etherscan: {
           apiKey: ETHERSCAN_API_KEY,
@@ -166,7 +166,7 @@ export default {
     },
     fuji: {
       url: 'https://api.avax-test.network/ext/bc/C/rpc',
-      accounts: [FUJI_KEY],
+      accounts: keys.length ? keys : undefined,
       verify: {
         etherscan: {
           apiKey: ETHERSCAN_API_KEY,

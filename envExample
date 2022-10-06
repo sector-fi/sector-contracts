@@ -10,11 +10,12 @@ MANAGER2 = 0x4
 SHOW_GAS = false
 
 # this is used when we want to access and interact with
-# previously deployed contracts
-FORK_CHAIN = avalanche
+# chain to fork
+FORK_CHAIN = mainnet
 
 # RPC keys
 ALCHEMY_OP =
+INFURA_API_KEY = 
 
 # fork params for forge tests
 AVAX_RPC_URL = 'https://api.avax.network/ext/bc/C/rpc'
