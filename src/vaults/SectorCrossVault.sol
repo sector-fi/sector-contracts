@@ -72,7 +72,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	function depositIntoVaults(
 		address[] calldata vaults,
 		uint256[] calldata amounts
-	) public onlyRole(MANAGER) checkInputSize([vaults.length, amounts.length]) {
+	) public onlyRole(MANAGER) checkInputSize(vaults.length, amounts.length) {
 		for (uint i = 0; i < vaults.length;) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
@@ -102,7 +102,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	function requestRedeemFromVaults(
 		address[] calldata vaults,
 		uint256[] calldata shares
-	) public onlyRole(MANAGER) checkInputSize([vaults.length, shares.length]) {
+	) public onlyRole(MANAGER) checkInputSize(vaults.length, shares.length) {
 		for (uint i = 0; i < vaults.length;) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
@@ -130,7 +130,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	function redeemFromVaults(
 		address[] calldata vaults,
 		uint256[] calldata shares
-	) public onlyRole(MANAGER) checkInputSize([vaults.length, shares.length]) {
+	) public onlyRole(MANAGER) checkInputSize(vaults.length, shares.length) {
 		for (uint i = 0; i < vaults.length;) {
 			Vault memory tmpVault = depositedVaults[vaults[i]];
 
@@ -221,8 +221,8 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		harvestLedger.isOpen = false;
 	}
 
-	modifier checkInputSize(uint256[2] memory inputSizes) {
-		if (inputSizes[0] != inputSizes[1]) revert InputSizeNotAppropriate();
+	modifier checkInputSize(uint256 size0, uint256 size1) {
+		if (size0 != size1) revert InputSizeNotAppropriate();
 		_;
 	}
 
