@@ -4,10 +4,10 @@ pragma solidity 0.8.16;
 import { ILayerZeroReceiver } from "../interfaces/adapters/ILayerZeroReceiver.sol";
 import { ILayerZeroEndpoint } from "../interfaces/adapters/ILayerZeroEndpoint.sol";
 import { ILayerZeroUserApplicationConfig } from "../interfaces/adapters/ILayerZeroUserApplicationConfig.sol";
-import { IXAdapter } from "../interfaces/adapters/IXAdapter.sol";
+import { XAdapter } from "./XAdapter.sol";
 import { Auth } from "../common/Auth.sol";
 
-contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, IXAdapter, Auth {
+contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, XAdapter, Auth {
 	ILayerZeroEndpoint public endpoint;
 
 	struct lzConfig {
@@ -41,7 +41,7 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		uint256 _dstChainId,
 		uint16 _messageType,
         uint256 _srcChainId
-	) external onlyRole(MANAGER) {
+	) external override onlyRole(MANAGER) {
         _srcChainId;
 		if (address(this).balance == 0) revert NoBalance();
 

@@ -27,10 +27,10 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
                                IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
-	ERC20 public immutable _asset;
+	ERC20 immutable asset;
 
 	constructor(
-		ERC20 asset_,
+		ERC20 _asset,
 		string memory _name,
 		string memory _symbol,
 		address _owner,
@@ -39,19 +39,15 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 		address _treasury,
 		uint256 _performanceFee
 	) ERC20(_name, _symbol) Auth(_owner, _guardian, _manager) Fees(_treasury, _performanceFee) {
-		_asset = asset_;
+		asset = _asset;
 	}
 
 	function decimals() public view override returns (uint8) {
-		return _asset.decimals();
-	}
-
-	function asset() external view virtual returns (address) {
-		return address(_asset);
+		return asset.decimals();
 	}
 
 	function totalAssets() public view virtual override returns (uint256) {
-		return _asset.balanceOf(address(this));
+		return asset.balanceOf(address(this));
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -61,11 +57,11 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 	function deposit(uint256 assets, address receiver) public virtual returns (uint256 shares) {
 		// This check is no longer necessary because we use MIN_LIQUIDITY
 		// Check for rounding error since we round down in previewDeposit.
-		// require((shares = previewDeposit(_assets)) != 0, "ZERO_SHARES");
+		// require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 		shares = previewDeposit(assets);
 
 		// Need to transfer before minting or ERC777s could reenter.
-		_asset.safeTransferFrom(msg.sender, address(this), assets);
+		asset.safeTransferFrom(msg.sender, address(this), assets);
 
 		// lock minimum liquidity if totalSupply is 0
 		if (totalSupply() == 0) {
@@ -85,7 +81,7 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 		assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.
 
 		// Need to transfer before minting or ERC777s could reenter.
-		_asset.safeTransferFrom(msg.sender, address(this), assets);
+		asset.safeTransferFrom(msg.sender, address(this), assets);
 
 		_mint(receiver, shares);
 
@@ -110,7 +106,7 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 
 		emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-		_asset.safeTransfer(receiver, assets);
+		asset.safeTransfer(receiver, assets);
 	}
 
 	function redeem(
@@ -123,7 +119,7 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 
 		// This check is no longer necessary because we use MIN_LIQUIDITY
 		// Check for rounding error since we round down in previewRedeem.
-		// require((_assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+		// require((assets = previewRedeem(shares)) != 0, "ZEROassetS");
 		assets = previewRedeem(shares);
 
 		beforeWithdraw(assets, shares);
@@ -132,7 +128,7 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 
 		emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
-		_asset.safeTransfer(receiver, assets);
+		asset.safeTransfer(receiver, assets);
 	}
 
 	/*//////////////////////////////////////////////////////////////
