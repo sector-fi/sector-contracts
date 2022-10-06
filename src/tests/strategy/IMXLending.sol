@@ -26,10 +26,6 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 
 	HarvestSwapParms harvestParams;
 
-	address manager = address(1);
-	address guardian = address(2);
-	address treasury = address(3);
-	address owner = address(this);
 	Strategy strategyConfig;
 
 	IERC20 usdc = IERC20(0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664);

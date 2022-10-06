@@ -7,11 +7,10 @@ import { MockERC20 } from "./MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "./../../libraries/SafeETH.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { SectorTest } from "../utils/SectorTest.sol";
 
 import "hardhat/console.sol";
 
-contract MockScyVault is SCYStrategy, SCYVault, SectorTest {
+contract MockScyVault is SCYStrategy, SCYVault {
 	using SafeERC20 for IERC20;
 
 	uint256 underlyingBalance;

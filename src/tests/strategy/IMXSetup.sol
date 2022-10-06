@@ -31,11 +31,6 @@ contract IMXSetup is SectorTest, IMXUtils {
 
 	HarvestSwapParms harvestParams;
 
-	address manager = address(101);
-	address guardian = address(102);
-	address treasury = address(103);
-	address owner = address(this);
-
 	Strategy strategyConfig;
 
 	IERC20 underlying;

@@ -164,7 +164,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	) internal pure {
 		uint256 delta = expectedValue > actualValue
 			? expectedValue - actualValue
-			: actualValue - actualValue;
+			: actualValue - expectedValue;
 		if (delta > maxDelta) revert SlippageExceeded();
 	}
 
@@ -238,11 +238,15 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	}
 
 	function underlyingToShares(uint256 uAmnt) public view returns (uint256) {
-		return ((ONE * uAmnt) / exchangeRateUnderlying());
+		uint256 _totalSupply = totalSupply();
+		if (_totalSupply == 0) return uAmnt.mulDivDown(ONE, _stratCollateralToUnderlying());
+		return uAmnt.mulDivDown(_totalSupply, getTvl());
 	}
 
 	function sharesToUnderlying(uint256 shares) public view returns (uint256) {
-		return (shares * exchangeRateUnderlying()) / ONE;
+		uint256 _totalSupply = totalSupply();
+		if (_totalSupply == 0) return (shares * _stratCollateralToUnderlying()) / ONE;
+		return shares.mulDivDown(getTvl(), _totalSupply);
 	}
 
 	///
