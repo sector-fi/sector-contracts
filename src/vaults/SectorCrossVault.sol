@@ -4,13 +4,15 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
-import { ERC4626 } from "./ERC4626/ERC4626.sol";
+import { ERC4626, FixedPointMathLib } from "./ERC4626/ERC4626.sol";
 import { IXAdapter } from "../interfaces/adapters/IXAdapter.sol";
 import { SocketIntegrator } from "../common/SocketIntegrator.sol";
 
 // import "hardhat/console.sol";
 
 contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
+	using FixedPointMathLib for uint256;
+
 	enum msgType {
 		NONE,
 		DEPOSIT,
@@ -27,25 +29,27 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	}
 
 	struct Request {
+		address vaultAddr;
+		uint256 amount;
+	}
+
+	struct HarvestRequest {
 		uint256 timestamp;
 		uint256 chainId;
 		address vault;
 	}
 
 	struct HarvestLedger {
-		uint256 depositValue;
+		uint256 localDepositValue;
 		bool isOpen;
 		uint256 openIndex;
-		Request[] request;
+		HarvestRequest[] request;
 	}
 
 	// TODO Implement functions with harvestLock modifier
 
 	// Controls deposits
 	mapping(address => Vault) public depositedVaults;
-
-	// Keep track of depositedVaults
-	// TODO Has to implement push to this array
 	address[] internal vaultsArr;
 
 	// Harvest state
@@ -62,41 +66,33 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		address _manager,
 		address _treasury,
 		uint256 _perforamanceFee
-	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {
-		// Not sure if needed
-		// TODO check if needed
-		harvestLedger.openIndex = 0;
-		harvestLedger.isOpen = false;
-		harvestLedger.depositValue = 0;
-	}
+	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
 	/////////////////////////////////////////////////////*/
 
-	function depositIntoVaults(address[] calldata vaults, uint256[] calldata amounts)
-		public
-		onlyRole(MANAGER)
-		checkInputSize(vaults.length, amounts.length)
-	{
+	function depositIntoVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
 		for (uint256 i = 0; i < vaults.length; ) {
-			Vault memory tmpVault = depositedVaults[vaults[i]];
+			address vaultAddr = vaults[i].vaultAddr;
+			uint256 amount = vaults[i].amount;
+			Vault memory tmpVault = depositedVaults[vaultAddr];
 
-			if (!tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
+			if (!tmpVault.allowed) revert VaultNotAllowed(vaultAddr);
 
 			if (tmpVault.adapter == address(0)) {
-				BatchedWithdraw(vaults[i]).deposit(amounts[i], address(this));
+				BatchedWithdraw(vaultAddr).deposit(amount, address(this));
 			} else {
 				IXAdapter(tmpVault.adapter).sendMessage(
-					amounts[i],
-					vaults[i],
+					amount,
+					vaultAddr,
 					address(this),
 					tmpVault.chainId,
 					uint16(msgType.DEPOSIT),
 					uint16(block.chainid)
 				);
 
-				emit BridgeAsset(uint16(block.chainid), tmpVault.chainId, amounts[i]);
+				emit BridgeAsset(uint16(block.chainid), tmpVault.chainId, amount);
 			}
 
 			unchecked {
@@ -105,22 +101,20 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		}
 	}
 
-	function requestRedeemFromVaults(address[] calldata vaults, uint256[] calldata shares)
-		public
-		onlyRole(MANAGER)
-		checkInputSize(vaults.length, shares.length)
-	{
+	function withdrawFromVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
 		for (uint256 i = 0; i < vaults.length; ) {
-			Vault memory tmpVault = depositedVaults[vaults[i]];
+			address vaultAddr = vaults[i].vaultAddr;
+			uint256 amount = vaults[i].amount;
+			Vault memory tmpVault = depositedVaults[vaultAddr];
 
-			if (!tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
+			if (!tmpVault.allowed) revert VaultNotAllowed(vaultAddr);
 
 			if (tmpVault.adapter == address(0)) {
-				BatchedWithdraw(vaults[i]).requestRedeem(shares[i]);
+				BatchedWithdraw(vaultAddr).requestRedeem(amount);
 			} else {
 				IXAdapter(tmpVault.adapter).sendMessage(
-					shares[i],
-					vaults[i],
+					amount,
+					vaultAddr,
 					address(this),
 					tmpVault.chainId,
 					uint16(msgType.REQUESTREDEEM),
@@ -134,69 +128,74 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		}
 	}
 
-	function redeemFromVaults(address[] calldata vaults, uint256[] calldata shares)
-		public
-		onlyRole(MANAGER)
-		checkInputSize(vaults.length, shares.length)
-	{
-		for (uint256 i = 0; i < vaults.length; ) {
-			Vault memory tmpVault = depositedVaults[vaults[i]];
+	// function redeemFromVaults(address[] calldata vaults, uint256[] calldata shares)
+	// 	public
+	// 	onlyRole(MANAGER)
+	// 	checkInputSize(vaults.length, shares.length)
+	// {
+	// 	for (uint256 i = 0; i < vaults.length; ) {
+	// 		Vault memory tmpVault = depositedVaults[vaults[i]];
 
-			if (tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
+	// 		if (tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
 
-			if (tmpVault.adapter == address(0)) {
-				BatchedWithdraw(vaults[i]).redeem(shares[i], address(this), address(this));
-			} else {
-				IXAdapter(tmpVault.adapter).sendMessage(
-					shares[i],
-					vaults[i],
-					address(this),
-					tmpVault.chainId,
-					uint16(msgType.REDEEM),
-					uint16(block.chainid)
-				);
-			}
-			// Not sure if it should request manager intervention after redeem when in different chains
+	// 		if (tmpVault.adapter == address(0)) {
+	// 			BatchedWithdraw(vaults[i]).redeem(shares[i], address(this), address(this));
+	// 		} else {
+	// 			IXAdapter(tmpVault.adapter).sendMessage(
+	// 				shares[i],
+	// 				vaults[i],
+	// 				address(this),
+	// 				tmpVault.chainId,
+	// 				uint16(msgType.REDEEM),
+	// 				uint16(block.chainid)
+	// 			);
+	// 		}
+	// 		// Not sure if it should request manager intervention after redeem when in different chains
 
-			unchecked {
-				i++;
-			}
-		}
-	}
+	// 		unchecked {
+	// 			i++;
+	// 		}
+	// 	}
+	// }
 
 	// Not sure if caller has to pass array of vaults
 	// Can be dangerous if manager fails or forgets an address
 	// TODO asks loaner
-	function harvestVaults(address[] calldata vaults) public onlyRole(MANAGER) {
-		uint256 depositValue = 0;
+	function harvestVaults() public onlyRole(MANAGER) {
+		uint256 localDepositValue = 0;
 
 		if (harvestLedger.isOpen) revert OnGoingHarvest();
 
-		for (uint256 i = 0; i < vaults.length; ) {
-			Vault memory tmpVault = depositedVaults[vaults[i]];
+		// uint256 length = vaultsArr.length;
+		address[] memory vArr = vaultsArr;
+
+		for (uint256 i = 0; i < vArr.length; ) {
+			Vault memory tmpVault = depositedVaults[vArr[i]];
 
 			if (tmpVault.adapter == address(0)) {
-				depositValue +=
-					BatchedWithdraw(vaults[i]).balanceOf(address(this)) *
-					BatchedWithdraw(vaults[i]).withdrawSharePrice();
+				localDepositValue +=
+					BatchedWithdraw(vArr[i]).balanceOf(address(this)) *
+					BatchedWithdraw(vArr[i]).withdrawSharePrice();
 			} else {
 				IXAdapter(tmpVault.adapter).sendMessage(
 					0,
-					vaults[i],
+					vArr[i],
 					address(this),
 					tmpVault.chainId,
 					uint16(msgType.REQUESTVALUEOFSHARES),
 					uint16(block.chainid)
 				);
 
-				harvestLedger.request.push(Request(block.timestamp, tmpVault.chainId, vaults[i]));
+				harvestLedger.request.push(
+					HarvestRequest(block.timestamp, tmpVault.chainId, vArr[i])
+				);
 			}
 			unchecked {
 				i++;
 			}
 		}
 
-		harvestLedger.depositValue = depositValue;
+		harvestLedger.localDepositValue = localDepositValue;
 		harvestLedger.isOpen = true;
 	}
 
@@ -204,7 +203,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		HarvestLedger memory hLedger = harvestLedger;
 
 		// Compute actual tvl
-		uint256 actualValue = 0;
+		uint256 xDepositValue = 0;
 
 		if (!hLedger.isOpen) revert HarvestNotOpen();
 
@@ -219,7 +218,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 				tmpVault.chainId,
 				hLedger.request[i].timestamp
 			);
-			actualValue += value;
+			xDepositValue += value;
 
 			unchecked {
 				i++;
@@ -227,34 +226,33 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		}
 
 		// Check if tvl is expected before commiting
-		uint256 delta = expectedValue > actualValue
-			? expectedValue - actualValue
-			: actualValue - expectedValue;
+		uint256 delta = expectedValue > xDepositValue
+			? expectedValue - xDepositValue
+			: xDepositValue - expectedValue;
 		if (delta > maxDelta) revert SlippageExceeded();
 
 		// Commit values
-		withdrawSharePrice = (hLedger.depositValue + actualValue) / totalSupply();
+		_processWithdraw((hLedger.localDepositValue + xDepositValue) / totalSupply());
 
 		// Change harvest status
 		harvestLedger.openIndex = i;
-		harvestLedger.depositValue = 0;
+		harvestLedger.localDepositValue = 0;
 		harvestLedger.isOpen = false;
 	}
 
-	// TODO Implement calculations with point fix library
 	function emergencyWithdraw() external {
 		if (!emergencyEnabled) revert EmergencyNotEnabled();
 
 		uint256 userShares = balanceOf(msg.sender);
 
 		_burn(msg.sender, userShares);
-		uint256 userPerc = userShares / totalSupply();
+		uint256 userPerc = userShares.divWadDown(totalSupply());
 
 		for (uint256 i = 0; i < vaultsArr.length; ) {
 			Vault memory tmpVault = depositedVaults[vaultsArr[i]];
 			BatchedWithdraw vault = BatchedWithdraw(vaultsArr[i]);
 
-			uint256 transferShares = vault.balanceOf(address(this)) * userPerc;
+			uint256 transferShares = userPerc.mulWadDown(vault.balanceOf(address(this)));
 
 			if (tmpVault.adapter == address(0)) {
 				vault.transfer(msg.sender, transferShares);
@@ -292,6 +290,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 			revert VaultAlreadyAdded();
 
 		depositedVaults[vault] = Vault(chainId, adapter, allowed);
+		vaultsArr.push(vault);
 		emit AddVault(vault, chainId, adapter);
 	}
 
@@ -311,10 +310,10 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 						Modifiers
 	/////////////////////////////////////////////////////*/
 
-	modifier checkInputSize(uint256 size0, uint256 size1) {
-		if (size0 != size1) revert InputSizeNotAppropriate();
-		_;
-	}
+	// modifier checkInputSize(uint256 size0, uint256 size1) {
+	// 	if (size0 != size1) revert InputSizeNotAppropriate();
+	// 	_;
+	// }
 
 	modifier harvestLock() {
 		if (harvestLedger.isOpen) revert OnGoingHarvest();
@@ -333,7 +332,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 						Errors
 	/////////////////////////////////////////////////////*/
 
-	error InputSizeNotAppropriate();
+	// error InputSizeNotAppropriate();
 	error HarvestNotOpen();
 	// error InsufficientReturnOut();
 	error VaultNotAllowed(address vault);
