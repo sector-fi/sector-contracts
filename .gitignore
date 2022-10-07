@@ -47,4 +47,4 @@ pids
 *.pid.lock
 
 # Our stuff
-vaultAddress.json
+deployments/*

@@ -100,7 +100,7 @@ abstract contract SocketIntegrator is Auth {
 	) public onlyRole(MANAGER) {
 		verifySocketCalldata(data, destinationChainId, asset, destinationAddress);
 
-		ERC20(asset).approve(msg.sender, amount);
+		// ERC20(asset).approve(msg.sender, amount);
 		ERC20(asset).approve(allowanceTarget, amount);
 		(bool success, ) = socketRegistry.call(data);
 
