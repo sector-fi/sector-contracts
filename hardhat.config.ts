@@ -29,8 +29,8 @@ const {
   GUARDIAN,
   TIMELOCK_ADMIN,
 
-  // key for prod deployment
-  DEPLOYER_KEY,
+  // keys
+  DEPLOYER_KEY, // key for prod deployment
 
   // config
   SHOW_GAS,
@@ -44,7 +44,10 @@ const {
   MOONBEAM_API_KEY,
   INFURA_API_KEY,
 
+  ETHERSCAN_API_KEY,
+
   // rpc keys
+  GOERLI_ALCHEMY,
   ALCHEMY_OP,
 } = process.env;
 
@@ -73,6 +76,17 @@ export default {
     manager2: {
       default: MANAGER2,
     },
+    usdc: {
+    },
+    layerZeroEndpoint: {
+      goerli: "0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23",
+      fuji: "0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706"
+    },
+    multichainEndpoint: {
+      goerli: "",
+      fuji: ""
+    }
+
   },
   networks: {
     hardhat: {
@@ -93,7 +107,7 @@ export default {
       },
     },
     localhost: {
-      accounts: keys.length ? keys : undefined,
+      // accounts: keys.length ? keys : undefined,
       tags: [FORK_CHAIN],
     },
     fantom: {
@@ -149,6 +163,26 @@ export default {
         },
       },
     },
+    goerli: {
+      url: GOERLI_ALCHEMY,
+      accounts: keys.length ? keys : undefined,
+      verify: {
+        etherscan: {
+          apiKey: ETHERSCAN_API_KEY,
+          apiUrl: 'https://api-goerli.etherscan.io/',
+        },
+      },
+    },
+    fuji: {
+      url: 'https://api.avax-test.network/ext/bc/C/rpc',
+      accounts: keys.length ? keys : undefined,
+      verify: {
+        etherscan: {
+          apiKey: ETHERSCAN_API_KEY,
+          apiUrl: 'https://api-goerli.etherscan.io/',
+        },
+      },
+    },
     optimism: {
       url: `https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}`,
       chainId: 10,
@@ -199,6 +233,7 @@ export default {
   etherscan: {
     apiKey: {
       moonbeam: MOONBEAM_API_KEY,
+      goerli: ETHERSCAN_API_KEY,
     },
   },
   external: {

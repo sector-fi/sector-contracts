@@ -12,7 +12,7 @@ import { Fees } from "../../common/Fees.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract ERC4626 is IERC4626, Auth, Accounting, Fees, ERC20 {
+abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 
@@ -27,7 +27,7 @@ abstract contract ERC4626 is IERC4626, Auth, Accounting, Fees, ERC20 {
                                IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
-	ERC20 public immutable asset;
+	ERC20 immutable asset;
 
 	constructor(
 		ERC20 _asset,
@@ -44,6 +44,10 @@ abstract contract ERC4626 is IERC4626, Auth, Accounting, Fees, ERC20 {
 
 	function decimals() public view override returns (uint8) {
 		return asset.decimals();
+	}
+
+	function totalAssets() public view virtual override returns (uint256) {
+		return asset.balanceOf(address(this));
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -115,7 +119,7 @@ abstract contract ERC4626 is IERC4626, Auth, Accounting, Fees, ERC20 {
 
 		// This check is no longer necessary because we use MIN_LIQUIDITY
 		// Check for rounding error since we round down in previewRedeem.
-		// require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+		// require((assets = previewRedeem(shares)) != 0, "ZEROassetS");
 		assets = previewRedeem(shares);
 
 		beforeWithdraw(assets, shares);

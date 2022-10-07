@@ -42,7 +42,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 	uint256 public totalStrategyHoldings;
 
 	constructor(
-		ERC20 _asset,
+		ERC20 asset_,
 		string memory _name,
 		string memory _symbol,
 		address _owner,
@@ -50,7 +50,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		address _manager,
 		address _treasury,
 		uint256 _perforamanceFee
-	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
+	) ERC4626(asset_, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
 		if (strategyExists[strategy]) revert StrategyExists();
@@ -94,7 +94,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		// withdrawFromStrategies should be called before this
 		// note we are using the totalStrategyHoldings from previous harvest if there is a profit
 		// this prevents harvest front-running and adds a dynamic fee to withdrawals
-		if (pendingWithdrawal != 0 && pendingWithdrawal < ERC20(asset).balanceOf(address(this)))
+		if (pendingWithdrawal != 0 && pendingWithdrawal < asset.balanceOf(address(this)))
 			_processWithdraw(convertToShares(1e18));
 
 		// take vault fees
@@ -175,7 +175,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		tvl += asset.balanceOf(address(this));
 	}
 
-	function totalAssets() public view override returns (uint256) {
+	function totalAssets() public view virtual override returns (uint256) {
 		return asset.balanceOf(address(this)) + totalStrategyHoldings;
 	}
 
