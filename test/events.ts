@@ -46,7 +46,7 @@ describe('events', function () {
     const amount = 21000001;
 
     // TODO update this method
-    await vault.bridgeAssets(fromChainId, toChainId, amount);
+    await vault.startBridgeRoute(fromChainId, toChainId, amount);
     // wait a little bit for events to propagate
     waitFor(2000);
   });
@@ -114,7 +114,9 @@ async function listenToEvents(vault: SectorCrossVault) {
 
     // Whitelists the receiver address on the destination chain
     // TODO: re-enable this method
-    await vault.whitelistSectorVault(toChainId, vault.address);
+    // We need to addVault first before trying to bridgeAssets
+    // And implement access control on adapter (transfer ownership to vault)
+    // await vault.whitelistSectorVault(toChainId, vault.address);
 
     // loop routes
     let apiReturnData: any = {};
@@ -122,6 +124,7 @@ async function listenToEvents(vault: SectorCrossVault) {
       try {
         apiReturnData = await getRouteTransactionData(route);
         await vault.sendTokens(
+          fromAssetAddress,
           apiReturnData.result.approvalData.allowanceTarget,
           apiReturnData.result.txTarget,
           userAddress,
