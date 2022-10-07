@@ -5,9 +5,8 @@ import { ILayerZeroReceiver } from "../interfaces/adapters/ILayerZeroReceiver.so
 import { ILayerZeroEndpoint } from "../interfaces/adapters/ILayerZeroEndpoint.sol";
 import { ILayerZeroUserApplicationConfig } from "../interfaces/adapters/ILayerZeroUserApplicationConfig.sol";
 import { XAdapter } from "./XAdapter.sol";
-import { Auth } from "../common/Auth.sol";
 
-contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, XAdapter, Auth {
+contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, XAdapter {
 	ILayerZeroEndpoint public endpoint;
 
 	struct lzConfig {
@@ -25,12 +24,7 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 
 	mapping(uint256 => lzConfig) chains;
 
-	constructor(
-		address _layerZeroEndpoint,
-		address _owner,
-		address _guardian,
-		address _manager
-	) Auth(_owner, _guardian, _manager) {
+	constructor(address _layerZeroEndpoint) {
 		endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
 	}
 
@@ -41,7 +35,7 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		uint256 _dstChainId,
 		uint16 _messageType,
 		uint256 _srcChainId
-	) external override onlyRole(MANAGER) {
+	) external override onlyOwner {
 		_srcChainId;
 		if (address(this).balance == 0) revert NoBalance();
 
@@ -109,11 +103,12 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		);
 	}
 
+	// With this access control structure we need a way to vault set chain.
 	function setChain(
 		uint256 _chainId,
 		address _adapter,
 		uint16 _lzChainId
-	) external onlyRole(MANAGER) {
+	) external onlyOwner {
 		chains[_chainId].adapter = _adapter;
 		chains[_chainId].lzChainId = _lzChainId;
 	}

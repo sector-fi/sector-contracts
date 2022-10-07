@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-abstract contract XAdapter {
+abstract contract XAdapter is Ownable {
 	struct Message {
 		uint256 value;
 		uint256 timestamp;
@@ -22,7 +23,7 @@ abstract contract XAdapter {
 		address senderVaultAddress,
 		uint16 senderChainId,
 		uint256 timestamp
-	) external view returns (uint256) {
+	) external view onlyOwner returns (uint256) {
 		Message memory message = messageBoard[senderChainId][senderVaultAddress];
 
 		if (message.timestamp < timestamp) revert MessageExpired();

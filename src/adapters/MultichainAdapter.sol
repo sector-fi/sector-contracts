@@ -3,10 +3,9 @@ pragma solidity 0.8.16;
 
 // import { IXAdapter } from "../interfaces/adapters/IXAdapter.sol";
 import { CallProxy } from "../interfaces/adapters/IMultichainAdapter.sol";
-import { Auth } from "../common/Auth.sol";
 import { XAdapter } from "./XAdapter.sol";
 
-contract MultichainAdapter is XAdapter, Auth {
+contract MultichainAdapter is XAdapter {
 	address public anyCall;
 	mapping(uint256 => address) public adapters;
 
@@ -16,12 +15,7 @@ contract MultichainAdapter is XAdapter, Auth {
 		uint256 redeemed;
 	}
 
-	constructor(
-		address _anyCall,
-		address _owner,
-		address _guardian,
-		address _manager
-	) Auth(_owner, _guardian, _manager) {
+	constructor(address _anyCall) {
 		anyCall = _anyCall;
 	}
 
@@ -32,7 +26,7 @@ contract MultichainAdapter is XAdapter, Auth {
 		uint256 _dstChainId,
 		uint16 _messageType,
 		uint256 _srcChainId
-	) external override onlyRole(MANAGER) {
+	) external override onlyOwner {
 		bytes memory payload = abi.encode(
 			_amount,
 			_srcVautAddress,
@@ -43,7 +37,8 @@ contract MultichainAdapter is XAdapter, Auth {
 		CallProxy(anyCall).anyCall(adapters[_dstChainId], payload, address(0), _dstChainId, 2);
 	}
 
-	function setAdapter(uint256 _chainId, address _adapter) external onlyRole(MANAGER) {
+	// Same here, we need a way to vault call this function
+	function setAdapter(uint256 _chainId, address _adapter) external onlyOwner {
 		adapters[_chainId] = _adapter;
 	}
 
