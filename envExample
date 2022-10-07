@@ -17,6 +17,7 @@ FORK_CHAIN = avalanche
 
 # RPC keys
 ALCHEMY_OP =
+ALCHEMY_ARB = 
 
 # fork params for forge tests
 AVAX_RPC_URL = 'https://api.avax.network/ext/bc/C/rpc'

@@ -49,6 +49,7 @@ const {
   // rpc keys
   GOERLI_ALCHEMY,
   ALCHEMY_OP,
+  ALCHEMY_ARB,
 } = process.env;
 
 const keys = [DEPLOYER_KEY].filter((k) => k != null);
@@ -76,17 +77,15 @@ export default {
     manager2: {
       default: MANAGER2,
     },
-    usdc: {
-    },
+    usdc: {},
     layerZeroEndpoint: {
-      goerli: "0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23",
-      fuji: "0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706"
+      goerli: '0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23',
+      fuji: '0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706',
     },
     multichainEndpoint: {
-      goerli: "",
-      fuji: ""
-    }
-
+      goerli: '',
+      fuji: '',
+    },
   },
   networks: {
     hardhat: {
@@ -148,6 +147,9 @@ export default {
           apiKey: MOONRIVER_API_KEY,
         },
       },
+      companionNetworks: {
+        l1: 'arbitrum',
+      },
     },
     moonbeam: {
       url: 'https://rpc.api.moonbeam.network',
@@ -183,12 +185,25 @@ export default {
         },
       },
     },
+    arbitrum: {
+      url: `https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_ARB}`,
+      chainId: 42161,
+      gasPrice: 0.1e9,
+      name: 'arbitrum',
+      tags: ['arbitrum'],
+      // companionNetworks: {
+      //   l1: 'arbitrum',
+      // },
+    },
     optimism: {
       url: `https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}`,
       chainId: 10,
       gasPrice: 0.001e9,
       name: 'optimism',
       tags: ['optimism'],
+      companionNetworks: {
+        l1: 'arbitrum',
+      },
     },
     mainnet: {
       accounts: keys.length ? keys : undefined,
