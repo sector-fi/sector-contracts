@@ -6,19 +6,23 @@ import { ILayerZeroEndpoint } from "../interfaces/adapters/ILayerZeroEndpoint.so
 import { ILayerZeroUserApplicationConfig } from "../interfaces/adapters/ILayerZeroUserApplicationConfig.sol";
 import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Auth } from "../common/Auth.sol";
 import "../interfaces/MsgStructs.sol";
 
-contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Ownable {
+contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Auth {
 	ILayerZeroEndpoint public endpoint;
 	IPostOffice public immutable postOffice;
 
 	// map original chainIds to layerZero's chainIds
 	mapping(uint16 => uint16) chains;
 
-	constructor(address _layerZeroEndpoint, address _postOffice) {
+	constructor(
+		address _layerZeroEndpoint,
+		address _postOffice,
+		address _manager
+	) Auth(_postOffice, _manager, _manager) {
 		endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
 		postOffice = IPostOffice(_postOffice);
-		transferOwnership(_postOffice);
 	}
 
 	function deliverMessage(
@@ -79,7 +83,7 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 	}
 
 	// With this access control structure we need a way to vault set chain.
-	function setChain(uint16 _chainId, uint16 _lzChainId) external onlyOwner {
+	function setChain(uint16 _chainId, uint16 _lzChainId) external onlyRole(MANAGER) {
 		chains[_chainId] = _lzChainId;
 	}
 
@@ -88,7 +92,7 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		uint16 _dstChainId,
 		uint256 _configType,
 		bytes memory _config
-	) external override onlyOwner {
+	) external override onlyRole(MANAGER) {
 		endpoint.setConfig(
 			chains[_dstChainId],
 			endpoint.getSendVersion(address(this)),
@@ -112,11 +116,11 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 			);
 	}
 
-	function setSendVersion(uint16 version) external override onlyOwner {
+	function setSendVersion(uint16 version) external override onlyRole(MANAGER) {
 		endpoint.setSendVersion(version);
 	}
 
-	function setReceiveVersion(uint16 version) external override onlyOwner {
+	function setReceiveVersion(uint16 version) external override onlyRole(MANAGER) {
 		endpoint.setReceiveVersion(version);
 	}
 
