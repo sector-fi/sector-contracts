@@ -3,8 +3,17 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Auth } from "./Auth.sol";
+import "../interfaces/MsgStructs.sol";
 
-abstract contract SocketIntegrator is Auth {
+abstract contract XChainIntegrator is Auth {
+	struct Vault {
+		uint16 chainId;
+		bool allowed;
+	}
+
+	mapping(address => Vault) public depositedVaults;
+	address[] internal vaultsArr;
+
 	/// @notice Struct encoded in Bungee calldata
 	/// @dev Derived from socket registry contract
 	struct MiddlewareRequest {
@@ -176,6 +185,10 @@ abstract contract SocketIntegrator is Auth {
 		}
 
 		return tempBytes;
+	}
+
+	function isSenderAllowed(Message calldata message) external view returns (bool) {
+		return depositedVaults[message.sender].allowed;
 	}
 
 	event BridgeAsset(uint32 _fromChainId, uint32 _toChainId, uint256 amount);

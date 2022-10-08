@@ -5,20 +5,14 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { ERC4626, FixedPointMathLib } from "./ERC4626/ERC4626.sol";
-import { IXAdapter } from "../interfaces/adapters/IXAdapter.sol";
-import { SocketIntegrator } from "../common/SocketIntegrator.sol";
+import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
+import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
 
-contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
+contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 	using FixedPointMathLib for uint256;
-
-	struct Vault {
-		uint16 chainId;
-		address adapter;
-		bool allowed;
-	}
 
 	struct Request {
 		address vaultAddr;
@@ -41,8 +35,8 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	// TODO Implement functions with harvestLock modifier
 
 	// Controls deposits
-	mapping(address => Vault) public depositedVaults;
-	address[] internal vaultsArr;
+	// mapping(address => Vault) public depositedVaults;
+	// address[] internal vaultsArr;
 
 	// Harvest state
 	HarvestLedger public harvestLedger;
@@ -75,12 +69,12 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 			if (tmpVault.adapter == address(0)) {
 				BatchedWithdraw(vaultAddr).deposit(amount, address(this));
 			} else {
-				IXAdapter(tmpVault.adapter).sendMessage(
+				IPostOffice(tmpVault.adapter).sendMessage(
 					amount,
 					vaultAddr,
 					address(this),
 					tmpVault.chainId,
-					uint16(msgType.DEPOSIT),
+					uint16(messageType.DEPOSIT),
 					uint16(block.chainid)
 				);
 
@@ -104,12 +98,12 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 			if (tmpVault.adapter == address(0)) {
 				BatchedWithdraw(vaultAddr).requestRedeem(amount);
 			} else {
-				IXAdapter(tmpVault.adapter).sendMessage(
+				IPostOffice(tmpVault.adapter).sendMessage(
 					amount,
 					vaultAddr,
 					address(this),
 					tmpVault.chainId,
-					uint16(msgType.REQUESTREDEEM),
+					uint16(messageType.REQUESTREDEEM),
 					uint16(block.chainid)
 				);
 			}
@@ -119,36 +113,6 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 			}
 		}
 	}
-
-	// function redeemFromVaults(address[] calldata vaults, uint256[] calldata shares)
-	// 	public
-	// 	onlyRole(MANAGER)
-	// 	checkInputSize(vaults.length, shares.length)
-	// {
-	// 	for (uint256 i = 0; i < vaults.length; ) {
-	// 		Vault memory tmpVault = depositedVaults[vaults[i]];
-
-	// 		if (tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
-
-	// 		if (tmpVault.adapter == address(0)) {
-	// 			BatchedWithdraw(vaults[i]).redeem(shares[i], address(this), address(this));
-	// 		} else {
-	// 			IXAdapter(tmpVault.adapter).sendMessage(
-	// 				shares[i],
-	// 				vaults[i],
-	// 				address(this),
-	// 				tmpVault.chainId,
-	// 				uint16(msgType.REDEEM),
-	// 				uint16(block.chainid)
-	// 			);
-	// 		}
-	// 		// Not sure if it should request manager intervention after redeem when in different chains
-
-	// 		unchecked {
-	// 			i++;
-	// 		}
-	// 	}
-	// }
 
 	// Not sure if caller has to pass array of vaults
 	// Can be dangerous if manager fails or forgets an address
@@ -169,12 +133,12 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 					BatchedWithdraw(vArr[i]).balanceOf(address(this)) *
 					BatchedWithdraw(vArr[i]).withdrawSharePrice();
 			} else {
-				IXAdapter(tmpVault.adapter).sendMessage(
+				IPostOffice(tmpVault.adapter).sendMessage(
 					0,
 					vArr[i],
 					address(this),
 					tmpVault.chainId,
-					uint16(msgType.REQUESTVALUEOFSHARES),
+					uint16(messageType.REQUESTVALUEOFSHARES),
 					uint16(block.chainid)
 				);
 
@@ -205,7 +169,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 			Vault memory tmpVault = depositedVaults[hLedger.request[i].vault];
 
 			// If timestamp > message.timestamp transaction will revert
-			uint256 value = IXAdapter(tmpVault.adapter).readMessage(
+			uint256 value = IPostOffice(tmpVault.adapter).readMessage(
 				hLedger.request[i].vault,
 				tmpVault.chainId,
 				hLedger.request[i].timestamp
@@ -249,12 +213,12 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 			if (tmpVault.adapter == address(0)) {
 				vault.transfer(msg.sender, transferShares);
 			} else {
-				IXAdapter(tmpVault.adapter).sendMessage(
+				IPostOffice(tmpVault.adapter).sendMessage(
 					transferShares,
 					vaultsArr[i],
 					address(this),
 					tmpVault.chainId,
-					uint16(msgType.EMERGENCYWITHDRAW),
+					uint16(messageType.EMERGENCYWITHDRAW),
 					uint16(block.chainid)
 				);
 			}

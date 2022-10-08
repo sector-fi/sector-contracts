@@ -4,10 +4,18 @@ import { Message } from "../MsgStructs.sol";
 
 interface IPostman {
 	function deliverMessage(
+		address receiverAddr,
+
 		Message calldata _msg,
 		address _dstVautAddress,
 		address _dstPostman,
 		uint16 _messageType,
         uint16 _srcChainId
 	) external;
+
+	IPostman(addrBook.postman[receiver.postmanId]).deliverMessage(
+			receiverAddr,
+			message,
+			msgType
+		);
 }

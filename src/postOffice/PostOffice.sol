@@ -3,11 +3,13 @@ pragma solidity 0.8.16;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPostman } from "../interfaces/postOffice/IPostman.sol";
+import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
 struct Client {
 	uint16 chainId;
-	uint16 postmanId;
+	uint16 srcPostmanId;
+	uint16 dstPostmanId;
 }
 
 struct AddressBook {
@@ -31,7 +33,7 @@ contract PostOffice is Ownable {
 	AddressBook internal addrBook;
 
 	constructor() {
-		addrBook.postman[0] = 0;
+		addrBook.postman[0] = address(0);
 	}
 
 	/*/////////////////////////////////////////////////////
@@ -40,30 +42,32 @@ contract PostOffice is Ownable {
 
 	function sendMessage(
 		address receiverAddr,
-		Message message,
+		Message calldata message,
 		messageType msgType
 	) external {
 		if (addrBook.info[msg.sender].chainId != block.chainid)
 			revert SenderNotAllowed(message.sender, message.chainId);
 
-		Client receiver = addrBook.info[receiverAddr];
+		Client memory receiver = addrBook.info[receiverAddr];
 
-		if (receiver.adapterId == 0) revert AddressNotInBook(receiverAddr);
+		if (receiver.srcPostmanId == 0) revert AddressNotInBook(receiverAddr);
 
-		IPostman(addrBook.adapter[receiver.adapterId]).deliverMessage(
-			receiverAddr,
+		IPostman(addrBook.postman[receiver.srcPostmanId]).deliverMessage(
 			message,
-			msgType
+			receiverAddr,
+			addrBook.postman[receiver.dstPostmanId],
+			msgType,
+			uint16(block.chanid)
 		);
 		emit MessageSent(receiverAddr, message.value, message.sender, message.chainId, msgType);
 	}
 
 	function writeMessage(
 		address receiver,
-		Message message,
+		Message calldata message,
 		messageType msgType
 	) external isPostman(msg.sender) {
-		if (!xChainIntegrator(receiver).isSenderAllowed(message))
+		if (!XChainIntegrator(receiver).isSenderAllowed(message))
 			revert SenderNotAllowed(message.sender, message.chainId);
 
 		messageBoard[receiver][msgType].push(message);
@@ -114,23 +118,28 @@ contract PostOffice is Ownable {
 					Manage addresses/postmen
 	/////////////////////////////////////////////////////*/
 
-	function addClient(address _client, uint16 postmanId) external onlyOwner {
-		_addClient(_client, postmanId, block.chainid);
+	function addClient(
+		address _client,
+		uint16 srcPostmanId,
+		uint16 dstPostmanId
+	) external onlyOwner {
+		_addClient(_client, srcPostmanId, dstPostmanId, uint16(block.chainid));
 	}
 
 	function addClient(
 		address _client,
-		uint16 postmanId,
+		uint16 srcPostmanId,
+		uint16 dstPostmanId,
 		uint16 chainId
 	) external onlyOwner {
-		_addClient(_client, postmanId, chainId);
+		_addClient(_client, srcPostmanId, dstPostmanId, chainId);
 	}
 
 	function addPostman(address _postman) external onlyOwner {
-		if (addrBook.postman[_postman] != address(0)) revert PostmanAlreadyAdded();
+		if (addrBook.isPostman[_postman]) revert PostmanAlreadyAdded();
 		addrBook.postmanList.push(_postman);
 
-		uint256 id = addrBook.postmanList.length;
+		uint16 id = uint16(addrBook.postmanList.length);
 		addrBook.postman[id] = _postman;
 
 		emit PostmanAdded(_postman, id);
@@ -149,9 +158,9 @@ contract PostOffice is Ownable {
 		emit PostmanUpdated(newAddr, postmanId);
 	}
 
-	function listReceivers() public returns (address[]) {
+	function listReceivers() public returns (address[] memory) {
 		uint256 length = addrBook.addr.length;
-		address[] receivers = new address[](length);
+		address[] memory receivers = new address[](length);
 
 		for (uint256 i = 0; i < length; ) {
 			receivers[i] = addrBook.addr[i];
@@ -164,9 +173,9 @@ contract PostOffice is Ownable {
 		return receivers;
 	}
 
-	function listPostman() public returns (address[]) {
+	function listPostman() public returns (address[] memory) {
 		uint256 length = addrBook.postmanList.length;
-		address[] postmen = new address[](length);
+		address[] memory postmen = new address[](length);
 
 		for (uint256 i = 0; i < length; ) {
 			postmen[i] = addrBook.postmanList[i];
@@ -181,12 +190,13 @@ contract PostOffice is Ownable {
 
 	function _addClient(
 		address _client,
-		uint16 postmanId,
+		uint16 srcPostmanId,
+		uint16 dstPostmanId,
 		uint16 chainId
 	) internal {
-		if (addrBook.info[_client].adapterId != 0) revert ClientAlreadyAdded();
+		if (addrBook.info[_client].postmanId != 0) revert ClientAlreadyAdded();
 
-		addrBook.info[_client] = Client(_client, chainId, postmanId);
+		addrBook.info[_client] = Client(chainId, srcPostmanId, dstPostmanId);
 		addrBook.addr.push(_client);
 
 		emit ClientAdded(_client, chainId, postmanId);
