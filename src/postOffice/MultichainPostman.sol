@@ -21,42 +21,27 @@ contract MultichainPostman is Ownable {
 
 	// owner = postoffice
 	function deliverMessage(
-		uint256 _amount,
+		Message calldata _msg,
 		address _dstVautAddress,
-		address _srcVautAddress,
 		address _dstPostman,
-		uint256 _dstChainId,
-		uint16 _messageType
+		uint16 _messageType,
+		uint16 _dstChainId
 	) external onlyOwner {
-		bytes memory payload = abi.encode(_amount, _srcVautAddress, _dstVautAddress, _messageType);
+		bytes memory payload = abi.encode(_msg, _dstVautAddress, _messageType);
 		CallProxy(anyCall).anyCall(_dstPostman, payload, address(0), _dstChainId, 2);
 	}
 
 	function anyExecute(bytes memory _data) external returns (bool success, bytes memory result) {
-		(address from, uint256 fromChainId, ) = CallProxy(anycallExecutor).context();
-
 		// decode payload sent from source chain
-		(
-			uint256 _amount,
-			address _srcVaultAddress,
-			address _dstVaultAddress,
-			uint16 _messageType
-		) = abi.decode(_data, (uint256, address, address, uint16));
-
-		emit MessageReceived(
-			_srcVaultAddress,
-			_amount,
-			_dstVaultAddress,
-			_messageType,
-			fromChainId
+		(Message memory _msg, address _dstVaultAddress, uint16 _messageType) = abi.decode(
+			_data,
+			(Message, address, uint16)
 		);
+
+		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _msg.chainId);
 
 		// send message to postOffice to be validated and processed
-		postOffice.writeMessage(
-			_dstVaultAddress,
-			Message(_amount, _srcVaultAddress, uint16(fromChainId)),
-			_messageType
-		);
+		postOffice.writeMessage(_dstVaultAddress, _msg, _messageType);
 
 		success = true;
 		result = "";

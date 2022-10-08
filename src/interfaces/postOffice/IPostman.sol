@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
+import { Message } from "../MsgStructs.sol";
 
 interface IPostPostman {
 	function deliverMessage(
-		uint256 _amount,
+		Message calldata _msg,
 		address _dstVautAddress,
-		address _srcVautAddress,
 		address _dstPostman,
-		uint256 _dstChainId,
-		uint16 _messageType
+		uint16 _messageType,
+        uint16 _srcChainId
 	) external;
 }

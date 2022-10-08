@@ -12,7 +12,7 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 	ILayerZeroEndpoint public endpoint;
 	IPostOffice public immutable postOffice;
 
-	// Since layerzero doesn't no use the same chainIds, should we keep the converting logic here or on the PostOffice?
+	// map original chainIds to layerZero's chainIds
 	mapping(uint16 => uint16) chains;
 
 	constructor(address _layerZeroEndpoint, address _postOffice) {
@@ -22,16 +22,15 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 	}
 
 	function deliverMessage(
-		uint256 _amount,
+		Message calldata _msg,
 		address _dstVautAddress,
-		address _srcVautAddress,
 		address _dstPostman,
-		uint256 _dstChainId,
-		uint16 _messageType
+		uint16 _messageType,
+		uint16 _dstChainId
 	) external onlyOwner {
 		if (address(this).balance == 0) revert NoBalance();
 
-		bytes memory payload = abi.encode(_amount, _srcVautAddress, _dstVautAddress, _messageType);
+		bytes memory payload = abi.encode(_msg, _dstVautAddress, _messageType);
 
 		// encode adapterParams to specify more gas for the destination
 		uint16 version = 1;
@@ -68,33 +67,19 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		if (msg.sender != address(endpoint)) revert Unauthorized();
 
 		// decode payload sent from source chain
-		(
-			uint256 _amount,
-			address _srcVaultAddress,
-			address _dstVaultAddress,
-			uint16 _messageType
-		) = abi.decode(_payload, (uint256, address, address, uint16));
-
-		emit MessageReceived(
-			_srcVaultAddress,
-			_amount,
-			_dstVaultAddress,
-			_messageType,
-			_srcChainId
+		(Message memory _msg, address _dstVaultAddress, uint16 _messageType) = abi.decode(
+			_payload,
+			(Message, address, uint16)
 		);
 
-		postOffice.writeMessage(
-			_dstVaultAddress,
-			Message(_amount, _srcVaultAddress, uint16(_srcChainId)),
-			_messageType
-		);
+		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _srcChainId);
+
+		// send message to postOffice to be validated and processed
+		postOffice.writeMessage(_dstVaultAddress, _msg, _messageType);
 	}
 
 	// With this access control structure we need a way to vault set chain.
-	function setChain(
-		uint16 _chainId,
-		uint16 _lzChainId
-	) external onlyOwner {
+	function setChain(uint16 _chainId, uint16 _lzChainId) external onlyOwner {
 		chains[_chainId] = _lzChainId;
 	}
 
@@ -103,7 +88,7 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		uint16 _dstChainId,
 		uint256 _configType,
 		bytes memory _config
-	) external override {
+	) external override onlyOwner {
 		endpoint.setConfig(
 			chains[_dstChainId],
 			endpoint.getSendVersion(address(this)),
@@ -127,11 +112,11 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 			);
 	}
 
-	function setSendVersion(uint16 version) external override {
+	function setSendVersion(uint16 version) external override onlyOwner {
 		endpoint.setSendVersion(version);
 	}
 
-	function setReceiveVersion(uint16 version) external override {
+	function setReceiveVersion(uint16 version) external override onlyOwner {
 		endpoint.setReceiveVersion(version);
 	}
 
