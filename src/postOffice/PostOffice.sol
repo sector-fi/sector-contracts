@@ -57,7 +57,7 @@ contract PostOffice is Ownable {
 			receiverAddr,
 			addrBook.postman[receiver.dstPostmanId],
 			msgType,
-			uint16(block.chanid)
+			uint16(block.chainid)
 		);
 		emit MessageSent(receiverAddr, message.value, message.sender, message.chainId, msgType);
 	}
@@ -199,7 +199,7 @@ contract PostOffice is Ownable {
 		addrBook.info[_client] = Client(chainId, srcPostmanId, dstPostmanId);
 		addrBook.addr.push(_client);
 
-		emit ClientAdded(_client, chainId, postmanId);
+		emit ClientAdded(_client, chainId, srcPostmanId, dstPostmanId);
 	}
 
 	/*/////////////////////////////////////////////////////
@@ -225,7 +225,7 @@ contract PostOffice is Ownable {
 		uint16 dstChainId,
 		messageType mtype
 	);
-	event ClientAdded(address client, uint16 chainId, uint16 postmanId);
+	event ClientAdded(address client, uint16 chainId, uint16 srcPostmanId, uint16 dstPostmanId);
 	event PostmanAdded(address postman, uint16 postmanId);
 	event ReceiverUpdated(address receiver, uint16 postmanId);
 	event PostmanUpdated(address newAddr, uint16 postmanId);

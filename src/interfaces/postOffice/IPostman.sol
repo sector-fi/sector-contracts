@@ -4,8 +4,6 @@ import { Message } from "../MsgStructs.sol";
 
 interface IPostman {
 	function deliverMessage(
-		address receiverAddr,
-
 		Message calldata _msg,
 		address _dstVautAddress,
 		address _dstPostman,
