@@ -1,19 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
+import "../MsgStructs.sol";
 
 interface IPostOffice {
 	function sendMessage(
-		uint256 amount,
-		address dstVautAddress,
-		address srcVaultAddress,
-		uint256 destChainId,
-		uint16 messageType,
-		uint256 srcChainId
+		address receiverAddr,
+		Message calldata message,
+		messageType msgType
 	) external;
 
-	function readMessage(
-		address senderVautAddress,
-		uint256 senderChainId,
-		uint256 timestamp
-	) external returns (uint256);
+	function writeMessage(
+		address receiver,
+		Message calldata message,
+		messageType msgType
+	) external;
+
+	function readMessage(messageType msgType) external returns (Message[] memory messages);
+
+	function readMessageReduce(messageType msgType) external returns (uint256 total);
 }
