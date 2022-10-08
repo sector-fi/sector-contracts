@@ -145,10 +145,11 @@ contract PostOffice is Ownable {
 		emit PostmanAdded(_postman, id);
 	}
 
-	function updateReceiver(address receiver, uint16 newPostmanId) external onlyOwner {
-		addrBook.info[receiver].postmanId = newPostmanId;
+	function updateReceiver(address receiver, uint16 newSrcPostmanId, uint16 newDstPostmanId) external onlyOwner {
+		addrBook.info[receiver].srcPostmanId = newSrcPostmanId;
+		addrBook.info[receiver].dstPostmanId = newDstPostmanId;
 
-		emit ReceiverUpdated(receiver, newPostmanId);
+		emit ReceiverUpdated(receiver, newSrcPostmanId, newDstPostmanId);
 	}
 
 	function updatePostman(uint16 postmanId, address newAddr) external onlyOwner {
@@ -158,7 +159,7 @@ contract PostOffice is Ownable {
 		emit PostmanUpdated(newAddr, postmanId);
 	}
 
-	function listReceivers() public returns (address[] memory) {
+	function listReceivers() public view returns (address[] memory) {
 		uint256 length = addrBook.addr.length;
 		address[] memory receivers = new address[](length);
 
@@ -173,7 +174,7 @@ contract PostOffice is Ownable {
 		return receivers;
 	}
 
-	function listPostman() public returns (address[] memory) {
+	function listPostman() public view returns (address[] memory) {
 		uint256 length = addrBook.postmanList.length;
 		address[] memory postmen = new address[](length);
 
@@ -194,7 +195,7 @@ contract PostOffice is Ownable {
 		uint16 dstPostmanId,
 		uint16 chainId
 	) internal {
-		if (addrBook.info[_client].postmanId != 0) revert ClientAlreadyAdded();
+		if (addrBook.info[_client].srcPostmanId != 0) revert ClientAlreadyAdded();
 
 		addrBook.info[_client] = Client(chainId, srcPostmanId, dstPostmanId);
 		addrBook.addr.push(_client);
@@ -227,7 +228,7 @@ contract PostOffice is Ownable {
 	);
 	event ClientAdded(address client, uint16 chainId, uint16 srcPostmanId, uint16 dstPostmanId);
 	event PostmanAdded(address postman, uint16 postmanId);
-	event ReceiverUpdated(address receiver, uint16 postmanId);
+	event ReceiverUpdated(address receiver, uint16 srcPostmanId, uint16 dstPostmanId);
 	event PostmanUpdated(address newAddr, uint16 postmanId);
 
 	error SenderNotAllowed(address sender, uint16 chainId);

@@ -79,7 +79,7 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _srcChainId);
 
 		// send message to postOffice to be validated and processed
-		postOffice.writeMessage(_dstVaultAddress, _msg, _messageType);
+		postOffice.writeMessage(_dstVaultAddress, _msg, messageType(_messageType));
 	}
 
 	// With this access control structure we need a way to vault set chain.
