@@ -4,39 +4,31 @@ pragma solidity 0.8.16;
 import { ILayerZeroReceiver } from "../interfaces/adapters/ILayerZeroReceiver.sol";
 import { ILayerZeroEndpoint } from "../interfaces/adapters/ILayerZeroEndpoint.sol";
 import { ILayerZeroUserApplicationConfig } from "../interfaces/adapters/ILayerZeroUserApplicationConfig.sol";
-import { XAdapter } from "./XAdapter.sol";
+import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import "../interfaces/MsgStructs.sol";
 
-contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, XAdapter {
+contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Ownable {
 	ILayerZeroEndpoint public endpoint;
+	IPostOffice public immutable postOffice;
 
-	struct lzConfig {
-		address adapter;
-		uint16 lzChainId;
-	}
+	// Since layerzero doesn't no use the same chainIds, should we keep the converting logic here or on the PostOffice?
+	mapping(uint16 => uint16) chains;
 
-	struct message {
-		uint256 deposits;
-		uint256 withdrawals;
-		uint256 redeemed;
-	}
-
-	mapping(uint256 => mapping(address => message)) messages;
-
-	mapping(uint256 => lzConfig) chains;
-
-	constructor(address _layerZeroEndpoint) {
+	constructor(address _layerZeroEndpoint, address _postOffice) {
 		endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
+		postOffice = IPostOffice(_postOffice);
+		transferOwnership(_postOffice);
 	}
 
-	function sendMessage(
+	function deliverMessage(
 		uint256 _amount,
 		address _dstVautAddress,
 		address _srcVautAddress,
+		address _dstPostman,
 		uint256 _dstChainId,
-		uint16 _messageType,
-		uint256 _srcChainId
-	) external override onlyOwner {
-		_srcChainId;
+		uint16 _messageType
+	) external onlyOwner {
 		if (address(this).balance == 0) revert NoBalance();
 
 		bytes memory payload = abi.encode(_amount, _srcVautAddress, _dstVautAddress, _messageType);
@@ -45,8 +37,9 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		uint16 version = 1;
 		uint256 gasForDestinationLzReceive = 350000;
 		bytes memory adapterParams = abi.encodePacked(version, gasForDestinationLzReceive);
+
 		(uint256 messageFee, ) = endpoint.estimateFees(
-			uint16(chains[_dstChainId].lzChainId),
+			uint16(chains[_dstChainId]),
 			address(this),
 			payload,
 			false,
@@ -56,8 +49,8 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 
 		// send LayerZero message
 		endpoint.send{ value: messageFee }( // {value: messageFee} will be paid out of this contract!
-			uint16(chains[_dstChainId].lzChainId), // destination chainId
-			abi.encodePacked(chains[_dstChainId].adapter), // destination address of Adapter on dst chain
+			uint16(chains[_dstChainId]), // destination chainId
+			abi.encodePacked(_dstPostman), // destination address of postman on dst chain
 			payload, // abi.encode()'ed bytes
 			payable(this), // (msg.sender will be this contract) refund address (LayerZero will refund any extra gas back to caller of send()
 			address(0x0), // 'zroPaymentAddress' unused for this mock/example
@@ -74,43 +67,35 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		// lzReceive can only be called by the LayerZero endpoint
 		if (msg.sender != address(endpoint)) revert Unauthorized();
 
-		// use assembly to extract the address from the bytes memory parameter
-		address fromAddress;
-		assembly {
-			fromAddress := mload(add(_fromAddress, 20))
-		}
-
 		// decode payload sent from source chain
 		(
 			uint256 _amount,
 			address _srcVaultAddress,
 			address _dstVaultAddress,
-			uint16 messageType
+			uint16 _messageType
 		) = abi.decode(_payload, (uint256, address, address, uint16));
 
-		// TODO: Implement storage logic for differente message types.
-		// deposit has messageType === 1
-		// redeemRequest has messageType === 2
-		// redeem has messageType === 3
-
 		emit MessageReceived(
-			_srcChainId,
-			fromAddress,
 			_srcVaultAddress,
 			_amount,
 			_dstVaultAddress,
-			messageType
+			_messageType,
+			_srcChainId
+		);
+
+		postOffice.writeMessage(
+			_dstVaultAddress,
+			Message(_amount, _srcVaultAddress, uint16(_srcChainId)),
+			_messageType
 		);
 	}
 
 	// With this access control structure we need a way to vault set chain.
 	function setChain(
-		uint256 _chainId,
-		address _adapter,
+		uint16 _chainId,
 		uint16 _lzChainId
 	) external onlyOwner {
-		chains[_chainId].adapter = _adapter;
-		chains[_chainId].lzChainId = _lzChainId;
+		chains[_chainId] = _lzChainId;
 	}
 
 	function setConfig(
@@ -120,7 +105,7 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		bytes memory _config
 	) external override {
 		endpoint.setConfig(
-			chains[_dstChainId].lzChainId,
+			chains[_dstChainId],
 			endpoint.getSendVersion(address(this)),
 			_configType,
 			_config
@@ -169,12 +154,11 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 
 	/* EVENTS */
 	event MessageReceived(
-		uint16 _srcChainId,
-		address fromAddress,
-		address destAddress,
+		address srcVaultAddress,
 		uint256 amount,
-		address srcAddress,
-		uint16 messageType
+		address dstVaultAddress,
+		uint16 messageType,
+		uint256 srcChainId
 	);
 
 	/* ERRORS */

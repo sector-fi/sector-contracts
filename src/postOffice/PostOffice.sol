@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "../interfaces/MsgStructs.sol";
 
-abstract contract XAdapter {
+abstract contract PostOffice {
 	mapping(address => mapping(messageType => Message[])) internal messageBoard;
 
 	function sendMessage(
