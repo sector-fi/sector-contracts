@@ -12,10 +12,4 @@ interface IPostman {
 		uint16 _messageType,
         uint16 _srcChainId
 	) external;
-
-	IPostman(addrBook.postman[receiver.postmanId]).deliverMessage(
-			receiverAddr,
-			message,
-			msgType
-		);
 }
