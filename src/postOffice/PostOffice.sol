@@ -89,7 +89,7 @@ contract PostOffice is Ownable {
 			storagedMessages.pop();
 
 			unchecked {
-				i++;
+				i--;
 			}
 		}
 
@@ -107,7 +107,7 @@ contract PostOffice is Ownable {
 			storagedMessages.pop();
 
 			unchecked {
-				i++;
+				i--;
 			}
 		}
 
