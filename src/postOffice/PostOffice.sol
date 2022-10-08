@@ -30,8 +30,6 @@ contract PostOffice is Ownable {
 	mapping(address => mapping(messageType => Message[])) internal messageBoard;
 	AddressBook internal addrBook;
 
-	// mapping(address => bool) public senders;
-
 	constructor() {
 		addrBook.postman[0] = 0;
 	}
@@ -193,6 +191,10 @@ contract PostOffice is Ownable {
 
 		emit ClientAdded(_client, chainId, postmanId);
 	}
+
+	/*/////////////////////////////////////////////////////
+				Modifiers, events and errors
+	/////////////////////////////////////////////////////*/
 
 	modifier isPostman(address postman) {
 		if (!addrBook.isPostman[postman]) revert OnlyPostmanAllowed();
