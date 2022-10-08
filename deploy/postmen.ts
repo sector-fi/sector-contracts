@@ -1,43 +1,47 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { network } from 'hardhat';
+import { config } from 'hardhat';
 
 const func: DeployFunction = async function ({
     getNamedAccounts,
     deployments,
 }: HardhatRuntimeEnvironment) {
-    // TODO: make sure the owner address is the one you wnat (set via .env)
-    const { deployer, owner, guardian, manager, layerZeroEndpoint, multichainEndpoint } = await getNamedAccounts();
-    const { deploy } = deployments;
+    const { deployer, manager, layerZeroEndpoint, multichainEndpoint } = await getNamedAccounts();
+    const { deploy, execute } = deployments;
 
-    if (network.name === 'moonbean') {
-        if (!multichainEndpoint) {
-            throw new Error('multichainEndpoint not set');
-        }
-        const multichain = await deploy('MultichainAdapter', {
-            contract: 'MultichainAdapter',
-            from: deployer,
-            args: [multichainEndpoint, owner, guardian, manager],
-            skipIfAlreadyDeployed: false,
-            log: true,
-        })
-        console.log('multichain deployed to', multichain.address);
+    let test = config.networks
+
+    console.log("Testing test", test);
+
+    if (!multichainEndpoint) {
+        throw new Error('multichainEndpoint not set');
     }
-    else {
-        if (!layerZeroEndpoint) {
-            throw new Error('layerZeroEndpoint not set');
-        }
-        const layerZero = await deploy('LayerZeroAdapter', {
-            contract: 'LayerZeroAdapter',
-            from: deployer,
-            args: [layerZeroEndpoint, owner, guardian, manager],
-            skipIfAlreadyDeployed: false,
-            log: true,
-        });
-        console.log('layerZero deployed to', layerZero.address);
+
+    if (!layerZeroEndpoint) {
+        throw new Error('layerZeroEndpoint not set');
     }
+
+    const postOffice = await deployments.get('postOffice');
+
+    const layerZero = await deploy('LayerZeroPostman', {
+        from: deployer,
+        args: [layerZeroEndpoint, postOffice.address, manager],
+        skipIfAlreadyDeployed: false,
+        log: true,
+    })
+    console.log('LayerZero postman deployed to', layerZero.address);
+
+    const multichain = await deploy('MultichainPostman', {
+        from: deployer,
+        args: [multichainEndpoint, postOffice.address],
+        skipIfAlreadyDeployed: false,
+        log: true,
+    });
+    console.log('Multichain postman deployed to', multichain.address);
+
+    // TODO Execute setChain on layerZero and set the mapping chainId => lzChainId
 };
 
 export default func;
-func.tags = ['adapters'];
-func.dependencies = ['XVault'];
+func.tags = ['postmen'];
+func.dependencies = ['postOffice'];

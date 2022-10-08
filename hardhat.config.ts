@@ -80,13 +80,16 @@ export default {
     },
     layerZeroEndpoint: {
       goerli: "0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23",
-      fuji: "0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706"
+      fuji: "0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706",
+      mainnet: "0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675",
+      avalanche: "0x3c2269811836af69497E5F486A85D7316753cf62",
+      fantom: "0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7",
+      moonbean: "0x9740FF91F1985D8d2B71494aE1A2f723bb3Ed9E4",
+      optimism: "0x3c2269811836af69497E5F486A85D7316753cf62"
     },
     multichainEndpoint: {
-      goerli: "",
-      fuji: ""
+      default: "0xC10Ef9F491C9B59f936957026020C321651ac078"
     }
-
   },
   networks: {
     hardhat: {
@@ -114,6 +117,7 @@ export default {
       url: 'https://rpc.ftm.tools/',
       gasPrice: 700e9,
       chainId: 250,
+      layerZeroId: 112,
       accounts: keys.length ? keys : undefined,
       tags: ['fantom'],
       verify: {
@@ -127,6 +131,7 @@ export default {
       url: 'https://api.avax.network/ext/bc/C/rpc',
       gasPrice: 26.5e9,
       chainId: 43114,
+      layerZeroId: 106,
       accounts: keys.length ? keys : undefined,
       tags: ['avalanche'],
       verify: {
@@ -140,6 +145,7 @@ export default {
       url: 'https://rpc.api.moonriver.moonbeam.network',
       accounts: keys.length ? keys : undefined,
       chainId: 1285,
+      layerZeroId: null,
       gasPrice: 1.1e9,
       name: 'moonriver',
       tags: ['moonriver'],
@@ -153,6 +159,7 @@ export default {
       url: 'https://rpc.api.moonbeam.network',
       accounts: keys.length ? keys : undefined,
       chainId: 1284,
+      layerZeroId: 126,
       gasPrice: 101e9,
       name: 'moonbeam',
       tags: ['moonbeam'],
@@ -166,6 +173,8 @@ export default {
     goerli: {
       url: GOERLI_ALCHEMY,
       accounts: keys.length ? keys : undefined,
+      chainId: 420,
+      layerZeroId: 10121,
       verify: {
         etherscan: {
           apiKey: ETHERSCAN_API_KEY,
@@ -176,6 +185,8 @@ export default {
     fuji: {
       url: 'https://api.avax-test.network/ext/bc/C/rpc',
       accounts: keys.length ? keys : undefined,
+      chainId: 43113,
+      layerZeroId: 10106,
       verify: {
         etherscan: {
           apiKey: ETHERSCAN_API_KEY,
@@ -186,6 +197,7 @@ export default {
     optimism: {
       url: `https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}`,
       chainId: 10,
+      layerZeroId: 111,
       gasPrice: 0.001e9,
       name: 'optimism',
       tags: ['optimism'],
@@ -195,6 +207,7 @@ export default {
       url: 'https://mainnet.infura.io/v3/' + INFURA_API_KEY,
       gasPrice: 2.1e9,
       chainId: 1,
+      layerZeroId: 101,
     },
   },
 
