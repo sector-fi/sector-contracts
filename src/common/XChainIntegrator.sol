@@ -99,7 +99,6 @@ abstract contract XChainIntegrator is Auth {
 		emit BridgeAsset(_fromChainId, _toChainId, amount);
 	}
 
-	// This function will change to depositCrossChain
 	/// @notice Sends tokens using Bungee middleware. Assumes tokens already present in contract. Manages allowance and transfer.
 	/// @dev Currently not verifying the middleware request calldata. Use very carefully
 	/// @param allowanceTarget address to allow tokens to swipe
@@ -119,7 +118,6 @@ abstract contract XChainIntegrator is Auth {
 	) public onlyRole(MANAGER) {
 		verifySocketCalldata(data, destinationChainId, asset, destinationAddress);
 
-		// ERC20(asset).approve(msg.sender, amount);
 		ERC20(asset).approve(allowanceTarget, amount);
 		(bool success, ) = socketRegistry.call(data);
 
@@ -201,7 +199,6 @@ abstract contract XChainIntegrator is Auth {
 					Vault Management
 	/////////////////////////////////////////////////////*/
 
-	// Add to array of addresses
 	function addVault(
 		address vault,
 		uint16 chainId,
@@ -209,8 +206,7 @@ abstract contract XChainIntegrator is Auth {
 	) external onlyOwner {
 		Vault memory tmpVault = depositedVaults[vault];
 
-		if (tmpVault.chainId != 0 || tmpVault.allowed != false)
-			revert VaultAlreadyAdded();
+		if (tmpVault.chainId != 0 || tmpVault.allowed != false) revert VaultAlreadyAdded();
 
 		depositedVaults[vault] = Vault(chainId, allowed);
 		vaultList.push(vault);

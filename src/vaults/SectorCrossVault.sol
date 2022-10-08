@@ -2,7 +2,6 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { ERC4626, FixedPointMathLib } from "./ERC4626/ERC4626.sol";
 import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
