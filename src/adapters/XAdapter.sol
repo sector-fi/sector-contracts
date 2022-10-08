@@ -1,35 +1,65 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-abstract contract XAdapter is Ownable {
-	struct Message {
-		uint256 value;
-		uint256 timestamp;
-	}
+import "../interfaces/MsgStructs.sol";
 
-	mapping(uint16 => mapping(address => Message)) internal messageBoard;
+abstract contract XAdapter {
+	mapping(address => mapping(messageType => Message[])) internal messageBoard;
 
 	function sendMessage(
-		uint256 amount,
-		address dstVautAddress,
-		address srcVaultAddress,
-		uint256 destChainId,
-		uint16 messageType,
-		uint256 srcChainId
+		uint256 value,
+		address receiverVault,
+		address senderVault,
+		uint256 receiverChainId,
+		uint256 senderChainId,
+		messageType msgType
 	) external virtual;
 
-	function readMessage(
-		address senderVaultAddress,
-		uint16 senderChainId,
-		uint256 timestamp
-	) external view onlyOwner returns (uint256) {
-		Message memory message = messageBoard[senderChainId][senderVaultAddress];
+	// This function will consume all messages from board
+	// for a specific type of message
+	function readMessage(messageType msgType) external returns (Message[] memory messages) {
+		// Read from storage
+		Message[] storage storagedMessages = messageBoard[msg.sender][msgType];
 
-		if (message.timestamp < timestamp) revert MessageExpired();
+		uint256 length = storagedMessages.length;
+		messages = new Message[](length);
 
-		return (message.value);
+		for (uint256 i = length; i > 0; ) {
+			messages[i - 1] = storagedMessages[i - 1];
+			storagedMessages.pop();
+
+			unchecked {
+				i++;
+			}
+		}
+
+		return messages;
 	}
 
-	error MessageExpired();
+	// Returns only total value on board
+	// Gas is cheaper here and consumer doesn't need to loop a response
+	function readMessageReduce(messageType msgType) external returns (uint256 total) {
+		Message[] storage storagedMessages = messageBoard[msg.sender][msgType];
+		total = 0;
+
+		for (uint256 i = storagedMessages.length; i > 0; ) {
+			total += storagedMessages[i - 1].value;
+			storagedMessages.pop();
+
+			unchecked {
+				i++;
+			}
+		}
+
+		return total;
+	}
+
+	modifier receiverFirewall(address receiver, address sender, uint16 senderChainId) {
+		xChainIntegrator receiver = xChainIntegrator(receiver);
+
+		if (!receiver.checkAddrBook(sender, senderChainId)) revert SenderNotAllowed(sender, senderChainId);
+		_;
+	}
+
+	error SenderNotAllowed(address sender, uint16 chainId);
 }

@@ -7,20 +7,12 @@ import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { ERC4626, FixedPointMathLib } from "./ERC4626/ERC4626.sol";
 import { IXAdapter } from "../interfaces/adapters/IXAdapter.sol";
 import { SocketIntegrator } from "../common/SocketIntegrator.sol";
+import "../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
 
 contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	using FixedPointMathLib for uint256;
-
-	enum msgType {
-		NONE,
-		DEPOSIT,
-		REDEEM,
-		REQUESTREDEEM,
-		REQUESTVALUEOFSHARES,
-		EMERGENCYWITHDRAW
-	}
 
 	struct Vault {
 		uint16 chainId;
