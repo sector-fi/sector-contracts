@@ -4,15 +4,18 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Auth } from "./Auth.sol";
 import "../interfaces/MsgStructs.sol";
+import "../interfaces/postOffice/IPostOffice.sol";
 
 abstract contract XChainIntegrator is Auth {
+	mapping(address => Vault) public depositedVaults;
+	address[] internal vaultList;
+
+	IPostOffice public immutable postOffice;
+
 	struct Vault {
 		uint16 chainId;
 		bool allowed;
 	}
-
-	mapping(address => Vault) public depositedVaults;
-	address[] internal vaultsArr;
 
 	/// @notice Struct encoded in Bungee calldata
 	/// @dev Derived from socket registry contract
@@ -41,6 +44,14 @@ abstract contract XChainIntegrator is Auth {
 		MiddlewareRequest middlewareRequest;
 		BridgeRequest bridgeRequest;
 	}
+
+	constructor(address _postOffice) {
+		postOffice = IPostOffice(_postOffice);
+	}
+
+	/*/////////////////////////////////////////////////////
+						Bridge utilities
+	/////////////////////////////////////////////////////*/
 
 	/// @notice Decode the socket request calldata
 	/// @dev Currently not in use due to undertainity in bungee api response
@@ -80,7 +91,6 @@ abstract contract XChainIntegrator is Auth {
 		}
 	}
 
-	// This one has to integrate with layerZero message sender
 	function startBridgeRoute(
 		uint32 _fromChainId,
 		uint32 _toChainId,
@@ -187,10 +197,49 @@ abstract contract XChainIntegrator is Auth {
 		return tempBytes;
 	}
 
-	function isSenderAllowed(Message calldata message) external view returns (bool) {
+	/*/////////////////////////////////////////////////////
+					Vault Management
+	/////////////////////////////////////////////////////*/
+
+	// Add to array of addresses
+	function addVault(
+		address vault,
+		uint16 chainId,
+		bool allowed
+	) external onlyOwner {
+		Vault memory tmpVault = depositedVaults[vault];
+
+		if (tmpVault.chainId != 0 || tmpVault.allowed != false)
+			revert VaultAlreadyAdded();
+
+		depositedVaults[vault] = Vault(chainId, allowed);
+		vaultList.push(vault);
+		emit AddVault(vault, chainId);
+	}
+
+	function changeVaultStatus(address vault, bool allowed) external onlyOwner {
+		depositedVaults[vault].allowed = allowed;
+
+		emit ChangeVaultStatus(vault, allowed);
+	}
+
+	function isVaultAllowed(Message calldata message) external view returns (bool) {
 		return depositedVaults[message.sender].allowed;
 	}
 
+	/*/////////////////////////////////////////////////////
+							Events
+	/////////////////////////////////////////////////////*/
+
+	event AddVault(address vault, uint16 chainId);
+	event ChangeVaultStatus(address vault, bool status);
 	event BridgeAsset(uint32 _fromChainId, uint32 _toChainId, uint256 amount);
+
+	/*/////////////////////////////////////////////////////
+							Errors
+	/////////////////////////////////////////////////////*/
+
+	error VaultNotAllowed(address vault);
+	error VaultAlreadyAdded();
 	error BridgeError();
 }

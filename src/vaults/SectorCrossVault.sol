@@ -14,29 +14,20 @@ import "../interfaces/MsgStructs.sol";
 contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 	using FixedPointMathLib for uint256;
 
+	uint16 immutable chainId = uint16(block.chainid);
+
 	struct Request {
 		address vaultAddr;
 		uint256 amount;
 	}
 
-	struct HarvestRequest {
-		uint256 timestamp;
-		uint256 chainId;
-		address vault;
-	}
-
 	struct HarvestLedger {
 		uint256 localDepositValue;
+		uint256 count;
 		bool isOpen;
-		uint256 openIndex;
-		HarvestRequest[] request;
 	}
 
 	// TODO Implement functions with harvestLock modifier
-
-	// Controls deposits
-	// mapping(address => Vault) public depositedVaults;
-	// address[] internal vaultsArr;
 
 	// Harvest state
 	HarvestLedger public harvestLedger;
@@ -51,249 +42,187 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 		address _guardian,
 		address _manager,
 		address _treasury,
-		uint256 _perforamanceFee
-	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
+		uint256 _perforamanceFee,
+		address postOffice
+	)
+		ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee)
+		XChainIntegrator(postOffice)
+	{}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
 	/////////////////////////////////////////////////////*/
 
-	// function depositIntoVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
-	// 	for (uint256 i = 0; i < vaults.length; ) {
-	// 		address vaultAddr = vaults[i].vaultAddr;
-	// 		uint256 amount = vaults[i].amount;
-	// 		Vault memory tmpVault = depositedVaults[vaultAddr];
+	function depositIntoVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+		for (uint256 i = 0; i < vaults.length; ) {
+			address vaultAddr = vaults[i].vaultAddr;
+			uint256 amount = vaults[i].amount;
+			Vault memory tmpVault = depositedVaults[vaultAddr];
 
-	// 		if (!tmpVault.allowed) revert VaultNotAllowed(vaultAddr);
+			if (!tmpVault.allowed) revert VaultNotAllowed(vaultAddr);
 
-	// 		if (tmpVault.adapter == address(0)) {
-	// 			BatchedWithdraw(vaultAddr).deposit(amount, address(this));
-	// 		} else {
-	// 			IPostOffice(tmpVault.adapter).sendMessage(
-	// 				amount,
-	// 				vaultAddr,
-	// 				address(this),
-	// 				tmpVault.chainId,
-	// 				uint16(messageType.DEPOSIT),
-	// 				uint16(block.chainid)
-	// 			);
+			if (tmpVault.chainId == chainId) {
+				BatchedWithdraw(vaultAddr).deposit(amount, address(this));
+			} else {
+				postOffice.sendMessage(
+					vaultAddr,
+					Message(amount, address(this), tmpVault.chainId),
+					messageType.DEPOSIT
+				);
 
-	// 			emit BridgeAsset(uint16(block.chainid), tmpVault.chainId, amount);
-	// 		}
+				emit BridgeAsset(uint16(block.chainid), tmpVault.chainId, amount);
+			}
 
-	// 		unchecked {
-	// 			i++;
-	// 		}
-	// 	}
-	// }
+			unchecked {
+				i++;
+			}
+		}
+	}
 
-	// function withdrawFromVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
-	// 	for (uint256 i = 0; i < vaults.length; ) {
-	// 		address vaultAddr = vaults[i].vaultAddr;
-	// 		uint256 amount = vaults[i].amount;
-	// 		Vault memory tmpVault = depositedVaults[vaultAddr];
+	function withdrawFromVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+		for (uint256 i = 0; i < vaults.length; ) {
+			address vaultAddr = vaults[i].vaultAddr;
+			uint256 amount = vaults[i].amount;
+			Vault memory tmpVault = depositedVaults[vaultAddr];
 
-	// 		if (!tmpVault.allowed) revert VaultNotAllowed(vaultAddr);
+			if (!tmpVault.allowed) revert VaultNotAllowed(vaultAddr);
 
-	// 		if (tmpVault.adapter == address(0)) {
-	// 			BatchedWithdraw(vaultAddr).requestRedeem(amount);
-	// 		} else {
-	// 			IPostOffice(tmpVault.adapter).sendMessage(
-	// 				amount,
-	// 				vaultAddr,
-	// 				address(this),
-	// 				tmpVault.chainId,
-	// 				uint16(messageType.REQUESTREDEEM),
-	// 				uint16(block.chainid)
-	// 			);
-	// 		}
+			if (tmpVault.chainId == chainId) {
+				BatchedWithdraw(vaultAddr).requestRedeem(amount);
+			} else {
+				postOffice.sendMessage(
+					vaultAddr,
+					Message(amount, address(this), tmpVault.chainId),
+					messageType.WITHDRAW
+				);
+			}
 
-	// 		unchecked {
-	// 			i++;
-	// 		}
-	// 	}
-	// }
+			unchecked {
+				i++;
+			}
+		}
+	}
 
-	// // Not sure if caller has to pass array of vaults
-	// // Can be dangerous if manager fails or forgets an address
-	// // TODO asks loaner
-	// function harvestVaults() public onlyRole(MANAGER) {
-	// 	uint256 localDepositValue = 0;
+	function harvestVaults() public onlyRole(MANAGER) {
+		uint256 localDepositValue = 0;
 
-	// 	if (harvestLedger.isOpen) revert OnGoingHarvest();
+		if (harvestLedger.isOpen) revert OnGoingHarvest();
 
-	// 	// uint256 length = vaultsArr.length;
-	// 	address[] memory vArr = vaultsArr;
+		uint256 vaultsLength = vaultList.length;
+		uint256 xvaultsCount = 0;
 
-	// 	for (uint256 i = 0; i < vArr.length; ) {
-	// 		Vault memory tmpVault = depositedVaults[vArr[i]];
+		for (uint256 i = 0; i < vaultsLength; ) {
+			address vAddr = vaultList[i];
+			Vault memory tmpVault = depositedVaults[vAddr];
 
-	// 		if (tmpVault.adapter == address(0)) {
-	// 			localDepositValue +=
-	// 				BatchedWithdraw(vArr[i]).balanceOf(address(this)) *
-	// 				BatchedWithdraw(vArr[i]).withdrawSharePrice();
-	// 		} else {
-	// 			IPostOffice(tmpVault.adapter).sendMessage(
-	// 				0,
-	// 				vArr[i],
-	// 				address(this),
-	// 				tmpVault.chainId,
-	// 				uint16(messageType.REQUESTVALUEOFSHARES),
-	// 				uint16(block.chainid)
-	// 			);
+			if (tmpVault.chainId == chainId) {
+				localDepositValue +=
+					BatchedWithdraw(vAddr).balanceOf(address(this)) *
+					BatchedWithdraw(vAddr).withdrawSharePrice();
+			} else {
+				postOffice.sendMessage(
+					vAddr,
+					Message(0, address(this), tmpVault.chainId),
+					messageType.REQUESTHARVEST
+				);
+				xvaultsCount += 1;
+			}
 
-	// 			harvestLedger.request.push(
-	// 				HarvestRequest(block.timestamp, tmpVault.chainId, vArr[i])
-	// 			);
-	// 		}
-	// 		unchecked {
-	// 			i++;
-	// 		}
-	// 	}
+			unchecked {
+				i++;
+			}
+		}
 
-	// 	harvestLedger.localDepositValue = localDepositValue;
-	// 	harvestLedger.isOpen = true;
-	// }
+		harvestLedger.localDepositValue = localDepositValue;
+		harvestLedger.isOpen = true;
+		harvestLedger.count = xvaultsCount;
+	}
 
-	// function finalizeHarvest(uint256 expectedValue, uint256 maxDelta) public onlyRole(MANAGER) {
-	// 	HarvestLedger memory hLedger = harvestLedger;
+	function finalizeHarvest(uint256 expectedValue, uint256 maxDelta) public onlyRole(MANAGER) {
+		HarvestLedger storage ledger = harvestLedger;
 
-	// 	// Compute actual tvl
-	// 	uint256 xDepositValue = 0;
+		if (!ledger.isOpen) revert HarvestNotOpen();
 
-	// 	if (!hLedger.isOpen) revert HarvestNotOpen();
+		Message[] memory harvestMsg = postOffice.readMessage(messageType.HARVEST);
 
-	// 	// Get all values from message board
-	// 	uint256 i = hLedger.openIndex;
-	// 	while (i < hLedger.request.length) {
-	// 		Vault memory tmpVault = depositedVaults[hLedger.request[i].vault];
+		if (ledger.count > harvestMsg.length) revert MissingMessages();
 
-	// 		// If timestamp > message.timestamp transaction will revert
-	// 		uint256 value = IPostOffice(tmpVault.adapter).readMessage(
-	// 			hLedger.request[i].vault,
-	// 			tmpVault.chainId,
-	// 			hLedger.request[i].timestamp
-	// 		);
-	// 		xDepositValue += value;
+		// Compute actual tvl
+		uint256 xDepositValue = 0;
 
-	// 		unchecked {
-	// 			i++;
-	// 		}
-	// 	}
+		uint256 count = ledger.count;
+		for (uint256 i = 0; i < count; ) {
+			xDepositValue += harvestMsg[i].value;
 
-	// 	// Check if tvl is expected before commiting
-	// 	uint256 delta = expectedValue > xDepositValue
-	// 		? expectedValue - xDepositValue
-	// 		: xDepositValue - expectedValue;
-	// 	if (delta > maxDelta) revert SlippageExceeded();
+			unchecked {
+				i++;
+			}
+		}
 
-	// 	// Commit values
-	// 	_processWithdraw((hLedger.localDepositValue + xDepositValue) / totalSupply());
+		// Check if tvl is expected before commiting
+		uint256 delta = expectedValue > xDepositValue
+			? expectedValue - xDepositValue
+			: xDepositValue - expectedValue;
+		if (delta > maxDelta) revert SlippageExceeded();
 
-	// 	// Change harvest status
-	// 	harvestLedger.openIndex = i;
-	// 	harvestLedger.localDepositValue = 0;
-	// 	harvestLedger.isOpen = false;
-	// }
+		// Commit values
+		_processWithdraw((ledger.localDepositValue + xDepositValue) / totalSupply());
 
-	// function emergencyWithdraw() external {
-	// 	if (!emergencyEnabled) revert EmergencyNotEnabled();
+		// Change harvest status
+		ledger.localDepositValue = 0;
+		ledger.isOpen = false;
+		ledger.count = 0;
+	}
 
-	// 	uint256 userShares = balanceOf(msg.sender);
+	function emergencyWithdraw() external {
+		// Still not sure about this part
+		if (!emergencyEnabled) revert EmergencyNotEnabled();
 
-	// 	_burn(msg.sender, userShares);
-	// 	uint256 userPerc = userShares.divWadDown(totalSupply());
+		uint256 userShares = balanceOf(msg.sender);
 
-	// 	for (uint256 i = 0; i < vaultsArr.length; ) {
-	// 		Vault memory tmpVault = depositedVaults[vaultsArr[i]];
-	// 		BatchedWithdraw vault = BatchedWithdraw(vaultsArr[i]);
+		_burn(msg.sender, userShares);
+		uint256 userPerc = userShares.divWadDown(totalSupply());
 
-	// 		uint256 transferShares = userPerc.mulWadDown(vault.balanceOf(address(this)));
+		uint256 vaultsLength = vaultList.length;
+		for (uint256 i = 0; i < vaultsLength; ) {
+			address vAddr = vaultList[i];
+			Vault memory tmpVault = depositedVaults[vAddr];
+			BatchedWithdraw vault = BatchedWithdraw(vAddr);
 
-	// 		if (tmpVault.adapter == address(0)) {
-	// 			vault.transfer(msg.sender, transferShares);
-	// 		} else {
-	// 			IPostOffice(tmpVault.adapter).sendMessage(
-	// 				transferShares,
-	// 				vaultsArr[i],
-	// 				address(this),
-	// 				tmpVault.chainId,
-	// 				uint16(messageType.EMERGENCYWITHDRAW),
-	// 				uint16(block.chainid)
-	// 			);
-	// 		}
+			uint256 transferShares = userPerc.mulWadDown(vault.balanceOf(address(this)));
 
-	// 		unchecked {
-	// 			i++;
-	// 		}
-	// 	}
-	// }
+			if (tmpVault.chainId == chainId) {
+				vault.transfer(msg.sender, transferShares);
+			} else {
+				postOffice.sendMessage(
+					vAddr,
+					Message(transferShares, address(this), tmpVault.chainId),
+					messageType.EMERGENCYWITHDRAW
+				);
+			}
 
-	// /*/////////////////////////////////////////////////////
-	// 				Vault Management
-	// /////////////////////////////////////////////////////*/
+			unchecked {
+				i++;
+			}
+		}
+	}
 
-	// // Add to array of addresses
-	// function addVault(
-	// 	address vault,
-	// 	uint16 chainId,
-	// 	address adapter,
-	// 	bool allowed
-	// ) external onlyOwner {
-	// 	Vault memory tmpVault = depositedVaults[vault];
+	/*/////////////////////////////////////////////////////
+						Modifiers
+	/////////////////////////////////////////////////////*/
 
-	// 	if (tmpVault.chainId != 0 || tmpVault.adapter != address(0) || tmpVault.allowed != false)
-	// 		revert VaultAlreadyAdded();
+	modifier harvestLock() {
+		if (harvestLedger.isOpen) revert OnGoingHarvest();
+		_;
+	}
 
-	// 	depositedVaults[vault] = Vault(chainId, adapter, allowed);
-	// 	vaultsArr.push(vault);
-	// 	emit AddVault(vault, chainId, adapter);
-	// }
+	/*/////////////////////////////////////////////////////
+							Errors
+	/////////////////////////////////////////////////////*/
 
-	// function updateVaultAdapter(address vault, address adapter) external onlyOwner {
-	// 	depositedVaults[vault].adapter = adapter;
-
-	// 	emit UpdateVaultAdapter(vault, adapter);
-	// }
-
-	// function changeVaultStatus(address vault, bool allowed) external onlyOwner {
-	// 	depositedVaults[vault].allowed = allowed;
-
-	// 	emit ChangeVaultStatus(vault, allowed);
-	// }
-
-	// /*/////////////////////////////////////////////////////
-	// 					Modifiers
-	// /////////////////////////////////////////////////////*/
-
-	// // modifier checkInputSize(uint256 size0, uint256 size1) {
-	// // 	if (size0 != size1) revert InputSizeNotAppropriate();
-	// // 	_;
-	// // }
-
-	// modifier harvestLock() {
-	// 	if (harvestLedger.isOpen) revert OnGoingHarvest();
-	// 	_;
-	// }
-
-	// /*/////////////////////////////////////////////////////
-	// 					Events
-	// /////////////////////////////////////////////////////*/
-
-	// event AddVault(address vault, uint16 chainId, address adapter);
-	// event UpdateVaultAdapter(address vault, address adapter);
-	// event ChangeVaultStatus(address vault, bool status);
-
-	// /*/////////////////////////////////////////////////////
-	// 					Errors
-	// /////////////////////////////////////////////////////*/
-
-	// // error InputSizeNotAppropriate();
-	// error HarvestNotOpen();
-	// // error InsufficientReturnOut();
-	// error VaultNotAllowed(address vault);
-	// error VaultAlreadyAdded();
-	// error SlippageExceeded();
-	// error OnGoingHarvest();
-	// error EmergencyNotEnabled();
+	error HarvestNotOpen();
+	error SlippageExceeded();
+	error OnGoingHarvest();
+	error EmergencyNotEnabled();
+	error MissingMessages();
 }

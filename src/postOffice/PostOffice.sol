@@ -67,7 +67,7 @@ contract PostOffice is Ownable {
 		Message calldata message,
 		messageType msgType
 	) external isPostman(msg.sender) {
-		if (!XChainIntegrator(receiver).isSenderAllowed(message))
+		if (!XChainIntegrator(receiver).isVaultAllowed(message))
 			revert SenderNotAllowed(message.sender, message.chainId);
 
 		messageBoard[receiver][msgType].push(message);
