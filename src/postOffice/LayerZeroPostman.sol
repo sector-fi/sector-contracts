@@ -63,7 +63,7 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 
 	function lzReceive(
 		uint16 _srcChainId,
-		bytes memory _fromAddress,
+		bytes memory,
 		uint64, /*_nonce*/
 		bytes memory _payload
 	) external override {
