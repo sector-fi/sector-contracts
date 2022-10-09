@@ -14,6 +14,7 @@ abstract contract XChainIntegrator is Auth {
 	uint16 immutable chainId = uint16(block.chainid);
 
 	struct Vault {
+		uint256 amount;
 		uint16 chainId;
 		bool allowed;
 	}
@@ -209,7 +210,7 @@ abstract contract XChainIntegrator is Auth {
 
 		if (tmpVault.chainId != 0 || tmpVault.allowed != false) revert VaultAlreadyAdded();
 
-		depositedVaults[_vault] = Vault(_chainId, _allowed);
+		depositedVaults[_vault] = Vault(0, _chainId, _allowed);
 		vaultList.push(_vault);
 		emit AddVault(_vault, _chainId);
 	}
