@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPostman } from "../interfaces/postOffice/IPostman.sol";
+import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
@@ -28,7 +29,7 @@ struct Message {
 }
 */
 
-contract PostOffice is Ownable {
+contract PostOffice is Ownable, IPostOffice {
 	mapping(address => mapping(messageType => Message[])) internal messageBoard;
 	AddressBook internal addrBook;
 
