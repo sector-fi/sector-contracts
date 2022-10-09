@@ -315,6 +315,7 @@ contract SectorVault is ERC4626, BatchedWithdraw, XChainIntegrator {
 			postOffice.sendMessage(
 				messages[i].sender,
 				Message(sharePrice, address(this), address(0), chainId),
+				messages[i].chainId,
 				messageType.HARVEST
 			);
 

@@ -6,6 +6,7 @@ interface IPostOffice {
 	function sendMessage(
 		address receiverAddr,
 		Message calldata message,
+		uint16 receiverChainId,
 		messageType msgType
 	) external;
 

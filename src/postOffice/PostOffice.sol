@@ -43,6 +43,7 @@ contract PostOffice is Ownable {
 	function sendMessage(
 		address receiverAddr,
 		Message calldata message,
+		uint16 receiverChainId,
 		messageType msgType
 	) external {
 		if (addrBook.info[msg.sender].chainId != block.chainid)
@@ -57,7 +58,7 @@ contract PostOffice is Ownable {
 			receiverAddr,
 			addrBook.postman[receiver.dstPostmanId],
 			msgType,
-			uint16(block.chainid)
+			receiverChainId
 		);
 		emit MessageSent(receiverAddr, message.value, message.sender, message.chainId, msgType);
 	}

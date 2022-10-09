@@ -62,7 +62,8 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 			} else {
 				postOffice.sendMessage(
 					vaultAddr,
-					Message(amount, address(this), address(0), tmpVault.chainId),
+					Message(amount, address(this), address(0), chainId),
+					tmpVault.chainId,
 					messageType.DEPOSIT
 				);
 
@@ -88,7 +89,8 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 			} else {
 				postOffice.sendMessage(
 					vaultAddr,
-					Message(amount, address(this), address(0), tmpVault.chainId),
+					Message(amount, address(this), address(0), chainId),
+					tmpVault.chainId,
 					messageType.WITHDRAW
 				);
 			}
@@ -118,7 +120,8 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 			} else {
 				postOffice.sendMessage(
 					vAddr,
-					Message(0, address(this), address(0), tmpVault.chainId),
+					Message(0, address(this), address(0), chainId),
+					tmpVault.chainId,
 					messageType.REQUESTHARVEST
 				);
 				xvaultsCount += 1;
@@ -183,7 +186,8 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 			} else {
 				postOffice.sendMessage(
 					vAddr,
-					Message(userPerc, address(this), msg.sender, tmpVault.chainId),
+					Message(userPerc, address(this), msg.sender, chainId),
+					tmpVault.chainId,
 					messageType.EMERGENCYWITHDRAW
 				);
 			}

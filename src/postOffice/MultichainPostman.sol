@@ -4,11 +4,12 @@ pragma solidity 0.8.16;
 import { CallProxy } from "../interfaces/adapters/IMultichainAdapter.sol";
 import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IPostman } from "../interfaces/postOffice/IPostman.sol";
 import "../interfaces/MsgStructs.sol";
 
 import "hardhat/console.sol";
 
-contract MultichainPostman is Ownable {
+contract MultichainPostman is Ownable, IPostman {
 	address public anyCall;
 	address public anycallExecutor;
 
@@ -26,7 +27,7 @@ contract MultichainPostman is Ownable {
 		Message calldata _msg,
 		address _dstVautAddress,
 		address _dstPostman,
-		uint16 _messageType,
+		messageType _messageType,
 		uint16 _dstChainId
 	) external onlyOwner {
 		bytes memory payload = abi.encode(_msg, _dstVautAddress, _messageType);

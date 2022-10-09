@@ -5,6 +5,7 @@ import { ILayerZeroReceiver } from "../interfaces/adapters/ILayerZeroReceiver.so
 import { ILayerZeroEndpoint } from "../interfaces/adapters/ILayerZeroEndpoint.sol";
 import { ILayerZeroUserApplicationConfig } from "../interfaces/adapters/ILayerZeroUserApplicationConfig.sol";
 import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
+import { IPostman } from "../interfaces/postOffice/IPostman.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/MsgStructs.sol";
 
@@ -13,7 +14,7 @@ struct chainPair {
 	uint16 to;
 }
 
-contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Ownable {
+contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, IPostman, Ownable {
 	ILayerZeroEndpoint public endpoint;
 	IPostOffice public immutable postOffice;
 
@@ -43,7 +44,7 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		Message calldata _msg,
 		address _dstVautAddress,
 		address _dstPostman,
-		uint16 _messageType,
+		messageType _messageType,
 		uint16 _dstChainId
 	) external {
 		if (msg.sender != address(postOffice)) revert OnlyPostOffice();
