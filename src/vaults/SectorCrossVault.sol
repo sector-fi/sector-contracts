@@ -142,7 +142,9 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 		if (ledgerCount == 0) revert HarvestNotOpen();
 
 		// Compute actual tvl
-		(uint256 xDepositValue, uint256 count) = postOffice.readMessageSumReduce(messageType.HARVEST);
+		(uint256 xDepositValue, uint256 count) = postOffice.readMessageSumReduce(
+			messageType.HARVEST
+		);
 
 		// The only save check besides computed tvl now is the number o messages.
 		if (ledgerCount > count) revert MissingMessages();

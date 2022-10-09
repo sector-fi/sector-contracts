@@ -17,5 +17,7 @@ interface IPostOffice {
 
 	function readMessage(messageType msgType) external returns (Message[] memory messages);
 
-	function readMessageSumReduce(messageType msgType) external returns (uint256 acc, uint256 count);
+	function readMessageSumReduce(messageType msgType)
+		external
+		returns (uint256 acc, uint256 count);
 }

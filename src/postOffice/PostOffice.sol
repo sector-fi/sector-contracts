@@ -98,7 +98,10 @@ contract PostOffice is Ownable {
 
 	// Returns only total value on board
 	// Gas is cheaper here and consumer doesn't need to loop a response
-	function readMessageSumReduce(messageType msgType) external returns (uint256 acc, uint256 count) {
+	function readMessageSumReduce(messageType msgType)
+		external
+		returns (uint256 acc, uint256 count)
+	{
 		Message[] storage storagedMessages = messageBoard[msg.sender][msgType];
 		(acc, count) = (0, storagedMessages.length);
 
@@ -145,7 +148,11 @@ contract PostOffice is Ownable {
 		emit PostmanAdded(_postman, id);
 	}
 
-	function updateReceiver(address receiver, uint16 newSrcPostmanId, uint16 newDstPostmanId) external onlyOwner {
+	function updateReceiver(
+		address receiver,
+		uint16 newSrcPostmanId,
+		uint16 newDstPostmanId
+	) external onlyOwner {
 		addrBook.info[receiver].srcPostmanId = newSrcPostmanId;
 		addrBook.info[receiver].dstPostmanId = newDstPostmanId;
 
