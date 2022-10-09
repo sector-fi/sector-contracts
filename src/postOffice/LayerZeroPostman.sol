@@ -6,10 +6,14 @@ import { ILayerZeroEndpoint } from "../interfaces/adapters/ILayerZeroEndpoint.so
 import { ILayerZeroUserApplicationConfig } from "../interfaces/adapters/ILayerZeroUserApplicationConfig.sol";
 import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { Auth } from "../common/Auth.sol";
 import "../interfaces/MsgStructs.sol";
 
-contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Auth {
+struct chainPair {
+	uint16 from;
+	uint16 to;
+}
+
+contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Ownable {
 	ILayerZeroEndpoint public endpoint;
 	IPostOffice public immutable postOffice;
 
@@ -19,10 +23,16 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 	constructor(
 		address _layerZeroEndpoint,
 		address _postOffice,
-		address _manager
-	) Auth(_postOffice, _manager, _manager) {
+		chainPair[] memory chainPairArr
+	) {
 		endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
 		postOffice = IPostOffice(_postOffice);
+
+		uint256 length = chainPairArr.length;
+		for (uint256 i = 0; i < length; ) {
+			chainPair memory pair = chainPairArr[i];
+			chains[pair.from] = pair.to;
+		}
 	}
 
 	function deliverMessage(
@@ -31,7 +41,8 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		address _dstPostman,
 		uint16 _messageType,
 		uint16 _dstChainId
-	) external onlyOwner {
+	) external {
+		if (msg.sender != address(postOffice)) revert OnlyPostOffice();
 		if (address(this).balance == 0) revert NoBalance();
 
 		bytes memory payload = abi.encode(_msg, _dstVautAddress, _messageType);
@@ -83,7 +94,7 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 	}
 
 	// With this access control structure we need a way to vault set chain.
-	function setChain(uint16 _chainId, uint16 _lzChainId) external onlyRole(MANAGER) {
+	function setChain(uint16 _chainId, uint16 _lzChainId) external onlyOwner {
 		chains[_chainId] = _lzChainId;
 	}
 
@@ -92,7 +103,7 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		uint16 _dstChainId,
 		uint256 _configType,
 		bytes memory _config
-	) external override onlyRole(MANAGER) {
+	) external override onlyOwner {
 		endpoint.setConfig(
 			chains[_dstChainId],
 			endpoint.getSendVersion(address(this)),
@@ -116,11 +127,11 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 			);
 	}
 
-	function setSendVersion(uint16 version) external override onlyRole(MANAGER) {
+	function setSendVersion(uint16 version) external override onlyOwner {
 		endpoint.setSendVersion(version);
 	}
 
-	function setReceiveVersion(uint16 version) external override onlyRole(MANAGER) {
+	function setReceiveVersion(uint16 version) external override onlyOwner {
 		endpoint.setReceiveVersion(version);
 	}
 
@@ -154,4 +165,5 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 	error Unauthorized();
 	error NoBalance();
 	error InsufficientBalanceToSendMessage();
+	error OnlyPostOffice();
 }
