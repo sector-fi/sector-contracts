@@ -11,6 +11,7 @@ abstract contract XChainIntegrator is Auth {
 	address[] internal vaultList;
 
 	IPostOffice public immutable postOffice;
+	uint16 immutable chainId = uint16(block.chainid);
 
 	struct Vault {
 		uint16 chainId;
@@ -200,23 +201,23 @@ abstract contract XChainIntegrator is Auth {
 	/////////////////////////////////////////////////////*/
 
 	function addVault(
-		address vault,
-		uint16 chainId,
-		bool allowed
+		address _vault,
+		uint16 _chainId,
+		bool _allowed
 	) external onlyOwner {
-		Vault memory tmpVault = depositedVaults[vault];
+		Vault memory tmpVault = depositedVaults[_vault];
 
 		if (tmpVault.chainId != 0 || tmpVault.allowed != false) revert VaultAlreadyAdded();
 
-		depositedVaults[vault] = Vault(chainId, allowed);
-		vaultList.push(vault);
-		emit AddVault(vault, chainId);
+		depositedVaults[_vault] = Vault(_chainId, _allowed);
+		vaultList.push(_vault);
+		emit AddVault(_vault, _chainId);
 	}
 
-	function changeVaultStatus(address vault, bool allowed) external onlyOwner {
-		depositedVaults[vault].allowed = allowed;
+	function changeVaultStatus(address _vault, bool _allowed) external onlyOwner {
+		depositedVaults[_vault].allowed = _allowed;
 
-		emit ChangeVaultStatus(vault, allowed);
+		emit ChangeVaultStatus(_vault, _allowed);
 	}
 
 	function isVaultAllowed(Message calldata message) external view returns (bool) {

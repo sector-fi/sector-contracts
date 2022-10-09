@@ -13,8 +13,6 @@ import "../interfaces/MsgStructs.sol";
 contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 	using FixedPointMathLib for uint256;
 
-	uint16 immutable chainId = uint16(block.chainid);
-
 	struct Request {
 		address vaultAddr;
 		uint256 amount;
