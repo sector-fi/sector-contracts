@@ -11,6 +11,7 @@ const func: DeployFunction = async function ({
     const { deploy, execute } = deployments;
 
     const networks = config.networks;
+    // console.log("NETWORKS", networks);
 
     if (!multichainEndpoint) {
         throw new Error('multichainEndpoint not set');
@@ -22,14 +23,22 @@ const func: DeployFunction = async function ({
 
     const postOffice = await deployments.get('PostOffice');
 
+    // Loop all networks on hardhat config and set layzerZero chainId to the corresponding network.
+    let chainIdMapping: Array<any> = [];
+
+    for (let [key, value] of Object.entries(networks)) {
+        if (value.layerZeroId) {
+            chainIdMapping.push([value.chainId, value.layerZeroId]);
+        }
+    }
+
     const layerZero = await deploy('LayerZeroPostman', {
         from: deployer,
-        args: [layerZeroEndpoint, postOffice.address, manager],
+        args: [layerZeroEndpoint, postOffice.address, chainIdMapping],
         skipIfAlreadyDeployed: false,
         log: true,
     })
     console.log('LayerZero postman deployed to', layerZero.address);
-
 
     // Just deploy if supportMultichain is set to true on hardhat network config.
     if (network.config.supportMultichain) {
@@ -43,13 +52,6 @@ const func: DeployFunction = async function ({
     }
     else console.log(`${network.name} does not support multichain`);
 
-    // Loop all networks on hardhat config and set layzerZero chainId to the corresponding network.
-    for (let [key, value] of Object.entries(networks)) {
-        if (value.layerZeroId) {
-            console.log(`Registering ${key} with layer zero`);
-            await execute('LayerZeroPostman', { from: deployer }, 'setChain', value.chainId, value.layerZeroId);
-        }
-    }
 };
 
 export default func;

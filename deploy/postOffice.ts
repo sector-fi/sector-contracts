@@ -21,4 +21,4 @@ const func: DeployFunction = async function ({
 
 export default func;
 func.tags = ['postOffice'];
-func.dependencies = ['XVault'];
+// func.dependencies = ['XVault'];

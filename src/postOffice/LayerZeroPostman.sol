@@ -32,6 +32,10 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		for (uint256 i = 0; i < length; ) {
 			chainPair memory pair = chainPairArr[i];
 			chains[pair.from] = pair.to;
+
+			unchecked {
+				i++;
+			}
 		}
 	}
 
