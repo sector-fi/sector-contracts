@@ -42,7 +42,9 @@ contract SectorVault is ERC4626, BatchedWithdraw, XChainIntegrator {
 	mapping(ISCYStrategy => bool) public strategyExists;
 	address[] strategyIndex;
 	uint256 public totalStrategyHoldings;
+
 	address[] bridgeQueue;
+	uint256 balanceBeforeCrossDeposit = 0;
 
 	constructor(
 		ERC20 asset_,
@@ -219,8 +221,6 @@ contract SectorVault is ERC4626, BatchedWithdraw, XChainIntegrator {
 		return address(asset);
 	}
 
-	uint256 balanceBeforeCrossDeposit = 0;
-
 	/*/////////////////////////////////////////////////////////
 					CrossChain functionality
 	/////////////////////////////////////////////////////////*/
@@ -242,11 +242,10 @@ contract SectorVault is ERC4626, BatchedWithdraw, XChainIntegrator {
 
 			uint256 shares = previewDeposit(messages[i].value);
 
-			totalDeposited += messages[i].value;
-
 			_mint(messages[i].sender, shares);
 
 			unchecked {
+				totalDeposited += messages[i].value;
 				i++;
 			}
 		}
@@ -268,10 +267,10 @@ contract SectorVault is ERC4626, BatchedWithdraw, XChainIntegrator {
 			if (depositedVaults[messages[i].sender].amount == 0) {
 				bridgeQueue.push(messages[i].sender);
 			}
-			depositedVaults[messages[i].sender].amount += messages[i].value;
 
 			requestRedeem(messages[i].value, messages[i].sender);
 			unchecked {
+				depositedVaults[messages[i].sender].amount += messages[i].value;
 				i++;
 			}
 		}
@@ -287,7 +286,6 @@ contract SectorVault is ERC4626, BatchedWithdraw, XChainIntegrator {
 			depositedVaults[vAddr].amount = 0;
 			bridgeQueue.pop();
 
-			total += depositedVaults[vAddr].amount;
 			// MANAGER has to ensure that if bridge fails it will try again
 			// OnChain record of needed bridge will be erased.
 			emit BridgeAsset(
@@ -297,6 +295,7 @@ contract SectorVault is ERC4626, BatchedWithdraw, XChainIntegrator {
 			);
 
 			unchecked {
+				total += depositedVaults[vAddr].amount;
 				i--;
 			}
 		}
@@ -330,9 +329,10 @@ contract SectorVault is ERC4626, BatchedWithdraw, XChainIntegrator {
 		Message[] memory messages = postOffice.readMessage(messageType.EMERGENCYWITHDRAW);
 
 		for (uint256 i = 0; i < messages.length; ) {
-			_transfer(messages[i].sender, messages[i].client, messages[i].value);
+			uint256 transferShares = messages[i].value.mulWadDown(balanceOf(messages[i].sender));
 
-			emit EmergencyWithdraw(messages[i].sender, messages[i].client, messages[i].value);
+			_transfer(messages[i].sender, messages[i].client, transferShares);
+			emit EmergencyWithdraw(messages[i].sender, messages[i].client, transferShares);
 
 			unchecked {
 				i++;
@@ -359,7 +359,9 @@ contract SectorVault is ERC4626, BatchedWithdraw, XChainIntegrator {
 	}
 
 	function afterDeposit(uint256, uint256) internal override {
-		balanceBeforeCrossDeposit = asset.balanceOf(address(this));
+		unchecked {
+			balanceBeforeCrossDeposit = asset.balanceOf(address(this));
+		}
 	}
 
 	function beforeWithdraw(uint256 asset, uint256) internal override {
