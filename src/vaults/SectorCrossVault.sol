@@ -23,7 +23,6 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 	struct HarvestLedger {
 		uint256 localDepositValue;
 		uint256 count;
-		bool isOpen;
 	}
 
 	// TODO Implement functions with harvestLock modifier
@@ -105,7 +104,7 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 	function harvestVaults() public onlyRole(MANAGER) {
 		uint256 localDepositValue = 0;
 
-		if (harvestLedger.isOpen) revert OnGoingHarvest();
+		if (harvestLedger.count != 0) revert OnGoingHarvest();
 
 		uint256 vaultsLength = vaultList.length;
 		uint256 xvaultsCount = 0;
@@ -133,43 +132,33 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 		}
 
 		harvestLedger.localDepositValue = localDepositValue;
-		harvestLedger.isOpen = true;
 		harvestLedger.count = xvaultsCount;
 	}
 
 	function finalizeHarvest(uint256 expectedValue, uint256 maxDelta) public onlyRole(MANAGER) {
 		HarvestLedger storage ledger = harvestLedger;
+		uint256 ledgerCount = ledger.count;
 
-		if (!ledger.isOpen) revert HarvestNotOpen();
-
-		Message[] memory harvestMsg = postOffice.readMessage(messageType.HARVEST);
-
-		if (ledger.count > harvestMsg.length) revert MissingMessages();
+		if (ledgerCount == 0) revert HarvestNotOpen();
 
 		// Compute actual tvl
-		uint256 xDepositValue = 0;
+		(uint256 xDepositValue, uint256 count) = postOffice.readMessageSumReduce(messageType.HARVEST);
 
-		uint256 count = ledger.count;
-		for (uint256 i = 0; i < count; ) {
-			xDepositValue += harvestMsg[i].value;
+		// The only save check besides computed tvl now is the number o messages.
+		if (ledgerCount > count) revert MissingMessages();
 
-			unchecked {
-				i++;
-			}
-		}
-
+		uint256 actualTotal = ledger.localDepositValue + xDepositValue;
 		// Check if tvl is expected before commiting
-		uint256 delta = expectedValue > xDepositValue
-			? expectedValue - xDepositValue
-			: xDepositValue - expectedValue;
+		uint256 delta = expectedValue > actualTotal
+			? expectedValue - actualTotal
+			: actualTotal - expectedValue;
 		if (delta > maxDelta) revert SlippageExceeded();
 
 		// Commit values
-		_processWithdraw((ledger.localDepositValue + xDepositValue) / totalSupply());
+		_processWithdraw(actualTotal / totalSupply());
 
 		// Change harvest status
 		ledger.localDepositValue = 0;
-		ledger.isOpen = false;
 		ledger.count = 0;
 	}
 
@@ -211,7 +200,7 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 	/////////////////////////////////////////////////////*/
 
 	modifier harvestLock() {
-		if (harvestLedger.isOpen) revert OnGoingHarvest();
+		if (harvestLedger.count != 0) revert OnGoingHarvest();
 		_;
 	}
 

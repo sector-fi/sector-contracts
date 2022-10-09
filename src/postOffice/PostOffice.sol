@@ -98,12 +98,12 @@ contract PostOffice is Ownable {
 
 	// Returns only total value on board
 	// Gas is cheaper here and consumer doesn't need to loop a response
-	function readMessageReduce(messageType msgType) external returns (uint256 total) {
+	function readMessageSumReduce(messageType msgType) external returns (uint256 acc, uint256 count) {
 		Message[] storage storagedMessages = messageBoard[msg.sender][msgType];
-		total = 0;
+		(acc, count) = (0, storagedMessages.length);
 
-		for (uint256 i = storagedMessages.length; i > 0; ) {
-			total += storagedMessages[i - 1].value;
+		for (uint256 i = count; i > 0; ) {
+			acc += storagedMessages[i - 1].value;
 			storagedMessages.pop();
 
 			unchecked {
@@ -111,7 +111,7 @@ contract PostOffice is Ownable {
 			}
 		}
 
-		return total;
+		return (acc, count);
 	}
 
 	/*/////////////////////////////////////////////////////
