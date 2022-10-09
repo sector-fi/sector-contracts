@@ -5,13 +5,12 @@ import { config } from 'hardhat';
 const func: DeployFunction = async function ({
     getNamedAccounts,
     deployments,
+    network
 }: HardhatRuntimeEnvironment) {
     const { deployer, manager, layerZeroEndpoint, multichainEndpoint } = await getNamedAccounts();
     const { deploy, execute } = deployments;
 
-    let test = config.networks
-
-    console.log("Testing test", test);
+    const networks = config.networks;
 
     if (!multichainEndpoint) {
         throw new Error('multichainEndpoint not set');
@@ -21,7 +20,7 @@ const func: DeployFunction = async function ({
         throw new Error('layerZeroEndpoint not set');
     }
 
-    const postOffice = await deployments.get('postOffice');
+    const postOffice = await deployments.get('PostOffice');
 
     const layerZero = await deploy('LayerZeroPostman', {
         from: deployer,
@@ -31,15 +30,24 @@ const func: DeployFunction = async function ({
     })
     console.log('LayerZero postman deployed to', layerZero.address);
 
-    const multichain = await deploy('MultichainPostman', {
-        from: deployer,
-        args: [multichainEndpoint, postOffice.address],
-        skipIfAlreadyDeployed: false,
-        log: true,
-    });
-    console.log('Multichain postman deployed to', multichain.address);
+    if (network.config.supportMultichain) {
+        const multichain = await deploy('MultichainPostman', {
+            from: deployer,
+            args: [multichainEndpoint, postOffice.address],
+            skipIfAlreadyDeployed: false,
+            log: true,
+        });
+        console.log('Multichain postman deployed to', multichain.address);
+    }
+    else console.log(`${network.name} does not support multichain`);
 
-    // TODO Execute setChain on layerZero and set the mapping chainId => lzChainId
+    // loop on the test object
+    for (let [key, value] of Object.entries(networks)) {
+        if (value.layerZeroId) {
+            console.log(`Registering ${key} with layer zero`);
+            await execute('LayerZeroPostman', { from: deployer }, 'setChain', value.chainId, value.layerZeroId);
+        }
+    }
 };
 
 export default func;

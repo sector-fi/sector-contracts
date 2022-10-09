@@ -6,14 +6,17 @@ const func: DeployFunction = async function ({
     deployments,
 }: HardhatRuntimeEnvironment) {
     // TODO: make sure the owner address is the one you wnat (set via .env)
-    const { deployer, owner, guardian, manager } = await getNamedAccounts();
+    const { deployer } = await getNamedAccounts();
     const { deploy } = deployments;
 
+    const postOffice = await deploy('PostOffice', {
+        from: deployer,
+        args: [],
+        skipIfAlreadyDeployed: false,
+        log: true,
+    })
 
-
-
-
-
+    console.log('PostOffice deployed to', postOffice.address);
 };
 
 export default func;
