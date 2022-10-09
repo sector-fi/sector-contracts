@@ -30,6 +30,8 @@ const func: DeployFunction = async function ({
     })
     console.log('LayerZero postman deployed to', layerZero.address);
 
+
+    // Just deploy if supportMultichain is set to true on hardhat network config.
     if (network.config.supportMultichain) {
         const multichain = await deploy('MultichainPostman', {
             from: deployer,
@@ -41,7 +43,7 @@ const func: DeployFunction = async function ({
     }
     else console.log(`${network.name} does not support multichain`);
 
-    // loop on the test object
+    // Loop all networks on hardhat config and set layzerZero chainId to the corresponding network.
     for (let [key, value] of Object.entries(networks)) {
         if (value.layerZeroId) {
             console.log(`Registering ${key} with layer zero`);
