@@ -12,8 +12,7 @@ const func: DeployFunction = async function ({
 
     // we can deploy multiple vaults with different name extensions -1, -2 etc
     if (!usdc) {
-        const vault = await deploy('USDC-0', {
-            contract: 'USDCMock',
+        const vault = await deploy('USDCMock', {
             from: deployer,
             args: [ethers.utils.parseUnits('2000000', 6)],
             skipIfAlreadyDeployed: false,
