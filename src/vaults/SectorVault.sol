@@ -5,8 +5,10 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20 } from "./ERC4626/ERC4626.sol";
 import { ISCYStrategy } from "../interfaces/scy/ISCYStrategy.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
+import { XChainIntegrator } from "../common/XChainIntegrator.sol";
+import "../interfaces/MsgStructs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 // TODO native asset deposit + flow
 
@@ -22,7 +24,7 @@ struct DepositParams {
 	uint256 minSharesOut;
 }
 
-contract SectorVault is ERC4626, BatchedWithdraw {
+contract SectorVault is ERC4626, BatchedWithdraw, XChainIntegrator {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
 
@@ -41,6 +43,9 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 	address[] strategyIndex;
 	uint256 public totalStrategyHoldings;
 
+	address[] bridgeQueue;
+	uint256 balanceBeforeCrossDeposit = 0;
+
 	constructor(
 		ERC20 asset_,
 		string memory _name,
@@ -49,8 +54,12 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		address _guardian,
 		address _manager,
 		address _treasury,
-		uint256 _perforamanceFee
-	) ERC4626(asset_, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
+		uint256 _perforamanceFee,
+		address _postOffice
+	)
+		ERC4626(asset_, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee)
+		XChainIntegrator(_postOffice)
+	{}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
 		if (strategyExists[strategy]) revert StrategyExists();
@@ -123,6 +132,8 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 			strategy.deposit(address(this), address(asset), 0, param.minSharesOut);
 			totalStrategyHoldings += param.amountIn;
 		}
+
+		afterDeposit(0, 0);
 	}
 
 	/// this can be done in parts in case gas limit is reached
@@ -141,6 +152,8 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 			);
 			totalStrategyHoldings -= amountOut;
 		}
+
+		afterDeposit(0, 0);
 	}
 
 	/// gets accurate strategy holdings denominated in asset
@@ -208,6 +221,126 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		return address(asset);
 	}
 
+	/*/////////////////////////////////////////////////////////
+					CrossChain functionality
+	/////////////////////////////////////////////////////////*/
+
+	function finalizeDeposit() external onlyRole(MANAGER) {
+		Message[] memory messages = postOffice.readMessage(messageType.DEPOSIT);
+
+		// Doesn't check if the money was already there
+		uint256 totalDeposited = 0;
+		for (uint256 i = 0; i < messages.length; ) {
+			// messages[i].value; messages[i].sender; messages[i].chainId;
+			// Not sure about this safety check yet
+			// // lock minimum liquidity if totalSupply is 0
+			// if (totalSupply() == 0) {
+			// 	if (MIN_LIQUIDITY > shares) revert MinLiquidity();
+			// 	shares -= MIN_LIQUIDITY;
+			// 	_mint(address(1), MIN_LIQUIDITY);
+			// }
+
+			uint256 shares = previewDeposit(messages[i].value);
+
+			_mint(messages[i].sender, shares);
+
+			unchecked {
+				totalDeposited += messages[i].value;
+				i++;
+			}
+		}
+
+		// Should account for fees paid in tokens for using bridge
+		// Also, if a value hasn't arrived manager will not be able to register any value
+		if (totalDeposited > (asset.balanceOf(address(this)) - balanceBeforeCrossDeposit))
+			revert MissingDepositValue();
+
+		afterDeposit(0, 0);
+		emit RegisterDeposit(totalDeposited);
+	}
+
+	function readWithdraw() external onlyRole(MANAGER) {
+		Message[] memory messages = postOffice.readMessage(messageType.WITHDRAW);
+
+		for (uint256 i = 0; i < messages.length; ) {
+			// if (depositedVaults[messages[i].sender].amount != 0) revert PendingCrosschainWithdraw();
+			if (depositedVaults[messages[i].sender].amount == 0) {
+				bridgeQueue.push(messages[i].sender);
+			}
+
+			requestRedeem(messages[i].value, messages[i].sender);
+			unchecked {
+				depositedVaults[messages[i].sender].amount += messages[i].value;
+				i++;
+			}
+		}
+	}
+
+	function finalizeWithdraw() external onlyRole(MANAGER) {
+		uint256 length = bridgeQueue.length;
+
+		uint256 total = 0;
+		for (uint256 i = length; i > 0; ) {
+			address vAddr = bridgeQueue[i - 1];
+
+			depositedVaults[vAddr].amount = 0;
+			bridgeQueue.pop();
+
+			// MANAGER has to ensure that if bridge fails it will try again
+			// OnChain record of needed bridge will be erased.
+			emit BridgeAsset(
+				chainId,
+				depositedVaults[vAddr].chainId,
+				depositedVaults[vAddr].amount
+			);
+
+			unchecked {
+				total += depositedVaults[vAddr].amount;
+				i--;
+			}
+		}
+
+		beforeWithdraw(total, 0);
+	}
+
+	// This function should trigger harvest before sending back messages?
+	function finalizeHarvest() external onlyRole(MANAGER) {
+		// function finalizeHarvest(uint256 expectedTvl, uint256 maxDelta) external onlyRole(MANAGER) {
+		// harvest(expectedTvl, maxDelta);
+
+		Message[] memory messages = postOffice.readMessage(messageType.REQUESTHARVEST);
+
+		uint256 sharePrice = withdrawSharePrice;
+		for (uint256 i = 0; i < messages.length; ) {
+			postOffice.sendMessage(
+				messages[i].sender,
+				Message(sharePrice, address(this), address(0), chainId),
+				messages[i].chainId,
+				messageType.HARVEST
+			);
+
+			unchecked {
+				i++;
+			}
+		}
+	}
+
+	// Anyone can call emergencyWithdraw
+	function finalizeEmergencyWithdraw() external {
+		Message[] memory messages = postOffice.readMessage(messageType.EMERGENCYWITHDRAW);
+
+		for (uint256 i = 0; i < messages.length; ) {
+			uint256 transferShares = messages[i].value.mulWadDown(balanceOf(messages[i].sender));
+
+			_transfer(messages[i].sender, messages[i].client, transferShares);
+			emit EmergencyWithdraw(messages[i].sender, messages[i].client, transferShares);
+
+			unchecked {
+				i++;
+			}
+		}
+	}
+
 	/// OVERRIDES
 
 	function withdraw(
@@ -226,8 +359,22 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		return super.redeem(shares, receiver, owner);
 	}
 
+	function afterDeposit(uint256, uint256) internal override {
+		unchecked {
+			balanceBeforeCrossDeposit = asset.balanceOf(address(this));
+		}
+	}
+
+	function beforeWithdraw(uint256 asset, uint256) internal override {
+		balanceBeforeCrossDeposit -= asset;
+	}
+
+	event RegisterDeposit(uint256 total);
+	event EmergencyWithdraw(address vault, address client, uint256 shares);
+
 	error WrongUnderlying();
 	error SlippageExceeded();
 	error StrategyExists();
 	error StrategyNotFound();
+	error MissingDepositValue();
 }

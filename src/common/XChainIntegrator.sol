@@ -4,15 +4,20 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Auth } from "./Auth.sol";
 import "../interfaces/MsgStructs.sol";
+import "../interfaces/postOffice/IPostOffice.sol";
 
 abstract contract XChainIntegrator is Auth {
+	mapping(address => Vault) public depositedVaults;
+	address[] internal vaultList;
+
+	IPostOffice public immutable postOffice;
+	uint16 immutable chainId = uint16(block.chainid);
+
 	struct Vault {
+		uint256 amount;
 		uint16 chainId;
 		bool allowed;
 	}
-
-	mapping(address => Vault) public depositedVaults;
-	address[] internal vaultsArr;
 
 	/// @notice Struct encoded in Bungee calldata
 	/// @dev Derived from socket registry contract
@@ -41,6 +46,14 @@ abstract contract XChainIntegrator is Auth {
 		MiddlewareRequest middlewareRequest;
 		BridgeRequest bridgeRequest;
 	}
+
+	constructor(address _postOffice) {
+		postOffice = IPostOffice(_postOffice);
+	}
+
+	/*/////////////////////////////////////////////////////
+						Bridge utilities
+	/////////////////////////////////////////////////////*/
 
 	/// @notice Decode the socket request calldata
 	/// @dev Currently not in use due to undertainity in bungee api response
@@ -80,7 +93,6 @@ abstract contract XChainIntegrator is Auth {
 		}
 	}
 
-	// This one has to integrate with layerZero message sender
 	function startBridgeRoute(
 		uint32 _fromChainId,
 		uint32 _toChainId,
@@ -89,7 +101,6 @@ abstract contract XChainIntegrator is Auth {
 		emit BridgeAsset(_fromChainId, _toChainId, amount);
 	}
 
-	// This function will change to depositCrossChain
 	/// @notice Sends tokens using Bungee middleware. Assumes tokens already present in contract. Manages allowance and transfer.
 	/// @dev Currently not verifying the middleware request calldata. Use very carefully
 	/// @param allowanceTarget address to allow tokens to swipe
@@ -109,7 +120,6 @@ abstract contract XChainIntegrator is Auth {
 	) public onlyRole(MANAGER) {
 		verifySocketCalldata(data, destinationChainId, asset, destinationAddress);
 
-		// ERC20(asset).approve(msg.sender, amount);
 		ERC20(asset).approve(allowanceTarget, amount);
 		(bool success, ) = socketRegistry.call(data);
 
@@ -187,10 +197,47 @@ abstract contract XChainIntegrator is Auth {
 		return tempBytes;
 	}
 
-	function isSenderAllowed(Message calldata message) external view returns (bool) {
+	/*/////////////////////////////////////////////////////
+					Vault Management
+	/////////////////////////////////////////////////////*/
+
+	function addVault(
+		address _vault,
+		uint16 _chainId,
+		bool _allowed
+	) external onlyOwner {
+		Vault memory tmpVault = depositedVaults[_vault];
+
+		if (tmpVault.chainId != 0 || tmpVault.allowed != false) revert VaultAlreadyAdded();
+
+		depositedVaults[_vault] = Vault(0, _chainId, _allowed);
+		vaultList.push(_vault);
+		emit AddVault(_vault, _chainId);
+	}
+
+	function changeVaultStatus(address _vault, bool _allowed) external onlyOwner {
+		depositedVaults[_vault].allowed = _allowed;
+
+		emit ChangeVaultStatus(_vault, _allowed);
+	}
+
+	function isVaultAllowed(Message calldata message) external view returns (bool) {
 		return depositedVaults[message.sender].allowed;
 	}
 
+	/*/////////////////////////////////////////////////////
+							Events
+	/////////////////////////////////////////////////////*/
+
+	event AddVault(address vault, uint16 chainId);
+	event ChangeVaultStatus(address vault, bool status);
 	event BridgeAsset(uint32 _fromChainId, uint32 _toChainId, uint256 amount);
+
+	/*/////////////////////////////////////////////////////
+							Errors
+	/////////////////////////////////////////////////////*/
+
+	error VaultNotAllowed(address vault);
+	error VaultAlreadyAdded();
 	error BridgeError();
 }

@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPostman } from "../interfaces/postOffice/IPostman.sol";
+import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
@@ -28,7 +29,7 @@ struct Message {
 }
 */
 
-contract PostOffice is Ownable {
+contract PostOffice is Ownable, IPostOffice {
 	mapping(address => mapping(messageType => Message[])) internal messageBoard;
 	AddressBook internal addrBook;
 
@@ -43,6 +44,7 @@ contract PostOffice is Ownable {
 	function sendMessage(
 		address receiverAddr,
 		Message calldata message,
+		uint16 receiverChainId,
 		messageType msgType
 	) external {
 		if (addrBook.info[msg.sender].chainId != block.chainid)
@@ -57,7 +59,7 @@ contract PostOffice is Ownable {
 			receiverAddr,
 			addrBook.postman[receiver.dstPostmanId],
 			msgType,
-			uint16(block.chainid)
+			receiverChainId
 		);
 		emit MessageSent(receiverAddr, message.value, message.sender, message.chainId, msgType);
 	}
@@ -67,7 +69,7 @@ contract PostOffice is Ownable {
 		Message calldata message,
 		messageType msgType
 	) external isPostman(msg.sender) {
-		if (!XChainIntegrator(receiver).isSenderAllowed(message))
+		if (!XChainIntegrator(receiver).isVaultAllowed(message))
 			revert SenderNotAllowed(message.sender, message.chainId);
 
 		messageBoard[receiver][msgType].push(message);
@@ -89,7 +91,7 @@ contract PostOffice is Ownable {
 			storagedMessages.pop();
 
 			unchecked {
-				i++;
+				i--;
 			}
 		}
 
@@ -98,20 +100,23 @@ contract PostOffice is Ownable {
 
 	// Returns only total value on board
 	// Gas is cheaper here and consumer doesn't need to loop a response
-	function readMessageReduce(messageType msgType) external returns (uint256 total) {
+	function readMessageSumReduce(messageType msgType)
+		external
+		returns (uint256 acc, uint256 count)
+	{
 		Message[] storage storagedMessages = messageBoard[msg.sender][msgType];
-		total = 0;
+		(acc, count) = (0, storagedMessages.length);
 
-		for (uint256 i = storagedMessages.length; i > 0; ) {
-			total += storagedMessages[i - 1].value;
+		for (uint256 i = count; i > 0; ) {
+			acc += storagedMessages[i - 1].value;
 			storagedMessages.pop();
 
 			unchecked {
-				i++;
+				i--;
 			}
 		}
 
-		return total;
+		return (acc, count);
 	}
 
 	/*/////////////////////////////////////////////////////
@@ -145,7 +150,11 @@ contract PostOffice is Ownable {
 		emit PostmanAdded(_postman, id);
 	}
 
-	function updateReceiver(address receiver, uint16 newSrcPostmanId, uint16 newDstPostmanId) external onlyOwner {
+	function updateReceiver(
+		address receiver,
+		uint16 newSrcPostmanId,
+		uint16 newDstPostmanId
+	) external onlyOwner {
 		addrBook.info[receiver].srcPostmanId = newSrcPostmanId;
 		addrBook.info[receiver].dstPostmanId = newDstPostmanId;
 

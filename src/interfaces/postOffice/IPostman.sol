@@ -8,6 +8,6 @@ interface IPostman {
 		address _dstVautAddress,
 		address _dstPostman,
 		messageType _messageType,
-        uint16 _srcChainId
+		uint16 _dstChainId
 	) external;
 }
