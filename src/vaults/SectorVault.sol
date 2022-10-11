@@ -6,7 +6,7 @@ import { ERC4626, FixedPointMathLib, SafeERC20 } from "./ERC4626/ERC4626.sol";
 import { ISCYStrategy } from "../interfaces/scy/ISCYStrategy.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 // TODO native asset deposit + flow
 
@@ -39,7 +39,9 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 
 	mapping(ISCYStrategy => bool) public strategyExists;
 	address[] strategyIndex;
+
 	uint256 public totalStrategyHoldings;
+	uint256 public floatAmnt; // amount of underlying tracked in vault
 
 	constructor(
 		ERC20 asset_,
@@ -94,8 +96,12 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		// withdrawFromStrategies should be called before this
 		// note we are using the totalStrategyHoldings from previous harvest if there is a profit
 		// this prevents harvest front-running and adds a dynamic fee to withdrawals
-		if (pendingWithdrawal != 0 && pendingWithdrawal < asset.balanceOf(address(this)))
-			_processWithdraw(convertToShares(1e18));
+		if (pendingWithdraw != 0) {
+			// pending withdrawals are removed from available deposits
+			// availableDeposits -= pendingWithdrawal;
+			_processWithdraw();
+			if (floatAmnt < pendingWithdraw) revert NotEnoughtFloat();
+		}
 
 		// take vault fees
 		if (profit == 0) {
@@ -106,7 +112,8 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		// since profit > 0 we have not updated totalStrategyHoldings yet
 		totalStrategyHoldings = updatedStratHoldings;
 		uint256 underlyingFees = (profit * performanceFee) / 1e18;
-		uint256 feeShares = convertToShares(underlyingFees);
+
+		uint256 feeShares = toSharesAfterDeposit(underlyingFees);
 
 		emit Harvest(treasury, profit, underlyingFees, feeShares, tvl);
 		_mint(treasury, feeShares);
@@ -116,12 +123,16 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 	function depositIntoStrategies(DepositParams[] calldata params) public onlyRole(MANAGER) {
 		for (uint256 i; i < params.length; i++) {
 			DepositParams memory param = params[i];
+			uint256 amountIn = param.amountIn;
+			if (amountIn == 0) continue;
 			ISCYStrategy strategy = param.strategy;
 			if (!strategyExists[strategy]) revert StrategyNotFound();
+			// update underlying float accouting
+			beforeWithdraw(amountIn, 0);
 			/// push funds to avoid approvals
-			asset.safeTransfer(strategy.strategy(), param.amountIn);
+			asset.safeTransfer(strategy.strategy(), amountIn);
 			strategy.deposit(address(this), address(asset), 0, param.minSharesOut);
-			totalStrategyHoldings += param.amountIn;
+			totalStrategyHoldings += amountIn;
 		}
 	}
 
@@ -129,17 +140,21 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 	function withdrawFromStrategies(RedeemParams[] calldata params) public onlyRole(MANAGER) {
 		for (uint256 i; i < params.length; i++) {
 			RedeemParams memory param = params[i];
+			uint256 shares = param.shares;
+			if (shares == 0) continue;
 			ISCYStrategy strategy = param.strategy;
 			if (!strategyExists[strategy]) revert StrategyNotFound();
 
 			// no need to push share tokens - contract can burn them
 			uint256 amountOut = strategy.redeem(
 				address(this),
-				param.shares,
+				shares,
 				address(asset), // token out is allways asset
 				param.minTokenOut
 			);
 			totalStrategyHoldings -= amountOut;
+			// update underlying float accounting
+			afterDeposit(amountOut, 0);
 		}
 	}
 
@@ -176,7 +191,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 	}
 
 	function totalAssets() public view virtual override returns (uint256) {
-		return asset.balanceOf(address(this)) + totalStrategyHoldings;
+		return floatAmnt + totalStrategyHoldings;
 	}
 
 	/// INTERFACE UTILS
@@ -210,6 +225,17 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 
 	/// OVERRIDES
 
+	function afterDeposit(uint256 assets, uint256) internal override {
+		floatAmnt += assets;
+	}
+
+	function beforeWithdraw(uint256 assets, uint256) internal override {
+		// this check prevents withdrawing more underlying from the vault then
+		// what we need to keep to honor withdrawals
+		if (floatAmnt < assets || floatAmnt - assets < pendingWithdraw) revert NotEnoughtFloat();
+		floatAmnt -= assets;
+	}
+
 	function withdraw(
 		uint256 assets,
 		address receiver,
@@ -226,6 +252,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		return super.redeem(shares, receiver, owner);
 	}
 
+	error NotEnoughtFloat();
 	error WrongUnderlying();
 	error SlippageExceeded();
 	error StrategyExists();

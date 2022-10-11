@@ -52,11 +52,11 @@ contract MockScyVault is SCYStrategy, SCYVault {
 	}
 
 	function _stratGetAndUpdateTvl() internal view override returns (uint256) {
-		return MockERC20(strategy).totalSupply();
+		return _strategyTvl();
 	}
 
 	function _strategyTvl() internal view override returns (uint256) {
-		return MockERC20(strategy).totalSupply();
+		return underlying.balanceOf(address(strategy));
 	}
 
 	function _stratMaxTvl() internal pure override returns (uint256) {

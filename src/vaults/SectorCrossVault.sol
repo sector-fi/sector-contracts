@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
+import { SectorVault } from "./SectorVault.sol";
 import { ERC4626, FixedPointMathLib } from "./ERC4626/ERC4626.sol";
 import { IXAdapter } from "../interfaces/adapters/IXAdapter.sol";
 import { SocketIntegrator } from "../common/SocketIntegrator.sol";
@@ -173,9 +174,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 			Vault memory tmpVault = depositedVaults[vArr[i]];
 
 			if (tmpVault.adapter == address(0)) {
-				localDepositValue +=
-					BatchedWithdraw(vArr[i]).balanceOf(address(this)) *
-					BatchedWithdraw(vArr[i]).withdrawSharePrice();
+				localDepositValue += SectorVault(vArr[i]).underlyingBalance(address(this));
 			} else {
 				IXAdapter(tmpVault.adapter).sendMessage(
 					0,
@@ -232,7 +231,7 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		if (delta > maxDelta) revert SlippageExceeded();
 
 		// Commit values
-		_processWithdraw((hLedger.localDepositValue + xDepositValue) / totalSupply());
+		_processWithdraw();
 
 		// Change harvest status
 		harvestLedger.openIndex = i;
