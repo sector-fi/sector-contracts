@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { setupAccount } from '../ts/utils';
+import { setupAccount, forkNetwork, chain, forkBlock } from '../ts/utils';
 
 const func: DeployFunction = async function ({
   getNamedAccounts,
@@ -9,6 +9,8 @@ const func: DeployFunction = async function ({
   if (network.live) return;
 
   const { deployer, manager, guardian, owner } = await getNamedAccounts();
+
+  await forkNetwork(chain, forkBlock[chain]);
 
   await setupAccount(owner);
   await setupAccount(guardian);
