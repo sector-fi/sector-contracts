@@ -157,7 +157,11 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 		if (delta > maxDelta) revert SlippageExceeded();
 
 		// Commit values
+<<<<<<< HEAD
 		_processWithdraw();
+=======
+		_processWithdraw(actualTotal / totalSupply());
+>>>>>>> 6f4f2e6d9a4aeae6f8a31080bd27e28eca12605c
 
 		// Change harvest status
 		ledger.localDepositValue = 0;
