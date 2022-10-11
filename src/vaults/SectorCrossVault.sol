@@ -2,56 +2,29 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { SectorVault } from "./SectorVault.sol";
 import { ERC4626, FixedPointMathLib } from "./ERC4626/ERC4626.sol";
-import { IXAdapter } from "../interfaces/adapters/IXAdapter.sol";
-import { SocketIntegrator } from "../common/SocketIntegrator.sol";
+import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
+import { XChainIntegrator } from "../common/XChainIntegrator.sol";
+import "../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
 
-contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
+contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 	using FixedPointMathLib for uint256;
-
-	enum msgType {
-		NONE,
-		DEPOSIT,
-		REDEEM,
-		REQUESTREDEEM,
-		REQUESTVALUEOFSHARES,
-		EMERGENCYWITHDRAW
-	}
-
-	struct Vault {
-		uint16 chainId;
-		address adapter;
-		bool allowed;
-	}
 
 	struct Request {
 		address vaultAddr;
 		uint256 amount;
 	}
 
-	struct HarvestRequest {
-		uint256 timestamp;
-		uint256 chainId;
-		address vault;
-	}
-
 	struct HarvestLedger {
 		uint256 localDepositValue;
-		bool isOpen;
-		uint256 openIndex;
-		HarvestRequest[] request;
+		uint256 count;
 	}
 
 	// TODO Implement functions with harvestLock modifier
-
-	// Controls deposits
-	mapping(address => Vault) public depositedVaults;
-	address[] internal vaultsArr;
 
 	// Harvest state
 	HarvestLedger public harvestLedger;
@@ -66,8 +39,12 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		address _guardian,
 		address _manager,
 		address _treasury,
-		uint256 _perforamanceFee
-	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
+		uint256 _perforamanceFee,
+		address postOffice
+	)
+		ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee)
+		XChainIntegrator(postOffice)
+	{}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
@@ -81,16 +58,14 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 
 			if (!tmpVault.allowed) revert VaultNotAllowed(vaultAddr);
 
-			if (tmpVault.adapter == address(0)) {
+			if (tmpVault.chainId == chainId) {
 				BatchedWithdraw(vaultAddr).deposit(amount, address(this));
 			} else {
-				IXAdapter(tmpVault.adapter).sendMessage(
-					amount,
+				postOffice.sendMessage(
 					vaultAddr,
-					address(this),
+					Message(amount, address(this), address(0), chainId),
 					tmpVault.chainId,
-					uint16(msgType.DEPOSIT),
-					uint16(block.chainid)
+					messageType.DEPOSIT
 				);
 
 				emit BridgeAsset(uint16(block.chainid), tmpVault.chainId, amount);
@@ -110,16 +85,14 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 
 			if (!tmpVault.allowed) revert VaultNotAllowed(vaultAddr);
 
-			if (tmpVault.adapter == address(0)) {
+			if (tmpVault.chainId == chainId) {
 				BatchedWithdraw(vaultAddr).requestRedeem(amount);
 			} else {
-				IXAdapter(tmpVault.adapter).sendMessage(
-					amount,
+				postOffice.sendMessage(
 					vaultAddr,
-					address(this),
+					Message(amount, address(this), address(0), chainId),
 					tmpVault.chainId,
-					uint16(msgType.REQUESTREDEEM),
-					uint16(block.chainid)
+					messageType.WITHDRAW
 				);
 			}
 
@@ -129,117 +102,70 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		}
 	}
 
-	// function redeemFromVaults(address[] calldata vaults, uint256[] calldata shares)
-	// 	public
-	// 	onlyRole(MANAGER)
-	// 	checkInputSize(vaults.length, shares.length)
-	// {
-	// 	for (uint256 i = 0; i < vaults.length; ) {
-	// 		Vault memory tmpVault = depositedVaults[vaults[i]];
-
-	// 		if (tmpVault.allowed) revert VaultNotAllowed(vaults[i]);
-
-	// 		if (tmpVault.adapter == address(0)) {
-	// 			BatchedWithdraw(vaults[i]).redeem(shares[i], address(this), address(this));
-	// 		} else {
-	// 			IXAdapter(tmpVault.adapter).sendMessage(
-	// 				shares[i],
-	// 				vaults[i],
-	// 				address(this),
-	// 				tmpVault.chainId,
-	// 				uint16(msgType.REDEEM),
-	// 				uint16(block.chainid)
-	// 			);
-	// 		}
-	// 		// Not sure if it should request manager intervention after redeem when in different chains
-
-	// 		unchecked {
-	// 			i++;
-	// 		}
-	// 	}
-	// }
-
-	// Not sure if caller has to pass array of vaults
-	// Can be dangerous if manager fails or forgets an address
-	// TODO asks loaner
 	function harvestVaults() public onlyRole(MANAGER) {
 		uint256 localDepositValue = 0;
 
-		if (harvestLedger.isOpen) revert OnGoingHarvest();
+		if (harvestLedger.count != 0) revert OnGoingHarvest();
 
-		// uint256 length = vaultsArr.length;
-		address[] memory vArr = vaultsArr;
+		uint256 vaultsLength = vaultList.length;
+		uint256 xvaultsCount = 0;
 
-		for (uint256 i = 0; i < vArr.length; ) {
-			Vault memory tmpVault = depositedVaults[vArr[i]];
+		for (uint256 i = 0; i < vaultsLength; ) {
+			address vAddr = vaultList[i];
+			Vault memory tmpVault = depositedVaults[vAddr];
 
-			if (tmpVault.adapter == address(0)) {
-				localDepositValue += SectorVault(vArr[i]).underlyingBalance(address(this));
+			if (tmpVault.chainId == chainId) {
+				localDepositValue += SectorVault(vAddr).underlyingBalance(address(this));
 			} else {
-				IXAdapter(tmpVault.adapter).sendMessage(
-					0,
-					vArr[i],
-					address(this),
+				postOffice.sendMessage(
+					vAddr,
+					Message(0, address(this), address(0), chainId),
 					tmpVault.chainId,
-					uint16(msgType.REQUESTVALUEOFSHARES),
-					uint16(block.chainid)
+					messageType.REQUESTHARVEST
 				);
-
-				harvestLedger.request.push(
-					HarvestRequest(block.timestamp, tmpVault.chainId, vArr[i])
-				);
+				xvaultsCount += 1;
 			}
+
 			unchecked {
 				i++;
 			}
 		}
 
 		harvestLedger.localDepositValue = localDepositValue;
-		harvestLedger.isOpen = true;
+		harvestLedger.count = xvaultsCount;
 	}
 
 	function finalizeHarvest(uint256 expectedValue, uint256 maxDelta) public onlyRole(MANAGER) {
-		HarvestLedger memory hLedger = harvestLedger;
+		HarvestLedger storage ledger = harvestLedger;
+		uint256 ledgerCount = ledger.count;
+
+		if (ledgerCount == 0) revert HarvestNotOpen();
 
 		// Compute actual tvl
-		uint256 xDepositValue = 0;
+		(uint256 xDepositValue, uint256 count) = postOffice.readMessageSumReduce(
+			messageType.HARVEST
+		);
 
-		if (!hLedger.isOpen) revert HarvestNotOpen();
+		// The only save check besides computed tvl now is the number o messages.
+		if (ledgerCount > count) revert MissingMessages();
 
-		// Get all values from message board
-		uint256 i = hLedger.openIndex;
-		while (i < hLedger.request.length) {
-			Vault memory tmpVault = depositedVaults[hLedger.request[i].vault];
-
-			// If timestamp > message.timestamp transaction will revert
-			uint256 value = IXAdapter(tmpVault.adapter).readMessage(
-				hLedger.request[i].vault,
-				tmpVault.chainId,
-				hLedger.request[i].timestamp
-			);
-			xDepositValue += value;
-
-			unchecked {
-				i++;
-			}
-		}
-
+		uint256 actualTotal = ledger.localDepositValue + xDepositValue;
 		// Check if tvl is expected before commiting
-		uint256 delta = expectedValue > xDepositValue
-			? expectedValue - xDepositValue
-			: xDepositValue - expectedValue;
+		uint256 delta = expectedValue > actualTotal
+			? expectedValue - actualTotal
+			: actualTotal - expectedValue;
 		if (delta > maxDelta) revert SlippageExceeded();
 
 		// Commit values
 		_processWithdraw();
 
 		// Change harvest status
-		harvestLedger.openIndex = i;
-		harvestLedger.localDepositValue = 0;
-		harvestLedger.isOpen = false;
+		ledger.localDepositValue = 0;
+		ledger.count = 0;
 	}
 
 	function emergencyWithdraw() external {
+		// Still not sure about this part
 		if (!emergencyEnabled) revert EmergencyNotEnabled();
 
 		uint256 userShares = balanceOf(msg.sender);
@@ -247,22 +173,21 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 		_burn(msg.sender, userShares);
 		uint256 userPerc = userShares.divWadDown(totalSupply());
 
-		for (uint256 i = 0; i < vaultsArr.length; ) {
-			Vault memory tmpVault = depositedVaults[vaultsArr[i]];
-			BatchedWithdraw vault = BatchedWithdraw(vaultsArr[i]);
+		uint256 vaultsLength = vaultList.length;
+		for (uint256 i = 0; i < vaultsLength; ) {
+			address vAddr = vaultList[i];
+			Vault memory tmpVault = depositedVaults[vAddr];
 
-			uint256 transferShares = userPerc.mulWadDown(vault.balanceOf(address(this)));
-
-			if (tmpVault.adapter == address(0)) {
+			if (tmpVault.chainId == chainId) {
+				BatchedWithdraw vault = BatchedWithdraw(vAddr);
+				uint256 transferShares = userPerc.mulWadDown(vault.balanceOf(address(this)));
 				vault.transfer(msg.sender, transferShares);
 			} else {
-				IXAdapter(tmpVault.adapter).sendMessage(
-					transferShares,
-					vaultsArr[i],
-					address(this),
+				postOffice.sendMessage(
+					vAddr,
+					Message(userPerc, address(this), msg.sender, chainId),
 					tmpVault.chainId,
-					uint16(msgType.EMERGENCYWITHDRAW),
-					uint16(block.chainid)
+					messageType.EMERGENCYWITHDRAW
 				);
 			}
 
@@ -273,70 +198,21 @@ contract SectorCrossVault is BatchedWithdraw, SocketIntegrator {
 	}
 
 	/*/////////////////////////////////////////////////////
-					Vault Management
-	/////////////////////////////////////////////////////*/
-
-	// Add to array of addresses
-	function addVault(
-		address vault,
-		uint16 chainId,
-		address adapter,
-		bool allowed
-	) external onlyOwner {
-		Vault memory tmpVault = depositedVaults[vault];
-
-		if (tmpVault.chainId != 0 || tmpVault.adapter != address(0) || tmpVault.allowed != false)
-			revert VaultAlreadyAdded();
-
-		depositedVaults[vault] = Vault(chainId, adapter, allowed);
-		vaultsArr.push(vault);
-		emit AddVault(vault, chainId, adapter);
-	}
-
-	function updateVaultAdapter(address vault, address adapter) external onlyOwner {
-		depositedVaults[vault].adapter = adapter;
-
-		emit UpdateVaultAdapter(vault, adapter);
-	}
-
-	function changeVaultStatus(address vault, bool allowed) external onlyOwner {
-		depositedVaults[vault].allowed = allowed;
-
-		emit ChangeVaultStatus(vault, allowed);
-	}
-
-	/*/////////////////////////////////////////////////////
 						Modifiers
 	/////////////////////////////////////////////////////*/
 
-	// modifier checkInputSize(uint256 size0, uint256 size1) {
-	// 	if (size0 != size1) revert InputSizeNotAppropriate();
-	// 	_;
-	// }
-
 	modifier harvestLock() {
-		if (harvestLedger.isOpen) revert OnGoingHarvest();
+		if (harvestLedger.count != 0) revert OnGoingHarvest();
 		_;
 	}
 
 	/*/////////////////////////////////////////////////////
-						Events
+							Errors
 	/////////////////////////////////////////////////////*/
 
-	event AddVault(address vault, uint16 chainId, address adapter);
-	event UpdateVaultAdapter(address vault, address adapter);
-	event ChangeVaultStatus(address vault, bool status);
-
-	/*/////////////////////////////////////////////////////
-						Errors
-	/////////////////////////////////////////////////////*/
-
-	// error InputSizeNotAppropriate();
 	error HarvestNotOpen();
-	// error InsufficientReturnOut();
-	error VaultNotAllowed(address vault);
-	error VaultAlreadyAdded();
 	error SlippageExceeded();
 	error OnGoingHarvest();
 	error EmergencyNotEnabled();
+	error MissingMessages();
 }

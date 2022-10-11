@@ -9,4 +9,15 @@ interface CallProxy {
 		uint256 _toChainID,
 		uint256 _flags
 	) external;
+
+	function context()
+		external
+		view
+		returns (
+			address from,
+			uint256 fromChainID,
+			uint256 nonce
+		);
+
+	function executor() external view returns (address executor);
 }

@@ -38,7 +38,8 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 			guardian,
 			manager,
 			treasury,
-			DEFAULT_PERFORMANCE_FEE
+			DEFAULT_PERFORMANCE_FEE,
+			address(69) // temporary
 		);
 
 		// lock min liquidity
