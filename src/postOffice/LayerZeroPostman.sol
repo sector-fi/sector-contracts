@@ -4,55 +4,45 @@ pragma solidity 0.8.16;
 import { ILayerZeroReceiver } from "../interfaces/adapters/ILayerZeroReceiver.sol";
 import { ILayerZeroEndpoint } from "../interfaces/adapters/ILayerZeroEndpoint.sol";
 import { ILayerZeroUserApplicationConfig } from "../interfaces/adapters/ILayerZeroUserApplicationConfig.sol";
-import { XAdapter } from "./XAdapter.sol";
+import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Auth } from "../common/Auth.sol";
+import "../interfaces/MsgStructs.sol";
 
-contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, XAdapter, Auth {
+contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, Auth {
 	ILayerZeroEndpoint public endpoint;
+	IPostOffice public immutable postOffice;
 
-	struct lzConfig {
-		address adapter;
-		uint16 lzChainId;
-	}
-
-	struct message {
-		uint256 deposits;
-		uint256 withdrawals;
-		uint256 redeemed;
-	}
-
-	mapping(uint256 => mapping(address => message)) messages;
-
-	mapping(uint256 => lzConfig) chains;
+	// map original chainIds to layerZero's chainIds
+	mapping(uint16 => uint16) chains;
 
 	constructor(
 		address _layerZeroEndpoint,
-		address _owner,
-		address _guardian,
+		address _postOffice,
 		address _manager
-	) Auth(_owner, _guardian, _manager) {
+	) Auth(_postOffice, _manager, _manager) {
 		endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
+		postOffice = IPostOffice(_postOffice);
 	}
 
-	function sendMessage(
-		uint256 _amount,
+	function deliverMessage(
+		Message calldata _msg,
 		address _dstVautAddress,
-		address _srcVautAddress,
-		uint256 _dstChainId,
+		address _dstPostman,
 		uint16 _messageType,
-		uint256 _srcChainId
-	) external override onlyRole(MANAGER) {
-		_srcChainId;
+		uint16 _dstChainId
+	) external onlyOwner {
 		if (address(this).balance == 0) revert NoBalance();
 
-		bytes memory payload = abi.encode(_amount, _srcVautAddress, _dstVautAddress, _messageType);
+		bytes memory payload = abi.encode(_msg, _dstVautAddress, _messageType);
 
 		// encode adapterParams to specify more gas for the destination
 		uint16 version = 1;
 		uint256 gasForDestinationLzReceive = 350000;
 		bytes memory adapterParams = abi.encodePacked(version, gasForDestinationLzReceive);
+
 		(uint256 messageFee, ) = endpoint.estimateFees(
-			uint16(chains[_dstChainId].lzChainId),
+			uint16(chains[_dstChainId]),
 			address(this),
 			payload,
 			false,
@@ -62,8 +52,8 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 
 		// send LayerZero message
 		endpoint.send{ value: messageFee }( // {value: messageFee} will be paid out of this contract!
-			uint16(chains[_dstChainId].lzChainId), // destination chainId
-			abi.encodePacked(chains[_dstChainId].adapter), // destination address of Adapter on dst chain
+			uint16(chains[_dstChainId]), // destination chainId
+			abi.encodePacked(_dstPostman), // destination address of postman on dst chain
 			payload, // abi.encode()'ed bytes
 			payable(this), // (msg.sender will be this contract) refund address (LayerZero will refund any extra gas back to caller of send()
 			address(0x0), // 'zroPaymentAddress' unused for this mock/example
@@ -73,49 +63,28 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 
 	function lzReceive(
 		uint16 _srcChainId,
-		bytes memory _fromAddress,
+		bytes memory,
 		uint64, /*_nonce*/
 		bytes memory _payload
 	) external override {
 		// lzReceive can only be called by the LayerZero endpoint
 		if (msg.sender != address(endpoint)) revert Unauthorized();
 
-		// use assembly to extract the address from the bytes memory parameter
-		address fromAddress;
-		assembly {
-			fromAddress := mload(add(_fromAddress, 20))
-		}
-
 		// decode payload sent from source chain
-		(
-			uint256 _amount,
-			address _srcVaultAddress,
-			address _dstVaultAddress,
-			uint16 messageType
-		) = abi.decode(_payload, (uint256, address, address, uint16));
-
-		// TODO: Implement storage logic for differente message types.
-		// deposit has messageType === 1
-		// redeemRequest has messageType === 2
-		// redeem has messageType === 3
-
-		emit MessageReceived(
-			_srcChainId,
-			fromAddress,
-			_srcVaultAddress,
-			_amount,
-			_dstVaultAddress,
-			messageType
+		(Message memory _msg, address _dstVaultAddress, uint16 _messageType) = abi.decode(
+			_payload,
+			(Message, address, uint16)
 		);
+
+		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _srcChainId);
+
+		// send message to postOffice to be validated and processed
+		postOffice.writeMessage(_dstVaultAddress, _msg, messageType(_messageType));
 	}
 
-	function setChain(
-		uint256 _chainId,
-		address _adapter,
-		uint16 _lzChainId
-	) external onlyRole(MANAGER) {
-		chains[_chainId].adapter = _adapter;
-		chains[_chainId].lzChainId = _lzChainId;
+	// With this access control structure we need a way to vault set chain.
+	function setChain(uint16 _chainId, uint16 _lzChainId) external onlyRole(MANAGER) {
+		chains[_chainId] = _lzChainId;
 	}
 
 	function setConfig(
@@ -123,9 +92,9 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		uint16 _dstChainId,
 		uint256 _configType,
 		bytes memory _config
-	) external override {
+	) external override onlyRole(MANAGER) {
 		endpoint.setConfig(
-			chains[_dstChainId].lzChainId,
+			chains[_dstChainId],
 			endpoint.getSendVersion(address(this)),
 			_configType,
 			_config
@@ -147,11 +116,11 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 			);
 	}
 
-	function setSendVersion(uint16 version) external override {
+	function setSendVersion(uint16 version) external override onlyRole(MANAGER) {
 		endpoint.setSendVersion(version);
 	}
 
-	function setReceiveVersion(uint16 version) external override {
+	function setReceiveVersion(uint16 version) external override onlyRole(MANAGER) {
 		endpoint.setReceiveVersion(version);
 	}
 
@@ -174,12 +143,11 @@ contract LayerZeroAdapter is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 
 	/* EVENTS */
 	event MessageReceived(
-		uint16 _srcChainId,
-		address fromAddress,
-		address destAddress,
+		address srcVaultAddress,
 		uint256 amount,
-		address srcAddress,
-		uint16 messageType
+		address dstVaultAddress,
+		uint16 messageType,
+		uint256 srcChainId
 	);
 
 	/* ERRORS */
