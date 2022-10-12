@@ -61,11 +61,27 @@ abstract contract BatchedWithdraw is ERC4626 {
 	}
 
 	function redeem(address receiver) public virtual returns (uint256 amountOut) {
-		WithdrawRecord storage withdrawRecord = withdrawLedger[msg.sender];
+		uint256 shares;
+		(amountOut, shares) = _redeem(msg.sender);
+		ERC20(asset).transfer(receiver, amountOut);
+		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
+	}
+
+	/// @dev should only be called by manager on behalf of xVaults
+	function _xRedeem(address xVault) internal virtual returns (uint256 amountOut) {
+		uint256 shares;
+		(amountOut, shares) = _redeem(xVault);
+		_burn(address(this), shares);
+		emit Withdraw(xVault, xVault, xVault, amountOut, shares);
+	}
+
+	function _redeem(address account) internal returns (uint256 amountOut, uint256 shares) {
+		WithdrawRecord storage withdrawRecord = withdrawLedger[account];
+
 		if (withdrawRecord.value == 0) revert ZeroAmount();
 		if (withdrawRecord.timestamp > withdrawTimestamp) revert NotReady();
 
-		uint256 shares = withdrawRecord.shares;
+		shares = withdrawRecord.shares;
 		// value of shares at time of redemption request
 		uint256 redeemValue = withdrawRecord.value;
 		uint256 currentValue = convertToAssets(shares);
@@ -80,8 +96,6 @@ abstract contract BatchedWithdraw is ERC4626 {
 		beforeWithdraw(amountOut, shares);
 		withdrawRecord.value = 0;
 		_burn(address(this), shares);
-		ERC20(asset).transfer(receiver, amountOut);
-		emit Withdraw(msg.sender, receiver, owner, amountOut, shares);
 	}
 
 	function cancelRedeem() public virtual {
