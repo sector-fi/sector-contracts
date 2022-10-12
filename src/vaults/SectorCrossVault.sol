@@ -7,11 +7,12 @@ import { SectorVault } from "./SectorVault.sol";
 import { ERC4626, FixedPointMathLib } from "./ERC4626/ERC4626.sol";
 import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
+import { SectorBase } from "./SectorBase.sol";
 import "../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
 
-contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
+contract SectorCrossVault is SectorBase {
 	using FixedPointMathLib for uint256;
 
 	struct Request {
@@ -74,6 +75,9 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 			unchecked {
 				i++;
 			}
+
+			// update total holdings by child vaults
+			totalChildHoldings += amount;
 		}
 	}
 
@@ -100,6 +104,14 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 				i++;
 			}
 		}
+	}
+
+	/// TODO: this method sholud be triggered by a chain vault when
+	/// returning withdrawals. This allows us to upate floatAmnt and totalChildHoldings
+	function _finalizedWithdraw() internal {
+		uint256 totalWithdraw;
+		totalChildHoldings -= totalWithdraw;
+		afterDeposit(totalWithdraw, 0);
 	}
 
 	function harvestVaults() public onlyRole(MANAGER) {
@@ -149,19 +161,12 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 		// The only save check besides computed tvl now is the number o messages.
 		if (ledgerCount > count) revert MissingMessages();
 
-		uint256 actualTotal = ledger.localDepositValue + xDepositValue;
-		// Check if tvl is expected before commiting
-		uint256 delta = expectedValue > actualTotal
-			? expectedValue - actualTotal
-			: actualTotal - expectedValue;
-		if (delta > maxDelta) revert SlippageExceeded();
+		uint256 currentChildHoldings = ledger.localDepositValue + xDepositValue;
 
-		// Commit values
-<<<<<<< HEAD
-		_processWithdraw();
-=======
-		_processWithdraw(actualTotal / totalSupply());
->>>>>>> 6f4f2e6d9a4aeae6f8a31080bd27e28eca12605c
+		// TODO should expectedValue include balance?
+		// uint256 tvl = currentChildHoldings + asset.balanceOf(address(this));
+		_checkSlippage(expectedValue, currentChildHoldings, maxDelta);
+		_harvest(currentChildHoldings);
 
 		// Change harvest status
 		ledger.localDepositValue = 0;
@@ -215,7 +220,6 @@ contract SectorCrossVault is BatchedWithdraw, XChainIntegrator {
 	/////////////////////////////////////////////////////*/
 
 	error HarvestNotOpen();
-	error SlippageExceeded();
 	error OnGoingHarvest();
 	error EmergencyNotEnabled();
 	error MissingMessages();
