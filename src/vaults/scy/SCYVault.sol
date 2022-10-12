@@ -150,7 +150,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 		uint256 underlyingEarned = tvl - prevTvl;
 		uint256 underlyingFees = (underlyingEarned * performanceFee) / 1e18;
-		uint256 feeShares = convertToShares(underlyingFees);
+		// more accurate accounting considering dilution
+		uint256 feeShares = toSharesAfterDeposit(underlyingFees);
 
 		_mint(treasury, feeShares);
 		vaultTvl = tvl;

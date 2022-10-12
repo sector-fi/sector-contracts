@@ -26,6 +26,10 @@ abstract contract Fees is Auth {
 	/// @dev A fixed point number where 1e18 represents 100% and 0 represents 0%.
 	uint256 public performanceFee;
 
+	/// @notice The percentage of profit recognized each harvest to reserve as fees.
+	/// @dev A fixed point number where 1e18 represents 100% and 0 represents 0%.
+	uint256 public performanceFee;
+
 	address public treasury;
 
 	/// @notice Sets a new performanceFee.

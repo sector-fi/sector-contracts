@@ -53,6 +53,7 @@ abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 		totalChildHoldings = currentChildHoldings;
 		uint256 underlyingFees = (profit * performanceFee) / 1e18;
 
+		// this results in more accurate accounting considering dilution
 		uint256 feeShares = toSharesAfterDeposit(underlyingFees);
 
 		emit Harvest(treasury, profit, underlyingFees, feeShares);
