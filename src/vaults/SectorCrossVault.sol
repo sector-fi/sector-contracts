@@ -45,6 +45,7 @@ contract SectorCrossVault is SectorBase {
 	)
 		ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee)
 		XChainIntegrator(postOffice)
+		BatchedWithdraw()
 	{}
 
 	/*/////////////////////////////////////////////////////

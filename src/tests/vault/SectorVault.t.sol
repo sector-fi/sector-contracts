@@ -230,6 +230,20 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		assertApproxEqAbs(vault.underlyingBalance(user1), 109e18, mLp);
 	}
 
+	function testManagerFee() public {
+		uint256 amnt = 100e18;
+		sectDeposit(vault, user1, amnt);
+		vault.setManagementFee(.01e18);
+
+		depositToStrat(strategy1, amnt);
+
+		skip(365 days);
+		sectHarvest(vault);
+
+		assertApproxEqAbs(vault.underlyingBalance(treasury), 1e18, mLp);
+		assertApproxEqAbs(vault.underlyingBalance(user1), 99e18, mLp);
+	}
+
 	function depositToStrat(ISCYStrategy strategy, uint256 amount) public {
 		DepositParams[] memory params = new DepositParams[](1);
 		params[0] = (DepositParams(strategy, amount, 0));
@@ -257,6 +271,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vm.expectRevert(err);
 		_vault.harvest(expectedTvl, maxDelta);
 		vm.stopPrank();
+		// advance 1s
 	}
 
 	function sectDeposit(
@@ -281,6 +296,8 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		uint256 sharesToWithdraw = (_vault.balanceOf(acc) * fraction) / 1e18;
 		_vault.requestRedeem(sharesToWithdraw);
 		vm.stopPrank();
+		// advance 1s to ensure we don't have =
+		skip(1);
 	}
 
 	function sectCompleteRedeem(SectorVault _vault, address acc) public {

@@ -19,10 +19,13 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	event Harvest(
 		address indexed treasury,
 		uint256 underlyingProfit,
-		uint256 underlyingFees,
+		uint256 performanceFee,
+		uint256 managementFee,
 		uint256 sharesFees,
 		uint256 tvl
 	);
+
+	uint256 public lastHarvestTimestamp;
 
 	address public strategy;
 
@@ -59,6 +62,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		strategyId = _strategy.strategyId;
 		underlying = _strategy.underlying;
 		maxTvl = _strategy.maxTvl;
+
+		lastHarvestTimestamp = block.timestamp;
 	}
 
 	/*///////////////////////////////////////////////////////////////
@@ -146,16 +151,26 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uint256 tvl = _stratGetAndUpdateTvl() + underlying.balanceOf(address(this));
 		_checkSlippage(expectedTvl, tvl, maxDelta);
 		uint256 prevTvl = vaultTvl;
-		if (tvl <= prevTvl) return;
+		uint256 timestamp = block.timestamp;
+		uint256 profit = tvl > prevTvl ? tvl - prevTvl : 0;
 
-		uint256 underlyingEarned = tvl - prevTvl;
-		uint256 underlyingFees = (underlyingEarned * performanceFee) / 1e18;
-		// more accurate accounting considering dilution
-		uint256 feeShares = toSharesAfterDeposit(underlyingFees);
+		// PROCESS VAULT FEES
+		uint256 _performanceFee = profit == 0 ? 0 : (profit * performanceFee) / 1e18;
+		uint256 _managementFee = managementFee == 0
+			? 0
+			: (managementFee * tvl * (timestamp - lastHarvestTimestamp)) / 1e18 / 365 days;
 
-		_mint(treasury, feeShares);
+		uint256 totalFees = _performanceFee + _managementFee;
+		uint256 feeShares;
+		// this results in more accurate accounting considering dilution
+		if (totalFees > 0) {
+			feeShares = totalFees == 0 ? 0 : toSharesAfterDeposit(_performanceFee + _managementFee);
+			_mint(treasury, feeShares);
+		}
+		emit Harvest(treasury, profit, _performanceFee, _managementFee, feeShares, tvl);
+
 		vaultTvl = tvl;
-		emit Harvest(treasury, underlyingEarned, underlyingFees, feeShares, tvl);
+		lastHarvestTimestamp = timestamp;
 	}
 
 	function _checkSlippage(

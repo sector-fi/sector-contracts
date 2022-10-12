@@ -50,6 +50,7 @@ contract SectorVault is SectorBase {
 	)
 		ERC4626(asset_, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee)
 		XChainIntegrator(_postOffice)
+		BatchedWithdraw()
 	{}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
@@ -79,7 +80,7 @@ contract SectorVault is SectorBase {
 	/// We compute expected tvl off-chain first, to ensure this transactions isn't sandwitched
 	function harvest(uint256 expectedTvl, uint256 maxDelta) public onlyRole(MANAGER) {
 		uint256 currentChildHoldings = _getStrategyHoldings();
-		uint256 tvl = currentChildHoldings + asset.balanceOf(address(this));
+		uint256 tvl = currentChildHoldings + floatAmnt;
 		_checkSlippage(expectedTvl, tvl, maxDelta);
 		_harvest(currentChildHoldings);
 	}
