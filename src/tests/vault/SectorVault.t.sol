@@ -6,7 +6,7 @@ import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy } from "../../vaults/SectorVault.sol";
-import { MockERC20 } from "../mocks/MockERC20.sol";
+import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 
 import "hardhat/console.sol";
 
@@ -166,20 +166,12 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		uint256 amnt = 1000e18;
 		sectDeposit(vault, user1, amnt - mLp);
 
-		DepositParams[] memory dParams = new DepositParams[](3);
-		dParams[0] = (DepositParams(strategy1, 200e18, 0));
-		dParams[1] = (DepositParams(strategy2, 300e18, 0));
-		dParams[2] = (DepositParams(strategy3, 500e18, 0));
-		vault.depositIntoStrategies(dParams);
+		sectDeposit3Strats(vault, 200e18, 300e18, 500e18);
 
 		assertEq(vault.getTvl(), amnt);
 		assertEq(vault.totalChildHoldings(), amnt);
 
-		RedeemParams[] memory rParams = new RedeemParams[](3);
-		rParams[0] = (RedeemParams(strategy1, dParams[0].amountIn / 2, 0));
-		rParams[1] = (RedeemParams(strategy2, dParams[1].amountIn / 2, 0));
-		rParams[2] = (RedeemParams(strategy3, dParams[2].amountIn / 2, 0));
-		vault.withdrawFromStrategies(rParams);
+		sectRedeem3Strats(vault, 200e18 / 2, 300e18 / 2, 500e18 / 2);
 
 		assertEq(vault.getTvl(), amnt);
 		assertEq(vault.totalChildHoldings(), amnt / 2);
@@ -244,6 +236,30 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		assertApproxEqAbs(vault.underlyingBalance(user1), 99e18, mLp);
 	}
 
+	function testEmergencyWithdraw() public {
+		uint256 amnt = 1000e18;
+		sectDeposit(vault, user1, amnt);
+		sectDeposit3Strats(vault, 200e18, 300e18, 400e18);
+		skip(1);
+		vm.startPrank(user1);
+		vault.emergencyWithdraw();
+
+		assertApproxEqAbs(underlying.balanceOf(user1), 100e18, mLp, "recovered float");
+
+		uint256 b1 = IERC20(address(strategy1)).balanceOf(user1);
+		uint256 b2 = IERC20(address(strategy2)).balanceOf(user1);
+		uint256 b3 = IERC20(address(strategy3)).balanceOf(user1);
+
+		strategy1.redeem(user1, b1, address(underlying), 0);
+		strategy2.redeem(user1, b2, address(underlying), 0);
+		strategy3.redeem(user1, b3, address(underlying), 0);
+
+		assertApproxEqAbs(underlying.balanceOf(user1), amnt, 1, "recovered amnt");
+		assertApproxEqAbs(vault.getTvl(), mLp, 1);
+	}
+
+	/// UTILS
+
 	function depositToStrat(ISCYStrategy strategy, uint256 amount) public {
 		DepositParams[] memory params = new DepositParams[](1);
 		params[0] = (DepositParams(strategy, amount, 0));
@@ -304,5 +320,31 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vm.startPrank(acc);
 		_vault.redeem();
 		vm.stopPrank();
+	}
+
+	function sectDeposit3Strats(
+		SectorVault _vault,
+		uint256 a1,
+		uint256 a2,
+		uint256 a3
+	) public {
+		DepositParams[] memory dParams = new DepositParams[](3);
+		dParams[0] = (DepositParams(strategy1, a1, 0));
+		dParams[1] = (DepositParams(strategy2, a2, 0));
+		dParams[2] = (DepositParams(strategy3, a3, 0));
+		_vault.depositIntoStrategies(dParams);
+	}
+
+	function sectRedeem3Strats(
+		SectorVault _vault,
+		uint256 a1,
+		uint256 a2,
+		uint256 a3
+	) public {
+		RedeemParams[] memory rParams = new RedeemParams[](3);
+		rParams[0] = (RedeemParams(strategy1, a1, 0));
+		rParams[1] = (RedeemParams(strategy2, a2, 0));
+		rParams[2] = (RedeemParams(strategy3, a3, 0));
+		_vault.withdrawFromStrategies(rParams);
 	}
 }

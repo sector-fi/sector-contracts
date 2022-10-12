@@ -22,9 +22,16 @@ abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 		uint256 sharesFees,
 		uint256 tvl
 	);
+	event MaxRedeemWindow(uint256 maxRedeemWindow);
 
 	uint256 public totalChildHoldings;
 	uint256 public floatAmnt; // amount of underlying tracked in vault
+	uint256 public maxRedeemWindow; // time before emergency redeem becomes enabled
+
+	function setMaxRedeemWindow(uint256 _maxRedeemWindow) public onlyOwner {
+		maxRedeemWindow = _maxRedeemWindow;
+		emit MaxRedeemWindow(_maxRedeemWindow);
+	}
 
 	function _harvest(uint256 currentChildHoldings) internal {
 		// withdrawFromStrategies should be called prior to harvest to ensure this tx doesn't revert
@@ -108,6 +115,7 @@ abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 	event RegisterDeposit(uint256 total);
 	event EmergencyWithdraw(address vault, address client, uint256 shares);
 
+	error NotEnoughTimeSinceHarvest();
 	error NotEnoughtFloat();
 	error WrongUnderlying();
 	error SlippageExceeded();

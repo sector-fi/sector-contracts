@@ -33,7 +33,7 @@ contract SectorVault is SectorBase {
 	address internal constant NATIVE = address(0);
 
 	mapping(ISCYStrategy => bool) public strategyExists;
-	address[] strategyIndex;
+	address[] public strategyIndex;
 
 	address[] bridgeQueue;
 
@@ -68,13 +68,17 @@ contract SectorVault is SectorBase {
 		strategyExists[strategy] = false;
 		uint256 length = strategyIndex.length;
 		// replace current index with last strategy and pop the index array
-		for (uint256 i; i <= length; i++) {
+		for (uint256 i; i < length; i++) {
 			if (address(strategy) == strategyIndex[i]) {
 				strategyIndex[i] = strategyIndex[length - 1];
 				strategyIndex.pop();
 				continue;
 			}
 		}
+	}
+
+	function totalStrategies() public view returns (uint256) {
+		return strategyIndex.length;
 	}
 
 	/// We compute expected tvl off-chain first, to ensure this transactions isn't sandwitched
@@ -121,6 +125,32 @@ contract SectorVault is SectorBase {
 			totalChildHoldings -= amountOut;
 			// update underlying float accounting
 			afterDeposit(amountOut, 0);
+		}
+	}
+
+	// this method ensures funds are redeemable if manager stops
+	// processing harvests / withdrawals
+	function emergencyWithdraw() public {
+		if (maxRedeemWindow > block.timestamp - lastHarvestTimestamp)
+			revert NotEnoughTimeSinceHarvest();
+
+		uint256 _totalSupply = totalSupply();
+		uint256 shares = balanceOf(msg.sender);
+		if (shares == 0) return;
+		_burn(msg.sender, shares);
+
+		// redeem proportional share of vault's underlying float balance
+		uint256 underlyingShare = (floatAmnt * shares) / _totalSupply;
+		beforeWithdraw(underlyingShare, 0);
+		asset.safeTransfer(msg.sender, underlyingShare);
+
+		// redeem proportional share of each strategy
+		for (uint256 i; i < strategyIndex.length; i++) {
+			ERC20 stratToken = ERC20(strategyIndex[i]);
+			uint256 balance = stratToken.balanceOf(address(this));
+			uint256 userShares = (shares * balance) / _totalSupply;
+			if (userShares == 0) continue;
+			stratToken.safeTransfer(msg.sender, userShares);
 		}
 	}
 
