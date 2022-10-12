@@ -5,7 +5,7 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy } from "../../vaults/SectorVault.sol";
+import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy } from "../../vaults/SectorVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 
 import "hardhat/console.sol";
@@ -97,7 +97,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 
 		sectInitRedeem(vault, user1, 1e18 / 4);
 
-		sectHarvestRevert(vault, SectorVault.NotEnoughtFloat.selector);
+		sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
 
 		withdrawFromStrat(strategy1, amnt / 4);
 
@@ -143,7 +143,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		underlying.mint(address(strategy1), 10e18 + (mLp) / 10); // 10% profit
 
 		sectInitRedeem(vault, user1, 1e18);
-		sectHarvestRevert(vault, SectorVault.NotEnoughtFloat.selector);
+		sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
 
 		withdrawFromStrat(strategy1, amnt / 4);
 		sectHarvest(vault);
@@ -173,7 +173,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vault.depositIntoStrategies(dParams);
 
 		assertEq(vault.getTvl(), amnt);
-		assertEq(vault.totalStrategyHoldings(), amnt);
+		assertEq(vault.totalChildHoldings(), amnt);
 
 		RedeemParams[] memory rParams = new RedeemParams[](3);
 		rParams[0] = (RedeemParams(strategy1, dParams[0].amountIn / 2, 0));
@@ -182,7 +182,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vault.withdrawFromStrategies(rParams);
 
 		assertEq(vault.getTvl(), amnt);
-		assertEq(vault.totalStrategyHoldings(), amnt / 2);
+		assertEq(vault.totalChildHoldings(), amnt / 2);
 	}
 
 	function testFloatAccounting() public {
@@ -206,7 +206,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 
 		DepositParams[] memory dParams = new DepositParams[](1);
 		dParams[0] = (DepositParams(strategy1, amnt / 2, 0));
-		vm.expectRevert(SectorVault.NotEnoughtFloat.selector);
+		vm.expectRevert(SectorBase.NotEnoughtFloat.selector);
 		vault.depositIntoStrategies(dParams);
 
 		vm.prank(user1);
