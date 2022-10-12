@@ -164,9 +164,12 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uint256 feeShares;
 		// this results in more accurate accounting considering dilution
 		if (totalFees > 0) {
-			feeShares = totalFees == 0 ? 0 : toSharesAfterDeposit(_performanceFee + _managementFee);
+			// we know that totalSupply != 0 and tvl > totalFees
+			feeShares = totalFees.mulDivDown(totalSupply(), tvl - totalFees);
+			// feeShares = underlyingToSharesAfterDeposit(totalFees);
 			_mint(treasury, feeShares);
 		}
+
 		emit Harvest(treasury, profit, _performanceFee, _managementFee, feeShares, tvl);
 
 		vaultTvl = tvl;

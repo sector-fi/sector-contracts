@@ -51,7 +51,7 @@ abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 
 		if (totalFees > 0) {
 			// this results in more accurate accounting considering dilution
-			feeShares = toSharesAfterDeposit(_performanceFee + _managementFee);
+			feeShares = totalFees.mulDivDown(totalSupply(), tvl - totalFees);
 			_mint(treasury, feeShares);
 		}
 

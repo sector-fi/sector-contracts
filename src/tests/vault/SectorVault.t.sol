@@ -214,7 +214,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		assertEq(vault.floatAmnt(), mLp);
 	}
 
-	function testProfitableHarvest() public {
+	function testPerformanceFee() public {
 		uint256 amnt = 100e18;
 		sectDeposit(vault, user1, amnt);
 
@@ -230,7 +230,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		assertApproxEqAbs(vault.underlyingBalance(user1), 109e18, mLp);
 	}
 
-	function testManagerFee() public {
+	function testManagementFee() public {
 		uint256 amnt = 100e18;
 		sectDeposit(vault, user1, amnt);
 		vault.setManagementFee(.01e18);
