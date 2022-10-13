@@ -36,6 +36,7 @@ contract SectorVault is SectorBase {
 	address[] public strategyIndex;
 
 	address[] bridgeQueue;
+	uint256 public totalStrategyHoldings;
 
 	constructor(
 		ERC20 asset_,
@@ -76,8 +77,12 @@ contract SectorVault is SectorBase {
 		}
 	}
 
-	function totalStrategies() public view returns (uint256) {
+	function totalStrategies() external view returns (uint256) {
 		return strategyIndex.length;
+	}
+
+	function getAllStrategies() external view returns (address[] memory) {
+		return strategyIndex;
 	}
 
 	/// We compute expected tvl off-chain first, to ensure this transactions isn't sandwitched
