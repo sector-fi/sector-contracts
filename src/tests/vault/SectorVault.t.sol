@@ -6,24 +6,31 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorVault, BatchedWithdraw } from "../../vaults/SectorVault.sol";
+import { SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy } from "../../vaults/SectorVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 
 contract SectorVaultTest is SectorTest, SCYVaultSetup {
-	SCYVault strategy1;
-	SCYVault strategy2;
-	SCYVault strategy3;
+	ISCYStrategy strategy1;
+	ISCYStrategy strategy2;
+	ISCYStrategy strategy3;
 
 	WETH underlying;
 
 	SectorVault vault;
 
+	DepositParams[] depParams;
+	RedeemParams[] redParams;
+
 	function setUp() public {
 		underlying = new WETH();
 
-		strategy1 = setUpSCYVault(address(underlying));
-		strategy2 = setUpSCYVault(address(underlying));
-		strategy3 = setUpSCYVault(address(underlying));
+		SCYVault s1 = setUpSCYVault(address(underlying));
+		SCYVault s2 = setUpSCYVault(address(underlying));
+		SCYVault s3 = setUpSCYVault(address(underlying));
+
+		strategy1 = ISCYStrategy(address(s1));
+		strategy2 = ISCYStrategy(address(s2));
+		strategy3 = ISCYStrategy(address(s3));
 
 		vault = new SectorVault(
 			underlying,
@@ -37,16 +44,28 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		);
 
 		// lock min liquidity
-		sectDeposit(vault, owner, vault.MIN_LIQUIDITY());
-		scyDeposit(strategy1, owner, strategy1.MIN_LIQUIDITY());
-		scyDeposit(strategy2, owner, strategy2.MIN_LIQUIDITY());
-		scyDeposit(strategy3, owner, strategy3.MIN_LIQUIDITY());
+		sectDeposit(vault, owner, mLp);
+		scyDeposit(s1, owner, mLp);
+		scyDeposit(s2, owner, mLp);
+		scyDeposit(s3, owner, mLp);
+
+		depParams.push(DepositParams(strategy1, 0, 0));
+		depParams.push(DepositParams(strategy2, 0, 0));
+		depParams.push(DepositParams(strategy3, 0, 0));
+
+		redParams.push(RedeemParams(strategy1, 0, 0));
+		redParams.push(RedeemParams(strategy2, 0, 0));
+		redParams.push(RedeemParams(strategy3, 0, 0));
+
+		vault.addStrategy(strategy1);
+		vault.addStrategy(strategy2);
+		vault.addStrategy(strategy3);
 	}
 
 	function testDeposit() public {
 		uint256 amnt = 100e18;
 		sectDeposit(vault, user1, amnt);
-		assertEq(vault.balanceOfUnderlying(user1), amnt);
+		assertEq(vault.underlyingBalance(user1), amnt);
 	}
 
 	function testWithdraw() public {
@@ -67,12 +86,35 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 
 		assertTrue(vault.redeemIsReady(user1), "redeem ready");
 		sectCompleteRedeem(vault, user1);
-		assertEq(vault.balanceOfUnderlying(user1), 100e18 / 2);
+		assertEq(vault.underlyingBalance(user1), 100e18 / 2, "half of deposit");
 
 		// amount should reset
 		vm.expectRevert(BatchedWithdraw.ZeroAmount.selector);
 		vm.prank(user1);
 		vault.redeem();
+	}
+
+	function testDepositWithdrawStrats() public {
+		uint256 amnt = 1000e18;
+		sectDeposit(vault, user1, amnt - mLp);
+
+		depParams[0].amountIn = 200e18;
+		depParams[1].amountIn = 300e18;
+		depParams[2].amountIn = 500e18;
+
+		vault.depositIntoStrategies(depParams);
+
+		assertEq(vault.getTvl(), amnt);
+		assertEq(vault.totalStrategyHoldings(), amnt);
+
+		redParams[0].shares = depParams[0].amountIn / 2;
+		redParams[1].shares = depParams[1].amountIn / 2;
+		redParams[2].shares = depParams[2].amountIn / 2;
+
+		vault.withdrawFromStrategies(redParams);
+
+		assertEq(vault.getTvl(), amnt);
+		assertEq(vault.totalStrategyHoldings(), amnt / 2);
 	}
 
 	function sectHarvest(SectorVault _vault) public {
