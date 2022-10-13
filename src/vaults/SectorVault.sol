@@ -33,9 +33,10 @@ contract SectorVault is SectorBase {
 	address internal constant NATIVE = address(0);
 
 	mapping(ISCYStrategy => bool) public strategyExists;
-	address[] strategyIndex;
 
 	address[] bridgeQueue;
+	address[] public strategyIndex;
+	uint256 public totalStrategyHoldings;
 
 	constructor(
 		ERC20 asset_,
@@ -74,6 +75,14 @@ contract SectorVault is SectorBase {
 				continue;
 			}
 		}
+	}
+
+	function totalStrategies() external view returns (uint256) {
+		return strategyIndex.length;
+	}
+
+	function getAllStrategies() external view returns (address[] memory) {
+		return strategyIndex;
 	}
 
 	/// We compute expected tvl off-chain first, to ensure this transactions isn't sandwitched
