@@ -76,8 +76,12 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 		}
 	}
 
-	function totalStrategies() public view returns (uint256) {
+	function totalStrategies() external view returns (uint256) {
 		return strategyIndex.length;
+	}
+
+	function getAllStrategies() external view returns (address[] memory) {
+		return strategyIndex;
 	}
 
 	/// We compute expected tvl off-chain first, to ensure this transactions isn't sandwitched
