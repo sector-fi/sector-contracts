@@ -38,7 +38,7 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 	address internal constant NATIVE = address(0);
 
 	mapping(ISCYStrategy => bool) public strategyExists;
-	address[] strategyIndex;
+	address[] public strategyIndex;
 	uint256 totalStrategyHoldings;
 
 	constructor(
@@ -74,6 +74,10 @@ contract SectorVault is ERC4626, BatchedWithdraw {
 				continue;
 			}
 		}
+	}
+
+	function totalStrategies() public view returns (uint256) {
+		return strategyIndex.length;
 	}
 
 	/// We compute expected tvl off-chain first, to ensure this transactions isn't sandwitched
