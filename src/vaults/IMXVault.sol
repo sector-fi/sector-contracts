@@ -4,14 +4,15 @@ pragma solidity 0.8.16;
 import { SCYStrategy, Strategy } from "./scy/SCYStrategy.sol";
 import { IMX } from "../strategies/imx/IMX.sol";
 import { SCYVault, IERC20 } from "./scy/SCYVault.sol";
+import { AuthConfig, Auth } from "../common/Auth.sol";
+import { FeeConfig, Fees } from "../common/Fees.sol";
 
 contract IMXVault is SCYStrategy, SCYVault {
 	constructor(
-		address _owner,
-		address guardian,
-		address manager,
+		AuthConfig memory authConfig,
+		FeeConfig memory feeConfig,
 		Strategy memory _strategy
-	) SCYVault(_owner, guardian, manager, _strategy) {}
+	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) {}
 
 	function _stratValidate() internal view override {
 		if (

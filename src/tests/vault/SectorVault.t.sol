@@ -5,7 +5,7 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy } from "../../vaults/SectorVault.sol";
+import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 
 import "hardhat/console.sol";
@@ -34,11 +34,8 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 			underlying,
 			"SECT_VAULT",
 			"SECT_VAULT",
-			owner,
-			guardian,
-			manager,
-			treasury,
-			DEFAULT_PERFORMANCE_FEE,
+			AuthConfig(owner, guardian, manager),
+			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
 			address(69) // temporary
 		);
 
@@ -236,13 +233,13 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		assertApproxEqAbs(vault.underlyingBalance(user1), 99e18, mLp);
 	}
 
-	function testEmergencyWithdraw() public {
+	function testEmergencyRedeem() public {
 		uint256 amnt = 1000e18;
 		sectDeposit(vault, user1, amnt);
 		sectDeposit3Strats(vault, 200e18, 300e18, 400e18);
 		skip(1);
 		vm.startPrank(user1);
-		vault.emergencyWithdraw();
+		vault.emergencyRedeem();
 
 		assertApproxEqAbs(underlying.balanceOf(user1), 100e18, mLp, "recovered float");
 

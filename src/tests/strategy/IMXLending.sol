@@ -7,7 +7,7 @@ import { IMXUtils, UniUtils, IUniswapV2Pair } from "../utils/IMXUtils.sol";
 
 import { SectorTest } from "../utils/SectorTest.sol";
 import { IMXConfig, HarvestSwapParms } from "../../interfaces/Structs.sol";
-import { IMXLend, Strategy } from "../../vaults/IMXLend.sol";
+import { IMXLend, Strategy, AuthConfig, FeeConfig } from "../../vaults/IMXLend.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ERC1155Holder } from "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
@@ -47,12 +47,14 @@ contract IMXLending is SectorTest, IMXUtils, ERC1155Holder {
 		strategyConfig.yieldToken = strategy;
 		strategyConfig.underlying = IERC20(address(usdc));
 		strategyConfig.maxTvl = type(uint128).max;
-		strategyConfig.treasury = treasury;
-		strategyConfig.performanceFee = .1e18;
 
 		underlying = IERC20(address(strategyConfig.underlying));
 
-		vault = new IMXLend(owner, guardian, manager, strategyConfig);
+		vault = new IMXLend(
+			AuthConfig(owner, guardian, manager),
+			FeeConfig(treasury, .1e18, 0),
+			strategyConfig
+		);
 		minLp = vault.MIN_LIQUIDITY();
 		usdc.approve(address(vault), type(uint256).max);
 	}

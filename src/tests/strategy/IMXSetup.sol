@@ -7,7 +7,7 @@ import { IMXUtils, UniUtils, IUniswapV2Pair } from "../utils/IMXUtils.sol";
 
 import { SectorTest } from "../utils/SectorTest.sol";
 import { IMXConfig, HarvestSwapParms } from "../../interfaces/Structs.sol";
-import { IMXVault, Strategy } from "../../vaults/IMXVault.sol";
+import { IMXVault, Strategy, AuthConfig, FeeConfig } from "../../vaults/IMXVault.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
@@ -90,10 +90,12 @@ contract IMXSetup is SectorTest, IMXUtils {
 		strategyConfig.yieldToken = config.poolToken;
 		strategyConfig.underlying = IERC20(config.underlying);
 		strategyConfig.maxTvl = uint128(config.maxTvl);
-		strategyConfig.treasury = treasury;
-		strategyConfig.performanceFee = .1e18;
 
-		vault = new IMXVault(owner, guardian, manager, strategyConfig);
+		vault = new IMXVault(
+			AuthConfig(owner, guardian, manager),
+			FeeConfig(treasury, .1e18, 0),
+			strategyConfig
+		);
 
 		minLp = vault.MIN_LIQUIDITY();
 		config.vault = address(vault);
