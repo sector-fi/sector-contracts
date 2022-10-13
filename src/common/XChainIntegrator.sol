@@ -4,18 +4,19 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Auth } from "./Auth.sol";
 import "../interfaces/MsgStructs.sol";
-import "../interfaces/postOffice/IPostOffice.sol";
+import "../interfaces/postOffice/IPostman.sol";
 
 abstract contract XChainIntegrator is Auth {
-	mapping(address => Vault) public depositedVaults;
-	address[] internal vaultList;
+	mapping(address => Vault) public addrBook;
+	mapping(uint256 => address) internal postmanAddr;
+	mapping(messageType => function(Message calldata)) internal messageAction;
 
-	IPostOffice public immutable postOffice;
 	uint16 immutable chainId = uint16(block.chainid);
 
 	struct Vault {
-		uint256 amount;
 		uint16 chainId;
+		uint256 srcPostman;
+		uint256 dstPostman;
 		bool allowed;
 	}
 
@@ -47,9 +48,7 @@ abstract contract XChainIntegrator is Auth {
 		BridgeRequest bridgeRequest;
 	}
 
-	constructor(address _postOffice) {
-		postOffice = IPostOffice(_postOffice);
-	}
+	constructor() {}
 
 	/*/////////////////////////////////////////////////////
 						Bridge utilities
@@ -91,14 +90,6 @@ abstract contract XChainIntegrator is Auth {
 		if (userRequest.bridgeRequest.inputToken != _inputToken) {
 			revert("Invalid input token");
 		}
-	}
-
-	function startBridgeRoute(
-		uint32 _fromChainId,
-		uint32 _toChainId,
-		uint256 amount
-	) public onlyRole(MANAGER) {
-		emit BridgeAsset(_fromChainId, _toChainId, amount);
 	}
 
 	/// @notice Sends tokens using Bungee middleware. Assumes tokens already present in contract. Manages allowance and transfer.
@@ -198,46 +189,123 @@ abstract contract XChainIntegrator is Auth {
 	}
 
 	/*/////////////////////////////////////////////////////
-					Vault Management
+					Address book management
 	/////////////////////////////////////////////////////*/
 
 	function addVault(
 		address _vault,
 		uint16 _chainId,
+		uint16 _srcPostmanId,
+		uint16 _dstPostmanId,
 		bool _allowed
-	) external onlyOwner {
-		Vault memory tmpVault = depositedVaults[_vault];
+	) external virtual onlyOwner {
+		Vault memory vault = addrBook[_vault];
 
-		if (tmpVault.chainId != 0 || tmpVault.allowed != false) revert VaultAlreadyAdded();
+		if (vault.chainId != 0 || vault.allowed != false) revert VaultAlreadyAdded();
 
-		depositedVaults[_vault] = Vault(0, _chainId, _allowed);
-		vaultList.push(_vault);
-		emit AddVault(_vault, _chainId);
+		addrBook[_vault] = Vault(_chainId, _srcPostmanId, _dstPostmanId, _allowed);
+		emit AddedVault(_vault, _chainId);
 	}
 
 	function changeVaultStatus(address _vault, bool _allowed) external onlyOwner {
-		depositedVaults[_vault].allowed = _allowed;
+		addrBook[_vault].allowed = _allowed;
 
-		emit ChangeVaultStatus(_vault, _allowed);
+		emit ChangedVaultStatus(_vault, _allowed);
 	}
 
-	function isVaultAllowed(Message calldata message) external view returns (bool) {
-		return depositedVaults[message.sender].allowed;
+	function updateVaultPostman(
+		address _vault,
+		uint16 _srcPostmanId,
+		uint16 _dstPostmanId
+	) external onlyOwner {
+		Vault memory vault = addrBook[_vault];
+
+		if (vault.chainId == 0) revert VaultMissing(_vault);
+
+		if (_srcPostmanId != 0) addrBook[_vault].srcPostman = _srcPostmanId;
+		if (_dstPostmanId != 0) addrBook[_vault].dstPostman = _dstPostmanId;
+
+		emit UpdatedVaultPostman(_vault, _srcPostmanId, _dstPostmanId);
 	}
+
+	function managePostman(uint16 postmanId, address postman) external onlyOwner {
+		postmanAddr[postmanId] = postman;
+
+		emit PostmanUpdated(postman, postmanId);
+	}
+
+	/*/////////////////////////////////////////////////////
+					Cross-chain logic
+	/////////////////////////////////////////////////////*/
+
+	function _sendMessage(
+		address receiverAddr,
+		Vault calldata vault,
+		// uint16 receiverChainId,
+		Message calldata message,
+		messageType msgType
+	) internal {
+		// Vault memory vault = addrBook[receiverAddr];
+		// if (!vault.allowed) revert ReceiverNotAllowed(receiverAddr);
+
+		address srcPostman = postmanAddr[vault.srcPostman];
+		address dstPostman = postmanAddr[vault.dstPostman];
+
+		IPostman(srcPostman).deliverMessage(
+			message,
+			receiverAddr,
+			dstPostman,
+			msgType,
+			vault.chainId
+		);
+
+		emit MessageSent(message.value, receiverAddr, vault.chainId, msgType, srcPostman);
+	}
+
+	function receiveMessage(Message calldata _msg, messageType _type) external {
+		// First check if postman is allowed
+		Vault memory vault = addrBook[_msg.sender];
+		if (!vault.allowed || _msg.chainId != vault.chainId) revert SenderNotAllowed(_msg.sender);
+		if (msg.sender != postmanAddr[vault.srcPostman]) revert WrongPostman(msg.sender);
+
+		messageAction[_type](_msg);
+		emit MessageReceived(_msg.amount, _msg.sender, _msg.chainId, _type, msg.sender);
+	}
+
+	function setMessageActionCallback() external virtual onlyOwner {}
 
 	/*/////////////////////////////////////////////////////
 							Events
 	/////////////////////////////////////////////////////*/
 
-	event AddVault(address vault, uint16 chainId);
-	event ChangeVaultStatus(address vault, bool status);
-	event BridgeAsset(uint32 _fromChainId, uint32 _toChainId, uint256 amount);
+	event MessageReceived(
+		uint256 value,
+		address sender,
+		uint16 srcChainId,
+		messageType mType,
+		address postman
+	);
+	event MessageSent(
+		uint256 value,
+		address receiver,
+		uint16 dstChainId,
+		messageType mtype,
+		address postman
+	);
+	event AddedVault(address vault, uint16 chainId);
+	event ChangedVaultStatus(address vault, bool status);
+	event PostmanUpdated(address newAddr, uint16 postmanId);
+	event UpdatedVaultPostman(address vault, uint16 src, uint16 dst);
+	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
 
 	/*/////////////////////////////////////////////////////
 							Errors
 	/////////////////////////////////////////////////////*/
 
+	error SenderNotAllowed(address sender);
+	error WrongPostman(address postman);
 	error VaultNotAllowed(address vault);
+	error VaultMissing(address vault);
 	error VaultAlreadyAdded();
 	error BridgeError();
 }

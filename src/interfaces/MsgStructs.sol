@@ -13,6 +13,6 @@ enum messageType {
     DEPOSIT,
     WITHDRAW,
     EMERGENCYWITHDRAW,
-    REQUESTHARVEST,
-    HARVEST
+    HARVEST,
+    // HARVEST
 }

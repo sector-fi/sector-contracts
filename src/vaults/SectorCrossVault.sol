@@ -22,14 +22,17 @@ contract SectorCrossVault is SectorBase {
 
 	struct HarvestLedger {
 		uint256 localDepositValue;
-		uint256 count;
+		uint256 crossDepositValue;
+		uint256 pendingAnswers;
+		uint256 receivedAnswers;
 	}
 
-	// TODO Implement functions with harvestLock modifier
-
+	// Used to harvest from deposited vaults
+	address[] internal vaultList;
 	// Harvest state
 	HarvestLedger public harvestLedger;
 	// Controls emergency withdraw
+	// Not sure if this will be used
 	bool internal emergencyEnabled = false;
 
 	constructor(
@@ -40,12 +43,8 @@ contract SectorCrossVault is SectorBase {
 		address _guardian,
 		address _manager,
 		address _treasury,
-		uint256 _perforamanceFee,
-		address postOffice
-	)
-		ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee)
-		XChainIntegrator(postOffice)
-	{}
+		uint256 _perforamanceFee
+	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
@@ -55,21 +54,21 @@ contract SectorCrossVault is SectorBase {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
-			Vault memory tmpVault = depositedVaults[vaultAddr];
+			Vault memory vault = addrBook[vaultAddr];
 
-			if (!tmpVault.allowed) revert VaultNotAllowed(vaultAddr);
+			if (!vault.allowed) revert VaultNotAllowed(vaultAddr);
 
-			if (tmpVault.chainId == chainId) {
+			if (vault.chainId == chainId) {
 				BatchedWithdraw(vaultAddr).deposit(amount, address(this));
 			} else {
-				postOffice.sendMessage(
+				_sendMessage(
 					vaultAddr,
+					vault,
 					Message(amount, address(this), address(0), chainId),
-					tmpVault.chainId,
 					messageType.DEPOSIT
 				);
 
-				emit BridgeAsset(uint16(block.chainid), tmpVault.chainId, amount);
+				emit BridgeAsset(chainId, vault.chainId, amount);
 			}
 
 			unchecked {
@@ -85,17 +84,17 @@ contract SectorCrossVault is SectorBase {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
-			Vault memory tmpVault = depositedVaults[vaultAddr];
+			Vault memory vault = addrBook[vaultAddr];
 
-			if (!tmpVault.allowed) revert VaultNotAllowed(vaultAddr);
+			if (!vault.allowed) revert VaultNotAllowed(vaultAddr);
 
-			if (tmpVault.chainId == chainId) {
+			if (vault.chainId == chainId) {
 				BatchedWithdraw(vaultAddr).requestRedeem(amount);
 			} else {
-				postOffice.sendMessage(
+				_sendMessage(
 					vaultAddr,
+					vault,
 					Message(amount, address(this), address(0), chainId),
-					tmpVault.chainId,
 					messageType.WITHDRAW
 				);
 			}
@@ -104,14 +103,6 @@ contract SectorCrossVault is SectorBase {
 				i++;
 			}
 		}
-	}
-
-	/// TODO: this method sholud be triggered by a chain vault when
-	/// returning withdrawals. This allows us to upate floatAmnt and totalChildHoldings
-	function _finalizedWithdraw() internal {
-		uint256 totalWithdraw;
-		totalChildHoldings -= totalWithdraw;
-		afterDeposit(totalWithdraw, 0);
 	}
 
 	function harvestVaults() public onlyRole(MANAGER) {
@@ -123,19 +114,22 @@ contract SectorCrossVault is SectorBase {
 		uint256 xvaultsCount = 0;
 
 		for (uint256 i = 0; i < vaultsLength; ) {
-			address vAddr = vaultList[i];
-			Vault memory tmpVault = depositedVaults[vAddr];
+			address vaultAddr = vaultList[i];
+			Vault memory vault = addrBook[vaultAddr];
 
-			if (tmpVault.chainId == chainId) {
+			if (vault.chainId == chainId) {
 				localDepositValue += SectorVault(vAddr).underlyingBalance(address(this));
 			} else {
-				postOffice.sendMessage(
-					vAddr,
-					Message(0, address(this), address(0), chainId),
-					tmpVault.chainId,
+				_sendMessage(
+					vaultAddr,
+					vault,
+					Message(amount, address(this), address(0), chainId),
 					messageType.REQUESTHARVEST
 				);
-				xvaultsCount += 1;
+
+				unchecked {
+					xvaultsCount += 1;
+				}
 			}
 
 			unchecked {
@@ -143,25 +137,16 @@ contract SectorCrossVault is SectorBase {
 			}
 		}
 
-		harvestLedger.localDepositValue = localDepositValue;
-		harvestLedger.count = xvaultsCount;
+		harvestLedger = HarvestLedger(localDepositValue, 0, xvaultsCount, 0);
 	}
 
 	function finalizeHarvest(uint256 expectedValue, uint256 maxDelta) public onlyRole(MANAGER) {
-		HarvestLedger storage ledger = harvestLedger;
-		uint256 ledgerCount = ledger.count;
+		HarvestLedger memory ledger = harvestLedger;
 
-		if (ledgerCount == 0) revert HarvestNotOpen();
+		if (ledger.pendingAnswers == 0) revert HarvestNotOpen();
+		if (ledger.receivedAnswers < ledger.pendingAnswers) revert MissingMessages();
 
-		// Compute actual tvl
-		(uint256 xDepositValue, uint256 count) = postOffice.readMessageSumReduce(
-			messageType.HARVEST
-		);
-
-		// The only save check besides computed tvl now is the number o messages.
-		if (ledgerCount > count) revert MissingMessages();
-
-		uint256 currentChildHoldings = ledger.localDepositValue + xDepositValue;
+		uint256 currentChildHoldings = ledger.localDepositValue + ledger.crossDepositValue;
 
 		// TODO should expectedValue include balance?
 		// uint256 tvl = currentChildHoldings + asset.balanceOf(address(this));
@@ -169,8 +154,7 @@ contract SectorCrossVault is SectorBase {
 		_harvest(currentChildHoldings);
 
 		// Change harvest status
-		ledger.localDepositValue = 0;
-		ledger.count = 0;
+		harvestLedger = HarvestLedger(0, 0, 0, 0);
 	}
 
 	function emergencyWithdraw() external {
@@ -184,18 +168,18 @@ contract SectorCrossVault is SectorBase {
 
 		uint256 vaultsLength = vaultList.length;
 		for (uint256 i = 0; i < vaultsLength; ) {
-			address vAddr = vaultList[i];
-			Vault memory tmpVault = depositedVaults[vAddr];
+			address vaultAddr = vaultList[i];
+			Vault memory vault = addrBook[vaultAddr];
 
 			if (tmpVault.chainId == chainId) {
-				BatchedWithdraw vault = BatchedWithdraw(vAddr);
-				uint256 transferShares = userPerc.mulWadDown(vault.balanceOf(address(this)));
-				vault.transfer(msg.sender, transferShares);
+				BatchedWithdraw _vault = BatchedWithdraw(vaultAddr);
+				uint256 transferShares = userPerc.mulWadDown(_vault.balanceOf(address(this)));
+				_vault.transfer(msg.sender, transferShares);
 			} else {
-				postOffice.sendMessage(
-					vAddr,
-					Message(userPerc, address(this), msg.sender, chainId),
-					tmpVault.chainId,
+				_sendMessage(
+					vaultAddr,
+					vault,
+					Message(amount, address(this), msg.sender, chainId),
 					messageType.EMERGENCYWITHDRAW
 				);
 			}
@@ -206,8 +190,66 @@ contract SectorCrossVault is SectorBase {
 		}
 	}
 
+	// Do linear search on vaultList -> O(n)
+	function removeVault(address _vault) external onlyOwner {
+		addrBook[_vault].allowed = false;
+
+		uint256 length = vaultList.length;
+		for (uint256 i = 0; i < length; ) {
+			if (vaultList[i] == _vault) {
+				vaultList[i] = vaultList[length - 1];
+				vaultList.pop();
+				return;
+			}
+			unchecked {
+				i++;
+			}
+		}
+	}
+
 	/*/////////////////////////////////////////////////////
-						Modifiers
+							Overrides
+	/////////////////////////////////////////////////////*/
+
+	function addVault(
+		address _vault,
+		uint16 _chainId,
+		uint16 _srcPostmanId,
+		uint16 _dstPostmanId,
+		bool _allowed
+	) external override onlyOwner {
+		super().addVault(_vault, _chaindId, _srcPostmanId, _dstPostmanId, _allowed);
+		vaultList.push(_vault);
+	}
+
+	function setMessageActionCallback() external override onlyOwner {
+		messageAction[messageType.WITHDRAW] = _finalizedWithdraw;
+		messageAction[messageType.HARVEST] = _receiveHarvest;
+	}
+
+	/*/////////////////////////////////////////////////////
+						Internals
+	/////////////////////////////////////////////////////*/
+
+	/// TODO: this method sholud be triggered by a chain vault when
+	/// returning withdrawals. This allows us to upate floatAmnt and totalChildHoldings
+	function _finalizedWithdraw() internal {
+		uint256 totalWithdraw;
+		totalChildHoldings -= totalWithdraw;
+		afterDeposit(totalWithdraw, 0);
+	}
+
+	function _receiveWithdraw(Message) internal {
+		_finalizedWithdraw();
+	}
+
+	function _receiveHarvest(Message calldata _msg) internal {
+		harvestLedger.crossDepositValue += _msg.amount;
+		harvestLedger.receivedAnswers += 1;
+	}
+
+	/*/////////////////////////////////////////////////////
+							Modifiers
 	/////////////////////////////////////////////////////*/
 
 	modifier harvestLock() {
