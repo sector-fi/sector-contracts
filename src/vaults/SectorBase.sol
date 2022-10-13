@@ -6,9 +6,11 @@ import { ERC4626, FixedPointMathLib, SafeERC20 } from "./ERC4626/ERC4626.sol";
 import { ISCYStrategy } from "../interfaces/scy/ISCYStrategy.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
+import { Address } from "@openzeppelin/contracts//utils/Address.sol";
+
 import "../interfaces/MsgStructs.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 	using FixedPointMathLib for uint256;
@@ -23,16 +25,8 @@ abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 		uint256 tvl
 	);
 
-	event MaxRedeemWindow(uint256 maxRedeemWindow);
-
 	uint256 public totalChildHoldings;
 	uint256 public floatAmnt; // amount of underlying tracked in vault
-	uint256 public maxRedeemWindow = 7 days; // time before emergency redeem becomes enabled
-
-	function setMaxRedeemWindow(uint256 _maxRedeemWindow) public onlyOwner {
-		maxRedeemWindow = _maxRedeemWindow;
-		emit MaxRedeemWindow(_maxRedeemWindow);
-	}
 
 	function _harvest(uint256 currentChildHoldings) internal {
 		// withdrawFromStrategies should be called prior to harvest to ensure this tx doesn't revert
@@ -67,6 +61,16 @@ abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 
 		// this enables withdrawals requested prior to this timestamp
 		lastHarvestTimestamp = timestamp;
+	}
+
+	function enterEmergency() public onlyOwner {}
+
+	/// @notice this method allows an arbitrary method to be called by the owner in case of emergency
+	/// owner must be a timelock contract in order to allow users to redeem funds in case they suspect
+	/// this action to be malicious
+	function emergencyAction(address target, bytes calldata callData) public onlyOwner {
+		Address.functionCall(target, callData);
+		emit EmergencyAction(target, callData);
 	}
 
 	function _checkSlippage(
@@ -115,8 +119,9 @@ abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 
 	event RegisterDeposit(uint256 total);
 	event EmergencyWithdraw(address vault, address client, uint256 shares);
+	event EmergencyAction(address target, bytes callData);
 
-	error NotEnoughTimeSinceHarvest();
+	error MaxRedeemNotZero();
 	error NotEnoughtFloat();
 	error WrongUnderlying();
 	error SlippageExceeded();

@@ -10,7 +10,6 @@ import "../interfaces/MsgStructs.sol";
 import { SectorBase } from "./SectorBase.sol";
 
 // import "hardhat/console.sol";
-
 // TODO native asset deposit + flow
 
 struct RedeemParams {
@@ -61,6 +60,7 @@ contract SectorVault is SectorBase {
 
 		strategyExists[strategy] = true;
 		strategyIndex.push(address(strategy));
+		emit AddStrategy(address(strategy));
 	}
 
 	function removeStrategy(ISCYStrategy strategy) public onlyOwner {
@@ -75,6 +75,7 @@ contract SectorVault is SectorBase {
 				continue;
 			}
 		}
+		emit RemoveStrategy(address(strategy));
 	}
 
 	function totalStrategies() external view returns (uint256) {
@@ -90,6 +91,7 @@ contract SectorVault is SectorBase {
 		uint256 currentChildHoldings = _getStrategyHoldings();
 		uint256 tvl = currentChildHoldings + floatAmnt;
 		_checkSlippage(expectedTvl, tvl, maxDelta);
+		// harvest event emitted here
 		_harvest(currentChildHoldings);
 	}
 
@@ -108,6 +110,7 @@ contract SectorVault is SectorBase {
 			asset.safeTransfer(strategy.strategy(), amountIn);
 			strategy.deposit(address(this), address(asset), 0, param.minSharesOut);
 			totalChildHoldings += amountIn;
+			emit DepositIntoStrategy(msg.sender, address(strategy), amountIn);
 		}
 	}
 
@@ -131,15 +134,11 @@ contract SectorVault is SectorBase {
 			totalChildHoldings -= amountOut;
 			// update underlying float accounting
 			afterDeposit(amountOut, 0);
+			emit WithdrawFromStrategy(msg.sender, address(strategy), amountOut);
 		}
 	}
 
-	// this method ensures funds are redeemable if manager stops
-	// processing harvests / withdrawals
 	function emergencyRedeem() public {
-		if (maxRedeemWindow > block.timestamp - lastHarvestTimestamp)
-			revert NotEnoughTimeSinceHarvest();
-
 		uint256 _totalSupply = totalSupply();
 		uint256 shares = balanceOf(msg.sender);
 		if (shares == 0) return;
@@ -347,4 +346,9 @@ contract SectorVault is SectorBase {
 			}
 		}
 	}
+
+	event AddStrategy(address indexed strategy);
+	event RemoveStrategy(address indexed strategy);
+	event DepositIntoStrategy(address caller, address strategy, uint256 amount);
+	event WithdrawFromStrategy(address caller, address strategy, uint256 amount);
 }
