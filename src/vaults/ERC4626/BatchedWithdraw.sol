@@ -18,10 +18,14 @@ abstract contract BatchedWithdraw is ERC4626 {
 
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
 
-	uint256 public withdrawTimestamp;
+	uint256 public lastHarvestTimestamp;
 	uint256 public pendingWithdraw; // actual amount may be less
 
 	mapping(address => WithdrawRecord) public withdrawLedger;
+
+	constructor() {
+		lastHarvestTimestamp = block.timestamp;
+	}
 
 	function requestRedeem(uint256 shares) public {
 		return requestRedeem(shares, msg.sender);
@@ -79,7 +83,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 		WithdrawRecord storage withdrawRecord = withdrawLedger[account];
 
 		if (withdrawRecord.value == 0) revert ZeroAmount();
-		if (withdrawRecord.timestamp > withdrawTimestamp) revert NotReady();
+		if (withdrawRecord.timestamp >= lastHarvestTimestamp) revert NotReady();
 
 		shares = withdrawRecord.shares;
 		// value of shares at time of redemption request
@@ -133,16 +137,10 @@ abstract contract BatchedWithdraw is ERC4626 {
 		return (1e18 * (currentValue - redeemValue)) / redeemValue;
 	}
 
-	/// @notice enables withdrawal made prior to current timestamp
-	/// based specified exchange rate
-	function _processWithdraw() internal {
-		withdrawTimestamp = block.timestamp;
-	}
-
 	/// UTILS
 	function redeemIsReady(address user) external view returns (bool) {
 		WithdrawRecord storage withdrawRecord = withdrawLedger[user];
-		return withdrawTimestamp >= withdrawRecord.timestamp;
+		return lastHarvestTimestamp > withdrawRecord.timestamp;
 	}
 
 	function getWithdrawStatus(address user) external view returns (WithdrawRecord memory) {

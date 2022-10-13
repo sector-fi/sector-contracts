@@ -16,27 +16,42 @@ abstract contract Fees is Auth {
 		emit SetPerformanceFee(_performanceFee);
 	}
 
-	/// @notice Emitted when the fee percentage is updated.
+	uint256 public constant MAX_MANAGEMENT_FEE = .05e18; // 5%
+	uint256 public constant MAX_PERFORMANCE_FEE = .25e18; // 25%
+
+	/// @notice Emitted when performance fee is updated.
 	/// @param performanceFee The new fee percentage.
 	event SetPerformanceFee(uint256 performanceFee);
+
+	/// @notice Emitted when management fee is updated.
+	/// @param managementFee The new fee percentage.
+	event SetManagementFee(uint256 managementFee);
 
 	event SetTreasury(address indexed treasury);
 
 	/// @notice The percentage of profit recognized each harvest to reserve as fees.
 	/// @dev A fixed point number where 1e18 represents 100% and 0 represents 0%.
 	uint256 public performanceFee;
+	uint256 public managementFee;
 
 	address public treasury;
 
 	/// @notice Sets a new performanceFee.
 	/// @param _performanceFee The new performance fee.
 	function setPerformanceFee(uint256 _performanceFee) public onlyOwner {
-		// A fee percentage over 100% doesn't make sense.
-		require(_performanceFee <= 1e18, "FEE_TOO_HIGH");
+		if (_performanceFee > MAX_PERFORMANCE_FEE) revert OverMaxFee();
 
-		// Update the fee percentage.
 		performanceFee = _performanceFee;
 		emit SetPerformanceFee(performanceFee);
+	}
+
+	/// @notice Sets a new performanceFee.
+	/// @param _managementFee The new performance fee.
+	function setManagementFee(uint256 _managementFee) public onlyOwner {
+		if (_managementFee > MAX_MANAGEMENT_FEE) revert OverMaxFee();
+
+		managementFee = _managementFee;
+		emit SetManagementFee(_managementFee);
 	}
 
 	/// @notice Updates treasury.
@@ -45,4 +60,6 @@ abstract contract Fees is Auth {
 		treasury = _treasury;
 		emit SetTreasury(_treasury);
 	}
+
+	error OverMaxFee();
 }
