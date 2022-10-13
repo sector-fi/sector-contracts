@@ -5,22 +5,31 @@ const func: DeployFunction = async function ({
   getNamedAccounts,
   deployments,
 }: HardhatRuntimeEnvironment) {
-
   const { deployer, owner, guardian, manager, usdc } = await getNamedAccounts();
   const { deploy } = deployments;
 
   let USDC = usdc;
   if (!USDC) {
     const usdcMock = await deployments.get('USDCMock');
-    USDC = usdcMock.address
+    USDC = usdcMock.address;
   }
 
   const postOffice = await deployments.get('PostOffice');
 
+  const authConfig = [owner, guardian, manager];
+  const feeConfig = [owner, 0, 0];
+
   const vault = await deploy('SectorCrossVault-0', {
     contract: 'SectorCrossVault',
     from: deployer,
-    args: [USDC, 'CrossVault', 'XVLT', owner, guardian, manager, owner, 0, postOffice.address],
+    args: [
+      USDC,
+      'CrossVault',
+      'XVLT',
+      authConfig,
+      feeConfig,
+      postOffice.address,
+    ],
     skipIfAlreadyDeployed: false,
     log: true,
   });

@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { MockScyVault, SCYVault, Strategy } from "../mocks/MockScyVault.sol";
+import { MockScyVault, SCYVault, Strategy, AuthConfig, FeeConfig } from "../mocks/MockScyVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { WETH } from "../mocks/WETH.sol";
@@ -14,6 +14,7 @@ import "hardhat/console.sol";
 contract SCYVaultSetup is SectorTest {
 	address NATIVE = address(0); // SCY vault constant;
 	uint256 DEFAULT_PERFORMANCE_FEE = .1e18;
+	uint256 DEAFAULT_MANAGEMENT_FEE = 0;
 	uint256 mLp = 1000; // MIN_LIQUIDITY constant
 
 	function setUpSCYVault(address underlying) public returns (MockScyVault) {
@@ -27,10 +28,12 @@ contract SCYVaultSetup is SectorTest {
 		strategyConfig.addr = address(strategy);
 		strategyConfig.underlying = IERC20(underlying);
 		strategyConfig.maxTvl = type(uint128).max;
-		strategyConfig.treasury = treasury;
-		strategyConfig.performanceFee = DEFAULT_PERFORMANCE_FEE;
 
-		MockScyVault vault = new MockScyVault(owner, guardian, manager, strategyConfig);
+		MockScyVault vault = new MockScyVault(
+			AuthConfig(owner, guardian, manager),
+			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
+			strategyConfig
+		);
 		return vault;
 	}
 

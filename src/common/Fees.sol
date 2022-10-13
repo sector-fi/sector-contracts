@@ -1,40 +1,39 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Auth } from "./Auth.sol";
 
 // import "hardhat/console.sol";
 
+struct FeeConfig {
+	address treasury;
+	uint256 performanceFee;
+	uint256 managementFee;
+}
+
 abstract contract Fees is Auth {
-	using SafeERC20 for IERC20;
-
-	constructor(address _treasury, uint256 _performanceFee) {
-		treasury = _treasury;
-		performanceFee = _performanceFee;
-		emit SetTreasury(_treasury);
-		emit SetPerformanceFee(_performanceFee);
-	}
-
 	uint256 public constant MAX_MANAGEMENT_FEE = .05e18; // 5%
 	uint256 public constant MAX_PERFORMANCE_FEE = .25e18; // 25%
-
-	/// @notice Emitted when performance fee is updated.
-	/// @param performanceFee The new fee percentage.
-	event SetPerformanceFee(uint256 performanceFee);
-
-	/// @notice Emitted when management fee is updated.
-	/// @param managementFee The new fee percentage.
-	event SetManagementFee(uint256 managementFee);
-
-	event SetTreasury(address indexed treasury);
 
 	/// @notice The percentage of profit recognized each harvest to reserve as fees.
 	/// @dev A fixed point number where 1e18 represents 100% and 0 represents 0%.
 	uint256 public performanceFee;
+
+	/// @notice Annual management fee.
+	/// @dev A fixed point number where 1e18 represents 100% and 0 represents 0%.
 	uint256 public managementFee;
 
+	/// @notice address where all fees are sent to
 	address public treasury;
+
+	constructor(FeeConfig memory feeConfig) {
+		treasury = feeConfig.treasury;
+		performanceFee = feeConfig.performanceFee;
+		managementFee = feeConfig.managementFee;
+		emit SetTreasury(feeConfig.treasury);
+		emit SetPerformanceFee(feeConfig.performanceFee);
+		emit SetManagementFee(feeConfig.managementFee);
+	}
 
 	/// @notice Sets a new performanceFee.
 	/// @param _performanceFee The new performance fee.
@@ -60,6 +59,16 @@ abstract contract Fees is Auth {
 		treasury = _treasury;
 		emit SetTreasury(_treasury);
 	}
+
+	/// @notice Emitted when performance fee is updated.
+	/// @param performanceFee The new perforamance fee.
+	event SetPerformanceFee(uint256 performanceFee);
+
+	/// @notice Emitted when management fee is updated.
+	/// @param managementFee The new management fee.
+	event SetManagementFee(uint256 managementFee);
+
+	event SetTreasury(address indexed treasury);
 
 	error OverMaxFee();
 }

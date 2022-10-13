@@ -46,16 +46,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		_;
 	}
 
-	constructor(
-		address _owner,
-		address _guardian,
-		address _manager,
-		Strategy memory _strategy
-	)
-		SCYBase(_strategy.name, _strategy.symbol)
-		Auth(_owner, _guardian, _manager)
-		Fees(_strategy.treasury, _strategy.performanceFee)
-	{
+	constructor(Strategy memory _strategy) SCYBase(_strategy.name, _strategy.symbol) {
 		// strategy init
 		yieldToken = _strategy.yieldToken;
 		strategy = _strategy.addr;
