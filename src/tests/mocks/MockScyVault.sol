@@ -7,6 +7,8 @@ import { MockERC20 } from "./MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "./../../libraries/SafeETH.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Auth, AuthConfig } from "../../common/Auth.sol";
+import { Fees, FeeConfig } from "../../common/Fees.sol";
 
 import "hardhat/console.sol";
 
@@ -16,11 +18,10 @@ contract MockScyVault is SCYStrategy, SCYVault {
 	uint256 underlyingBalance;
 
 	constructor(
-		address _owner,
-		address guardian,
-		address manager,
+		AuthConfig memory authConfig,
+		FeeConfig memory feeConfig,
 		Strategy memory _strategy
-	) SCYVault(_owner, guardian, manager, _strategy) {}
+	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) {}
 
 	function _stratDeposit(uint256 amount) internal override returns (uint256) {
 		if (underlyingBalance + amount < underlying.balanceOf(strategy)) revert MissingFunds();

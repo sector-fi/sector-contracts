@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC4626, FixedPointMathLib, SafeERC20 } from "./ERC4626/ERC4626.sol";
+import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "./ERC4626/ERC4626.sol";
 import { ISCYStrategy } from "../interfaces/scy/ISCYStrategy.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { SectorBase } from "./SectorBase.sol";
@@ -32,7 +32,7 @@ contract SectorVault is SectorBase {
 	address internal constant NATIVE = address(0);
 
 	mapping(ISCYStrategy => bool) public strategyExists;
-	address[] strategyIndex;
+	address[] public strategyIndex;
 
 	address[] bridgeQueue;
 	Message[] depositQueue;
@@ -41,14 +41,13 @@ contract SectorVault is SectorBase {
 		ERC20 asset_,
 		string memory _name,
 		string memory _symbol,
-		address _owner,
-		address _guardian,
-		address _manager,
-		address _treasury,
-		uint256 _perforamanceFee,
-		address _postOffice
+		AuthConfig memory authConfig,
+		FeeConfig memory feeConfig
 	)
-		ERC4626(asset_, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee)
+		ERC4626(asset_, _name, _symbol)
+		Auth(authConfig)
+		Fees(feeConfig)
+		BatchedWithdraw()
 	{}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
@@ -66,7 +65,7 @@ contract SectorVault is SectorBase {
 		strategyExists[strategy] = false;
 		uint256 length = strategyIndex.length;
 		// replace current index with last strategy and pop the index array
-		for (uint256 i; i <= length; i++) {
+		for (uint256 i; i < length; ++i) {
 			if (address(strategy) == strategyIndex[i]) {
 				strategyIndex[i] = strategyIndex[length - 1];
 				strategyIndex.pop();
@@ -75,17 +74,22 @@ contract SectorVault is SectorBase {
 		}
 	}
 
+	function totalStrategies() public view returns (uint256) {
+		return strategyIndex.length;
+	}
+
 	/// We compute expected tvl off-chain first, to ensure this transactions isn't sandwitched
 	function harvest(uint256 expectedTvl, uint256 maxDelta) public onlyRole(MANAGER) {
 		uint256 currentChildHoldings = _getStrategyHoldings();
-		uint256 tvl = currentChildHoldings + asset.balanceOf(address(this));
+		uint256 tvl = currentChildHoldings + floatAmnt;
 		_checkSlippage(expectedTvl, tvl, maxDelta);
 		_harvest(currentChildHoldings);
 	}
 
 	/// this can be done in parts in case gas limit is reached
 	function depositIntoStrategies(DepositParams[] calldata params) public onlyRole(MANAGER) {
-		for (uint256 i; i < params.length; i++) {
+		uint256 l = params.length;
+		for (uint256 i; i < l; ++i) {
 			DepositParams memory param = params[i];
 			uint256 amountIn = param.amountIn;
 			if (amountIn == 0) continue;
@@ -102,7 +106,8 @@ contract SectorVault is SectorBase {
 
 	/// this can be done in parts in case gas limit is reached
 	function withdrawFromStrategies(RedeemParams[] calldata params) public onlyRole(MANAGER) {
-		for (uint256 i; i < params.length; i++) {
+		uint256 l = params.length;
+		for (uint256 i; i < l; ++i) {
 			RedeemParams memory param = params[i];
 			uint256 shares = param.shares;
 			if (shares == 0) continue;
@@ -122,11 +127,39 @@ contract SectorVault is SectorBase {
 		}
 	}
 
+	// this method ensures funds are redeemable if manager stops
+	// processing harvests / withdrawals
+	function emergencyRedeem() public {
+		if (maxRedeemWindow > block.timestamp - lastHarvestTimestamp)
+			revert NotEnoughTimeSinceHarvest();
+
+		uint256 _totalSupply = totalSupply();
+		uint256 shares = balanceOf(msg.sender);
+		if (shares == 0) return;
+		_burn(msg.sender, shares);
+
+		// redeem proportional share of vault's underlying float balance
+		uint256 underlyingShare = (floatAmnt * shares) / _totalSupply;
+		beforeWithdraw(underlyingShare, 0);
+		asset.safeTransfer(msg.sender, underlyingShare);
+
+		uint256 l = strategyIndex.length;
+
+		// redeem proportional share of each strategy
+		for (uint256 i; i < l; ++i) {
+			ERC20 stratToken = ERC20(strategyIndex[i]);
+			uint256 balance = stratToken.balanceOf(address(this));
+			uint256 userShares = (shares * balance) / _totalSupply;
+			if (userShares == 0) continue;
+			stratToken.safeTransfer(msg.sender, userShares);
+		}
+	}
+
 	/// gets accurate strategy holdings denominated in asset
 	function _getStrategyHoldings() internal returns (uint256 tvl) {
-		uint256 lastIndex = strategyIndex.length;
+		uint256 l = strategyIndex.length;
 		/// TODO compute realistic limit for strategy array lengh to stay within gas limit
-		for (uint256 i; i < lastIndex; i++) {
+		for (uint256 i; i < l; ++i) {
 			ISCYStrategy strategy = ISCYStrategy(payable(strategyIndex[i]));
 			tvl += strategy.getUpdatedUnderlyingBalance(address(this));
 		}
@@ -134,9 +167,9 @@ contract SectorVault is SectorBase {
 
 	/// returns expected tvl (used for estimate)
 	function getTvl() public view returns (uint256 tvl) {
-		uint256 length = strategyIndex.length;
+		uint256 l = strategyIndex.length;
 		// there should be no untrusted strategies in this array
-		for (uint256 i; i < length; i++) {
+		for (uint256 i; i < l; ++i) {
 			ISCYStrategy strategy = ISCYStrategy(payable(strategyIndex[i]));
 			tvl += strategy.underlyingBalance(address(this));
 		}

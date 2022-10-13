@@ -6,6 +6,8 @@ import { IPoolToken, IBorrowable } from "../interfaces/imx/IImpermax.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { SCYVault } from "./scy/SCYVault.sol";
 import { SafeETH } from "./../libraries/SafeETH.sol";
+import { AuthConfig, Auth } from "../common/Auth.sol";
+import { FeeConfig, Fees } from "../common/Fees.sol";
 
 import "hardhat/console.sol";
 
@@ -13,11 +15,10 @@ contract IMXLend is SCYStrategy, SCYVault {
 	using SafeERC20 for IERC20;
 
 	constructor(
-		address _owner,
-		address guardian,
-		address manager,
+		AuthConfig memory authConfig,
+		FeeConfig memory feeConfig,
 		Strategy memory _strategy
-	) SCYVault(_owner, guardian, manager, _strategy) {}
+	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) {}
 
 	function _stratValidate() internal view override {
 		if (

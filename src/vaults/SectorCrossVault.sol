@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { SectorVault } from "./SectorVault.sol";
-import { ERC4626, FixedPointMathLib } from "./ERC4626/ERC4626.sol";
+import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "./ERC4626/ERC4626.sol";
 import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import { SectorBase } from "./SectorBase.sol";
@@ -39,12 +39,14 @@ contract SectorCrossVault is SectorBase {
 		ERC20 _asset,
 		string memory _name,
 		string memory _symbol,
-		address _owner,
-		address _guardian,
-		address _manager,
-		address _treasury,
-		uint256 _perforamanceFee
-	) ERC4626(_asset, _name, _symbol, _owner, _guardian, _manager, _treasury, _perforamanceFee) {}
+		AuthConfig memory authConfig,
+		FeeConfig memory feeConfig
+	)
+		ERC4626(_asset, _name, _symbol)
+		Auth(authConfig)
+		Fees(feeConfig)
+		BatchedWithdraw()
+	{}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface

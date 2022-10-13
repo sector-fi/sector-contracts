@@ -4,6 +4,12 @@ pragma solidity 0.8.16;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
+struct AuthConfig {
+	address owner;
+	address guardian;
+	address manager;
+}
+
 contract Auth is AccessControl {
 	event OwnershipTransferInitiated(address owner, address pendingOwner);
 	event OwnershipTransferred(address oldOwner, address newOwner);
@@ -27,23 +33,19 @@ contract Auth is AccessControl {
 		_;
 	}
 
-	constructor(
-		address _owner,
-		address guardian,
-		address manager
-	) {
+	constructor(AuthConfig memory authConfig) {
 		/// Set up the roles
 		// owner can manage all roles
-		owner = _owner;
-		emit OwnershipTransferred(address(0), owner);
+		owner = authConfig.owner;
+		emit OwnershipTransferred(address(0), authConfig.owner);
 
 		// TODO do we want cascading roles like this?
-		_grantRole(DEFAULT_ADMIN_ROLE, owner);
+		_grantRole(DEFAULT_ADMIN_ROLE, authConfig.owner);
 		_grantRole(GUARDIAN, owner);
-		_grantRole(GUARDIAN, guardian);
-		_grantRole(MANAGER, owner);
-		_grantRole(MANAGER, guardian);
-		_grantRole(MANAGER, manager);
+		_grantRole(GUARDIAN, authConfig.guardian);
+		_grantRole(MANAGER, authConfig.owner);
+		_grantRole(MANAGER, authConfig.guardian);
+		_grantRole(MANAGER, authConfig.manager);
 
 		/// Allow the guardian role to manage manager
 		_setRoleAdmin(MANAGER, GUARDIAN);

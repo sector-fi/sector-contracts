@@ -3,6 +3,7 @@
 pragma solidity 0.8.16;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { AuthConfig } from "./Auth.sol";
 
 contract AuthU is AccessControlUpgradeable {
 	event OwnershipTransferInitiated(address owner, address pendingOwner);
@@ -30,22 +31,19 @@ contract AuthU is AccessControlUpgradeable {
 	/// security no undefined constructor
 	constructor() {}
 
-	function __Auth_init_(
-		address _owner,
-		address guardian,
-		address manager
-	) public onlyInitializing {
+	function __Auth_init_(AuthConfig memory authConfig) public onlyInitializing {
 		/// Set up the roles
 		// owner can manage all roles
-		owner = _owner;
-		emit OwnershipTransferred(address(0), owner);
+		owner = authConfig.owner;
+		emit OwnershipTransferred(address(0), authConfig.owner);
 
-		_grantRole(DEFAULT_ADMIN_ROLE, owner);
+		// TODO do we want cascading roles like this?
+		_grantRole(DEFAULT_ADMIN_ROLE, authConfig.owner);
 		_grantRole(GUARDIAN, owner);
-		_grantRole(GUARDIAN, guardian);
-		_grantRole(MANAGER, owner);
-		_grantRole(MANAGER, guardian);
-		_grantRole(MANAGER, manager);
+		_grantRole(GUARDIAN, authConfig.guardian);
+		_grantRole(MANAGER, authConfig.owner);
+		_grantRole(MANAGER, authConfig.guardian);
+		_grantRole(MANAGER, authConfig.manager);
 
 		/// Allow the guardian role to manage manager
 		_setRoleAdmin(MANAGER, GUARDIAN);
