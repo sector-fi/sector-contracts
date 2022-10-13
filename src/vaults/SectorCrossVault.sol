@@ -54,9 +54,8 @@ contract SectorCrossVault is SectorBase {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
-			Vault memory vault = addrBook[vaultAddr];
 
-			if (!vault.allowed) revert VaultNotAllowed(vaultAddr);
+			Vault memory vault = checkVault(vaultAddr);
 
 			if (vault.chainId == chainId) {
 				BatchedWithdraw(vaultAddr).deposit(amount, address(this));
@@ -84,9 +83,8 @@ contract SectorCrossVault is SectorBase {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
-			Vault memory vault = addrBook[vaultAddr];
 
-			if (!vault.allowed) revert VaultNotAllowed(vaultAddr);
+			Vault memory vault = checkVault(vaultAddr);
 
 			if (vault.chainId == chainId) {
 				BatchedWithdraw(vaultAddr).requestRedeem(amount);
@@ -108,7 +106,7 @@ contract SectorCrossVault is SectorBase {
 	function harvestVaults() public onlyRole(MANAGER) {
 		uint256 localDepositValue = 0;
 
-		if (harvestLedger.count != 0) revert OnGoingHarvest();
+		if (harvestLedger.pendingAnswers != 0) revert OnGoingHarvest();
 
 		uint256 vaultsLength = vaultList.length;
 		uint256 xvaultsCount = 0;
@@ -118,13 +116,13 @@ contract SectorCrossVault is SectorBase {
 			Vault memory vault = addrBook[vaultAddr];
 
 			if (vault.chainId == chainId) {
-				localDepositValue += SectorVault(vAddr).underlyingBalance(address(this));
+				localDepositValue += SectorVault(vaultAddr).underlyingBalance(address(this));
 			} else {
 				_sendMessage(
 					vaultAddr,
 					vault,
-					Message(amount, address(this), address(0), chainId),
-					messageType.REQUESTHARVEST
+					Message(0, address(this), address(0), chainId),
+					messageType.HARVEST
 				);
 
 				unchecked {
@@ -169,9 +167,9 @@ contract SectorCrossVault is SectorBase {
 		uint256 vaultsLength = vaultList.length;
 		for (uint256 i = 0; i < vaultsLength; ) {
 			address vaultAddr = vaultList[i];
-			Vault memory vault = addrBook[vaultAddr];
+			Vault memory vault = checkVault(vaultAddr);
 
-			if (tmpVault.chainId == chainId) {
+			if (vault.chainId == chainId) {
 				BatchedWithdraw _vault = BatchedWithdraw(vaultAddr);
 				uint256 transferShares = userPerc.mulWadDown(_vault.balanceOf(address(this)));
 				_vault.transfer(msg.sender, transferShares);
@@ -179,7 +177,7 @@ contract SectorCrossVault is SectorBase {
 				_sendMessage(
 					vaultAddr,
 					vault,
-					Message(amount, address(this), msg.sender, chainId),
+					Message(userPerc, address(this), msg.sender, chainId),
 					messageType.EMERGENCYWITHDRAW
 				);
 			}
@@ -218,18 +216,24 @@ contract SectorCrossVault is SectorBase {
 		uint16 _dstPostmanId,
 		bool _allowed
 	) external override onlyOwner {
-		super().addVault(_vault, _chaindId, _srcPostmanId, _dstPostmanId, _allowed);
+		_addVault(_vault, _chainId, _srcPostmanId, _dstPostmanId, _allowed);
 		vaultList.push(_vault);
 	}
 
 	function setMessageActionCallback() external override onlyOwner {
-		messageAction[messageType.WITHDRAW] = _finalizedWithdraw;
+		messageAction[messageType.WITHDRAW] = _receiveWithdraw;
 		messageAction[messageType.HARVEST] = _receiveHarvest;
 	}
 
 	/*/////////////////////////////////////////////////////
-						Internals
+							Internals
 	/////////////////////////////////////////////////////*/
+
+	function checkVault(address _vault) internal view returns (Vault memory) {
+		Vault memory vault = addrBook[_vault];
+		if (!vault.allowed) revert VaultNotAllowed(_vault);
+		return vault;
+	}
 
 	/// TODO: this method sholud be triggered by a chain vault when
 	/// returning withdrawals. This allows us to upate floatAmnt and totalChildHoldings
@@ -239,12 +243,12 @@ contract SectorCrossVault is SectorBase {
 		afterDeposit(totalWithdraw, 0);
 	}
 
-	function _receiveWithdraw(Message) internal {
+	function _receiveWithdraw(Message calldata) internal {
 		_finalizedWithdraw();
 	}
 
 	function _receiveHarvest(Message calldata _msg) internal {
-		harvestLedger.crossDepositValue += _msg.amount;
+		harvestLedger.crossDepositValue += _msg.value;
 		harvestLedger.receivedAnswers += 1;
 	}
 
@@ -252,10 +256,10 @@ contract SectorCrossVault is SectorBase {
 							Modifiers
 	/////////////////////////////////////////////////////*/
 
-	modifier harvestLock() {
-		if (harvestLedger.count != 0) revert OnGoingHarvest();
-		_;
-	}
+	// modifier harvestLock() {
+	// 	if (harvestLedger.count != 0) revert OnGoingHarvest();
+	// 	_;
+	// }
 
 	/*/////////////////////////////////////////////////////
 							Errors

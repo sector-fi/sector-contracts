@@ -8,11 +8,17 @@ struct Message {
     uint16 chainId;
 }
 
+struct Vault {
+    uint16 chainId;
+    uint256 srcPostman;
+    uint256 dstPostman;
+    bool allowed;
+}
+
 enum messageType {
     NONE,
     DEPOSIT,
     WITHDRAW,
     EMERGENCYWITHDRAW,
-    HARVEST,
-    // HARVEST
+    HARVEST
 }

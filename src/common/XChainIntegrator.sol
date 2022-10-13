@@ -13,13 +13,6 @@ abstract contract XChainIntegrator is Auth {
 
 	uint16 immutable chainId = uint16(block.chainid);
 
-	struct Vault {
-		uint16 chainId;
-		uint256 srcPostman;
-		uint256 dstPostman;
-		bool allowed;
-	}
-
 	/// @notice Struct encoded in Bungee calldata
 	/// @dev Derived from socket registry contract
 	struct MiddlewareRequest {
@@ -199,6 +192,16 @@ abstract contract XChainIntegrator is Auth {
 		uint16 _dstPostmanId,
 		bool _allowed
 	) external virtual onlyOwner {
+		_addVault(_vault, _chainId, _srcPostmanId, _dstPostmanId, _allowed);
+	}
+
+	function _addVault(
+		address _vault,
+		uint16 _chainId,
+		uint16 _srcPostmanId,
+		uint16 _dstPostmanId,
+		bool _allowed
+	) internal onlyOwner {
 		Vault memory vault = addrBook[_vault];
 
 		if (vault.chainId != 0 || vault.allowed != false) revert VaultAlreadyAdded();
@@ -240,14 +243,10 @@ abstract contract XChainIntegrator is Auth {
 
 	function _sendMessage(
 		address receiverAddr,
-		Vault calldata vault,
-		// uint16 receiverChainId,
-		Message calldata message,
+		Vault memory vault,
+		Message memory message,
 		messageType msgType
 	) internal {
-		// Vault memory vault = addrBook[receiverAddr];
-		// if (!vault.allowed) revert ReceiverNotAllowed(receiverAddr);
-
 		address srcPostman = postmanAddr[vault.srcPostman];
 		address dstPostman = postmanAddr[vault.dstPostman];
 
@@ -269,7 +268,7 @@ abstract contract XChainIntegrator is Auth {
 		if (msg.sender != postmanAddr[vault.srcPostman]) revert WrongPostman(msg.sender);
 
 		messageAction[_type](_msg);
-		emit MessageReceived(_msg.amount, _msg.sender, _msg.chainId, _type, msg.sender);
+		emit MessageReceived(_msg.value, _msg.sender, _msg.chainId, _type, msg.sender);
 	}
 
 	function setMessageActionCallback() external virtual onlyOwner {}
