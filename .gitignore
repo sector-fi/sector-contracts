@@ -11,6 +11,7 @@ build/
 # Coverage directory used by tools like istanbul
 coverage
 coverage.json
+lcov.info
 
 cache
 hh-cache
