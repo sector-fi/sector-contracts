@@ -5,9 +5,8 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "./ERC4626/ERC4626.sol";
 import { ISCYStrategy } from "../interfaces/scy/ISCYStrategy.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
-import { XChainIntegrator } from "../common/XChainIntegrator.sol";
-import "../interfaces/MsgStructs.sol";
 import { SectorBase } from "./SectorBase.sol";
+import "../interfaces/MsgStructs.sol";
 
 import "hardhat/console.sol";
 // TODO native asset deposit + flow
@@ -33,8 +32,9 @@ contract SectorVault is SectorBase {
 
 	mapping(ISCYStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
+	address[] internal bridgeQueue;
+	Message[] internal depositQueue;
 
-	address[] bridgeQueue;
 	uint256 public totalStrategyHoldings;
 
 	constructor(
@@ -42,15 +42,8 @@ contract SectorVault is SectorBase {
 		string memory _name,
 		string memory _symbol,
 		AuthConfig memory authConfig,
-		FeeConfig memory feeConfig,
-		address _postOffice
-	)
-		ERC4626(asset_, _name, _symbol)
-		Auth(authConfig)
-		Fees(feeConfig)
-		XChainIntegrator(_postOffice)
-		BatchedWithdraw()
-	{}
+		FeeConfig memory feeConfig
+	) ERC4626(asset_, _name, _symbol) Auth(authConfig) Fees(feeConfig) BatchedWithdraw() {}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
 		if (strategyExists[strategy]) revert StrategyExists();
@@ -209,18 +202,56 @@ contract SectorVault is SectorBase {
 					CrossChain functionality
 	/////////////////////////////////////////////////////////*/
 
-	/// TODO maybe common code to Sector Base
+	function _handleMessage(messageType _type, Message calldata _msg) internal override {
+		if (_type == messageType.DEPOSIT) _receiveDeposit(_msg);
+		else if (_type == messageType.HARVEST) _receiveHarvest(_msg);
+		else if (_type == messageType.WITHDRAW) _receiveWithdraw(_msg);
+		else if (_type == messageType.EMERGENCYWITHDRAW) _receiveEmergencyWithdraw(_msg);
+		else revert NotImplemented();
+	}
+
+	function _receiveDeposit(Message calldata _msg) internal {
+		depositQueue.push(_msg);
+	}
+
+	function _receiveWithdraw(Message calldata _msg) internal {
+		if (withdrawLedger[_msg.sender].value == 0) bridgeQueue.push(_msg.sender);
+
+		/// value here is the fraction of the shares owned by the vault
+		/// since the xVault doesn't know how many shares it holds
+		uint256 xVaultShares = balanceOf(_msg.sender);
+		uint256 shares = (_msg.value * xVaultShares) / 1e18;
+		requestRedeem(shares, _msg.sender);
+	}
+
+	function _receiveEmergencyWithdraw(Message calldata _msg) internal {
+		uint256 transferShares = _msg.value.mulWadDown(balanceOf(_msg.sender));
+
+		_transfer(_msg.sender, _msg.client, transferShares);
+		emit EmergencyWithdraw(_msg.sender, _msg.client, transferShares);
+	}
+
+	// TODO should it trigger harvest first?
+	function _receiveHarvest(Message calldata _msg) internal {
+		uint256 xVaultUnderlyingBalance = underlyingBalance(_msg.sender);
+
+		Vault memory vault = addrBook[_msg.sender];
+		_sendMessage(
+			_msg.sender,
+			vault,
+			Message(xVaultUnderlyingBalance, address(this), address(0), chainId),
+			messageType.HARVEST
+		);
+	}
+
 	function finalizeDeposit() external onlyRole(MANAGER) {
-		Message[] memory messages = postOffice.readMessage(messageType.DEPOSIT);
-
-		// Doesn't check if the money was already there
+		uint256 length = depositQueue.length;
 		uint256 totalDeposit = 0;
-		uint256 l = messages.length;
-		for (uint256 i = 0; i < l; ) {
-			// messages[i].value; messages[i].sender; messages[i].chainId;
+		for (uint256 i = length; i > 0; ) {
+			Message memory _msg = depositQueue[i - 1];
+			depositQueue.pop();
 
-			uint256 shares = previewDeposit(messages[i].value);
-
+			uint256 shares = previewDeposit(_msg.value);
 			// lock minimum liquidity if totalSupply is 0
 			// if i > 0 we can skip this
 			if (i == 0 && totalSupply() == 0) {
@@ -228,15 +259,13 @@ contract SectorVault is SectorBase {
 				shares -= MIN_LIQUIDITY;
 				_mint(address(1), MIN_LIQUIDITY);
 			}
-
-			_mint(messages[i].sender, shares);
+			_mint(_msg.sender, shares);
 
 			unchecked {
-				totalDeposit += messages[i].value;
-				i++;
+				totalDeposit += _msg.value;
+				i--;
 			}
 		}
-
 		// Should account for fees paid in tokens for using bridge
 		// Also, if a value hasn't arrived manager will not be able to register any value
 		if (totalDeposit > (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
@@ -248,32 +277,6 @@ contract SectorVault is SectorBase {
 		emit RegisterDeposit(totalDeposit);
 	}
 
-	/// This can be triggered directly
-	function readWithdraw() external onlyRole(MANAGER) {
-		Message[] memory messages = postOffice.readMessage(messageType.WITHDRAW);
-
-		uint256 l = messages.length;
-		for (uint256 i = 0; i < l; ) {
-			// if (depositedVaults[messages[i].sender].amount != 0) revert PendingCrosschainWithdraw();
-			if (depositedVaults[messages[i].sender].amount == 0) {
-				bridgeQueue.push(messages[i].sender);
-			}
-			/// value here is the fraction of the shares owned by the vault
-			/// since the xVault doesn't know how many shares it holds
-			uint256 xVaultShares = balanceOf(messages[i].sender);
-			uint256 shares = (messages[i].value * xVaultShares) / 1e18;
-			requestRedeem(shares, messages[i].sender);
-
-			// TODO Do we need this for anything other than the check above?
-			// is there a better way to filter out sequential withdraw req?
-			// a bool field?
-			unchecked {
-				depositedVaults[messages[i].sender].amount += messages[i].value;
-				i++;
-			}
-		}
-	}
-
 	function finalizeWithdraw() external onlyRole(MANAGER) {
 		uint256 length = bridgeQueue.length;
 
@@ -283,12 +286,11 @@ contract SectorVault is SectorBase {
 
 			// this returns the underlying amount the vault is withdrawing
 			uint256 amountOut = _xRedeem(vAddr);
-
 			bridgeQueue.pop();
 
 			// MANAGER has to ensure that if bridge fails it will try again
 			// OnChain record of needed bridge will be erased.
-			emit BridgeAsset(chainId, depositedVaults[vAddr].chainId, amountOut);
+			emit BridgeAsset(chainId, addrBook[vAddr].chainId, amountOut);
 
 			unchecked {
 				total += amountOut;
@@ -297,51 +299,6 @@ contract SectorVault is SectorBase {
 		}
 
 		beforeWithdraw(total, 0);
-	}
-
-	// This function should trigger harvest before sending back messages?
-	// This method should be safe to trigger directly in response to
-	// REQUESTHARVEST - this means we don't need to use the read message queue but trigger it directlys
-	function finalizeHarvest() external onlyRole(MANAGER) {
-		// function finalizeHarvest(uint256 expectedTvl, uint256 maxDelta) external onlyRole(MANAGER) {
-		// harvest(expectedTvl, maxDelta);
-
-		Message[] memory messages = postOffice.readMessage(messageType.REQUESTHARVEST);
-
-		uint256 l = messages.length;
-		for (uint256 i = 0; i < l; ) {
-			// this message should respond with underlying value
-			// because XVault doesn't know how many shares it holds
-			uint256 xVaultUnderlyingBalance = underlyingBalance(messages[i].sender);
-			postOffice.sendMessage(
-				messages[i].sender,
-				Message(xVaultUnderlyingBalance, address(this), address(0), chainId),
-				messages[i].chainId,
-				messageType.HARVEST
-			);
-
-			unchecked {
-				i++;
-			}
-		}
-	}
-
-	// Anyone can call emergencyWithdraw
-	// TODO trigger this method directly on message arrival?
-	function finalizeEmergencyWithdraw() external {
-		Message[] memory messages = postOffice.readMessage(messageType.EMERGENCYWITHDRAW);
-
-		uint256 l = messages.length;
-		for (uint256 i = 0; i < l; ) {
-			uint256 transferShares = messages[i].value.mulWadDown(balanceOf(messages[i].sender));
-
-			_transfer(messages[i].sender, messages[i].client, transferShares);
-			emit EmergencyWithdraw(messages[i].sender, messages[i].client, transferShares);
-
-			unchecked {
-				i++;
-			}
-		}
 	}
 
 	event AddStrategy(address indexed strategy);
