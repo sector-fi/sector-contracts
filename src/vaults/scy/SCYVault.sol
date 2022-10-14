@@ -171,6 +171,10 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 		vaultTvl = tvl;
 
+		// TODO computing lockedProfit for all profits is a bit heavy-handed
+		// in reality it should only apply to the immediate profits from startegy's harvest
+		// we can do this if we issue the strategy harvest call from inside this method
+
 		// keep previous locked profits + add current profits
 		uint256 newLockedProfit = totalFees > profit
 			? 0
