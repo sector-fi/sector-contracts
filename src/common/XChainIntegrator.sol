@@ -271,8 +271,6 @@ abstract contract XChainIntegrator is Auth {
 		emit MessageReceived(_msg.value, _msg.sender, _msg.chainId, _type, msg.sender);
 	}
 
-	function setMessageActionCallback() external virtual onlyOwner {}
-
 	/*/////////////////////////////////////////////////////
 							Events
 	/////////////////////////////////////////////////////*/

@@ -41,12 +41,10 @@ contract SectorCrossVault is SectorBase {
 		string memory _symbol,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
-	)
-		ERC4626(_asset, _name, _symbol)
-		Auth(authConfig)
-		Fees(feeConfig)
-		BatchedWithdraw()
-	{}
+	) ERC4626(_asset, _name, _symbol) Auth(authConfig) Fees(feeConfig) BatchedWithdraw() {
+		messageAction[messageType.WITHDRAW] = _receiveWithdraw;
+		messageAction[messageType.HARVEST] = _receiveHarvest;
+	}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
@@ -220,11 +218,6 @@ contract SectorCrossVault is SectorBase {
 	) external override onlyOwner {
 		_addVault(_vault, _chainId, _srcPostmanId, _dstPostmanId, _allowed);
 		vaultList.push(_vault);
-	}
-
-	function setMessageActionCallback() external override onlyOwner {
-		messageAction[messageType.WITHDRAW] = _receiveWithdraw;
-		messageAction[messageType.HARVEST] = _receiveHarvest;
 	}
 
 	/*/////////////////////////////////////////////////////

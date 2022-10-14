@@ -43,12 +43,12 @@ contract SectorVault is SectorBase {
 		string memory _symbol,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
-	)
-		ERC4626(asset_, _name, _symbol)
-		Auth(authConfig)
-		Fees(feeConfig)
-		BatchedWithdraw()
-	{}
+	) ERC4626(asset_, _name, _symbol) Auth(authConfig) Fees(feeConfig) BatchedWithdraw() {
+		messageAction[messageType.WITHDRAW] = _receiveWithdraw;
+		messageAction[messageType.HARVEST] = _receiveHarvest;
+		messageAction[messageType.DEPOSIT] = _receiveDeposit;
+		messageAction[messageType.EMERGENCYWITHDRAW] = _receiveEmergencyWithdraw;
+	}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
 		if (strategyExists[strategy]) revert StrategyExists();
@@ -244,28 +244,28 @@ contract SectorVault is SectorBase {
 		uint256 length = depositQueue.length;
 		uint256 totalDeposit = 0;
 		for (uint256 i = length; i > 0; ) {
-				Message memory _msg = depositQueue[i - 1];
-				depositQueue.pop();
+			Message memory _msg = depositQueue[i - 1];
+			depositQueue.pop();
 
-				uint256 shares = previewDeposit(_msg.value);
-				// lock minimum liquidity if totalSupply is 0
-				// if i > 0 we can skip this
-				if (i == 0 && totalSupply() == 0) {
-						if (MIN_LIQUIDITY > shares) revert MinLiquidity();
-						shares -= MIN_LIQUIDITY;
-						_mint(address(1), MIN_LIQUIDITY);
-				}
-				_mint(_msg.sender, shares);
+			uint256 shares = previewDeposit(_msg.value);
+			// lock minimum liquidity if totalSupply is 0
+			// if i > 0 we can skip this
+			if (i == 0 && totalSupply() == 0) {
+				if (MIN_LIQUIDITY > shares) revert MinLiquidity();
+				shares -= MIN_LIQUIDITY;
+				_mint(address(1), MIN_LIQUIDITY);
+			}
+			_mint(_msg.sender, shares);
 
-				unchecked {
-					totalDeposit += _msg.value;
-					i--;
-				}
+			unchecked {
+				totalDeposit += _msg.value;
+				i--;
+			}
 		}
 		// Should account for fees paid in tokens for using bridge
 		// Also, if a value hasn't arrived manager will not be able to register any value
 		if (totalDeposit > (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
-				revert MissingDepositValue();
+			revert MissingDepositValue();
 
 		// update floatAmnt with deposited funds
 		afterDeposit(totalDeposit, 0);
@@ -295,12 +295,5 @@ contract SectorVault is SectorBase {
 		}
 
 		beforeWithdraw(total, 0);
-	}
-
-	function setMessageActionCallback() external override onlyOwner {
-		messageAction[messageType.WITHDRAW] = _receiveWithdraw;
-		messageAction[messageType.HARVEST] = _receiveHarvest;
-		messageAction[messageType.DEPOSIT] = _receiveDeposit;
-		messageAction[messageType.EMERGENCYWITHDRAW] = _receiveEmergencyWithdraw;
 	}
 }
