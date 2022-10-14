@@ -8,7 +8,7 @@ import "../interfaces/postOffice/IPostman.sol";
 
 abstract contract XChainIntegrator is Auth {
 	mapping(address => Vault) public addrBook;
-	mapping(uint256 => address) internal postmanAddr;
+	mapping(uint16 => mapping(uint16 => address)) internal postmanAddr;
 	mapping(messageType => function(Message calldata)) internal messageAction;
 
 	uint16 immutable chainId = uint16(block.chainid);
@@ -188,25 +188,23 @@ abstract contract XChainIntegrator is Auth {
 	function addVault(
 		address _vault,
 		uint16 _chainId,
-		uint16 _srcPostmanId,
-		uint16 _dstPostmanId,
+		uint16 _postmanId,
 		bool _allowed
 	) external virtual onlyOwner {
-		_addVault(_vault, _chainId, _srcPostmanId, _dstPostmanId, _allowed);
+		_addVault(_vault, _chainId, _postmanId, _allowed);
 	}
 
 	function _addVault(
 		address _vault,
 		uint16 _chainId,
-		uint16 _srcPostmanId,
-		uint16 _dstPostmanId,
+		uint16 _postmanId,
 		bool _allowed
 	) internal onlyOwner {
 		Vault memory vault = addrBook[_vault];
 
-		if (vault.chainId != 0 || vault.allowed != false) revert VaultAlreadyAdded();
+		if (vault.chainId != 0) revert VaultAlreadyAdded();
 
-		addrBook[_vault] = Vault(_chainId, _srcPostmanId, _dstPostmanId, _allowed);
+		addrBook[_vault] = Vault(_chainId, _postmanId, _allowed);
 		emit AddedVault(_vault, _chainId);
 	}
 
@@ -216,25 +214,24 @@ abstract contract XChainIntegrator is Auth {
 		emit ChangedVaultStatus(_vault, _allowed);
 	}
 
-	function updateVaultPostman(
-		address _vault,
-		uint16 _srcPostmanId,
-		uint16 _dstPostmanId
-	) external onlyOwner {
+	function updateVaultPostman(address _vault, uint16 _postmanId) external onlyOwner {
 		Vault memory vault = addrBook[_vault];
 
 		if (vault.chainId == 0) revert VaultMissing(_vault);
 
-		if (_srcPostmanId != 0) addrBook[_vault].srcPostman = _srcPostmanId;
-		if (_dstPostmanId != 0) addrBook[_vault].dstPostman = _dstPostmanId;
+		addrBook[_vault].postmanId = _postmanId;
 
-		emit UpdatedVaultPostman(_vault, _srcPostmanId, _dstPostmanId);
+		emit UpdatedVaultPostman(_vault, _postmanId);
 	}
 
-	function managePostman(uint16 postmanId, address postman) external onlyOwner {
-		postmanAddr[postmanId] = postman;
+	function managePostman(
+		uint16 _postmanId,
+		uint16 _chainId,
+		address _postman
+	) external onlyOwner {
+		postmanAddr[_postmanId][_chainId] = _postman;
 
-		emit PostmanUpdated(postman, postmanId);
+		emit PostmanUpdated(_postmanId, _chainId, _postman);
 	}
 
 	/*/////////////////////////////////////////////////////
@@ -247,8 +244,8 @@ abstract contract XChainIntegrator is Auth {
 		Message memory message,
 		messageType msgType
 	) internal {
-		address srcPostman = postmanAddr[vault.srcPostman];
-		address dstPostman = postmanAddr[vault.dstPostman];
+		address srcPostman = postmanAddr[vault.postmanId][chainId];
+		address dstPostman = postmanAddr[vault.postmanId][vault.chainId];
 
 		IPostman(srcPostman).deliverMessage(
 			message,
@@ -265,7 +262,7 @@ abstract contract XChainIntegrator is Auth {
 		// First check if postman is allowed
 		Vault memory vault = addrBook[_msg.sender];
 		if (!vault.allowed || _msg.chainId != vault.chainId) revert SenderNotAllowed(_msg.sender);
-		if (msg.sender != postmanAddr[vault.srcPostman]) revert WrongPostman(msg.sender);
+		if (msg.sender != postmanAddr[vault.postmanId][chainId]) revert WrongPostman(msg.sender);
 
 		messageAction[_type](_msg);
 		emit MessageReceived(_msg.value, _msg.sender, _msg.chainId, _type, msg.sender);
@@ -291,8 +288,8 @@ abstract contract XChainIntegrator is Auth {
 	);
 	event AddedVault(address vault, uint16 chainId);
 	event ChangedVaultStatus(address vault, bool status);
-	event PostmanUpdated(address newAddr, uint16 postmanId);
-	event UpdatedVaultPostman(address vault, uint16 src, uint16 dst);
+	event UpdatedVaultPostman(address vault, uint16 postmanId);
+	event PostmanUpdated(uint16 postmanId, uint16 chanId, address postman);
 	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
 
 	/*/////////////////////////////////////////////////////

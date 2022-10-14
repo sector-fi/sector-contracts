@@ -212,11 +212,10 @@ contract SectorCrossVault is SectorBase {
 	function addVault(
 		address _vault,
 		uint16 _chainId,
-		uint16 _srcPostmanId,
-		uint16 _dstPostmanId,
+		uint16 _postmanId,
 		bool _allowed
 	) external override onlyOwner {
-		_addVault(_vault, _chainId, _srcPostmanId, _dstPostmanId, _allowed);
+		_addVault(_vault, _chainId, _postmanId, _allowed);
 		vaultList.push(_vault);
 	}
 

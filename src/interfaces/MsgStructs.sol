@@ -10,8 +10,7 @@ struct Message {
 
 struct Vault {
     uint16 chainId;
-    uint256 srcPostman;
-    uint256 dstPostman;
+    uint16 postmanId;
     bool allowed;
 }
 
