@@ -4,9 +4,10 @@ pragma solidity 0.8.16;
 import { ILayerZeroReceiver } from "../interfaces/adapters/ILayerZeroReceiver.sol";
 import { ILayerZeroEndpoint } from "../interfaces/adapters/ILayerZeroEndpoint.sol";
 import { ILayerZeroUserApplicationConfig } from "../interfaces/adapters/ILayerZeroUserApplicationConfig.sol";
-import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
+// import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { IPostman } from "../interfaces/postOffice/IPostman.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
 struct chainPair {
@@ -14,20 +15,20 @@ struct chainPair {
 	uint16 to;
 }
 
-contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig, IPostman, Ownable {
+contract LayerZeroPostman is
+	ILayerZeroReceiver,
+	ILayerZeroUserApplicationConfig,
+	IPostman,
+	Ownable
+{
 	ILayerZeroEndpoint public endpoint;
-	IPostOffice public immutable postOffice;
+	// IPostOffice public immutable postOffice;
 
 	// map original chainIds to layerZero's chainIds
 	mapping(uint16 => uint16) chains;
 
-	constructor(
-		address _layerZeroEndpoint,
-		address _postOffice,
-		chainPair[] memory chainPairArr
-	) {
+	constructor(address _layerZeroEndpoint, chainPair[] memory chainPairArr) {
 		endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
-		postOffice = IPostOffice(_postOffice);
 
 		uint256 length = chainPairArr.length;
 		for (uint256 i = 0; i < length; ) {
@@ -47,7 +48,7 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 		messageType _messageType,
 		uint16 _dstChainId
 	) external {
-		if (msg.sender != address(postOffice)) revert OnlyPostOffice();
+		// if (msg.sender != address(postOffice)) revert OnlyPostOffice();
 		if (address(this).balance == 0) revert NoBalance();
 
 		bytes memory payload = abi.encode(_msg, _dstVautAddress, _messageType);
@@ -94,8 +95,8 @@ contract LayerZeroPostman is ILayerZeroReceiver, ILayerZeroUserApplicationConfig
 
 		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _srcChainId);
 
-		// send message to postOffice to be validated and processed
-		postOffice.writeMessage(_dstVaultAddress, _msg, messageType(_messageType));
+		// Send message to dst vault
+		XChainIntegrator(_dstVaultAddress).receiveMessage(_msg, messageType(_messageType));
 	}
 
 	// With this access control structure we need a way to vault set chain.
