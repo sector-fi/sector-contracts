@@ -9,7 +9,7 @@ import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 import { SectorBase } from "./SectorBase.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 // TODO native asset deposit + flow
 
 struct RedeemParams {
@@ -68,13 +68,10 @@ contract SectorVault is SectorBase {
 		strategyExists[strategy] = false;
 		uint256 length = strategyIndex.length;
 		// replace current index with last strategy and pop the index array
-		for (uint256 i; i < length; ++i) {
-			if (address(strategy) == strategyIndex[i]) {
-				strategyIndex[i] = strategyIndex[length - 1];
-				strategyIndex.pop();
-				continue;
-			}
-		}
+		uint256 i;
+		for (i; i < length; ++i) if (address(strategy) == strategyIndex[i]) break;
+		strategyIndex[i] = strategyIndex[length - 1];
+		strategyIndex.pop();
 		emit RemoveStrategy(address(strategy));
 	}
 

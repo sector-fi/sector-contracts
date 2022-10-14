@@ -50,6 +50,22 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vault.addStrategy(strategy3);
 	}
 
+	function testAddRemoveStrat() public {
+		vault.removeStrategy(strategy2);
+		assertEq(address(vault.strategyIndex(1)), address(strategy3));
+		assertEq(vault.totalStrategies(), 2);
+
+		vm.expectRevert(SectorBase.StrategyNotFound.selector);
+		vault.removeStrategy(strategy2);
+
+		vault.addStrategy(strategy2);
+		assertEq(address(vault.strategyIndex(2)), address(strategy2));
+		assertEq(vault.totalStrategies(), 3);
+
+		vm.expectRevert(SectorBase.StrategyExists.selector);
+		vault.addStrategy(strategy2);
+	}
+
 	function testDeposit() public {
 		uint256 amnt = 100e18;
 		sectDeposit(vault, user1, amnt);
