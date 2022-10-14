@@ -21,8 +21,6 @@ const func: DeployFunction = async function ({
         throw new Error('layerZeroEndpoint not set');
     }
 
-    const postOffice = await deployments.get('PostOffice');
-
     // Loop all networks on hardhat config and set layzerZero chainId to the corresponding network.
     let chainIdMapping: Array<any> = [];
 
@@ -34,7 +32,7 @@ const func: DeployFunction = async function ({
 
     const layerZero = await deploy('LayerZeroPostman', {
         from: deployer,
-        args: [layerZeroEndpoint, postOffice.address, chainIdMapping],
+        args: [layerZeroEndpoint, chainIdMapping],
         skipIfAlreadyDeployed: false,
         log: true,
     })
@@ -44,7 +42,7 @@ const func: DeployFunction = async function ({
     if (network.config.supportMultichain) {
         const multichain = await deploy('MultichainPostman', {
             from: deployer,
-            args: [multichainEndpoint, postOffice.address],
+            args: [multichainEndpoint],
             skipIfAlreadyDeployed: false,
             log: true,
         });
@@ -55,5 +53,5 @@ const func: DeployFunction = async function ({
 };
 
 export default func;
-func.tags = ['postmen'];
-func.dependencies = ['postOffice'];
+func.tags = ['Postmen'];
+func.dependencies = ['Setup'];

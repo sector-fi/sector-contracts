@@ -14,8 +14,6 @@ const func: DeployFunction = async function ({
     USDC = usdcMock.address;
   }
 
-  const postOffice = await deployments.get('PostOffice');
-
   const authConfig = [owner, guardian, manager];
   const feeConfig = [owner, 0, 0];
 
@@ -27,8 +25,7 @@ const func: DeployFunction = async function ({
       'CrossVault',
       'XVLT',
       authConfig,
-      feeConfig,
-      postOffice.address,
+      feeConfig
     ],
     skipIfAlreadyDeployed: false,
     log: true,
@@ -39,4 +36,4 @@ const func: DeployFunction = async function ({
 export default func;
 func.tags = ['XVault'];
 // Since USDC Mock is already setting the setup, we don't need to set it as a dependency
-func.dependencies = ['USDCMock', 'postOffice'];
+func.dependencies = ['USDCMock'];
