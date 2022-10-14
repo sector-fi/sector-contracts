@@ -41,10 +41,7 @@ contract SectorCrossVault is SectorBase {
 		string memory _symbol,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
-	) ERC4626(_asset, _name, _symbol) Auth(authConfig) Fees(feeConfig) BatchedWithdraw() {
-		messageAction[messageType.WITHDRAW] = _receiveWithdraw;
-		messageAction[messageType.HARVEST] = _receiveHarvest;
-	}
+	) ERC4626(_asset, _name, _symbol) Auth(authConfig) Fees(feeConfig) BatchedWithdraw() {}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
@@ -222,6 +219,12 @@ contract SectorCrossVault is SectorBase {
 	/*/////////////////////////////////////////////////////
 							Internals
 	/////////////////////////////////////////////////////*/
+
+	function _handleMessage(messageType _type, Message calldata _msg) internal override {
+		if (_type == messageType.WITHDRAW) _receiveWithdraw(_msg);
+		else if (_type == messageType.HARVEST) _receiveHarvest(_msg);
+		else revert NotImplemented();
+	}
 
 	function checkVault(address _vault) internal view returns (Vault memory) {
 		Vault memory vault = addrBook[_vault];

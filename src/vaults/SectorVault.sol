@@ -44,12 +44,7 @@ contract SectorVault is SectorBase {
 		string memory _symbol,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
-	) ERC4626(asset_, _name, _symbol) Auth(authConfig) Fees(feeConfig) BatchedWithdraw() {
-		messageAction[messageType.WITHDRAW] = _receiveWithdraw;
-		messageAction[messageType.HARVEST] = _receiveHarvest;
-		messageAction[messageType.DEPOSIT] = _receiveDeposit;
-		messageAction[messageType.EMERGENCYWITHDRAW] = _receiveEmergencyWithdraw;
-	}
+	) ERC4626(asset_, _name, _symbol) Auth(authConfig) Fees(feeConfig) BatchedWithdraw() {}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
 		if (strategyExists[strategy]) revert StrategyExists();
@@ -210,6 +205,14 @@ contract SectorVault is SectorBase {
 	/*/////////////////////////////////////////////////////////
 					CrossChain functionality
 	/////////////////////////////////////////////////////////*/
+
+	function _handleMessage(messageType _type, Message calldata _msg) internal override {
+		if (_type == messageType.DEPOSIT) _receiveDeposit(_msg);
+		else if (_type == messageType.HARVEST) _receiveHarvest(_msg);
+		else if (_type == messageType.WITHDRAW) _receiveWithdraw(_msg);
+		else if (_type == messageType.EMERGENCYWITHDRAW) _receiveEmergencyWithdraw(_msg);
+		else revert NotImplemented();
+	}
 
 	function _receiveDeposit(Message calldata _msg) internal {
 		depositQueue.push(_msg);

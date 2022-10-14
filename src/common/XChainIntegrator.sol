@@ -9,7 +9,7 @@ import "../interfaces/postOffice/IPostman.sol";
 abstract contract XChainIntegrator is Auth {
 	mapping(address => Vault) public addrBook;
 	mapping(uint16 => mapping(uint16 => address)) internal postmanAddr;
-	mapping(messageType => function(Message calldata)) internal messageAction;
+	// mapping(messageType => function(Message calldata)) internal messageAction;
 
 	uint16 immutable chainId = uint16(block.chainid);
 
@@ -264,9 +264,12 @@ abstract contract XChainIntegrator is Auth {
 		if (!vault.allowed || _msg.chainId != vault.chainId) revert SenderNotAllowed(_msg.sender);
 		if (msg.sender != postmanAddr[vault.postmanId][chainId]) revert WrongPostman(msg.sender);
 
-		messageAction[_type](_msg);
+		// messageAction[_type](_msg);
+		_handleMessage(_type, _msg);
 		emit MessageReceived(_msg.value, _msg.sender, _msg.chainId, _type, msg.sender);
 	}
+
+	function _handleMessage(messageType _type, Message calldata _msg) internal virtual {}
 
 	/*/////////////////////////////////////////////////////
 							Events
