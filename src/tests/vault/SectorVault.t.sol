@@ -35,8 +35,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
-			address(69) // temporary
+			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
 
 		// lock min liquidity
@@ -48,6 +47,22 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vault.addStrategy(strategy1);
 		vault.addStrategy(strategy2);
 		vault.addStrategy(strategy3);
+	}
+
+	function testAddRemoveStrat() public {
+		vault.removeStrategy(strategy2);
+		assertEq(address(vault.strategyIndex(1)), address(strategy3));
+		assertEq(vault.totalStrategies(), 2);
+
+		vm.expectRevert(SectorBase.StrategyNotFound.selector);
+		vault.removeStrategy(strategy2);
+
+		vault.addStrategy(strategy2);
+		assertEq(address(vault.strategyIndex(2)), address(strategy2));
+		assertEq(vault.totalStrategies(), 3);
+
+		vm.expectRevert(SectorBase.StrategyExists.selector);
+		vault.addStrategy(strategy2);
 	}
 
 	function testDeposit() public {
@@ -118,7 +133,8 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 
 		sectInitRedeem(vault, user1, 1e18 / 4);
 
-		withdrawFromStrat(strategy1, amnt / 4);
+		uint256 shares = strategy1.underlyingToShares(amnt / 4);
+		withdrawFromStrat(strategy1, shares);
 
 		sectHarvest(vault);
 
@@ -238,7 +254,9 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		sectDeposit(vault, user1, amnt);
 		sectDeposit3Strats(vault, 200e18, 300e18, 400e18);
 		skip(1);
+
 		vm.startPrank(user1);
+
 		vault.emergencyRedeem();
 
 		assertApproxEqAbs(underlying.balanceOf(user1), 100e18, mLp, "recovered float");
@@ -253,6 +271,20 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 
 		assertApproxEqAbs(underlying.balanceOf(user1), amnt, 1, "recovered amnt");
 		assertApproxEqAbs(vault.getTvl(), mLp, 1);
+	}
+
+	function testEmergencyAction() public {
+		uint256 amnt = 1000e18;
+		sectDeposit(vault, user1, amnt - mLp);
+
+		bytes memory callData = abi.encodeWithSignature(
+			"transfer(address,uint256)",
+			user2,
+			amnt / 2
+		);
+		vault.emergencyAction(address(underlying), callData);
+		assertEq(underlying.balanceOf(user2), amnt / 2);
+		assertEq(underlying.balanceOf(address(vault)), amnt / 2);
 	}
 
 	/// UTILS
