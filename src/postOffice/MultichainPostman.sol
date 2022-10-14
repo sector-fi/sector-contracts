@@ -5,6 +5,7 @@ import { CallProxy } from "../interfaces/adapters/IMultichainAdapter.sol";
 import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPostman } from "../interfaces/postOffice/IPostman.sol";
+import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
 import "hardhat/console.sol";
@@ -13,16 +14,12 @@ contract MultichainPostman is Ownable, IPostman {
 	address public anyCall;
 	address public anycallExecutor;
 
-	IPostOffice public immutable postOffice;
 
-	constructor(address _anyCall, address _postOffice) {
+	constructor(address _anyCall) {
 		anyCall = _anyCall;
 		anycallExecutor = CallProxy(_anyCall).executor();
-		postOffice = IPostOffice(_postOffice);
-		transferOwnership(_postOffice);
 	}
 
-	// owner = postoffice
 	function deliverMessage(
 		Message calldata _msg,
 		address _dstVautAddress,
@@ -43,8 +40,8 @@ contract MultichainPostman is Ownable, IPostman {
 
 		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _msg.chainId);
 
-		// send message to postOffice to be validated and processed
-		postOffice.writeMessage(_dstVaultAddress, _msg, messageType(_messageType));
+		// Send message to dst vault
+		XChainIntegrator(_dstVaultAddress).receiveMessage(_msg, messageType(_messageType));
 
 		success = true;
 		result = "";
