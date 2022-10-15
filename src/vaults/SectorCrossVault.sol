@@ -2,6 +2,7 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { SectorVault } from "./SectorVault.sol";
 import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "./ERC4626/ERC4626.sol";
@@ -11,21 +12,21 @@ import { SectorBase } from "./SectorBase.sol";
 import "../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
+struct Request {
+	address vaultAddr;
+	uint256 amount;
+}
+
+struct HarvestLedger {
+	uint256 localDepositValue;
+	uint256 crossDepositValue;
+	uint256 pendingAnswers;
+	uint256 receivedAnswers;
+}
 
 contract SectorCrossVault is SectorBase {
+	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
-
-	struct Request {
-		address vaultAddr;
-		uint256 amount;
-	}
-
-	struct HarvestLedger {
-		uint256 localDepositValue;
-		uint256 crossDepositValue;
-		uint256 pendingAnswers;
-		uint256 receivedAnswers;
-	}
 
 	// Used to harvest from deposited vaults
 	address[] internal vaultList;
@@ -55,6 +56,7 @@ contract SectorCrossVault is SectorBase {
 			Vault memory vault = checkVault(vaultAddr);
 
 			if (vault.chainId == chainId) {
+				ERC20(underlying()).approve(vaultAddr, amount);
 				BatchedWithdraw(vaultAddr).deposit(amount, address(this));
 			} else {
 				_sendMessage(

@@ -7,16 +7,20 @@ import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
-import { SectorCrossVault } from "../../vaults/SectorCrossVault.sol";
+import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 
-import "hardhat/console.sol";
+import "forge-std/console.sol";
+import "forge-std/Vm.sol";
 
-contract SectorVaultTest is SectorTest, SCYVaultSetup {
+contract SectorCrossVaultTest is SectorTest, SCYVaultSetup {
 	// ISCYStrategy strategy1;
 	// ISCYStrategy strategy2;
 	// ISCYStrategy strategy3;
+
+	uint256 mainnetFork;
+	string MAINNET_RPC_URL = vm.envString("INFURA_COMPLETE_RPC");
 
 	uint16 chainId = uint16(block.chainid);
 
@@ -39,6 +43,13 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		// strategy1 = ISCYStrategy(address(s1));
 		// strategy2 = ISCYStrategy(address(s2));
 		// strategy3 = ISCYStrategy(address(s3));
+
+		// address avaxLzAddr = 0x3c2269811836af69497E5F486A85D7316753cf62;
+		address ethLzAddr = 0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675;
+
+		mainnetFork = vm.createSelectFork(MAINNET_RPC_URL);
+		// vm.selectFork(mainnetFork);
+		vm.makePersistent(user1);
 
 		xVault = new SectorCrossVault(
 			underlying,
@@ -77,25 +88,29 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		inptChainPair[8] = chainPair(1, 101);
 
 		// Must be address of layerZero service provider
-		postmanLz = new LayerZeroPostman(address(0), inptChainPair);
-		// Must be address of multichain service provider
-		postmanMc = new MultichainPostman(address(0));
+		postmanLz = new LayerZeroPostman(ethLzAddr, inptChainPair);
+		// Postman needs native to pay provider.
+		vm.deal(address(postmanLz), 10 ether);
 
-		// Config both vaults to use postmen
+		// Must be address of multichain service provider
+		// This is breaking because in the constructor calls a function on proxy (executor)
+		// postmanMc = new MultichainPostman(address(xVault));
+
+		// // Config both vaults to use postmen
 		xVault.managePostman(1, chainId, address(postmanLz));
-		xVault.managePostman(2, chainId, address(postmanMc));
+		// xVault.managePostman(2, chainId, address(postmanMc));
 		xVault.addVault(address(childVault), chainId, 1, true);
 		// Pretend that is on other chain
 		xVault.addVault(address(nephewVault), (chainId + 1), 1, true);
 
 		childVault.managePostman(1, chainId, address(postmanLz));
-		childVault.managePostman(2, chainId, address(postmanMc));
+		// childVault.managePostman(2, chainId, address(postmanMc));
 		childVault.addVault(address(xVault), chainId, 1, true);
 		childVault.addVault(address(nephewVault), (chainId + 1), 1, true);
 
 		// Still not sure about this part yet
 		nephewVault.managePostman(1, chainId, address(postmanLz));
-		nephewVault.managePostman(2, chainId, address(postmanMc));
+		// nephewVault.managePostman(2, chainId, address(postmanMc));
 		nephewVault.addVault(address(xVault), chainId, 1, true);
 		nephewVault.addVault(address(childVault), chainId, 1, true);
 
@@ -112,18 +127,76 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 
 	function testOneChainDepositIntoVaults() public {
 		// Request(addr, amount);
+		uint256 amount = 1 ether;
 
-		// Receive some deposit from user
-		// xVault.deposit();
+		// Get some ERC20 for user
+		vm.startPrank(user1);
 
-		// Deposit into a vault and check xvault balance
-		// xVault.DepositIntoVaults(xVault, user1, amnt);
-		// assertEq(xVault.underlyingBalance(user1), amnt);
-		// Assert totalChildHoldings
+		underlying.deposit{value: amount}();
+		underlying.approve(address(xVault), amount);
+
+		// Deposit into XVault
+		xVault.deposit(1 ether, address(user1));
+
+		vm.stopPrank();
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = Request(address(childVault), amount);
+
+		// Deposit into a vault
+		vm.prank(manager);
+		xVault.depositIntoVaults(requests);
+
+		assertEq(xVault.totalChildHoldings(), amount);
+		// assertEq(childVault.underlyingBalance(address(xVault)), amount);
 	}
 
 	function testOneCrossDepositIntoVaults() public {
-		// Receive some deposit from user
+		// Request(addr, amount);
+		uint256 amount = 1 ether;
+
+		vm.startPrank(user1);
+
+		// Get some ERC20 for user
+		underlying.deposit{value: amount}();
+		underlying.approve(address(xVault), amount);
+		// Deposit into XVault
+		xVault.deposit(1 ether, address(user1));
+
+		vm.stopPrank();
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = Request(address(nephewVault), amount);
+
+		vm.recordLogs();
+		// Deposit into a vault
+		vm.prank(manager);
+		xVault.depositIntoVaults(requests);
+
+		Vm.Log[] memory entries = vm.getRecordedLogs();
+
+		// assertEq(entries.length, 1);
+		// assertEq(entries[0].topics[0], keccak256("LogCompleted(uint256,bytes)"));
+		// assertEq(entries[0].topics[1], bytes32(uint256(10)));
+		// assertEq(abi.decode(entries[0].data, (string)), "operation completed");
+
+		assertEq(xVault.totalChildHoldings(), amount);
+		// assertEq(childVault.underlyingBalance(address(xVault)), amount);
+		assertGe(entries.length, 1, "At least of event has to be emitted.");
+
+		uint foundBridgeEvents = 0;
+		uint foundMessageSent = 0;
+		for (uint i = 0; i < entries.length; i++) {
+			if (entries[i].topics[0] == keccak256("BridgeAsset(uint16,uin16,uint256)")) {
+				foundBridgeEvents++;
+			}
+			if (entries[i].topics[0] == keccak256("MessageSent(uint256,address,uint16,messageType,address)")) {
+				foundMessageSent++;
+			}
+		}
+		// Only one bridge events has to emitted
+		assertEq(foundBridgeEvents, 1, "Only one bridge event emitted");
+		assertEq(foundMessageSent, 1, "Only one message sent");
 
 		// Do a deposit in vault
 		// xVault.DepositIntoVaults();
@@ -133,92 +206,92 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		// Also, can assert emitted events by postman etc
 	}
 
-	function testMultipleDepositIntoVauls() public {
-		// Receive some deposit from users
+	// function testMultipleDepositIntoVauls() public {
+	// 	// Receive some deposit from users
 
-		// Do deposit into multiple vaults in multiple chains
-		// Assert vault balance -> how?
-		// Assert totalChildHoldings
-		// Assert emitted event (BridgeAsset) from contract
-	}
+	// 	// Do deposit into multiple vaults in multiple chains
+	// 	// Assert vault balance -> how?
+	// 	// Assert totalChildHoldings
+	// 	// Assert emitted event (BridgeAsset) from contract
+	// }
 
-	// Assert from deposit errors
-	// Not in addr book
+	// // Assert from deposit errors
+	// // Not in addr book
 
-	function testOneChainWithdrawFromVaults() public {
+	// function testOneChainWithdrawFromVaults() public {
 
-	}
-	function testOneCrossWithdrawFromVaults() public {
+	// }
+	// function testOneCrossWithdrawFromVaults() public {
 
-	}
-	function testMultipleWithdrawFromVaults() public {
+	// }
+	// function testMultipleWithdrawFromVaults() public {
 
-	}
+	// }
 
-	// Assert errors
+	// // Assert errors
 
-	function testOneChainHarvestVaults() public {
+	// function testOneChainHarvestVaults() public {
 
-	}
-	function testOneCrossHarvestVaults() public {
+	// }
+	// function testOneCrossHarvestVaults() public {
 
-	}
-	function testMultipleHarvestVaults() public {
+	// }
+	// function testMultipleHarvestVaults() public {
 
-	}
+	// }
 
-	// More variations on that (no messages for example)
-	function testFinalizeHarvest() public {
+	// // More variations on that (no messages for example)
+	// function testFinalizeHarvest() public {
 
-	}
+	// }
 
-	// Assert errors
+	// // Assert errors
 
-	function testOneChainEmergencyWithdrawVaults() public {
+	// function testOneChainEmergencyWithdrawVaults() public {
 
-	}
-	function testOneCrossEmergencyWithdrawVaults() public {
+	// }
+	// function testOneCrossEmergencyWithdrawVaults() public {
 
-	}
-	function testMultipleEmergencyWithdrawVaults() public {
+	// }
+	// function testMultipleEmergencyWithdrawVaults() public {
 
-	}
+	// }
 
-	// Passive calls (receive message)
+	// // Passive calls (receive message)
 
-	function testReceiveWithdraw() public {
+	// function testReceiveWithdraw() public {
 
-	}
+	// }
 
-	function testReceiveHarvest() public {
+	// function testReceiveHarvest() public {
 
-	}
+	// }
 
-	// XChain part (also vault management)
+	// // XChain part (also vault management)
 
-	function testAddVault() public {
+	// function testAddVault() public {
 
-	}
+	// }
 
-	function testRemoveVault() public {
+	// function testRemoveVault() public {
 
-	}
+	// }
 
-	function testChangeVaultStatus() public {
+	// function testChangeVaultStatus() public {
 
-	}
+	// }
 
-	function testUpdateVaultPostman() public {
+	// function testUpdateVaultPostman() public {
 
-	}
+	// }
 
-	function testManagePostman() public {
+	// function testManagePostman() public {
 
-	}
+	// }
 
-	function testSendToken() public {
-		// How?
-	}
+	// function testSendToken() public {
+	// 	// How?
+	// }
 
 
 	/* =============================== REFERENCE HELPER ============================= */
