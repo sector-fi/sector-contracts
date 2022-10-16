@@ -10,6 +10,8 @@ contract SectorTest is Test {
 	address owner = address(this);
 
 	address user1 = address(201);
+	// 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 	address user2 = address(202);
+	// 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 	address user3 = address(203);
 }
