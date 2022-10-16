@@ -7,14 +7,16 @@ import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
+import { Endpoint } from "../mocks/MockEndpoint.sol";
 import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
+import { SectorCrossVaultTestSetup } from "./SectorCrossVaultSetup.t.sol";
 
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
-contract SectorCrossVaultTest is SectorTest, SCYVaultSetup {
+contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	// ISCYStrategy strategy1;
 	// ISCYStrategy strategy2;
 	// ISCYStrategy strategy3;
@@ -22,32 +24,25 @@ contract SectorCrossVaultTest is SectorTest, SCYVaultSetup {
 	uint256 mainnetFork;
 	string MAINNET_RPC_URL = vm.envString("INFURA_COMPLETE_RPC");
 
-	uint16 chainId;
+	// uint16 chainId;
 
-	WETH underlying;
+	// WETH underlying;
 
-	SectorCrossVault xVault;
-	SectorVault childVault;
-	SectorVault nephewVault;
+	// SectorCrossVault xVault;
+	// SectorVault childVault;
+	// SectorVault nephewVault;
 
-	LayerZeroPostman postmanLz;
-	MultichainPostman postmanMc;
+	// LayerZeroPostman postmanLz;
+	// MultichainPostman postmanMc;
 
 	function setUp() public {
-
-		// SCYVault s1 = setUpSCYVault(address(underlying));
-		// SCYVault s2 = setUpSCYVault(address(underlying));
-		// SCYVault s3 = setUpSCYVault(address(underlying));
-
-		// strategy1 = ISCYStrategy(address(s1));
-		// strategy2 = ISCYStrategy(address(s2));
-		// strategy3 = ISCYStrategy(address(s3));
-
 		// address avaxLzAddr = 0x3c2269811836af69497E5F486A85D7316753cf62;
-		address ethLzAddr = 0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675;
+		// address ethLzAddr = 0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675;
+		Endpoint endpoint = new Endpoint(uint16(block.chainid));
+		address ethLzAddr = address(endpoint);
 
-		vm.makePersistent(address(user1));
-		mainnetFork = vm.createSelectFork(MAINNET_RPC_URL);
+		// vm.makePersistent(address(user1));
+		// mainnetFork = vm.createSelectFork(MAINNET_RPC_URL);
 		// vm.selectFork(mainnetFork);
 		chainId = uint16(block.chainid);
 
@@ -119,107 +114,48 @@ contract SectorCrossVaultTest is SectorTest, SCYVaultSetup {
 		vm.deal(guardian, 10 ether);
 		// Postman needs native to pay provider.
 		vm.deal(address(postmanLz), 10 ether);
-
-		// lock min liquidity
-		// sectDeposit(vault, owner, mLp);
-		// scyDeposit(s1, owner, mLp);
-		// scyDeposit(s2, owner, mLp);
-		// scyDeposit(s3, owner, mLp);
-
-		// vault.addStrategy(strategy1);
-		// vault.addStrategy(strategy2);
-		// vault.addStrategy(strategy3);
 	}
 
 	function testOneChainDepositIntoVaults() public {
 		// Request(addr, amount);
 		uint256 amount = 1 ether;
 
-		vm.startPrank(user1);
-
-		// Get some ERC20 for user
-		underlying.deposit{value: amount}();
-		underlying.approve(address(xVault), amount);
-
-		// Deposit into XVault
-		xVault.deposit(amount, address(user1));
-
-		vm.stopPrank();
+		depositXVault(user1, amount);
 
 		Request[] memory requests = new Request[](1);
 		requests[0] = Request(address(childVault), amount);
 
-		// Deposit into a vault
-		vm.prank(manager);
-		xVault.depositIntoVaults(requests);
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 0, 0);
 
-		assertEq(xVault.totalChildHoldings(), amount);
+		// assertEq(xVault.totalChildHoldings(), amount);
 		// assertEq(childVault.underlyingBalance(address(xVault)), amount);
 	}
 
 	function testOneCrossDepositIntoVaults() public {
-		// Request(addr, amount);
 		uint256 amount = 1 ether;
 
-		vm.startPrank(user1);
-
-		// Get some ERC20 for user
-		underlying.deposit{value: amount}();
-		underlying.approve(address(xVault), amount);
-		// Deposit into XVault
-		xVault.deposit(amount, address(user1));
-
-		vm.stopPrank();
+		depositXVault(user1, amount);
 
 		Request[] memory requests = new Request[](1);
 		requests[0] = Request(address(nephewVault), amount);
 
-		vm.recordLogs();
-		// Deposit into a vault
-		vm.prank(manager);
-		xVault.depositIntoVaults(requests);
-
-		Vm.Log[] memory entries = vm.getRecordedLogs();
-
-		// assertEq(entries.length, 1);
-		// assertEq(entries[0].topics[0], keccak256("LogCompleted(uint256,bytes)"));
-		// assertEq(entries[0].topics[1], bytes32(uint256(10)));
-		// assertEq(abi.decode(entries[0].data, (string)), "operation completed");
-
-		assertEq(xVault.totalChildHoldings(), amount);
-		// assertEq(childVault.underlyingBalance(address(xVault)), amount);
-		assertGe(entries.length, 1, "At least of event has to be emitted.");
-
-		uint foundBridgeEvents = 0;
-		uint foundMessageSent = 0;
-		for (uint i = 0; i < entries.length; i++) {
-			if (entries[i].topics[0] == keccak256("BridgeAsset(uint16,uin16,uint256)")) {
-				foundBridgeEvents++;
-			}
-			if (entries[i].topics[0] == keccak256("MessageSent(uint256,address,uint16,messageType,address)")) {
-				foundMessageSent++;
-			}
-		}
-		// Only one bridge events has to emitted
-		assertEq(foundBridgeEvents, 1, "Only one bridge event emitted");
-		assertEq(foundMessageSent, 1, "Only one message sent");
-
-		// Do a deposit in vault
-		// xVault.DepositIntoVaults();
-		// Assert vault balance (?)
-		// Assert totalChildHoldings
-		// Assert emitted event (BridgeAsset) from contract
-		// Also, can assert emitted events by postman etc
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1);
 	}
 
-	// function testMultipleDepositIntoVauls() public {
-	// 	// Receive some deposit from users
+	function testMultipleDepositIntoVauls() public {
+		uint256 amount = 1 ether;
 
-	// 	// Do deposit into multiple vaults in multiple chains
-	// 	// Assert vault balance -> how?
-	// 	// Assert totalChildHoldings
-	// 	// Assert emitted event (BridgeAsset) from contract
-	// }
+		depositXVault(user1, amount * 2);
+
+		Request[] memory requests = new Request[](2);
+		requests[0] = Request(address(childVault), amount);
+		requests[1] = Request(address(nephewVault), amount);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount * 2, 1, 1);
+	}
 
 	// // Assert from deposit errors
 	// // Not in addr book
@@ -298,7 +234,6 @@ contract SectorCrossVaultTest is SectorTest, SCYVaultSetup {
 	// function testSendToken() public {
 	// 	// How?
 	// }
-
 
 	/* =============================== REFERENCE HELPER ============================= */
 	// function testWithdraw() public {
