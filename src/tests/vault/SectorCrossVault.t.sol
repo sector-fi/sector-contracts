@@ -110,6 +110,8 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		nephewVault.addVault(address(childVault), chainId, 1, true);
 
 		vm.deal(user1, 10 ether);
+		vm.deal(user2, 10 ether);
+		vm.deal(user3, 10 ether);
 		vm.deal(manager, 10 ether);
 		vm.deal(guardian, 10 ether);
 		// Postman needs native to pay provider.
@@ -127,9 +129,6 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 0, 0);
-
-		// assertEq(xVault.totalChildHoldings(), amount);
-		// assertEq(childVault.underlyingBalance(address(xVault)), amount);
 	}
 
 	function testOneCrossDepositIntoVaults() public {
@@ -157,12 +156,30 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		xvaultDepositIntoVaults(requests, amount * 2, 1, 1);
 	}
 
+	function testMultipleUsersDepositIntoVauls() public {
+		uint256 amount1 = 1 ether;
+		uint256 amount2 = 123424323 wei;
+		uint256 amount3 = 3310928371 wei;
+
+		depositXVault(user1, amount1);
+		depositXVault(user2, amount2);
+		depositXVault(user3, amount3);
+
+		Request[] memory requests = new Request[](3);
+		requests[0] = Request(address(childVault), amount1);
+		requests[1] = Request(address(nephewVault), amount2);
+		requests[2] = Request(address(nephewVault), amount3);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 2, 2);
+	}
+
 	// // Assert from deposit errors
 	// // Not in addr book
 
-	// function testOneChainWithdrawFromVaults() public {
+	function testOneChainWithdrawFromVaults() public {
 
-	// }
+	}
 	// function testOneCrossWithdrawFromVaults() public {
 
 	// }
