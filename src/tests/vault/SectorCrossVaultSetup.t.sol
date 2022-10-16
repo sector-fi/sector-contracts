@@ -46,7 +46,13 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		vm.stopPrank();
 	}
 
-	function xvaultDepositIntoVaults(Request[] memory requests, uint256 amount, uint256 msgsSent, uint256 bridgeEvents) public {
+	function xvaultDepositIntoVaults(
+		Request[] memory requests,
+		uint256 amount,
+		uint256 msgsSent,
+		uint256 bridgeEvents,
+		bool assertOn
+	) public {
 		vm.recordLogs();
 		// Deposit into a vault
 		vm.prank(manager);
@@ -54,26 +60,80 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
-		assertEq(xVault.totalChildHoldings(), amount, "XVault accounting is correct");
-		// assertEq(childVault.underlyingBalance(address(xVault)), amount);
-		assertGe(entries.length, requests.length, "Has to be emitted at least the number of requests events");
+		if (assertOn) {
+			assertEq(xVault.totalChildHoldings(), amount, "XVault accounting is correct");
+			// assertEq(childVault.underlyingBalance(address(xVault)), amount);
+			assertGe(
+				entries.length,
+				requests.length,
+				"Has to be emitted at least the number of requests events"
+			);
 
-		uint256 foundBridgeEvents = 0;
-		uint256 foundMessageSent = 0;
-		for (uint256 i = 0; i < entries.length; i++) {
-			if (entries[i].topics[0] == keccak256("BridgeAsset(uint16,uint16,uint256)")) {
-				foundBridgeEvents++;
-			} else if (
-				entries[i].topics[0] ==
-				keccak256("MessageSent(uint256,address,uint16,uint8,address)")
-			) {
-				foundMessageSent++;
+			assertEventCount(entries, "BridgeAsset(uint16,uint16,uint256)", bridgeEvents);
+			assertEventCount(
+				entries,
+				"MessageSent(uint256,address,uint16,uint8,address)",
+				msgsSent
+			);
+		}
+	}
+
+	function xvaultWithdrawFromVaults(
+		Request[] memory requests,
+		uint256 msgSent,
+		uint256 withdrawEvent,
+		bool assertOn
+	) public {
+		uint256[] memory shares = new uint256[](requests.length);
+		for (uint256 i = 0; i < requests.length; i++) {
+			SectorVault vault = SectorVault(requests[i].vaultAddr);
+			shares[i] = vault.balanceOf(address(xVault));
+		}
+
+		vm.recordLogs();
+		vm.prank(manager);
+		xVault.withdrawFromVaults(requests);
+
+		if (!assertOn) return;
+
+		uint256 requestTimestamp = block.timestamp;
+
+		// Move forward in time and space
+		vm.roll(block.number + 100);
+		vm.warp(block.timestamp + 100);
+
+		for (uint256 i = 0; i < requests.length; i++) {
+			SectorVault vault = SectorVault(requests[i].vaultAddr);
+			uint256 share = shares[i];
+			uint256 value = vault.convertToAssets(share);
+
+			(uint16 vaultChainId, , ) = xVault.addrBook(address(vault));
+			if (vaultChainId == chainId) {
+				assertEq(vault.pendingWithdraw(), value, "Pending value must be equal to expected");
+
+				(uint256 ts, uint256 sh, uint256 val) = vault.withdrawLedger(address(xVault));
+
+				assertEq(ts, requestTimestamp, "Withdraw timestamp must be equal to expected");
+				assertEq(sh, share, "Shares must be equal to expected");
+				assertEq(val, value, "Value assets must be equal to expected");
 			}
 		}
-		// Only one bridge events has to emitted
-		assertEq(foundBridgeEvents, bridgeEvents, "Expected bridge events not found");
-		// Only one message sent
-		assertEq(foundMessageSent, msgsSent, "Expected message sent not found");
 
+		Vm.Log[] memory entries = vm.getRecordedLogs();
+
+		assertEventCount(entries, "RequestWithdraw(address,address,uint256)", withdrawEvent);
+		assertEventCount(entries, "MessageSent(uint256,address,uint16,uint8,address)", msgSent);
+	}
+
+	function assertEventCount(
+		Vm.Log[] memory entries,
+		string memory eventEncoder,
+		uint256 count
+	) public {
+		uint256 foundEvents = 0;
+		for (uint256 i = 0; i < entries.length; i++) {
+			if (entries[i].topics[0] == keccak256(bytes(eventEncoder))) foundEvents++;
+		}
+		assertEq(foundEvents, count, string.concat("Events don't match for ", eventEncoder));
 	}
 }

@@ -128,7 +128,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		requests[0] = Request(address(childVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount, 0, 0);
+		xvaultDepositIntoVaults(requests, amount, 0, 0, true);
 	}
 
 	function testOneCrossDepositIntoVaults() public {
@@ -140,7 +140,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		requests[0] = Request(address(nephewVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount, 1, 1);
+		xvaultDepositIntoVaults(requests, amount, 1, 1, true);
 	}
 
 	function testMultipleDepositIntoVauls() public {
@@ -153,10 +153,10 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		requests[1] = Request(address(nephewVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount * 2, 1, 1);
+		xvaultDepositIntoVaults(requests, amount * 2, 1, 1, true);
 	}
 
-	function testMultipleUsersDepositIntoVauls() public {
+	function testMultipleUsersDepositIntoVaults() public {
 		uint256 amount1 = 1 ether;
 		uint256 amount2 = 123424323 wei;
 		uint256 amount3 = 3310928371 wei;
@@ -171,21 +171,72 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		requests[2] = Request(address(nephewVault), amount3);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 2, 2);
+		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 2, 2, true);
 	}
 
 	// // Assert from deposit errors
 	// // Not in addr book
 
 	function testOneChainWithdrawFromVaults() public {
+		uint256 amount = 1 ether;
 
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = Request(address(childVault), amount);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
+
+		uint256 shares = childVault.balanceOf(address(xVault));
+		requests[0] = Request(address(childVault), shares);
+
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 0, 1, true);
 	}
-	// function testOneCrossWithdrawFromVaults() public {
 
-	// }
-	// function testMultipleWithdrawFromVaults() public {
+	function testOneCrossWithdrawFromVaults() public {
+		uint256 amount = 1 ether;
 
-	// }
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = Request(address(nephewVault), amount);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
+
+		uint256 shares = nephewVault.balanceOf(address(xVault));
+		requests[0] = Request(address(nephewVault), shares);
+
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 1, 0, true);
+	}
+
+	function testMultipleWithdrawFromVaults() public {
+		uint256 amount1 = 1 ether;
+		uint256 amount2 = 918 gwei;
+		uint256 amount3 = 13231 wei;
+
+		depositXVault(user1, amount1);
+		depositXVault(user2, amount2);
+		depositXVault(user3, amount3);
+
+		Request[] memory requests = new Request[](3);
+		requests[0] = Request(address(childVault), amount1);
+		requests[1] = Request(address(nephewVault), amount2);
+		requests[2] = Request(address(nephewVault), amount3);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 0, 0, false);
+
+		requests[0] = Request(address(childVault), childVault.balanceOf(address(xVault)));
+		requests[1] = Request(address(nephewVault), nephewVault.balanceOf(address(xVault)));
+		requests[2] = Request(address(nephewVault), nephewVault.balanceOf(address(xVault)));
+
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 2, 1, true);
+	}
 
 	// // Assert errors
 
