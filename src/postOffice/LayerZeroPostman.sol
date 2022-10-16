@@ -65,17 +65,17 @@ contract LayerZeroPostman is
 			false,
 			adapterParams
 		);
-		if (address(this).balance < messageFee) revert InsufficientBalanceToSendMessage();
+		// if (address(this).balance < messageFee) revert InsufficientBalanceToSendMessage();
 
 		// send LayerZero message
-		endpoint.send{ value: messageFee }( // {value: messageFee} will be paid out of this contract!
-			uint16(chains[_dstChainId]), // destination chainId
-			abi.encodePacked(_dstPostman, address(this)), // destination address of postman on dst chain
-			payload, // abi.encode()'ed bytes
-			payable(this), // (msg.sender will be this contract) refund address (LayerZero will refund any extra gas back to caller of send()
-			address(0x0), // 'zroPaymentAddress' unused for this mock/example
-			adapterParams // 'adapterParams' unused for this mock/example
-		);
+		// endpoint.send{ value: messageFee }( // {value: messageFee} will be paid out of this contract!
+		// 	uint16(chains[_dstChainId]), // destination chainId
+		// 	abi.encodePacked(_dstPostman, address(this)), // destination address of postman on dst chain
+		// 	payload, // abi.encode()'ed bytes
+		// 	payable(this), // (msg.sender will be this contract) refund address (LayerZero will refund any extra gas back to caller of send()
+		// 	address(0x0), // 'zroPaymentAddress' unused for this mock/example
+		// 	adapterParams // 'adapterParams' unused for this mock/example
+		// );
 	}
 
 	function lzReceive(

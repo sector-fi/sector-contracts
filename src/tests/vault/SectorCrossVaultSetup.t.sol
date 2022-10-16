@@ -60,22 +60,22 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
-		if (assertOn) {
-			assertEq(xVault.totalChildHoldings(), amount, "XVault accounting is correct");
-			// assertEq(childVault.underlyingBalance(address(xVault)), amount);
-			assertGe(
-				entries.length,
-				requests.length,
-				"Has to be emitted at least the number of requests events"
-			);
+		if (!assertOn) return;
 
-			assertEventCount(entries, "BridgeAsset(uint16,uint16,uint256)", bridgeEvents);
-			assertEventCount(
-				entries,
-				"MessageSent(uint256,address,uint16,uint8,address)",
-				msgsSent
-			);
-		}
+		assertEq(xVault.totalChildHoldings(), amount, "XVault accounting is correct");
+		// assertEq(childVault.underlyingBalance(address(xVault)), amount);
+		assertGe(
+			entries.length,
+			requests.length,
+			"Has to be emitted at least the number of requests events"
+		);
+
+		assertEventCount(entries, "BridgeAsset(uint16,uint16,uint256)", bridgeEvents);
+		assertEventCount(
+			entries,
+			"MessageSent(uint256,address,uint16,uint8,address)",
+			msgsSent
+		);
 	}
 
 	function xvaultWithdrawFromVaults(

@@ -22,6 +22,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	// ISCYStrategy strategy3;
 
 	uint256 mainnetFork;
+	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");
 	string MAINNET_RPC_URL = vm.envString("INFURA_COMPLETE_RPC");
 
 	// uint16 chainId;
@@ -36,14 +37,14 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	// MultichainPostman postmanMc;
 
 	function setUp() public {
-		// address avaxLzAddr = 0x3c2269811836af69497E5F486A85D7316753cf62;
+		address avaxLzAddr = 0x3c2269811836af69497E5F486A85D7316753cf62;
 		// address ethLzAddr = 0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675;
-		Endpoint endpoint = new Endpoint(uint16(block.chainid));
-		address ethLzAddr = address(endpoint);
+		// Endpoint endpoint = new Endpoint(uint16(block.chainid));
+		// address ethLzAddr = address(endpoint);
 
 		// vm.makePersistent(address(user1));
-		// mainnetFork = vm.createSelectFork(MAINNET_RPC_URL);
-		// vm.selectFork(mainnetFork);
+		mainnetFork = vm.createSelectFork(FUJI_RPC_URL);
+		vm.selectFork(mainnetFork);
 		chainId = uint16(block.chainid);
 
 		underlying = new WETH();
@@ -85,26 +86,28 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		inptChainPair[8] = chainPair(1, 101);
 
 		// Must be address of layerZero service provider
-		postmanLz = new LayerZeroPostman(ethLzAddr, inptChainPair);
+		postmanLz = new LayerZeroPostman(avaxLzAddr, inptChainPair);
 
 		// Must be address of multichain service provider
 		// This is breaking because in the constructor calls a function on proxy (executor)
 		// postmanMc = new MultichainPostman(address(xVault));
 
+		uint16 postmanId = 1;
+		uint16 anotherChainId = 1;
 		// // Config both vaults to use postmen
-		xVault.managePostman(1, chainId, address(postmanLz));
+		xVault.managePostman(postmanId, chainId, address(postmanLz));
 		// xVault.managePostman(2, chainId, address(postmanMc));
 		xVault.addVault(address(childVault), chainId, 1, true);
 		// Pretend that is on other chain
-		xVault.addVault(address(nephewVault), 5, 1, true);
+		xVault.addVault(address(nephewVault), anotherChainId, 1, true);
 
-		childVault.managePostman(1, chainId, address(postmanLz));
+		childVault.managePostman(postmanId, chainId, address(postmanLz));
 		// childVault.managePostman(2, chainId, address(postmanMc));
 		childVault.addVault(address(xVault), chainId, 1, true);
-		childVault.addVault(address(nephewVault), 5, 1, true);
+		childVault.addVault(address(nephewVault), anotherChainId, 1, true);
 
 		// Still not sure about this part yet
-		nephewVault.managePostman(1, chainId, address(postmanLz));
+		nephewVault.managePostman(postmanId, chainId, address(postmanLz));
 		// nephewVault.managePostman(2, chainId, address(postmanMc));
 		nephewVault.addVault(address(xVault), chainId, 1, true);
 		nephewVault.addVault(address(childVault), chainId, 1, true);
