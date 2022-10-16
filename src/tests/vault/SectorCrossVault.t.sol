@@ -22,7 +22,9 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	// ISCYStrategy strategy3;
 
 	uint256 mainnetFork;
+	uint256 avaxFork;
 	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");
+	string AVAX_RPC_URL = vm.envString("AVAX_RPC_URL");
 	string MAINNET_RPC_URL = vm.envString("INFURA_COMPLETE_RPC");
 
 	// uint16 chainId;
@@ -39,12 +41,9 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	function setUp() public {
 		address avaxLzAddr = 0x3c2269811836af69497E5F486A85D7316753cf62;
 		// address ethLzAddr = 0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675;
-		// Endpoint endpoint = new Endpoint(uint16(block.chainid));
-		// address ethLzAddr = address(endpoint);
 
-		// vm.makePersistent(address(user1));
-		mainnetFork = vm.createSelectFork(FUJI_RPC_URL);
-		vm.selectFork(mainnetFork);
+		// Lock on a block number to be cached (goes faster)
+		avaxFork = vm.createSelectFork(AVAX_RPC_URL, 21148939);
 		chainId = uint16(block.chainid);
 
 		underlying = new WETH();
@@ -93,6 +92,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		// postmanMc = new MultichainPostman(address(xVault));
 
 		uint16 postmanId = 1;
+		// Choose eth mainnet because I don't know
 		uint16 anotherChainId = 1;
 		// // Config both vaults to use postmen
 		xVault.managePostman(postmanId, chainId, address(postmanLz));
@@ -241,22 +241,45 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		xvaultWithdrawFromVaults(requests, 2, 1, true);
 	}
 
-	// // Assert errors
+	// Assert errors
 
-	// function testOneChainHarvestVaults() public {
+	function testOneChainHarvestVaults() public {
+		uint256 amount = 1 ether;
 
-	// }
-	// function testOneCrossHarvestVaults() public {
+		depositXVault(user1, amount);
 
-	// }
-	// function testMultipleHarvestVaults() public {
+		Request[] memory requests = new Request[](1);
+		requests[0] = Request(address(childVault), amount);
 
-	// }
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 0, 0, true);
+
+		vm.prank(manager);
+		xVault.harvestVaults();
+
+		(
+			uint256 localDeposit,
+			uint256 crossDeposit,
+			uint256 pendingAnswers,
+			uint256 receivedAnswers
+		) = xVault.harvestLedger();
+
+		assertEq(
+			localDeposit,
+			childVault.balanceOf(address(xVault)),
+			"Local depoist must be equal to total deposited"
+		);
+		assertEq(crossDeposit, 0, "Cross deposit value must be zero");
+		assertEq(pendingAnswers, 1, "Pending answers must be equal to number of cross vaults");
+		assertEq(receivedAnswers, 0, "Received answers must be zero");
+	}
+
+	// function testOneCrossHarvestVaults() public {}
+
+	// function testMultipleHarvestVaults() public {}
 
 	// // More variations on that (no messages for example)
-	// function testFinalizeHarvest() public {
-
-	// }
+	// function testFinalizeHarvest() public {}
 
 	// // Assert errors
 

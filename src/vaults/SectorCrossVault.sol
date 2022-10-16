@@ -124,9 +124,9 @@ contract SectorCrossVault is SectorBase {
 					messageType.HARVEST
 				);
 
-				unchecked {
+				// unchecked {
 					xvaultsCount += 1;
-				}
+				// }
 			}
 
 			unchecked {
