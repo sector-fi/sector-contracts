@@ -1,5 +1,7 @@
 ETHERSCAN_API_KEY=
 
+DEPLOYER_KEY =
+
 OWNER = 0x0
 DEPLOYER = 0x1
 GUARDIAN = 0x2
@@ -15,6 +17,7 @@ FORK_CHAIN = avalanche
 
 # RPC keys
 ALCHEMY_OP =
+ALCHEMY_ARB = 
 
 # fork params for forge tests
 AVAX_RPC_URL = 'https://api.avax.network/ext/bc/C/rpc'

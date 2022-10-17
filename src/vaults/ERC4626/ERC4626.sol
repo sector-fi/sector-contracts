@@ -5,14 +5,14 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IERC4626 } from "../../interfaces/ERC4626/IERC4626.sol";
-import { Auth } from "../../common/Auth.sol";
 import { Accounting } from "../../common/Accounting.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { Fees } from "../../common/Fees.sol";
+import { Auth, AuthConfig } from "../../common/Auth.sol";
+import { Fees, FeeConfig } from "../../common/Fees.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract ERC4626 is IERC4626, Auth, Accounting, Fees, ERC20 {
+abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 
@@ -27,23 +27,22 @@ abstract contract ERC4626 is IERC4626, Auth, Accounting, Fees, ERC20 {
                                IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
-	ERC20 public immutable asset;
+	ERC20 immutable asset;
 
 	constructor(
 		ERC20 _asset,
 		string memory _name,
-		string memory _symbol,
-		address _owner,
-		address _guardian,
-		address _manager,
-		address _treasury,
-		uint256 _performanceFee
-	) ERC20(_name, _symbol) Auth(_owner, _guardian, _manager) Fees(_treasury, _performanceFee) {
+		string memory _symbol
+	) ERC20(_name, _symbol) {
 		asset = _asset;
 	}
 
 	function decimals() public view override returns (uint8) {
 		return asset.decimals();
+	}
+
+	function totalAssets() public view virtual override returns (uint256) {
+		return asset.balanceOf(address(this));
 	}
 
 	/*//////////////////////////////////////////////////////////////
@@ -115,7 +114,7 @@ abstract contract ERC4626 is IERC4626, Auth, Accounting, Fees, ERC20 {
 
 		// This check is no longer necessary because we use MIN_LIQUIDITY
 		// Check for rounding error since we round down in previewRedeem.
-		// require((assets = previewRedeem(shares)) != 0, "ZERO_ASSETS");
+		// require((assets = previewRedeem(shares)) != 0, "ZEROassetS");
 		assets = previewRedeem(shares);
 
 		beforeWithdraw(assets, shares);

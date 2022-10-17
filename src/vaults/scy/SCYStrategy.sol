@@ -10,8 +10,6 @@ struct Strategy {
 	uint256 strategyId; // this is strategy specific token if 1155
 	address yieldToken;
 	IERC20 underlying;
-	uint256 performanceFee;
-	address treasury;
 	uint128 maxTvl; // pack all params and balances
 	uint128 balance; // strategy balance in underlying
 	uint128 uBalance; // underlying balance

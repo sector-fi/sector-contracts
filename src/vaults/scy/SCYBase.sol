@@ -9,7 +9,7 @@ import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contr
 import { Accounting } from "../../common/Accounting.sol";
 import { ERC20Permit, EIP712 } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract SCYBase is
 	ISuperComposableYield,
