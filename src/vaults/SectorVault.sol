@@ -248,7 +248,7 @@ contract SectorVault is SectorBase {
 		);
 	}
 
-	function finalizeDeposit() external onlyRole(MANAGER) {
+	function processIncomingXFunds() external override onlyRole(MANAGER) {
 		uint256 length = depositQueue.length;
 		uint256 totalDeposit = 0;
 		for (uint256 i = length; i > 0; ) {
@@ -273,15 +273,15 @@ contract SectorVault is SectorBase {
 		// Should account for fees paid in tokens for using bridge
 		// Also, if a value hasn't arrived manager will not be able to register any value
 		if (totalDeposit > (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
-			revert MissingDepositValue();
+			revert MissingIncomingXFunds();
 
 		// update floatAmnt with deposited funds
 		afterDeposit(totalDeposit, 0);
 		/// TODO should we add more params here?
-		emit RegisterDeposit(totalDeposit);
+		emit RegisterIncomingFunds(totalDeposit);
 	}
 
-	function finalizeWithdraw() external onlyRole(MANAGER) {
+	function processXWithdraw() external onlyRole(MANAGER) {
 		uint256 length = bridgeQueue.length;
 
 		uint256 total = 0;
@@ -292,8 +292,14 @@ contract SectorVault is SectorBase {
 			uint256 amountOut = _xRedeem(vAddr);
 			bridgeQueue.pop();
 
-			// MANAGER has to ensure that if bridge fails it will try again
-			// OnChain record of needed bridge will be erased.
+			Vault memory vault = addrBook[vAddr];
+			_sendMessage(
+				vAddr,
+				vault,
+				Message(amountOut, address(this), address(0), chainId),
+				messageType.WITHDRAW
+			);
+
 			emit BridgeAsset(chainId, addrBook[vAddr].chainId, amountOut);
 
 			unchecked {

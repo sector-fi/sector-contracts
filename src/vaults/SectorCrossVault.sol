@@ -32,9 +32,7 @@ contract SectorCrossVault is SectorBase {
 	address[] internal vaultList;
 	// Harvest state
 	HarvestLedger public harvestLedger;
-	// Controls emergency withdraw
-	// Not sure if this will be used
-	bool internal emergencyEnabled = false;
+	Message[] internal withdrawQueue;
 
 	constructor(
 		ERC20 _asset,
@@ -124,9 +122,9 @@ contract SectorCrossVault is SectorBase {
 					messageType.HARVEST
 				);
 
-				// unchecked {
+				unchecked {
 					xvaultsCount += 1;
-				// }
+				}
 			}
 
 			unchecked {
@@ -155,9 +153,6 @@ contract SectorCrossVault is SectorBase {
 	}
 
 	function emergencyWithdraw() external {
-		// Still not sure about this part
-		if (!emergencyEnabled) revert EmergencyNotEnabled();
-
 		uint256 userShares = balanceOf(msg.sender);
 
 		_burn(msg.sender, userShares);
@@ -234,21 +229,41 @@ contract SectorCrossVault is SectorBase {
 		return vault;
 	}
 
-	/// TODO: this method sholud be triggered by a chain vault when
-	/// returning withdrawals. This allows us to upate floatAmnt and totalChildHoldings
-	function _finalizedWithdraw() internal {
-		uint256 totalWithdraw;
-		totalChildHoldings -= totalWithdraw;
-		afterDeposit(totalWithdraw, 0);
+	function _receiveWithdraw(Message calldata _msg) internal {
+		withdrawQueue.push(_msg);
 	}
 
-	function _receiveWithdraw(Message calldata) internal {
-		_finalizedWithdraw();
+	function processIncomingXFunds() external override onlyRole(MANAGER) {
+		uint256 length = withdrawQueue.length;
+		uint256 total = 0;
+		for (uint256 i = length; i > 0; ) {
+			Message memory _msg = withdrawQueue[i - 1];
+			withdrawQueue.pop();
+
+			total += _msg.value;
+
+			unchecked {
+				i--;
+			}
+		}
+		// Should account for fees paid in tokens for using bridge
+		// Also, if a value hasn't arrived manager will not be able to register any value
+		if (total < (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
+			revert MissingIncomingXFunds();
+
+		_finalizedWithdraw(total);
+		emit RegisterIncomingFunds(total);
 	}
 
 	function _receiveHarvest(Message calldata _msg) internal {
 		harvestLedger.crossDepositValue += _msg.value;
 		harvestLedger.receivedAnswers += 1;
+	}
+
+	function _finalizedWithdraw(uint256 totalWithdraw) internal {
+		// uint256 totalWithdraw;
+		totalChildHoldings -= totalWithdraw;
+		afterDeposit(totalWithdraw, 0);
 	}
 
 	/*/////////////////////////////////////////////////////
@@ -266,6 +281,5 @@ contract SectorCrossVault is SectorBase {
 
 	error HarvestNotOpen();
 	error OnGoingHarvest();
-	error EmergencyNotEnabled();
 	error MissingMessages();
 }

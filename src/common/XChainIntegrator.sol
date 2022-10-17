@@ -270,6 +270,7 @@ abstract contract XChainIntegrator is Auth {
 	}
 
 	function _handleMessage(messageType _type, Message calldata _msg) internal virtual {}
+	function processIncomingXFunds() external virtual {}
 
 	/*/////////////////////////////////////////////////////
 							Events
@@ -277,23 +278,24 @@ abstract contract XChainIntegrator is Auth {
 
 	event MessageReceived(
 		uint256 value,
-		address sender,
-		uint16 srcChainId,
+		address indexed sender,
+		uint16 indexed srcChainId,
 		messageType mType,
 		address postman
 	);
 	event MessageSent(
 		uint256 value,
-		address receiver,
-		uint16 dstChainId,
+		address indexed receiver,
+		uint16 indexed dstChainId,
 		messageType mtype,
 		address postman
 	);
-	event AddedVault(address vault, uint16 chainId);
-	event ChangedVaultStatus(address vault, bool status);
-	event UpdatedVaultPostman(address vault, uint16 postmanId);
-	event PostmanUpdated(uint16 postmanId, uint16 chanId, address postman);
+	event AddedVault(address indexed vault, uint16 chainId);
+	event ChangedVaultStatus(address indexed vault, bool status);
+	event UpdatedVaultPostman(address indexed vault, uint16 postmanId);
+	event PostmanUpdated(uint16 indexed postmanId, uint16 chanId, address postman);
 	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
+	event RegisterIncomingFunds(uint256 total);
 
 	/*/////////////////////////////////////////////////////
 							Errors
@@ -305,4 +307,5 @@ abstract contract XChainIntegrator is Auth {
 	error VaultMissing(address vault);
 	error VaultAlreadyAdded();
 	error BridgeError();
+	error MissingIncomingXFunds();
 }

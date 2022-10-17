@@ -72,6 +72,10 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
 
+		// xVault.deposit();
+		// childVault.deposit();
+		// nephewVault.deposit();
+
 		// F*** stupid
 		chainPair[] memory inptChainPair = new chainPair[](9);
 		inptChainPair[0] = chainPair(250, 122);
