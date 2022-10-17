@@ -248,6 +248,26 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		xvaultWithdrawFromVaults(requests, 2, 1, true);
 	}
 
+	function testChainPartialWithdrawFromVaults() public {
+		uint256 amount1 = 1 ether;
+
+		depositXVault(user1, amount1);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = Request(address(childVault), amount1);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount1, 0, 0, false);
+
+		uint256 sharesBefore = childVault.balanceOf(address(xVault));
+		uint256 sharesWithdraw = (childVault.balanceOf(address(xVault)) * 25) / 100;
+		requests[0] = Request(address(childVault), 25);
+		// Requests, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 0, 0, false);
+
+		assertEq(childVault.balanceOf(address(xVault)), sharesBefore - sharesWithdraw);
+	}
+
 	// Assert errors
 
 	function testOneChainHarvestVaults() public {
