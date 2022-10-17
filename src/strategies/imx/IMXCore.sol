@@ -28,6 +28,7 @@ abstract contract IMXCore is
 
 	event Deposit(address sender, uint256 amount);
 	event Redeem(address sender, uint256 amount);
+
 	// event RebalanceLoan(address indexed sender, uint256 startLoanHealth, uint256 updatedLoanHealth);
 	event SetRebalanceThreshold(uint256 rebalanceThreshold);
 	event SetMaxTvl(uint256 maxTvl);
@@ -170,9 +171,9 @@ abstract contract IMXCore is
 		emit Redeem(msg.sender, amountTokenOut);
 	}
 
-	// decreases position based to desired LP amount
-	// ** does not rebalance remaining portfolio
-	// ** make sure to update lending positions before calling this
+	/// @notice decreases position based to desired LP amount
+	/// @dev ** does not rebalance remaining portfolio
+	/// @param removeCollateral amount of callateral token to remove
 	function _decreasePosition(uint256 removeCollateral) internal {
 		// make sure we are not close to liquidation
 		if (loanHealth() < MIN_LOAN_HEALTH) revert LowLoanHealth();

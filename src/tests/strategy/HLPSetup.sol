@@ -51,7 +51,7 @@ contract IMXSetup is SectorTest, IMXUtils {
 	// and test all strats...
 	function getConfig(string memory symbol) public returns (IMXConfig memory _config) {
 		string memory root = vm.projectRoot();
-		string memory path = string.concat(root, "/ts/config/strategies.json");
+		string memory path = string.concat(root, "/ts/config/hlp.json");
 		string memory json = vm.readFile(path);
 		// bytes memory names = json.parseRaw(".strats");
 		// string[] memory strats = abi.decode(names, (string[]));

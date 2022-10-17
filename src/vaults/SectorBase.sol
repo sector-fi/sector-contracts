@@ -6,7 +6,7 @@ import { ERC4626, FixedPointMathLib, SafeERC20 } from "./ERC4626/ERC4626.sol";
 import { ISCYStrategy } from "../interfaces/scy/ISCYStrategy.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
-import { Address } from "@openzeppelin/contracts//utils/Address.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "../interfaces/MsgStructs.sol";
 

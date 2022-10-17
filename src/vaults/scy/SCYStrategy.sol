@@ -35,4 +35,6 @@ abstract contract SCYStrategy {
 	function _stratCollateralToUnderlying() internal view virtual returns (uint256);
 
 	function _stratValidate() internal virtual;
+
+	error NotImplemented();
 }

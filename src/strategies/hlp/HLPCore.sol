@@ -4,18 +4,29 @@ pragma solidity 0.8.16;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import "../mixins/IBase.sol";
-import "../mixins/ILending.sol";
-import "../mixins/IUniLp.sol";
-import "./BaseStrategy.sol";
-import "../../interfaces/uniswap/IWETH.sol";
+import { IBase, HarvestSwapParms } from "../mixins/IBase.sol";
+import { ILending } from "../mixins/ILending.sol";
+import { IUniFarm, SafeERC20, IERC20 } from "../mixins/IUniFarm.sol";
+import { BaseStrategy } from "./BaseStrategy.sol";
+import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
+import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { Strategy } from "../../interfaces/Strategy.sol";
+import { Auth } from "../../common/Auth.sol";
 
 // import "hardhat/console.sol";
 
 // @custom: alphabetize dependencies to avoid linearization conflicts
-abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
+abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, IUniFarm {
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
+
+	event Deposit(address sender, uint256 amount);
+	event Redeem(address sender, uint256 amount);
+	event Harvest(uint256 harvested); // this is actual the tvl before harvest
+	event Rebalance(uint256 shortPrice, uint256 tvlBeforeRebalance, uint256 positionOffset);
+	event EmergencyWithdraw(address indexed recipient, IERC20[] tokens);
+	event UpdatePosition();
 
 	event RebalanceLoan(address indexed sender, uint256 startLoanHealth, uint256 updatedLoanHealth);
 	event setMinLoanHealth(uint256 loanHealth);
@@ -26,6 +37,9 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 
 	uint256 constant MIN_LIQUIDITY = 1000;
 	uint256 public constant maxPriceOffset = 2000; // maximum offset for rebalanceLoan & manager  methods 20%
+	uint256 constant BPS_ADJUST = 10000;
+
+	uint256 public lastHarvest; // block.timestamp;
 
 	IERC20 private _underlying;
 	IERC20 private _short;
@@ -41,11 +55,22 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 
 	uint256 public constant version = 1;
 
+	address public vault;
+
+	modifier onlyVault() {
+		require(msg.sender == vault, "Strat: ONLY_VAULT");
+		_;
+	}
+
 	modifier checkPrice(uint256 maxSlippage) {
 		if (maxSlippage == 0)
 			maxSlippage = maxDefaultPriceMismatch;
 			// manager accounts cannot set maxSlippage bigger than maxPriceOffset
-		else require(maxSlippage <= maxPriceOffset || isGuardian(msg.sender), "HLP: MAX_MISMATCH");
+		else
+			require(
+				maxSlippage <= maxPriceOffset || hasRole(GUARDIAN, msg.sender),
+				"HLP: MAX_MISMATCH"
+			);
 		require(getPriceOffset() <= maxSlippage, "HLP: PRICE_MISMATCH");
 		_;
 	}
@@ -59,8 +84,6 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 		_short = IERC20(short_);
 
 		_underlying.safeApprove(address(this), type(uint256).max);
-
-		BASE_UNIT = 10**decimals();
 
 		// init params
 		setMaxTvl(maxTvl_);
@@ -100,10 +123,13 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 	}
 
 	// guardian can adjust max default price mismatch if needed
-	function setMaxDefaultPriceMismatch(uint256 maxDefaultPriceMismatch_) public onlyGuardian {
+	function setMaxDefaultPriceMismatch(uint256 maxDefaultPriceMismatch_)
+		public
+		onlyRole(GUARDIAN)
+	{
 		require(maxDefaultPriceMismatch_ >= 25, "HLP: BAD_INPUT"); // no less than .25%
 		require(
-			msg.sender == owner() || maxAllowedMismatch >= maxDefaultPriceMismatch_,
+			msg.sender == owner || maxAllowedMismatch >= maxDefaultPriceMismatch_,
 			"HLP: BAD_INPUT"
 		);
 		maxDefaultPriceMismatch = maxDefaultPriceMismatch_;
@@ -117,7 +143,7 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 		emit SetRebalanceThreshold(rebalanceThreshold_);
 	}
 
-	function setMaxTvl(uint256 maxTvl_) public onlyGuardian {
+	function setMaxTvl(uint256 maxTvl_) public onlyRole(GUARDIAN) {
 		_maxTvl = maxTvl_;
 		emit SetMaxTvl(maxTvl_);
 	}
@@ -136,7 +162,7 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 	// this method will succeed only when loanHealth is below minimum
 	function rebalanceLoan() public nonReentrant {
 		// limit offset to maxPriceOffset manager to prevent misuse
-		if (isGuardian(msg.sender)) {} else if (isManager(msg.sender))
+		if (hasRole(GUARDIAN, msg.sender)) {} else if (hasRole(MANAGER, msg.sender))
 			require(getPriceOffset() <= maxPriceOffset, "HLP: MAX_MISMATCH");
 			// public methods need more protection agains griefing
 			// NOTE: this may prevent gelato bots from executing the tx in the case of
@@ -158,7 +184,7 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 			((targetHealth * 1e18) / _getCollateralFactor() + 1e18);
 
 		// remove lp
-		(uint256 underlyingBalance, uint256 shortBalance) = _decreaseLpTo(
+		(uint256 underlyingBalance, uint256 shortBalance) = _decreaseULpTo(
 			underlyingLp - addCollateral
 		);
 
@@ -167,103 +193,105 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 		emit RebalanceLoan(msg.sender, _loanHealth, loanHealth());
 	}
 
-	function _deposit(uint256 amount)
-		internal
-		override
-		checkPrice(0)
-		nonReentrant
-		returns (uint256 newShares)
-	{
-		if (amount <= 0) return 0; // cannot deposit 0
-		uint256 tvl = _getAndUpdateTVL();
-		require(amount + tvl <= getMaxTvl(), "HLP: OVER_MAX_TVL");
-		newShares = totalSupply() == 0 ? amount : (totalSupply() * amount) / tvl;
-		_underlying.safeTransferFrom(vault(), address(this), amount);
-		_increasePosition(amount);
+	// deposit underlying and recieve lp tokens
+	function deposit(uint256 underlyingAmnt) external onlyVault nonReentrant returns (uint256) {
+		if (underlyingAmnt == 0) return 0; // cannot deposit 0
+
+		if (underlyingAmnt < _underlying.balanceOf(address(this))) revert NonZeroFloat();
+
+		uint256 tvl = getAndUpdateTVL();
+		require(underlyingAmnt + tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
+		uint256 startBalance = _getLiquidity();
+		// this method should not change % allocation to lp vs collateral
+		_increasePosition(underlyingAmnt);
+		uint256 endBalance = _getLiquidity();
+		return endBalance - startBalance;
 	}
 
-	function _withdraw(uint256 amount)
-		internal
-		override
-		checkPrice(0)
-		nonReentrant
-		returns (uint256 burnShares)
+	/// @notice decreases position based to desired LP amount
+	/// @dev ** does not rebalance remaining portfolio
+	/// @param removeLp amount of lp amount to remove
+	function redeem(uint256 removeLp, address recipient)
+		public
+		onlyVault
+		returns (uint256 amountTokenOut)
 	{
-		if (amount == 0) return 0;
-		uint256 tvl = _getAndUpdateTVL();
-		if (tvl == 0) return 0;
+		// this is the full amount of LP tokens totalSupply of shares is entitled to
+		_decreasePosition(removeLp);
 
-		uint256 reserves = _underlying.balanceOf(address(this));
+		// TODO make sure we never have any extra underlying dust sitting around
+		// all 'extra' underlying should allways be transferred back to the vault
 
-		// if we can not withdraw straight out of reserves
-		if (amount > reserves) {
-			// decrease current position
-			reserves = _decreasePosition(amount - reserves, reserves, tvl);
-
-			// use the minimum of underlying balance and requested amount
-			amount = min(reserves, amount);
+		unchecked {
+			amountTokenOut = _underlying.balanceOf(address(this));
 		}
-
-		// grab current tvl to account for fees and slippage
-		(tvl, , , , , ) = getTVL();
-
-		// round up to keep price precision and leave less dust
-		burnShares = min(((amount + 1) * totalSupply()) / tvl, totalSupply());
-
-		_underlying.safeTransferFrom(address(this), vault(), amount);
+		_underlying.safeTransfer(recipient, amountTokenOut);
+		emit Redeem(msg.sender, amountTokenOut);
 	}
 
-	// decreases position based on current desired balance
-	// ** does not rebalance remaining portfolio
-	// ** may return slighly less than desired amount
-	// ** make sure to update lending positions before calling this
-	// we use the inflated amntWithBuffer to withdraw lp
-	// and the smaller withdrawAmnt to withdraw collateral, so that we
-	// err on the side of adding more collateral
-	function _decreasePosition(
-		uint256 withdrawAmnt,
-		uint256 reserves,
-		uint256 tvl
-	) internal returns (uint256) {
-		// add .5% to withdraw to boost collateral just in case its low
-		uint256 amntWithBuffer = (withdrawAmnt * 1005) / 1000;
+	/// @notice decreases position based on current ratio
+	/// @dev ** does not rebalance any part of portfolio
+	function _decreasePosition(uint256 removeLp) internal {
+		uint256 collateralBalance = _updateAndGetCollateralBalance();
+		uint256 shortPosition = _updateAndGetBorrowBalance();
 
-		(uint256 underlyingLp, ) = _getLPBalances();
-		uint256 removeLpAmnt = (amntWithBuffer * underlyingLp) / (tvl);
+		uint256 totalLp = _getLiquidity();
 
-		uint256 shortPosition = _getBorrowBalance();
-		uint256 removeShortLp = _underlyingToShort(removeLpAmnt);
-
-		if (removeLpAmnt >= underlyingLp || removeShortLp >= shortPosition) return _closePosition();
+		uint256 redeemAmnt = (collateralBalance * removeLp) / totalLp;
+		uint256 repayAmnt = (shortPosition * removeLp) / totalLp;
 
 		// remove lp
-		(uint256 availableUnderlying, uint256 shortBalance) = _decreaseLpTo(
-			underlyingLp - removeLpAmnt
-		);
-
-		_repay(shortBalance);
-
-		// this might remove less collateral than desired if we hit the loan health limit
-		// this can happen when we are close to closing the position
-		if (withdrawAmnt > availableUnderlying)
-			availableUnderlying += _removeCollateral(withdrawAmnt - availableUnderlying);
-
-		// ensure we don't fall below loan health limit (this should not normally happen)
-		uint256 _loanHealth = loanHealth();
-		if (_loanHealth <= minLoanHealth) _rebalanceLoan(_loanHealth);
-		return availableUnderlying + reserves;
+		(, uint256 sLp) = _removeLp(removeLp);
+		_tradeExact(repayAmnt, sLp, address(_short), address(_underlying));
+		_repay(repayAmnt);
+		_redeem(redeemAmnt);
 	}
 
-	// increases the position based on current desired balance
+	function _tradeExact(
+		uint256 target,
+		uint256 balance,
+		address exactToken,
+		address token
+	) internal returns (uint256 tokenOut, uint256 tokenIn) {
+		if (target > balance)
+			tokenIn = pair()._swapTokensForExactTokens(target - balance, token, exactToken);
+		else if (balance > target)
+			tokenOut = pair()._swapExactTokensForTokens(balance - target, exactToken, token);
+	}
+
+	/// @notice decreases position proportionally based on current position ratio
 	// ** does not rebalance remaining portfolio
-	function _increasePosition(uint256 amount) internal {
-		if (amount < MIN_LIQUIDITY) return; // avoid imprecision
-		uint256 amntUnderlying = _totalToLp(amount);
-		uint256 amntShort = _underlyingToShort(amntUnderlying);
-		_lend(amount - amntUnderlying);
-		_borrow(amntShort);
-		uint256 liquidity = _addLiquidity(amntUnderlying, amntShort);
-		_depositIntoFarm(liquidity);
+	function _increasePosition(uint256 underlyingAmnt) internal {
+		if (underlyingAmnt < MIN_LIQUIDITY) revert MinLiquidity(); // avoid imprecision
+		uint256 tvl = getAndUpdateTVL() - underlyingAmnt;
+
+		// if this is the first deposit, we use our desire ratio
+		if (tvl == 0) {
+			uint256 addULp = _totalToLp(underlyingAmnt);
+			uint256 borrowAmnt = _underlyingToShort(addULp);
+			uint256 collateralAmnt = underlyingAmnt - addULp;
+			_lend(collateralAmnt);
+			_borrow(borrowAmnt);
+			uint256 liquidity = _addLiquidity(addULp, borrowAmnt);
+			_depositIntoFarm(liquidity);
+			return;
+		}
+
+		{
+			uint256 collateralBalance = _updateAndGetCollateralBalance();
+			uint256 shortPosition = _updateAndGetBorrowBalance();
+
+			// else we use whatever the current ratio is
+			(, uint256 sLp) = _getLPBalances();
+			uint256 addSLp = (underlyingAmnt * sLp) / tvl;
+			uint256 collateralAmnt = (collateralBalance * underlyingAmnt) / tvl;
+			uint256 borrowAmnt = (shortPosition * underlyingAmnt) / tvl;
+
+			_lend(collateralAmnt);
+			_borrow(borrowAmnt);
+
+			_increaseLpPosition(addSLp);
+		}
 	}
 
 	// use the return of the function to estimate pending harvest via staticCall
@@ -272,7 +300,7 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 		HarvestSwapParms[] calldata lendingParams
 	)
 		external
-		onlyManager
+		onlyRole(MANAGER)
 		checkPrice(0)
 		nonReentrant
 		returns (uint256[] memory farmHarvest, uint256[] memory lendHarvest)
@@ -288,12 +316,12 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 
 	function rebalance(uint256 maxSlippage)
 		external
-		onlyManager
+		onlyRole(MANAGER)
 		checkPrice(maxSlippage)
 		nonReentrant
 	{
 		// call this first to ensure we use an updated borrowBalance when computing offset
-		uint256 tvl = _getAndUpdateTVL();
+		uint256 tvl = getAndUpdateTVL();
 		uint256 positionOffset = getPositionOffset();
 
 		// don't rebalance unless we exceeded the threshold
@@ -308,7 +336,7 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 	}
 
 	// note: one should call harvest immediately before close position
-	function closePosition(uint256 maxSlippage) public checkPrice(maxSlippage) onlyGuardian {
+	function closePosition(uint256 maxSlippage) public checkPrice(maxSlippage) onlyRole(GUARDIAN) {
 		_closePosition();
 		emit UpdatePosition();
 	}
@@ -317,27 +345,27 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 	function removeLiquidity(uint256 removeLp, uint256 maxSlippage)
 		public
 		checkPrice(maxSlippage)
-		onlyGuardian
+		onlyRole(GUARDIAN)
 	{
 		_removeLiquidity(removeLp);
 		emit UpdatePosition();
 	}
 
 	// in case of emergency - withdraw lp tokens from farm
-	function withdrawFromFarm() public onlyGuardian {
+	function withdrawFromFarm() public onlyRole(GUARDIAN) {
 		_withdrawFromFarm(_getFarmLp());
 		emit UpdatePosition();
 	}
 
 	// in case of emergency - withdraw stuck collateral
-	function redeemCollateral(uint256 repayAmnt, uint256 withdrawAmnt) public onlyGuardian {
+	function redeemCollateral(uint256 repayAmnt, uint256 withdrawAmnt) public onlyRole(GUARDIAN) {
 		_repay(repayAmnt);
 		_redeem(withdrawAmnt);
 		emit UpdatePosition();
 	}
 
-	function _closePosition() internal returns (uint256) {
-		_decreaseLpTo(0);
+	function _closePosition() internal {
+		_decreaseULpTo(0);
 		uint256 shortPosition = _updateAndGetBorrowBalance();
 		uint256 shortBalance = _short.balanceOf(address(this));
 		if (shortPosition > shortBalance) {
@@ -356,10 +384,11 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 		_repay(_short.balanceOf(address(this)));
 		uint256 collateralBalance = _updateAndGetCollateralBalance();
 		_redeem(collateralBalance);
-		return _underlying.balanceOf(address(this));
+		uint256 balance = _underlying.balanceOf(address(this));
+		return _underlying.safeTransfer(vault, balance);
 	}
 
-	function _decreaseLpTo(uint256 targetUnderlyingLP)
+	function _decreaseULpTo(uint256 targetUnderlyingLP)
 		internal
 		returns (uint256 underlyingRemove, uint256 shortRemove)
 	{
@@ -373,6 +402,15 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 		return removeLp == 0 ? (0, 0) : _removeLiquidity(removeLp);
 	}
 
+	function _removeLp(uint256 removeLp)
+		internal
+		returns (uint256 underlyingRemove, uint256 shortRemove)
+	{
+		// TODO ensure that we never have LP not in farm
+		_withdrawFromFarm(removeLp);
+		return _removeLiquidity(removeLp);
+	}
+
 	function _rebalancePosition(uint256 targetUnderlyingLP, uint256 targetCollateral) internal {
 		uint256 targetBorrow = _underlyingToShort(targetUnderlyingLP);
 		// we already updated tvl
@@ -381,7 +419,7 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 		// borrow funds or repay loan
 		if (targetBorrow > currentBorrow) {
 			// remove extra lp (we may need to remove more in order to add more collateral)
-			_decreaseLpTo(
+			_decreaseULpTo(
 				_needUnderlying(targetUnderlyingLP, targetCollateral) > 0 ? 0 : targetUnderlyingLP
 			);
 			// add collateral
@@ -389,7 +427,7 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 			_borrow(targetBorrow - currentBorrow);
 		} else if (targetBorrow < currentBorrow) {
 			// remove all of lp so we can repay loan
-			_decreaseLpTo(0);
+			_decreaseULpTo(0);
 			uint256 repayAmnt = min(_short.balanceOf(address(this)), currentBorrow - targetBorrow);
 			if (repayAmnt > 0) _repay(repayAmnt);
 			// remove extra collateral
@@ -401,54 +439,44 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 	///////////////////////////
 	//// INCREASE LP POSITION
 	///////////////////////
-	function _increaseLpPosition(uint256 targetBorrow) internal {
-		uint256 underlyingBalance = _underlying.balanceOf(address(this));
-		uint256 shortBalance = _short.balanceOf(address(this));
+	function _increaseLpPosition(uint256 targetShortLp) internal {
+		uint256 uBalance = _underlying.balanceOf(address(this));
+		uint256 sBalance = _short.balanceOf(address(this));
 
 		// here we make sure we don't add extra lp
 		(, uint256 shortLP) = _getLPBalances();
+		if (targetShortLp <= shortLP) return;
 
-		if (targetBorrow < shortLP) return;
-
-		uint256 addShort = min(
-			(shortBalance + _underlyingToShort(underlyingBalance)) / 2,
-			targetBorrow - shortLP
-		);
-
+		uint256 addShort = targetShortLp - shortLP;
 		uint256 addUnderlying = _shortToUnderlying(addShort);
 
-		// buy or sell underlying
-		if (addUnderlying < underlyingBalance) {
-			shortBalance += pair()._swapExactTokensForTokens(
-				underlyingBalance - addUnderlying,
-				address(_underlying),
-				address(_short)
-			);
-			underlyingBalance = addUnderlying;
-		} else if (shortBalance > addShort) {
-			// swap extra tokens back (this may end up using more gas)
-			underlyingBalance += pair()._swapExactTokensForTokens(
-				shortBalance - addShort,
-				address(_short),
-				address(_underlying)
-			);
-			shortBalance = addShort;
+		(uint256 tokenOut, uint256 tokenIn) = _tradeExact(
+			targetShortLp,
+			sBalance,
+			address(_short),
+			address(_underlying)
+		);
+
+		uBalance += tokenOut - tokenIn;
+
+		// we know that now our short balance is exact sBalance = sAmnt
+		// if we don't have enough underlying, we need to decrase sAmnt slighlty
+		// TODO have trades account for slippage
+		if (uBalance < addUnderlying) {
+			addUnderlying = uBalance;
+			addShort = _underlyingToShort(uBalance);
+			// if we have short dust, we can leave it for next rebalance
+		} else if (uBalance > addUnderlying) {
+			// if we have extra underlying, lend it back to avoid extra float
+			_lend(uBalance - addUnderlying);
 		}
 
-		// compute final lp amounts
-		uint256 amntShort = shortBalance;
-		uint256 amntUnderlying = _shortToUnderlying(amntShort);
-		if (underlyingBalance < amntUnderlying) {
-			amntUnderlying = underlyingBalance;
-			amntShort = _underlyingToShort(amntUnderlying);
-		}
-
-		if (amntUnderlying == 0) return;
+		if (addUnderlying == 0) return;
 
 		// add liquidity
 		// don't need to use min with underlying and short because we did oracle check
 		// amounts are exact because we used swap price above
-		uint256 liquidity = _addLiquidity(amntUnderlying, amntShort);
+		uint256 liquidity = _addLiquidity(addUnderlying, addShort);
 		_depositIntoFarm(liquidity);
 	}
 
@@ -474,8 +502,7 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 		return min(_maxTvl, _oraclePriceOfShort(_maxBorrow() + _getBorrowBalance()));
 	}
 
-	// TODO should we compute pending farm & lending rewards here?
-	function _getAndUpdateTVL() internal returns (uint256 tvl) {
+	function getAndUpdateTVL() public returns (uint256 tvl) {
 		uint256 collateralBalance = _updateAndGetCollateralBalance();
 		uint256 shortPosition = _updateAndGetBorrowBalance();
 		uint256 borrowBalance = _shortToUnderlying(shortPosition);
@@ -494,7 +521,7 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 
 	// We can include a checkPrice(0) here for extra security
 	// but it's not necessary with latestvault updates
-	function balanceOfUnderlying() public view override returns (uint256 assets) {
+	function balanceOfUnderlying() public view returns (uint256 assets) {
 		(assets, , , , , ) = getTVL();
 	}
 
@@ -559,6 +586,14 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 		offset = ((maxPrice - minPrice) * BPS_ADJUST) / maxPrice;
 	}
 
+	// used to estimate the expected return of lp tokens for first deposit
+	function collateralToUnderlying() external view returns (uint256) {
+		(uint256 uR, uint256 sR, ) = pair().getReserves();
+		(uR, sR) = address(_underlying) == pair().token0() ? (uR, sR) : (sR, uR);
+		uint256 lp = pair().totalSupply();
+		return (_totalToLp(1e18) * lp) / uR;
+	}
+
 	// UTILS
 
 	function _totalToLp(uint256 total) internal view returns (uint256) {
@@ -582,4 +617,7 @@ abstract contract HedgedLP is IBase, BaseStrategy, ILending, IUniFarm {
 	function min(uint256 a, uint256 b) internal pure returns (uint256) {
 		return a < b ? a : b;
 	}
+
+	error NonZeroFloat();
+	error MinLiquidity();
 }

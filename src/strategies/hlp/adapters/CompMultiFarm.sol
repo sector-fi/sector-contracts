@@ -2,7 +2,8 @@
 pragma solidity 0.8.16;
 
 import { IClaimReward } from "../../../interfaces/compound/IClaimReward.sol";
-import { CompoundFarm } from "./CompoundFarm.sol";
+import { CompoundFarm, HarvestSwapParms } from "./CompoundFarm.sol";
+import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
 
