@@ -9,7 +9,7 @@ import { SafeETH } from "../../libraries/SafeETH.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
-import { Address } from "@openzeppelin/contracts//utils/Address.sol";
+import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 // import "hardhat/console.sol";
 
