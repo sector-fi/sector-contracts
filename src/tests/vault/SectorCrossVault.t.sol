@@ -123,6 +123,9 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		vm.deal(guardian, 10 ether);
 		// Postman needs native to pay provider.
 		vm.deal(address(postmanLz), 10 ether);
+
+		// To prevent rounding attacks
+		depositXVault(manager, mLp);
 	}
 
 	function testOneChainDepositIntoVaults() public {
@@ -195,8 +198,8 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
 
-		uint256 shares = childVault.balanceOf(address(xVault));
-		requests[0] = Request(address(childVault), shares);
+		// uint256 shares = childVault.balanceOf(address(xVault));
+		requests[0] = Request(address(childVault), 100);
 
 		// Requests, total amount, msgSent events, withdraw events
 		xvaultWithdrawFromVaults(requests, 0, 1, true);
@@ -213,8 +216,8 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
 
-		uint256 shares = nephewVault.balanceOf(address(xVault));
-		requests[0] = Request(address(nephewVault), shares);
+		// uint256 shares = nephewVault.balanceOf(address(xVault));
+		requests[0] = Request(address(nephewVault), 100);
 
 		// Requests, total amount, msgSent events, withdraw events
 		xvaultWithdrawFromVaults(requests, 1, 0, true);
@@ -237,9 +240,9 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 0, 0, false);
 
-		requests[0] = Request(address(childVault), childVault.balanceOf(address(xVault)));
-		requests[1] = Request(address(nephewVault), nephewVault.balanceOf(address(xVault)));
-		requests[2] = Request(address(nephewVault), nephewVault.balanceOf(address(xVault)));
+		requests[0] = Request(address(childVault), 100);
+		requests[1] = Request(address(nephewVault), 100);
+		requests[2] = Request(address(nephewVault), 100);
 
 		// Requests, total amount, msgSent events, withdraw events
 		xvaultWithdrawFromVaults(requests, 2, 1, true);

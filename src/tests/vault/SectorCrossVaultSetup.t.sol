@@ -84,7 +84,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		uint256 withdrawEvent,
 		bool assertOn
 	) public {
-		uint256[] memory shares = new uint256[](requests.length);
+		uint[] memory shares = new uint[](requests.length);
 		for (uint256 i = 0; i < requests.length; i++) {
 			SectorVault vault = SectorVault(requests[i].vaultAddr);
 			shares[i] = vault.balanceOf(address(xVault));
@@ -104,17 +104,18 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 		for (uint256 i = 0; i < requests.length; i++) {
 			SectorVault vault = SectorVault(requests[i].vaultAddr);
-			uint256 share = shares[i];
-			uint256 value = vault.convertToAssets(share);
+			// uint256 share = shares[i];
+			uint256 value = (shares[i] * requests[i].amount) / 100;
 
 			(uint16 vaultChainId, , ) = xVault.addrBook(address(vault));
+			// On same chain as xVault
 			if (vaultChainId == chainId) {
 				assertEq(vault.pendingWithdraw(), value, "Pending value must be equal to expected");
 
 				(uint256 ts, uint256 sh, uint256 val) = vault.withdrawLedger(address(xVault));
 
 				assertEq(ts, requestTimestamp, "Withdraw timestamp must be equal to expected");
-				assertEq(sh, share, "Shares must be equal to expected");
+				assertEq(sh, shares[i], "Shares must be equal to expected");
 				assertEq(val, value, "Value assets must be equal to expected");
 			}
 		}

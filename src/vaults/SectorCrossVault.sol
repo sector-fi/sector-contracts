@@ -84,7 +84,8 @@ contract SectorCrossVault is SectorBase {
 			Vault memory vault = checkVault(vaultAddr);
 
 			if (vault.chainId == chainId) {
-				BatchedWithdraw(vaultAddr).requestRedeem(amount);
+				BatchedWithdraw bWithdraw = BatchedWithdraw(vaultAddr);
+				bWithdraw.requestRedeem((bWithdraw.balanceOf(address(this)) * amount) / 100);
 			} else {
 				_sendMessage(
 					vaultAddr,
