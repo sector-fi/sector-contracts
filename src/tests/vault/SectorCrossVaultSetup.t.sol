@@ -11,16 +11,16 @@ import { Endpoint } from "../mocks/MockEndpoint.sol";
 import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
+import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
 contract SectorCrossVaultTestSetup is SectorTest {
-	// ISCYStrategy strategy1;
-	// ISCYStrategy strategy2;
-	// ISCYStrategy strategy3;
-
 	uint16 chainId;
+
+	uint16 anotherChainId = 1;
+	uint16 postmanId = 1;
 
 	WETH underlying;
 
@@ -71,11 +71,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		);
 
 		assertEventCount(entries, "BridgeAsset(uint16,uint16,uint256)", bridgeEvents);
-		assertEventCount(
-			entries,
-			"MessageSent(uint256,address,uint16,uint8,address)",
-			msgsSent
-		);
+		assertEventCount(entries, "MessageSent(uint256,address,uint16,uint8,address)", msgsSent);
 	}
 
 	function xvaultWithdrawFromVaults(
@@ -84,7 +80,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		uint256 withdrawEvent,
 		bool assertOn
 	) public {
-		uint[] memory shares = new uint[](requests.length);
+		uint256[] memory shares = new uint256[](requests.length);
 		for (uint256 i = 0; i < requests.length; i++) {
 			SectorVault vault = SectorVault(requests[i].vaultAddr);
 			shares[i] = vault.balanceOf(address(xVault));
@@ -161,6 +157,42 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		assertEventCount(entries, "MessageSent(uint256,address,uint16,uint8,address)", mSent);
 	}
 
+	function xvaultFinalizeHarvest(address[] memory vaults, uint256[] memory amounts) public {
+		uint256 totalAmount = 0;
+		for (uint256 i; i < vaults.length; i++) {
+			totalAmount += amounts[i];
+			if (getVaultChainId(vaults[i]) == chainId) continue;
+			fakeIncomingXDeposit(vaults[i], amounts[i]);
+		}
+
+		// Go back to harvest test
+		// localDeposit, crossDeposit, pending, received, message sent, assert on
+		xvaultHarvestVault(0, 0, 0, 0, 0, false);
+
+		for (uint256 i; i < vaults.length; i++) {
+			if (getVaultChainId(vaults[i]) == chainId) continue;
+			fakeAnswerXHarvest(
+				vaults[i],
+				SectorVault(vaults[i]).underlyingBalance(address(xVault))
+			);
+		}
+
+		vm.prank(manager);
+		xVault.finalizeHarvest(totalAmount, 0);
+
+		// Calculate somehow expectedValue and maxDelta
+		assertEq(xVault.totalChildHoldings(), totalAmount, "Harvest was updated value.");
+		(uint256 lDeposit, uint256 cDeposit, uint256 pAnswers, uint256 rAnswers) = xVault
+			.harvestLedger();
+		assertEq(lDeposit, 0, "No more info on harvest Ledger");
+		assertEq(cDeposit, 0, "No more info on harvest Ledger");
+		assertEq(pAnswers, 0, "No more info on harvest Ledger");
+		assertEq(rAnswers, 0, "No more info on harvest Ledger");
+	}
+
+	/*//////////////////////////////////////////////////////
+						ASSERT HELPERS
+	//////////////////////////////////////////////////////*/
 
 	function assertEventCount(
 		Vm.Log[] memory entries,
@@ -172,5 +204,60 @@ contract SectorCrossVaultTestSetup is SectorTest {
 			if (entries[i].topics[0] == keccak256(bytes(eventEncoder))) foundEvents++;
 		}
 		assertEq(foundEvents, count, string.concat("Events don't match for ", eventEncoder));
+	}
+
+	/*//////////////////////////////////////////////////////
+						FAKE X CALLS
+	//////////////////////////////////////////////////////*/
+
+	function fakeAnswerXHarvest(address vaultAddr, uint256 amount) public {
+		vm.startPrank(getPostmanAddr(vaultAddr));
+		xVault.receiveMessage(
+			Message(amount, vaultAddr, address(0), anotherChainId),
+			messageType.HARVEST
+		);
+		vm.stopPrank();
+	}
+
+	function fakeIncomingXDeposit(address vaultAddr, uint256 amount) public {
+		SectorVault vault = SectorVault(vaultAddr);
+
+		console.log(vaultAddr);
+		console.log(getPostmanAddr(vaultAddr));
+
+		vm.startPrank(getPostmanAddr(vaultAddr));
+		vault.receiveMessage(
+			Message(amount, address(xVault), address(0), chainId),
+			messageType.DEPOSIT
+		);
+		vm.stopPrank();
+
+		// Fake that funds arrive after a bridge
+		vm.deal(address(vault), amount);
+		vm.startPrank(address(vault));
+		// Get some ERC20 for vault
+		underlying.deposit{ value: amount }();
+		vm.stopPrank();
+
+		// Manager process incoming funds
+		vm.startPrank(manager);
+		vault.processIncomingXFunds();
+		vm.stopPrank();
+	}
+
+	/*//////////////////////////////////////////////////////
+						UTILITIES
+	//////////////////////////////////////////////////////*/
+
+	function getPostmanAddr(address vaultAddr) public view returns (address) {
+		(uint16 vChainId, uint16 id, ) = xVault.addrBook(vaultAddr);
+
+		return xVault.postmanAddr(id, vChainId);
+	}
+
+	function getVaultChainId(address vaultAddr) public view returns (uint16) {
+		(uint16 vChainId, , ) = xVault.addrBook(vaultAddr);
+
+		return vChainId;
 	}
 }

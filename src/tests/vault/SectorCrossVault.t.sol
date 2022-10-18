@@ -18,18 +18,14 @@ import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
 contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
-	// ISCYStrategy strategy1;
-	// ISCYStrategy strategy2;
-	// ISCYStrategy strategy3;
-
 	uint256 mainnetFork;
 	uint256 avaxFork;
 	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");
 	string AVAX_RPC_URL = vm.envString("AVAX_RPC_URL");
 	string MAINNET_RPC_URL = vm.envString("INFURA_COMPLETE_RPC");
-	// Choose eth mainnet because I don't know
-	uint16 anotherChainId = 1;
-	uint16 postmanId = 1;
+
+	// uint16 anotherChainId = 1;
+	// uint16 postmanId = 1;
 
 	// uint16 chainId;
 
@@ -76,10 +72,6 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
 
-		// xVault.deposit();
-		// childVault.deposit();
-		// nephewVault.deposit();
-
 		// F*** stupid
 		chainPair[] memory inptChainPair = new chainPair[](9);
 		inptChainPair[0] = chainPair(250, 122);
@@ -101,6 +93,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		// // Config both vaults to use postmen
 		xVault.managePostman(postmanId, chainId, address(postmanLz));
+		xVault.managePostman(postmanId, anotherChainId, address(postmanLz));
 		// xVault.managePostman(2, chainId, address(postmanMc));
 		xVault.addVault(address(childVault), chainId, 1, true);
 		// Pretend that is on other chain
@@ -125,7 +118,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		// Postman needs native to pay provider.
 		vm.deal(address(postmanLz), 10 ether);
 
-		// To prevent rounding attacks
+		// To prevent rounding attacks (to fix accounting is this case)
 		depositXVault(manager, mLp);
 	}
 
@@ -328,7 +321,89 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	}
 
 	// // More variations on that (no messages for example)
-	function testCrossFinalizeHarvest() public {
+
+	function testOneChainFinalizeHarvest() public {
+		// uint256 amount = 1 ether;
+
+		// depositXVault(user1, amount);
+
+		// Request[] memory requests = new Request[](1);
+		// requests[0] = Request(address(nephewVault), amount);
+
+		// // Requests, total amount deposited, expected msgSent events, expected bridge events
+		// xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+
+		// // This part is to fake a cross deposit into a vault
+		// // Fake a receive message on destination
+		// vm.startPrank(address(postmanLz));
+		// nephewVault.receiveMessage(
+		// 	Message(amount, address(xVault), address(0), chainId),
+		// 	messageType.DEPOSIT
+		// );
+		// vm.stopPrank();
+
+		// // Fake that funds arrive after a bridge
+		// vm.deal(address(nephewVault), amount);
+		// vm.startPrank(address(nephewVault));
+		// // Get some ERC20 for vault
+		// underlying.deposit{ value: amount }();
+		// vm.stopPrank();
+
+		// // Manager process incoming funds
+		// vm.startPrank(manager);
+		// nephewVault.processIncomingXFunds();
+		// vm.stopPrank();
+
+		// // Go back to harvest test
+		// // localDeposit, crossDeposit, pending, received, message sent, assert on
+		// xvaultHarvestVault(0, 0, 0, 0, 0, false);
+
+		// // Fake return from cross child vault
+		// vm.startPrank(address(postmanLz));
+		// xVault.receiveMessage(
+		// 	Message(
+		// 		nephewVault.underlyingBalance(address(xVault)),
+		// 		address(nephewVault),
+		// 		address(0),
+		// 		anotherChainId
+		// 	),
+		// 	messageType.HARVEST
+		// );
+		// vm.stopPrank();
+
+		// vm.prank(manager);
+		// xVault.finalizeHarvest(amount, 0);
+
+		// // Calculate somehow expectedValue and maxDelta
+		// assertEq(xVault.totalChildHoldings(), amount, "Harvest was updated value.");
+		// (uint256 lDeposit, uint256 cDeposit, uint256 pAnswers, uint256 rAnswers) = xVault
+		// 	.harvestLedger();
+		// assertEq(lDeposit, 0, "No more info on harvest Ledger");
+		// assertEq(cDeposit, 0, "No more info on harvest Ledger");
+		// assertEq(pAnswers, 0, "No more info on harvest Ledger");
+		// assertEq(rAnswers, 0, "No more info on harvest Ledger");
+		uint256 amount = 1 ether;
+
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = Request(address(childVault), amount);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+
+		address[] memory vaults = new address[](2);
+		vaults[0] = address(childVault);
+		vaults[1] = address(nephewVault);
+
+		uint[] memory amounts = new uint[](2);
+		amounts[0] = amount;
+		amounts[1] = 0;
+		xvaultFinalizeHarvest(vaults, amounts);
+	}
+
+	// // More variations on that (no messages for example)
+	function testOneCrossFinalizeHarvest() public {
 		uint256 amount = 1 ether;
 
 		depositXVault(user1, amount);
@@ -339,54 +414,12 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
 
-		// This part is to fake a cross deposit into a vault
-		// Fake a receive message on destination
-		vm.startPrank(address(postmanLz));
-		nephewVault.receiveMessage(
-			Message(amount, address(xVault), address(0), chainId),
-			messageType.DEPOSIT
-		);
-		vm.stopPrank();
+		address[] memory vaults = new address[](1);
+		vaults[0] = address(nephewVault);
 
-		// Fake that funds arrive after a bridge
-		vm.deal(address(nephewVault), amount);
-		vm.startPrank(address(nephewVault));
-		// Get some ERC20 for vault
-		underlying.deposit{ value: amount }();
-		vm.stopPrank();
-
-		// Manager process incoming funds
-		vm.startPrank(manager);
-		nephewVault.processIncomingXFunds();
-		vm.stopPrank();
-
-		// Go back to harvest test
-		// localDeposit, crossDeposit, pending, received, message sent, assert on
-		xvaultHarvestVault(0, 0, 0, 0, 0, false);
-
-		// Fake return from cross child vault
-		vm.startPrank(address(postmanLz));
-		xVault.receiveMessage(
-			Message(
-				nephewVault.underlyingBalance(address(xVault)),
-				address(nephewVault),
-				address(0),
-				anotherChainId
-			),
-			messageType.HARVEST
-		);
-		vm.stopPrank();
-
-		vm.prank(manager);
-		xVault.finalizeHarvest(amount, 0);
-
-		// Calculate somehow expectedValue and maxDelta
-		assertEq(xVault.totalChildHoldings(), amount, "Harvest was updated value.");
-		(uint lDeposit, uint cDeposit, uint pAnswers, uint rAnswers) = xVault.harvestLedger();
-		assertEq(lDeposit, 0, "No more info on harvest Ledger");
-		assertEq(cDeposit, 0, "No more info");
-		assertEq(pAnswers, 0, "No more info");
-		assertEq(rAnswers, 0, "No more info");
+		uint[] memory amounts = new uint[](1);
+		amounts[0] = amount;
+		xvaultFinalizeHarvest(vaults, amounts);
 	}
 
 	// // Assert errors

@@ -8,7 +8,7 @@ import "../interfaces/postOffice/IPostman.sol";
 
 abstract contract XChainIntegrator is Auth {
 	mapping(address => Vault) public addrBook;
-	mapping(uint16 => mapping(uint16 => address)) internal postmanAddr;
+	mapping(uint16 => mapping(uint16 => address)) public postmanAddr;
 	// mapping(messageType => function(Message calldata)) internal messageAction;
 
 	uint16 immutable chainId = uint16(block.chainid);
