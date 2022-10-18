@@ -179,9 +179,13 @@ contract SectorVault is SectorBase {
 	/// INTERFACE UTILS
 
 	/// @dev returns accurate value used to estimate current value
-	function currentUnderlyingBalance(address user) external view returns (uint256) {
+	function estimateUnderlyingBalance(address user) external view returns (uint256) {
 		uint256 shares = balanceOf(user);
-		return sharesToUnderlying(shares);
+		// value based on last harvest exchange rate
+		uint256 cachedValue = convertToAssets(shares);
+		// valued based on current tvl
+		uint256 currentValue = sharesToUnderlying(shares);
+		return cachedValue > currentValue ? currentValue : cachedValue;
 	}
 
 	/// @dev current exchange rate (different from previewDeposit rate)
