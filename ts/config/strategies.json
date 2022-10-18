@@ -1,5 +1,6 @@
 {
-  "strats": ["USDCimxAVAX", "USDC-OP-tarot-velo"],
+  "hlpStrats": [],
+  "imxStrats": ["USDCimxAVAX", "USDC-OP-tarot-velo"],
   "USDCimxAVAX": {
     "a_underlying": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664",
     "b_short": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
