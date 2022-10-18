@@ -12,6 +12,7 @@ import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { SectorCrossVaultTestSetup } from "./SectorCrossVaultSetup.t.sol";
+import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
@@ -26,6 +27,9 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");
 	string AVAX_RPC_URL = vm.envString("AVAX_RPC_URL");
 	string MAINNET_RPC_URL = vm.envString("INFURA_COMPLETE_RPC");
+	// Choose eth mainnet because I don't know
+	uint16 anotherChainId = 1;
+	uint16 postmanId = 1;
 
 	// uint16 chainId;
 
@@ -95,9 +99,6 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		// This is breaking because in the constructor calls a function on proxy (executor)
 		// postmanMc = new MultichainPostman(address(xVault));
 
-		uint16 postmanId = 1;
-		// Choose eth mainnet because I don't know
-		uint16 anotherChainId = 1;
 		// // Config both vaults to use postmen
 		xVault.managePostman(postmanId, chainId, address(postmanLz));
 		// xVault.managePostman(2, chainId, address(postmanMc));
@@ -279,34 +280,114 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		requests[0] = Request(address(childVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount, 0, 0, true);
+		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
 
-		vm.prank(manager);
-		xVault.harvestVaults();
-
-		(
-			uint256 localDeposit,
-			uint256 crossDeposit,
-			uint256 pendingAnswers,
-			uint256 receivedAnswers
-		) = xVault.harvestLedger();
-
-		assertEq(
-			localDeposit,
-			childVault.balanceOf(address(xVault)),
-			"Local depoist must be equal to total deposited"
-		);
-		assertEq(crossDeposit, 0, "Cross deposit value must be zero");
-		assertEq(pendingAnswers, 1, "Pending answers must be equal to number of cross vaults");
-		assertEq(receivedAnswers, 0, "Received answers must be zero");
+		// localDeposit, crossDeposit, pending, received, message sent, assert on
+		xvaultHarvestVault(childVault.balanceOf(address(xVault)), 0, 1, 0, 1, true);
 	}
 
-	// function testOneCrossHarvestVaults() public {}
+	function testOneCrossHarvestVaults() public {
+		uint256 amount = 1 ether;
 
-	// function testMultipleHarvestVaults() public {}
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = Request(address(nephewVault), amount);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+
+		// localDeposit, crossDeposit, pending, received, message sent, assert on
+		xvaultHarvestVault(0, nephewVault.balanceOf(address(xVault)), 1, 0, 1, true);
+	}
+
+	function testMultipleHarvestVaults() public {
+		uint256 amount1 = 1 ether;
+		uint256 amount2 = 1987198723 wei;
+		uint256 amount3 = 389 gwei;
+
+		depositXVault(user1, amount1);
+
+		Request[] memory requests = new Request[](3);
+		requests[0] = Request(address(nephewVault), amount1);
+		requests[1] = Request(address(childVault), amount2);
+		requests[2] = Request(address(childVault), amount3);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount1 + amount2 + amount3, 0, 0, false);
+
+		// localDeposit, crossDeposit, pending, received, message sent, assert on
+		xvaultHarvestVault(
+			childVault.balanceOf(address(xVault)),
+			nephewVault.balanceOf(address(xVault)),
+			1,
+			0,
+			1,
+			true
+		);
+	}
 
 	// // More variations on that (no messages for example)
-	// function testFinalizeHarvest() public {}
+	function testCrossFinalizeHarvest() public {
+		uint256 amount = 1 ether;
+
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = Request(address(nephewVault), amount);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+
+		// This part is to fake a cross deposit into a vault
+		// Fake a receive message on destination
+		vm.startPrank(address(postmanLz));
+		nephewVault.receiveMessage(
+			Message(amount, address(xVault), address(0), chainId),
+			messageType.DEPOSIT
+		);
+		vm.stopPrank();
+
+		// Fake that funds arrive after a bridge
+		vm.deal(address(nephewVault), amount);
+		vm.startPrank(address(nephewVault));
+		// Get some ERC20 for vault
+		underlying.deposit{ value: amount }();
+		vm.stopPrank();
+
+		// Manager process incoming funds
+		vm.startPrank(manager);
+		nephewVault.processIncomingXFunds();
+		vm.stopPrank();
+
+		// Go back to harvest test
+		// localDeposit, crossDeposit, pending, received, message sent, assert on
+		xvaultHarvestVault(0, 0, 0, 0, 0, false);
+
+		// Fake return from cross child vault
+		vm.startPrank(address(postmanLz));
+		xVault.receiveMessage(
+			Message(
+				nephewVault.underlyingBalance(address(xVault)),
+				address(nephewVault),
+				address(0),
+				anotherChainId
+			),
+			messageType.HARVEST
+		);
+		vm.stopPrank();
+
+		vm.prank(manager);
+		xVault.finalizeHarvest(amount, 0);
+
+		// Calculate somehow expectedValue and maxDelta
+		assertEq(xVault.totalChildHoldings(), amount, "Harvest was updated value.");
+		(uint lDeposit, uint cDeposit, uint pAnswers, uint rAnswers) = xVault.harvestLedger();
+		assertEq(lDeposit, 0, "No more info on harvest Ledger");
+		assertEq(cDeposit, 0, "No more info");
+		assertEq(pAnswers, 0, "No more info");
+		assertEq(rAnswers, 0, "No more info");
+	}
 
 	// // Assert errors
 

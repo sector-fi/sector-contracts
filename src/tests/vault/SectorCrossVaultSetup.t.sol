@@ -126,6 +126,42 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		assertEventCount(entries, "MessageSent(uint256,address,uint16,uint8,address)", msgSent);
 	}
 
+	function xvaultHarvestVault(
+		uint256 lDeposit,
+		uint256 cDeposit,
+		uint256 pAnswers,
+		uint256 rAnswers,
+		uint256 mSent,
+		bool assertOn
+	) public {
+		vm.recordLogs();
+		vm.prank(manager);
+		xVault.harvestVaults();
+
+		(
+			uint256 localDeposit,
+			uint256 crossDeposit,
+			uint256 pendingAnswers,
+			uint256 receivedAnswers
+		) = xVault.harvestLedger();
+
+		if (!assertOn) return;
+
+		assertEq(localDeposit, lDeposit, "Local depoist must be equal to total deposited");
+		assertEq(crossDeposit, cDeposit, "Cross deposit value must be expected");
+		assertEq(
+			pendingAnswers,
+			pAnswers,
+			"Pending answers must be equal to number of cross vaults"
+		);
+		assertEq(receivedAnswers, rAnswers, "Received answers must be expected");
+
+		Vm.Log[] memory entries = vm.getRecordedLogs();
+
+		assertEventCount(entries, "MessageSent(uint256,address,uint16,uint8,address)", mSent);
+	}
+
+
 	function assertEventCount(
 		Vm.Log[] memory entries,
 		string memory eventEncoder,
