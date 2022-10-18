@@ -418,7 +418,7 @@ abstract contract IMXCore is
 		(uint256 uR, uint256 sR, ) = pair().getReserves();
 		(uR, sR) = address(_underlying) == pair().token0() ? (uR, sR) : (sR, uR);
 		uint256 lp = pair().totalSupply();
-		// for deposit of 1 underlying we get 1+_optimalUBorrow worth or lp -> collateral token
+		// for deposit of 1 underlying we get 1+_optimalUBorrow worth of lp -> collateral token
 		return (1e18 * (uR * _getLiquidity(1e18))) / lp / (1e18 + _optimalUBorrow());
 	}
 

@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import "../HedgedLP.sol";
-import "../adapters/Compound.sol";
-import "../adapters/MasterChefFarm.sol";
-import "../adapters/CompMultiFarm.sol";
+import { HLPConfig, NativeToken } from "../../../interfaces/Structs.sol";
+import { HLPCore } from "../HLPCore.sol";
+import { Compound } from "../adapters/Compound.sol";
+import { MasterChefFarm } from "../adapters/MasterChefFarm.sol";
+import { CompMultiFarm } from "../adapters/CompMultiFarm.sol";
+import { Auth, AuthConfig } from "../../../common/Auth.sol";
 
 // import "hardhat/console.sol";
 
 // USED BY:
 // USDCmovrSOLARwell
-contract USDCmovrSOLARwell is HedgedLP, Compound, CompMultiFarm, MasterChefFarm {
+contract MasterChefCompMulti is HLPCore, Compound, CompMultiFarm, MasterChefFarm {
 	// HedgedLP should allways be intialized last
-	constructor(Config memory config) BaseStrategy(config.vault, config.symbol, config.name) {
+	constructor(AuthConfig memory authConfig, HLPConfig memory config) Auth(authConfig) {
 		__MasterChefFarm_init_(
 			config.uniPair,
 			config.uniFarm,
@@ -25,15 +27,8 @@ contract USDCmovrSOLARwell is HedgedLP, Compound, CompMultiFarm, MasterChefFarm 
 
 		__CompoundFarm_init_(config.lendRewardRouter, config.lendRewardToken);
 
-		__HedgedLP_init_(config.underlying, config.short, config.maxTvl);
+		__HedgedLP_init_(config.underlying, config.short, config.maxTvl, config.vault);
 
-		_isBase = config.isBase;
+		nativeToken = config.nativeToken;
 	}
-
-	uint8 override(ICompound) _isBase;
-
-	// // if borrow token is treated as ETH
-	// function _isBase(uint8) internal pure override(ICompound) returns (bool) {
-	// 	return true;
-	// }
 }

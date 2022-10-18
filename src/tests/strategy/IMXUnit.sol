@@ -5,11 +5,11 @@ import { ICollateral } from "../../interfaces/imx/IImpermax.sol";
 import { IMX, IMXCore } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IMXSetup, IUniswapV2Pair } from "./IMXSetup.sol";
+import { SetupImx, IUniswapV2Pair } from "./SetupImx.sol";
 
 import "hardhat/console.sol";
 
-contract IMXUnitTest is IMXSetup {
+contract IMXUnitTest is SetupImx {
 	function testLoanHealth() public {
 		deposit(100e6);
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;

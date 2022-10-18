@@ -56,7 +56,7 @@ contract IMXLend is SCYStrategy, SCYVault {
 		return underlyingBalance;
 	}
 
-	function _stratClosePosition() internal override returns (uint256) {
+	function _stratClosePosition(uint256) internal override returns (uint256) {
 		uint256 yeildTokenAmnt = IERC20(strategy).balanceOf(address(this));
 		IERC20(strategy).safeTransfer(strategy, yeildTokenAmnt);
 		return IPoolToken(strategy).redeem(address(this));

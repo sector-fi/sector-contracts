@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICollateral } from "../../interfaces/imx/IImpermax.sol";
-import { IMX, IMXCore } from "../../strategies/imx/IMX.sol";
-import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
-import { IMXSetup } from "./IMXSetup.sol";
+import { SectorTest } from "../utils/SectorTest.sol";
+import { StratUtils, IERC20 } from "./StratUtils.sol";
 
 import "hardhat/console.sol";
 
-contract IMXIntegrationTest is IMXSetup {
+// These test run for all strategies
+abstract contract IntegrationTest is SectorTest, StratUtils {
 	function testIntegrationFlow() public {
 		deposit(100e6);
 		noRebalance();
@@ -17,7 +15,7 @@ contract IMXIntegrationTest is IMXSetup {
 		deposit(100e6);
 		harvest();
 		adjustPrice(0.9e18);
-		strategy.getAndUpdateTVL();
+		genericStrategy.getAndUpdateTVL();
 		rebalance();
 		adjustPrice(1.2e18);
 		rebalance();
@@ -61,32 +59,26 @@ contract IMXIntegrationTest is IMXSetup {
 		assertGt(balance, amnt, "first balance should not decrease"); // within .1%
 	}
 
-	function noRebalance() public {
-		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
-		vm.expectRevert(IMXCore.RebalanceThreshold.selector);
-		strategy.rebalance(expectedPrice, maxDelta);
+	function testManagerWithdraw() public {
+		uint256 amnt = 1000e6;
+		deposit(1000e6);
+		// uint256 shares = vault.totalSupply();
+		// vault.withdrawFromStrategy(shares, 0);
+		vault.closePosition(0, 0);
+		uint256 floatBalance = vault.uBalance();
+		assertApproxEqRel(floatBalance, amnt, .001e18);
+		assertEq(underlying.balanceOf(address(vault)), floatBalance);
+		vm.roll(block.number + 1);
+		vault.depositIntoStrategy(floatBalance, 0);
 	}
 
 	function withdrawCheck(uint256 fraction) public {
-		uint256 startTvl = strategy.getTotalTVL();
+		uint256 startTvl = genericStrategy.getTotalTVL();
 		withdraw(fraction);
 
-		uint256 tvl = strategy.getTotalTVL();
+		uint256 tvl = genericStrategy.getTotalTVL();
 		assertApproxEqAbs(tvl, (startTvl * (1e18 - fraction)) / 1e18, 10);
 		assertApproxEqAbs(vault.underlyingBalance(address(this)), tvl, 10);
-	}
-
-	function harvest() public {
-		if (!strategy.harvestIsEnabled()) return;
-		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
-		harvestParams.min = 0;
-		harvestParams.deadline = block.timestamp + 1;
-		strategy.getAndUpdateTVL();
-		uint256 tvl = strategy.getTotalTVL();
-		uint256 harvestAmnt = strategy.harvest(harvestParams);
-		uint256 newTvl = strategy.getTotalTVL();
-		assertGt(harvestAmnt, 0);
-		assertGt(newTvl, tvl);
 	}
 
 	function withdrawAll() public {
@@ -94,9 +86,9 @@ contract IMXIntegrationTest is IMXSetup {
 
 		vault.redeem(address(this), balance, address(underlying), 0);
 
-		uint256 tvl = strategy.getTotalTVL();
-		assertEq(tvl, 0);
-		assertEq(vault.balanceOf(address(this)), 0);
-		assertEq(vault.underlyingBalance(address(this)), 0);
+		uint256 tvl = genericStrategy.getTotalTVL();
+		assertEq(tvl, 0, "vault tvl");
+		assertEq(vault.balanceOf(address(this)), 0, "account shares");
+		assertEq(vault.underlyingBalance(address(this)), 0, "account value");
 	}
 }

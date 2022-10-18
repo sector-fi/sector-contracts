@@ -33,8 +33,8 @@ const addIMXStrategy = async (strategy) => {
     d_poolToken: collateral,
     e_farmToken: rewardToken,
     f_farmRouter: strategy.farmRouter,
-    g_chain: 'OP',
     h_harvestPath: [rewardToken, ...strategy.harvestPath],
+    x_chain: 'OP',
   };
   await addToConfig(strategy.name, config, strategy);
 };

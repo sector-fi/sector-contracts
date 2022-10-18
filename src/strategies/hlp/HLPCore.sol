@@ -7,19 +7,19 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { IBase, HarvestSwapParms } from "../mixins/IBase.sol";
 import { ILending } from "../mixins/ILending.sol";
 import { IUniFarm, SafeERC20, IERC20 } from "../mixins/IUniFarm.sol";
-import { BaseStrategy } from "./BaseStrategy.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import { Strategy } from "../../interfaces/Strategy.sol";
 import { Auth } from "../../common/Auth.sol";
+import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 // @custom: alphabetize dependencies to avoid linearization conflicts
-abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, IUniFarm {
+abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
+	using FixedPointMathLib for uint256;
 
 	event Deposit(address sender, uint256 amount);
 	event Redeem(address sender, uint256 amount);
@@ -57,6 +57,8 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 
 	address public vault;
 
+	bool public harvestIsEnabled = true;
+
 	modifier onlyVault() {
 		require(msg.sender == vault, "Strat: ONLY_VAULT");
 		_;
@@ -78,10 +80,13 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 	function __HedgedLP_init_(
 		address underlying_,
 		address short_,
-		uint256 maxTvl_
+		uint256 maxTvl_,
+		address _vault
 	) internal initializer {
 		_underlying = IERC20(underlying_);
 		_short = IERC20(short_);
+
+		vault = _vault;
 
 		_underlying.safeApprove(address(this), type(uint256).max);
 
@@ -237,8 +242,11 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 
 		uint256 totalLp = _getLiquidity();
 
-		uint256 redeemAmnt = (collateralBalance * removeLp) / totalLp;
-		uint256 repayAmnt = (shortPosition * removeLp) / totalLp;
+		uint256 redeemAmnt = collateralBalance.mulDivUp(removeLp, totalLp);
+		uint256 repayAmnt = shortPosition.mulDivUp(removeLp, totalLp);
+
+		// TODO do we need this?
+		// uint256 shortBalance = _short.balanceOf(address(this));
 
 		// remove lp
 		(, uint256 sLp) = _removeLp(removeLp);
@@ -252,11 +260,11 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 		uint256 balance,
 		address exactToken,
 		address token
-	) internal returns (uint256 tokenOut, uint256 tokenIn) {
+	) internal returns (uint256 addToken, uint256 subtractToken) {
 		if (target > balance)
-			tokenIn = pair()._swapTokensForExactTokens(target - balance, token, exactToken);
+			subtractToken = pair()._swapTokensForExactTokens(target - balance, token, exactToken);
 		else if (balance > target)
-			tokenOut = pair()._swapExactTokensForTokens(balance - target, exactToken, token);
+			addToken = pair()._swapExactTokensForTokens(balance - target, exactToken, token);
 	}
 
 	/// @notice decreases position proportionally based on current position ratio
@@ -290,7 +298,7 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 			_lend(collateralAmnt);
 			_borrow(borrowAmnt);
 
-			_increaseLpPosition(addSLp);
+			_increaseLpPosition(addSLp + sLp);
 		}
 	}
 
@@ -324,8 +332,7 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 		uint256 tvl = getAndUpdateTVL();
 		uint256 positionOffset = getPositionOffset();
 
-		// don't rebalance unless we exceeded the threshold
-		require(positionOffset > rebalanceThreshold, "HLP: REB-THRESH"); // maybe next time...
+		if (positionOffset < rebalanceThreshold) revert RebalanceThreshold();
 
 		if (tvl == 0) return;
 		uint256 targetUnderlyingLP = _totalToLp(tvl);
@@ -335,9 +342,16 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 		emit Rebalance(_shortToUnderlying(1e18), positionOffset, tvl);
 	}
 
-	// note: one should call harvest immediately before close position
-	function closePosition(uint256 maxSlippage) public checkPrice(maxSlippage) onlyRole(GUARDIAN) {
+	// note: one should call harvest before closing position
+	function closePosition(uint256 maxSlippage)
+		public
+		checkPrice(maxSlippage)
+		onlyVault
+		returns (uint256 balance)
+	{
 		_closePosition();
+		balance = _underlying.balanceOf(address(this));
+		_underlying.safeTransfer(vault, balance);
 		emit UpdatePosition();
 	}
 
@@ -384,8 +398,6 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 		_repay(_short.balanceOf(address(this)));
 		uint256 collateralBalance = _updateAndGetCollateralBalance();
 		_redeem(collateralBalance);
-		uint256 balance = _underlying.balanceOf(address(this));
-		return _underlying.safeTransfer(vault, balance);
 	}
 
 	function _decreaseULpTo(uint256 targetUnderlyingLP)
@@ -450,14 +462,14 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 		uint256 addShort = targetShortLp - shortLP;
 		uint256 addUnderlying = _shortToUnderlying(addShort);
 
-		(uint256 tokenOut, uint256 tokenIn) = _tradeExact(
-			targetShortLp,
+		(uint256 addU, uint256 subtractU) = _tradeExact(
+			addShort,
 			sBalance,
 			address(_short),
 			address(_underlying)
 		);
 
-		uBalance += tokenOut - tokenIn;
+		uBalance = uBalance + addU - subtractU;
 
 		// we know that now our short balance is exact sBalance = sAmnt
 		// if we don't have enough underlying, we need to decrase sAmnt slighlty
@@ -496,7 +508,7 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 
 	// TVL
 
-	function getMaxTvl() public view override returns (uint256) {
+	function getMaxTvl() public view returns (uint256) {
 		// we don't want to get precise max borrow amaount available,
 		// we want to stay at least a getCollateralRatio away from max borrow
 		return min(_maxTvl, _oraclePriceOfShort(_maxBorrow() + _getBorrowBalance()));
@@ -591,7 +603,7 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 		(uint256 uR, uint256 sR, ) = pair().getReserves();
 		(uR, sR) = address(_underlying) == pair().token0() ? (uR, sR) : (sR, uR);
 		uint256 lp = pair().totalSupply();
-		return (_totalToLp(1e18) * lp) / uR;
+		return (1e18 * (uR * _getLiquidity(1e18))) / lp / _totalToLp(1e18);
 	}
 
 	// UTILS
@@ -618,6 +630,9 @@ abstract contract HLPCore is Auth, Strategy, ReentrancyGuard, IBase, ILending, I
 		return a < b ? a : b;
 	}
 
+	receive() external payable {}
+
+	error RebalanceThreshold();
 	error NonZeroFloat();
 	error MinLiquidity();
 }

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import "./IBase.sol";
-import "./IFarmable.sol";
+import { IBase, HarvestSwapParms } from "./IBase.sol";
+import { IFarmable, IUniswapV2Router01 } from "./IFarmable.sol";
 
 // import "hardhat/console.sol";
 

@@ -86,6 +86,11 @@ abstract contract MasterChefFarm is IUniFarm {
 		return lp;
 	}
 
+	function _getLiquidity(uint256 lpTokenBalance) internal view override returns (uint256) {
+		uint256 farmLp = _getFarmLp();
+		return farmLp + lpTokenBalance;
+	}
+
 	function _getLiquidity() internal view override returns (uint256) {
 		uint256 farmLp = _getFarmLp();
 		uint256 poolLp = _pair.balanceOf(address(this));

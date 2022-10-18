@@ -51,7 +51,7 @@ contract MockScyVault is SCYStrategy, SCYVault {
 		return (amntUnderlying, amntToTransfer);
 	}
 
-	function _stratClosePosition() internal override returns (uint256) {
+	function _stratClosePosition(uint256) internal override returns (uint256) {
 		uint256 amount = underlying.balanceOf(strategy);
 		MockERC20(yieldToken).burn(strategy, amount);
 		MockERC20(address(underlying)).burn(strategy, amount);

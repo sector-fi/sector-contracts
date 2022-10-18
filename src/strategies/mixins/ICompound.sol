@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import "../../interfaces/compound/ICTokenInterfaces.sol";
-import "../../interfaces/compound/IComptroller.sol";
-import "../../interfaces/compound/ICompPriceOracle.sol";
-import "../../interfaces/compound/IComptroller.sol";
+import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ICTokenErc20, ICTokenBase } from "../../interfaces/compound/ICTokenInterfaces.sol";
+import { IComptroller, ComptrollerV2Storage } from "../../interfaces/compound/IComptroller.sol";
+import { ICompPriceOracle } from "../../interfaces/compound/ICompPriceOracle.sol";
 
-import "../../interfaces/uniswap/IWETH.sol";
+import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
-import "./ILending.sol";
-import "./IBase.sol";
+import { ILending } from "./ILending.sol";
+import { IBase } from "./IBase.sol";
+import { NativeToken } from "../../interfaces/Structs.sol";
 
 // import "hardhat/console.sol";
 
 abstract contract ICompound is ILending {
 	using SafeERC20 for IERC20;
+
+	NativeToken public nativeToken = NativeToken.None;
 
 	function cTokenLend() public view virtual returns (ICTokenErc20);
 
@@ -37,25 +40,26 @@ abstract contract ICompound is ILending {
 		return collateralFactorMantissa;
 	}
 
-	// TODO handle error
 	function _redeem(uint256 amount) internal override {
+		// TODO handle native underlying
 		uint256 err = cTokenLend().redeemUnderlying(amount);
-		// require(err == 0, "Compund: error redeeming underlying");
+		require(err == 0, "Compund: error redeeming underlying");
 	}
 
 	function _borrow(uint256 amount) internal override {
 		cTokenBorrow().borrow(amount);
 
 		// in case we need to wrap the tokens
-		if (_isBase(1)) IWETH(address(short())).deposit{ value: amount }();
+		if (nativeToken == NativeToken.Short) IWETH(address(short())).deposit{ value: amount }();
 	}
 
 	function _lend(uint256 amount) internal override {
+		// TODO handle native underlying
 		cTokenLend().mint(amount);
 	}
 
 	function _repay(uint256 amount) internal override {
-		if (_isBase(1)) {
+		if (nativeToken == NativeToken.Short) {
 			// need to convert to base first
 			IWETH(address(short())).withdraw(amount);
 
@@ -102,8 +106,4 @@ abstract contract ICompound is ILending {
 	function _maxBorrow() internal view virtual override returns (uint256) {
 		return cTokenBorrow().getCash();
 	}
-
-	// returns true if either of the CTokens is cEth
-	// index 0 = cTokenLend index 1 = cTokenBorrow
-	function _isBase(uint8 index) internal virtual returns (bool) {}
 }

@@ -42,8 +42,8 @@ contract HLPVault is SCYStrategy, SCYVault {
 		return HLPCore(strategy).getTotalTVL();
 	}
 
-	function _stratClosePosition() internal pure override returns (uint256) {
-		revert NotImplemented();
+	function _stratClosePosition(uint256 slippageParam) internal override returns (uint256) {
+		return HLPCore(strategy).closePosition(slippageParam);
 	}
 
 	function _stratMaxTvl() internal view override returns (uint256) {

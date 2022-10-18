@@ -2,15 +2,16 @@
 pragma solidity 0.8.16;
 
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IFarmable, ICompound, IUniswapV2Router01, HarvestSwapParms, ICTokenErc20 } from "../../mixins/ICompound.sol";
+import { ICompound, ICTokenErc20 } from "../../mixins/ICompound.sol";
 import { IUniswapV2Pair } from "../../../interfaces/uniswap/IUniswapV2Pair.sol";
+import { IFarmable, HarvestSwapParms, IUniswapV2Router01 } from "../../mixins/IFarmable.sol";
 
 // import "hardhat/console.sol";
 
 abstract contract CompoundFarm is ICompound, IFarmable {
 	using SafeERC20 for IERC20;
 
-	IUniswapV2Router01 private _router; // use router here
+	IUniswapV2Router01 private _router;
 	IERC20 _farmToken;
 
 	function __CompoundFarm_init_(address router_, address token_) internal initializer {

@@ -28,7 +28,7 @@ interface ISCYStrategy {
 
 	function sendERC20ToStrategy() external view returns (bool);
 
-	function strategy() external view returns (address);
+	function strategy() external view returns (address payable);
 
 	function underlyingBalance(address) external view returns (uint256);
 

@@ -44,7 +44,7 @@ contract IMXVault is SCYStrategy, SCYVault {
 		return IMX(strategy).getTotalTVL();
 	}
 
-	function _stratClosePosition() internal override returns (uint256) {
+	function _stratClosePosition(uint256) internal override returns (uint256) {
 		return IMX(strategy).closePosition();
 	}
 

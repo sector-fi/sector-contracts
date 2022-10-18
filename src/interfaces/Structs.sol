@@ -1,10 +1,16 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
 enum CallType {
 	ADD_LIQUIDITY_AND_MINT,
 	BORROWB,
 	REMOVE_LIQ_AND_REPAY
+}
+
+enum NativeToken {
+	None,
+	Underlying,
+	Short
 }
 
 struct CalleeData {
@@ -47,7 +53,9 @@ struct IMXConfig {
 	address guardian;
 }
 
-struct Config {
+struct HLPConfig {
+	string symbol;
+	string name;
 	address underlying;
 	address short;
 	address cTokenLend;
@@ -61,7 +69,6 @@ struct Config {
 	address lendRewardRouter;
 	address lendRewardToken;
 	address vault;
-	string symbol;
-	string name;
 	uint256 maxTvl;
+	NativeToken nativeToken;
 }
