@@ -14,6 +14,14 @@ struct Vault {
     bool allowed;
 }
 
+struct Request {
+	address vaultAddr;
+	uint256 amount;
+	address allowanceTarget;
+	address registry;
+	bytes txData;
+}
+
 enum messageType {
     NONE,
     DEPOSIT,

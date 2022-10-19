@@ -93,7 +93,7 @@ abstract contract XChainIntegrator is Auth {
 	/// @param amount amount of tokens to bridge
 	/// @param destinationChainId chain Id of receiving chain
 	/// @param data calldata of txn to be sent
-	function sendTokens(
+	function _sendTokens(
 		address asset,
 		address allowanceTarget,
 		address socketRegistry,
@@ -101,7 +101,7 @@ abstract contract XChainIntegrator is Auth {
 		uint256 amount,
 		uint256 destinationChainId,
 		bytes calldata data
-	) public onlyRole(MANAGER) {
+	) internal onlyRole(MANAGER) {
 		verifySocketCalldata(data, destinationChainId, asset, destinationAddress);
 
 		ERC20(asset).approve(allowanceTarget, amount);
@@ -307,5 +307,6 @@ abstract contract XChainIntegrator is Auth {
 	error VaultMissing(address vault);
 	error VaultAlreadyAdded();
 	error BridgeError();
+	error SameChainOperation();
 	error MissingIncomingXFunds();
 }

@@ -12,10 +12,6 @@ import { SectorBase } from "./SectorBase.sol";
 import "../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
-struct Request {
-	address vaultAddr;
-	uint256 amount;
-}
 
 struct HarvestLedger {
 	uint256 localDepositValue;
@@ -46,54 +42,57 @@ contract SectorCrossVault is SectorBase {
 					Cross Vault Interface
 	/////////////////////////////////////////////////////*/
 
-	function depositIntoVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+	function depositIntoXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
 
 			Vault memory vault = checkVault(vaultAddr);
+			if (vault.chainId == chainId) revert SameChainOperation();
 
-			if (vault.chainId == chainId) {
-				ERC20(underlying()).approve(vaultAddr, amount);
-				BatchedWithdraw(vaultAddr).deposit(amount, address(this));
-			} else {
-				_sendMessage(
-					vaultAddr,
-					vault,
-					Message(amount, address(this), address(0), chainId),
-					messageType.DEPOSIT
-				);
+			totalChildHoldings += amount;
+			beforeWithdraw(amount, 0);
 
-				emit BridgeAsset(chainId, vault.chainId, amount);
-			}
+			_sendMessage(
+				vaultAddr,
+				vault,
+				Message(amount, address(this), address(0), chainId),
+				messageType.DEPOSIT
+			);
+
+			_sendTokens(
+				underlying(),
+				vaults[i].allowanceTarget,
+				vaults[i].registry,
+				vaultAddr,
+				amount,
+				addrBook[vaultAddr].chainId,
+				vaults[i].txData
+			);
+
+			emit BridgeAsset(chainId, vault.chainId, amount);
 
 			unchecked {
 				i++;
 			}
-
-			// update total holdings by child vaults
-			totalChildHoldings += amount;
 		}
 	}
 
-	function withdrawFromVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+	function withdrawFromXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
 
 			Vault memory vault = checkVault(vaultAddr);
 
-			if (vault.chainId == chainId) {
-				BatchedWithdraw bWithdraw = BatchedWithdraw(vaultAddr);
-				bWithdraw.requestRedeem((bWithdraw.balanceOf(address(this)) * amount) / 100);
-			} else {
-				_sendMessage(
-					vaultAddr,
-					vault,
-					Message(amount, address(this), address(0), chainId),
-					messageType.WITHDRAW
-				);
-			}
+			if (vault.chainId == chainId) revert SameChainOperation();
+
+			_sendMessage(
+				vaultAddr,
+				vault,
+				Message(amount, address(this), address(0), chainId),
+				messageType.WITHDRAW
+			);
 
 			unchecked {
 				i++;
