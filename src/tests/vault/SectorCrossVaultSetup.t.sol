@@ -32,16 +32,26 @@ contract SectorCrossVaultTestSetup is SectorTest {
 	MultichainPostman postmanMc;
 
 	function depositXVault(address acc, uint256 amount) public {
+		depositVault(acc, amount, address(xVault));
+	}
+
+	function depositVault(
+		address acc,
+		uint256 amount,
+		address vault
+	) public {
+		SectorBase v = SectorBase(vault);
+
 		vm.deal(acc, amount);
 
 		vm.startPrank(acc);
 
 		// Get some ERC20 for user
 		underlying.deposit{ value: amount }();
-		underlying.approve(address(xVault), amount);
+		underlying.approve(vault, amount);
 
-		// Deposit into XVault
-		xVault.deposit(amount, address(user1));
+		// Deposit into Vault
+		v.deposit(amount, acc);
 
 		vm.stopPrank();
 	}
