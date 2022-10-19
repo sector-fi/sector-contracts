@@ -187,8 +187,12 @@ contract SectorCrossVaultTestSetup is SectorTest {
 			);
 		}
 
+		vm.recordLogs();
+
 		vm.prank(manager);
 		xVault.finalizeHarvest(totalAmount, 0);
+
+		Vm.Log[] memory entries = vm.getRecordedLogs();
 
 		// Calculate somehow expectedValue and maxDelta
 		assertEq(xVault.totalChildHoldings(), totalAmount, "Harvest was updated value.");
@@ -198,6 +202,9 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		assertEq(cDeposit, 0, "No more info on harvest Ledger");
 		assertEq(pAnswers, 0, "No more info on harvest Ledger");
 		assertEq(rAnswers, 0, "No more info on harvest Ledger");
+
+		// Harvest(treasury, profit, _performanceFee, _managementFee, feeShares, tvl)
+		assertEventCount(entries, "Harvest(address,uint256,uint256,uint256,uint256,uint256)", 1);
 	}
 
 	/*//////////////////////////////////////////////////////
@@ -231,9 +238,6 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 	function fakeIncomingXDeposit(address vaultAddr, uint256 amount) public {
 		SectorVault vault = SectorVault(vaultAddr);
-
-		console.log(vaultAddr);
-		console.log(getPostmanAddr(vaultAddr));
 
 		vm.startPrank(getPostmanAddr(vaultAddr));
 		vault.receiveMessage(
