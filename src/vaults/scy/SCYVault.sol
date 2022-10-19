@@ -318,8 +318,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 	function sharesToUnderlying(uint256 shares) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
+		if (_totalSupply == 0) return (shares * _stratCollateralToUnderlying()) / ONE;
 		uint256 adjustedShares = (shares * (_totalSupply - lockedProfit())) / _totalSupply;
-		if (_totalSupply == 0) return (adjustedShares * _stratCollateralToUnderlying()) / ONE;
 		return adjustedShares.mulDivDown(getTvl(), _totalSupply);
 	}
 

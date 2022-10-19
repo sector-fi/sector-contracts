@@ -13,12 +13,13 @@ import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { MasterChefCompMulti } from "strategies/hlp/implementations/MasterChefCompMulti.sol";
 import { StratUtils } from "./StratUtils.sol";
+import { IntegrationTest } from "./Integration.sol";
 
 import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
 
-contract SetupHlp is SectorTest, StratUtils {
+contract SetupHlp is SectorTest, StratUtils, IntegrationTest {
 	using stdJson for string;
 
 	string TEST_STRATEGY = "USDC-MOVR-SOLAR-WELL";
@@ -106,7 +107,7 @@ contract SetupHlp is SectorTest, StratUtils {
 			)
 		);
 
-		minLp = vault.MIN_LIQUIDITY();
+		mLp = vault.MIN_LIQUIDITY();
 		config.vault = address(vault);
 
 		AuthConfig memory authConfig = AuthConfig(owner, guardian, manager);
@@ -116,6 +117,8 @@ contract SetupHlp is SectorTest, StratUtils {
 		underlying.approve(address(vault), type(uint256).max);
 
 		configureUtils(config.underlying, config.short, config.uniPair, address(strategy));
+
+		// deposit(mLp);
 	}
 
 	function rebalance() public override {

@@ -10,10 +10,11 @@ import { SCYVault, IMXLend, Strategy, AuthConfig, FeeConfig } from "../../vaults
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { StratUtils } from "./StratUtils.sol";
+import { IntegrationTest } from "./Integration.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
-contract SetupImxLend is SectorTest, StratUtils {
+contract SetupImxLend is SectorTest, StratUtils, IntegrationTest {
 	string AVAX_RPC_URL = vm.envString("AVAX_RPC_URL");
 	uint256 AVAX_BLOCK = vm.envUint("AVAX_BLOCK");
 	uint256 avaxFork;
@@ -47,14 +48,17 @@ contract SetupImxLend is SectorTest, StratUtils {
 				strategyConfig
 			)
 		);
-		minLp = vault.MIN_LIQUIDITY();
+
 		usdc.approve(address(vault), type(uint256).max);
+
 		configureUtils(
 			address(strategyConfig.underlying),
 			address(0),
 			address(0),
 			address(strategy)
 		);
+		mLp = vault.MIN_LIQUIDITY();
+		mLp = vault.sharesToUnderlying(mLp);
 	}
 
 	function rebalance() public override {}

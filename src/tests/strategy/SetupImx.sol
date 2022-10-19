@@ -11,12 +11,13 @@ import { SCYVault, IMXVault, Strategy, AuthConfig, FeeConfig } from "../../vault
 import { IMX, IMXCore } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { StratUtils } from "./StratUtils.sol";
+import { IntegrationTest } from "./Integration.sol";
 
 import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
 
-contract SetupImx is SectorTest, StratUtils {
+contract SetupImx is SectorTest, StratUtils, IntegrationTest {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
@@ -93,7 +94,7 @@ contract SetupImx is SectorTest, StratUtils {
 			)
 		);
 
-		minLp = vault.MIN_LIQUIDITY();
+		mLp = vault.MIN_LIQUIDITY();
 		config.vault = address(vault);
 
 		strategy = new IMX();
@@ -103,6 +104,8 @@ contract SetupImx is SectorTest, StratUtils {
 		underlying.approve(address(vault), type(uint256).max);
 
 		configureUtils(config.underlying, config.short, config.uniPair, address(strategy));
+
+		// deposit(mLp);
 	}
 
 	function noRebalance() public override {
