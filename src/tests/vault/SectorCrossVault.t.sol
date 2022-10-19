@@ -321,8 +321,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			true
 		);
 	}
-
-	// // More variations on that (no messages for example)
+	// More variations on that (no messages for example)
 
 	function testOneChainFinalizeHarvest() public {
 		uint256 amount = 1 ether;
