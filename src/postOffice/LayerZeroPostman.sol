@@ -70,7 +70,7 @@ contract LayerZeroPostman is
 		// send LayerZero message
 		endpoint.send{ value: messageFee }( // {value: messageFee} will be paid out of this contract!
 			uint16(chains[_dstChainId]), // destination chainId
-			abi.encodePacked(_dstPostman), // destination address of postman on dst chain
+			abi.encodePacked(_dstPostman, address(this)), // destination address of postman on dst chain
 			payload, // abi.encode()'ed bytes
 			payable(this), // (msg.sender will be this contract) refund address (LayerZero will refund any extra gas back to caller of send()
 			address(0x0), // 'zroPaymentAddress' unused for this mock/example

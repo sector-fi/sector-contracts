@@ -2,6 +2,7 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { SectorVault } from "./SectorVault.sol";
 import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "./ERC4626/ERC4626.sol";
@@ -11,29 +12,27 @@ import { SectorBase } from "./SectorBase.sol";
 import "../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
+struct Request {
+	address vaultAddr;
+	uint256 amount;
+}
+
+struct HarvestLedger {
+	uint256 localDepositValue;
+	uint256 crossDepositValue;
+	uint256 pendingAnswers;
+	uint256 receivedAnswers;
+}
 
 contract SectorCrossVault is SectorBase {
+	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
-
-	struct Request {
-		address vaultAddr;
-		uint256 amount;
-	}
-
-	struct HarvestLedger {
-		uint256 localDepositValue;
-		uint256 crossDepositValue;
-		uint256 pendingAnswers;
-		uint256 receivedAnswers;
-	}
 
 	// Used to harvest from deposited vaults
 	address[] internal vaultList;
 	// Harvest state
 	HarvestLedger public harvestLedger;
-	// Controls emergency withdraw
-	// Not sure if this will be used
-	bool internal emergencyEnabled = false;
+	Message[] internal withdrawQueue;
 
 	constructor(
 		ERC20 _asset,
@@ -55,6 +54,7 @@ contract SectorCrossVault is SectorBase {
 			Vault memory vault = checkVault(vaultAddr);
 
 			if (vault.chainId == chainId) {
+				ERC20(underlying()).approve(vaultAddr, amount);
 				BatchedWithdraw(vaultAddr).deposit(amount, address(this));
 			} else {
 				_sendMessage(
@@ -84,7 +84,8 @@ contract SectorCrossVault is SectorBase {
 			Vault memory vault = checkVault(vaultAddr);
 
 			if (vault.chainId == chainId) {
-				BatchedWithdraw(vaultAddr).requestRedeem(amount);
+				BatchedWithdraw bWithdraw = BatchedWithdraw(vaultAddr);
+				bWithdraw.requestRedeem((bWithdraw.balanceOf(address(this)) * amount) / 100);
 			} else {
 				_sendMessage(
 					vaultAddr,
@@ -153,9 +154,6 @@ contract SectorCrossVault is SectorBase {
 	}
 
 	function emergencyWithdraw() external {
-		// Still not sure about this part
-		if (!emergencyEnabled) revert EmergencyNotEnabled();
-
 		uint256 userShares = balanceOf(msg.sender);
 
 		_burn(msg.sender, userShares);
@@ -232,21 +230,41 @@ contract SectorCrossVault is SectorBase {
 		return vault;
 	}
 
-	/// TODO: this method sholud be triggered by a chain vault when
-	/// returning withdrawals. This allows us to upate floatAmnt and totalChildHoldings
-	function _finalizedWithdraw() internal {
-		uint256 totalWithdraw;
-		totalChildHoldings -= totalWithdraw;
-		afterDeposit(totalWithdraw, 0);
+	function _receiveWithdraw(Message calldata _msg) internal {
+		withdrawQueue.push(_msg);
 	}
 
-	function _receiveWithdraw(Message calldata) internal {
-		_finalizedWithdraw();
+	function processIncomingXFunds() external override onlyRole(MANAGER) {
+		uint256 length = withdrawQueue.length;
+		uint256 total = 0;
+		for (uint256 i = length; i > 0; ) {
+			Message memory _msg = withdrawQueue[i - 1];
+			withdrawQueue.pop();
+
+			total += _msg.value;
+
+			unchecked {
+				i--;
+			}
+		}
+		// Should account for fees paid in tokens for using bridge
+		// Also, if a value hasn't arrived manager will not be able to register any value
+		if (total < (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
+			revert MissingIncomingXFunds();
+
+		_finalizedWithdraw(total);
+		emit RegisterIncomingFunds(total);
 	}
 
 	function _receiveHarvest(Message calldata _msg) internal {
 		harvestLedger.crossDepositValue += _msg.value;
 		harvestLedger.receivedAnswers += 1;
+	}
+
+	function _finalizedWithdraw(uint256 totalWithdraw) internal {
+		// uint256 totalWithdraw;
+		totalChildHoldings -= totalWithdraw;
+		afterDeposit(totalWithdraw, 0);
 	}
 
 	/*/////////////////////////////////////////////////////
@@ -264,6 +282,5 @@ contract SectorCrossVault is SectorBase {
 
 	error HarvestNotOpen();
 	error OnGoingHarvest();
-	error EmergencyNotEnabled();
 	error MissingMessages();
 }
