@@ -123,7 +123,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount, 0, 0, true);
+		xvaultDepositIntoVaults(requests, amount, 1, 1, true);
 	}
 
 	// 	function testOneCrossDepositIntoVaults() public {
