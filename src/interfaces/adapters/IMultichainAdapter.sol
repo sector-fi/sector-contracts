@@ -8,7 +8,7 @@ interface CallProxy {
 		address _fallback,
 		uint256 _toChainID,
 		uint256 _flags
-	) external;
+	) external payable;
 
 	function context()
 		external

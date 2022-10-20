@@ -10,6 +10,8 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
+import "hardhat/console.sol";
+
 struct chainPair {
 	uint16 from;
 	uint16 to;
@@ -22,7 +24,6 @@ contract LayerZeroPostman is
 	Ownable
 {
 	ILayerZeroEndpoint public endpoint;
-	// IPostOffice public immutable postOffice;
 
 	// map original chainIds to layerZero's chainIds
 	mapping(uint16 => uint16) chains;
@@ -46,12 +47,19 @@ contract LayerZeroPostman is
 		address _dstVautAddress,
 		address _dstPostman,
 		messageType _messageType,
-		uint16 _dstChainId
-	) external {
-		// if (msg.sender != address(postOffice)) revert OnlyPostOffice();
+		uint16 _dstChainId,
+		address _refundTo
+	) external payable {
 		if (address(this).balance == 0) revert NoBalance();
 
-		bytes memory payload = abi.encode(_msg, _dstVautAddress, _messageType);
+		Message memory msgToLayerZero = Message({
+			value: _msg.value,
+			sender: msg.sender,
+			client: _msg.client,
+			chainId: _msg.chainId
+		});
+
+		bytes memory payload = abi.encode(msgToLayerZero, _dstVautAddress, _messageType);
 
 		// encode adapterParams to specify more gas for the destination
 		uint16 version = 1;
@@ -71,11 +79,13 @@ contract LayerZeroPostman is
 		endpoint.send{ value: messageFee }( // {value: messageFee} will be paid out of this contract!
 			uint16(chains[_dstChainId]), // destination chainId
 			abi.encodePacked(_dstPostman, address(this)), // destination address of postman on dst chain
-			payload, // abi.encode()'ed bytes
-			payable(this), // (msg.sender will be this contract) refund address (LayerZero will refund any extra gas back to caller of send()
-			address(0x0), // 'zroPaymentAddress' unused for this mock/example
-			adapterParams // 'adapterParams' unused for this mock/example
+			payload,
+			payable(_refundTo), // (msg.sender will be this contract) refund address (LayerZero will refund any extra gas back to caller of send()
+			address(0x0), // 'zroPaymentAddress'
+			adapterParams // 'adapterParams'
 		);
+
+		payable(_refundTo).transfer(address(this).balance);
 	}
 
 	function lzReceive(
