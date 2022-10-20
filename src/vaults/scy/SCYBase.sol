@@ -9,7 +9,7 @@ import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contr
 import { Accounting } from "../../common/Accounting.sol";
 import { ERC20Permit, EIP712 } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract SCYBase is
 	ISuperComposableYield,
@@ -54,7 +54,7 @@ abstract contract SCYBase is
 
 		// this depends on strategy
 		// this supports depositing directly into strategy to save gas
-		uint256 amountIn = _getFloatingAmount(tokenIn);
+		uint256 amountIn = getFloatingAmount(tokenIn);
 		if (amountIn == 0) revert ZeroAmount();
 
 		amountSharesOut = _deposit(receiver, tokenIn, amountIn);
@@ -135,8 +135,7 @@ abstract contract SCYBase is
 	function exchangeRateStored() external view virtual override returns (uint256 res);
 
 	// VIRTUALS
-
-	function _getFloatingAmount(address token) internal view virtual returns (uint256);
+	function getFloatingAmount(address token) public view virtual returns (uint256);
 
 	/**
 	 * @notice See {ISuperComposableYield-getBaseTokens}

@@ -11,7 +11,7 @@ import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	using SafeERC20 for IERC20;
@@ -30,7 +30,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	uint256 public lastHarvestInterval; // time interval of last harvest
 	uint256 public maxLockedProfit;
 
-	address public strategy;
+	address payable public strategy;
 
 	// immutables
 	address public immutable yieldToken;
@@ -52,7 +52,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	constructor(Strategy memory _strategy) SCYBase(_strategy.name, _strategy.symbol) {
 		// strategy init
 		yieldToken = _strategy.yieldToken;
-		strategy = _strategy.addr;
+		strategy = payable(_strategy.addr);
 		strategyId = _strategy.strategyId;
 		underlying = _strategy.underlying;
 		maxTvl = _strategy.maxTvl;
@@ -75,7 +75,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 	function initStrategy(address _strategy) public onlyRole(GUARDIAN) {
 		if (strategy != address(0)) revert NoReInit();
-		strategy = _strategy;
+		strategy = payable(_strategy);
 		_stratValidate();
 		emit StrategyUpdated(_strategy);
 	}
@@ -83,7 +83,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	function updateStrategy(address _strategy) public onlyOwner {
 		uint256 tvl = _stratGetAndUpdateTvl();
 		if (tvl > 0) revert InvalidStrategyUpdate();
-		strategy = _strategy;
+		strategy = payable(_strategy);
 		_stratValidate();
 		emit StrategyUpdated(_strategy);
 	}
@@ -244,8 +244,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		emit WithdrawFromStrategy(msg.sender, underlyingWithdrawn);
 	}
 
-	function closePosition(uint256 minAmountOut) public onlyRole(GUARDIAN) {
-		uint256 underlyingWithdrawn = _stratClosePosition();
+	function closePosition(uint256 minAmountOut, uint256 slippageParam) public onlyRole(GUARDIAN) {
+		uint256 underlyingWithdrawn = _stratClosePosition(slippageParam);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
 		uBalance += underlyingWithdrawn;
 		emit ClosePosition(msg.sender, underlyingWithdrawn);
@@ -318,8 +318,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 	function sharesToUnderlying(uint256 shares) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
+		if (_totalSupply == 0) return (shares * _stratCollateralToUnderlying()) / ONE;
 		uint256 adjustedShares = (shares * (_totalSupply - lockedProfit())) / _totalSupply;
-		if (_totalSupply == 0) return (adjustedShares * _stratCollateralToUnderlying()) / ONE;
 		return adjustedShares.mulDivDown(getTvl(), _totalSupply);
 	}
 
@@ -345,8 +345,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	}
 
 	/// make sure to override this - actual logic should use floating strategy balances
-	function _getFloatingAmount(address token)
-		internal
+	function getFloatingAmount(address token)
+		public
 		view
 		virtual
 		override
@@ -356,8 +356,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		if (token == NATIVE) return address(this).balance;
 	}
 
-	function decimals() public view override returns (uint8) {
-		return IERC20Metadata(yieldToken).decimals();
+	function decimals() public pure override returns (uint8) {
+		return 18;
 	}
 
 	/**

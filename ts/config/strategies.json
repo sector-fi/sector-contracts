@@ -1,8 +1,6 @@
 {
-  "strats": [
-    "USDCimxAVAX",
-    "USDC-OP-tarot-velo"
-  ],
+  "hlpStrats": [],
+  "imxStrats": ["USDCimxAVAX", "USDC-OP-tarot-velo"],
   "USDCimxAVAX": {
     "a_underlying": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664",
     "b_short": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
@@ -10,12 +8,12 @@
     "d_poolToken": "0xEE2A27B7c3165A5E2a3FEB113A77B26b46dB0baE",
     "e_farmToken": "0xeA6887e4a9CdA1B77E70129E5Fba830CdB5cdDef",
     "f_farmRouter": "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106",
-    "g_chain": "AVAX",
     "h_harvestPath": [
       "0xeA6887e4a9CdA1B77E70129E5Fba830CdB5cdDef",
       "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
       "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664"
-    ]
+    ],
+    "x_chain": "AVAX"
   },
   "USDC-OP-tarot-velo": {
     "a_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
@@ -24,10 +22,37 @@
     "d_poolToken": "0x2F707cfB7b6C1EF2fE01b13f13379Ab0D6961189",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "g_chain": "OP",
     "h_harvestPath": [
       "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
       "0x7F5c764cBc14f9669B88837ca1490cCa17c31607"
-    ]
+    ],
+    "x_chain": "OP"
+  },
+  "USDC-MOVR-SOLAR-WELL": {
+    "a_underlying": "0xE3F5a90F9cb311505cd691a46596599aA1A0AD7D",
+    "b_short": "0x98878B06940aE243284CA214f92Bb71a2b032B8A",
+    "c_uniPair": "0xe537f70a8b62204832B8Ba91940B77d3f79AEb81",
+    "d1_cTokenLend": "0xd0670AEe3698F66e2D4dAf071EB9c690d978BFA8",
+    "d2_cTokenBorrow": "0x6a1A771C7826596652daDC9145fEAaE62b1cd07f",
+
+    "e1_farmToken": "0x6bD193Ee6D2104F14F94E2cA6efefae561A4334B",
+    "e2_farmId": 10,
+    "e3_uniFarm": "0x0329867a8c457e9f75e25b0685011291cd30904f",
+    "f_farmRouter": "0xAA30eF758139ae4a7f798112902Bf6d65612045f",
+    "h_harvestPath": [
+      "0x6bD193Ee6D2104F14F94E2cA6efefae561A4334B",
+      "0x98878B06940aE243284CA214f92Bb71a2b032B8A",
+      "0xE3F5a90F9cb311505cd691a46596599aA1A0AD7D"
+    ],
+    "l1_comptroller": "0x0b7a0EAA884849c6Af7a129e899536dDDcA4905E",
+    "l2_lendRewardToken": "0xBb8d88bcD9749636BC4D2bE22aaC4Bb3B01A58F1",
+    "l3_lendRewardPath": [
+      "0xBb8d88bcD9749636BC4D2bE22aaC4Bb3B01A58F1",
+      "0x98878B06940aE243284CA214f92Bb71a2b032B8A",
+      "0xE3F5a90F9cb311505cd691a46596599aA1A0AD7D"
+    ],
+    "l4_lendRewardRouter": "0xAA30eF758139ae4a7f798112902Bf6d65612045f",
+    "n_nativeToken": 2,
+    "x_chain": "MOVR"
   }
 }

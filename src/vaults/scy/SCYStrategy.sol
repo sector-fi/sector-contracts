@@ -24,7 +24,7 @@ abstract contract SCYStrategy {
 		virtual
 		returns (uint256 amntOut, uint256 amntToTransfer);
 
-	function _stratClosePosition() internal virtual returns (uint256);
+	function _stratClosePosition(uint256 slippageParam) internal virtual returns (uint256);
 
 	function _stratGetAndUpdateTvl() internal virtual returns (uint256);
 
@@ -35,4 +35,6 @@ abstract contract SCYStrategy {
 	function _stratCollateralToUnderlying() internal view virtual returns (uint256);
 
 	function _stratValidate() internal virtual;
+
+	error NotImplemented();
 }
