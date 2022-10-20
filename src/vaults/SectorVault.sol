@@ -33,7 +33,7 @@ contract SectorVault is SectorBase {
 
 	mapping(ISCYStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
-	address[] internal bridgeQueue;
+	address[] public bridgeQueue;
 	Message[] internal depositQueue;
 
 	uint256 public totalStrategyHoldings;
