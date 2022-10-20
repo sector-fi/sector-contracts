@@ -11,6 +11,7 @@ import { Endpoint } from "../mocks/MockEndpoint.sol";
 import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
+import { MiddlewareRequest, BridgeRequest, UserRequest } from "../../common/XChainIntegrator.sol";
 import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
@@ -22,11 +23,12 @@ contract SectorCrossVaultTestSetup is SectorTest {
 	uint16 anotherChainId = 1;
 	uint16 postmanId = 1;
 
+	address socketRegistry = 0x2b42AFFD4b7C14d9B7C2579229495c052672Ccd3;
+
 	WETH underlying;
 
 	SectorCrossVault xVault;
-	SectorVault childVault;
-	SectorVault nephewVault;
+	SectorVault[] vaults;
 
 	LayerZeroPostman postmanLz;
 	MultichainPostman postmanMc;
@@ -58,22 +60,33 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 	function xvaultDepositIntoVaults(
 		Request[] memory requests,
-		uint256 amount,
+		uint256 totalAmount,
 		uint256 msgsSent,
 		uint256 bridgeEvents,
 		bool assertOn
 	) public {
+		uint256 xVaultFloatAmountBefore = xVault.floatAmnt();
 		vm.recordLogs();
 		// Deposit into a vault
 		vm.prank(manager);
-		xVault.depositIntoVaults(requests);
+		xVault.depositIntoXVaults(requests);
 
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
 		if (!assertOn) return;
 
-		assertEq(xVault.totalChildHoldings(), amount, "XVault accounting is correct");
-		// assertEq(childVault.underlyingBalance(address(xVault)), amount);
+		console.log(xVaultFloatAmountBefore);
+		console.log(totalAmount);
+
+		// Accounting tests
+		assertEq(xVault.totalChildHoldings(), totalAmount, "XVault accounting is correct");
+		assertEq(
+			xVault.floatAmnt(),
+			xVaultFloatAmountBefore - totalAmount,
+			"Float amount was reduced by expected"
+		);
+
+		// No way of checking if funds arrived on destination chain because has to
 		assertGe(
 			entries.length,
 			requests.length,
@@ -98,7 +111,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 		vm.recordLogs();
 		vm.prank(manager);
-		xVault.withdrawFromVaults(requests);
+		xVault.withdrawFromXVaults(requests);
 
 		if (!assertOn) return;
 
@@ -273,5 +286,32 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		(uint16 vChainId, , ) = xVault.addrBook(vaultAddr);
 
 		return vChainId;
+	}
+
+	function getBasicRequest(
+		address vault,
+		uint256 toChainId,
+		uint256 amount
+	) public view returns (Request memory) {
+		return
+			Request(
+				vault,
+				amount,
+				socketRegistry,
+				socketRegistry,
+				getUserRequest(vault, toChainId, amount, address(underlying))
+			);
+	}
+
+	function getUserRequest(
+		address receiverAddress,
+		uint256 toChainId,
+		uint256 amount,
+		address inputToken
+	) public pure returns (bytes memory) {
+		BridgeRequest memory br = BridgeRequest(1, 0, inputToken, bytes(""));
+		MiddlewareRequest memory mr = MiddlewareRequest(0, 0, inputToken, bytes(""));
+		UserRequest memory ur = UserRequest(receiverAddress, toChainId, amount, mr, br);
+		return abi.encodeWithSignature("outboundTransferTo(UserRequest)", ur);
 	}
 }

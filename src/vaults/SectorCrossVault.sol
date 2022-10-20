@@ -43,6 +43,8 @@ contract SectorCrossVault is SectorBase {
 	/////////////////////////////////////////////////////*/
 
 	function depositIntoXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+		uint256 totalAmount = 0;
+
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
@@ -50,8 +52,7 @@ contract SectorCrossVault is SectorBase {
 			Vault memory vault = checkVault(vaultAddr);
 			if (vault.chainId == chainId) revert SameChainOperation();
 
-			totalChildHoldings += amount;
-			beforeWithdraw(amount, 0);
+			totalAmount += amount;
 
 			_sendMessage(
 				vaultAddr,
@@ -60,13 +61,14 @@ contract SectorCrossVault is SectorBase {
 				messageType.DEPOSIT
 			);
 
+			// This is fucked but dont know why
 			_sendTokens(
 				underlying(),
 				vaults[i].allowanceTarget,
 				vaults[i].registry,
 				vaultAddr,
 				amount,
-				addrBook[vaultAddr].chainId,
+				uint256(addrBook[vaultAddr].chainId),
 				vaults[i].txData
 			);
 
@@ -76,6 +78,9 @@ contract SectorCrossVault is SectorBase {
 				i++;
 			}
 		}
+
+		beforeWithdraw(totalAmount, 0);
+		totalChildHoldings += totalAmount;
 	}
 
 	function withdrawFromXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
