@@ -315,6 +315,10 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		BridgeRequest memory br = BridgeRequest(1, 0, inputToken, bytes(""));
 		MiddlewareRequest memory mr = MiddlewareRequest(0, 0, inputToken, bytes(""));
 		UserRequest memory ur = UserRequest(receiverAddress, toChainId, amount, mr, br);
-		return abi.encodeWithSignature("outboundTransferTo(UserRequest)", ur);
+		return
+			abi.encodeWithSignature(
+				"outboundTransferTo((address,uint256,uint256,(uint256,uint256,address,bytes),(uint256,uint256,address,bytes)))",
+				ur
+			);
 	}
 }
