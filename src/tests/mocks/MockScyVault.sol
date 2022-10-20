@@ -78,7 +78,7 @@ contract MockScyVault is SCYStrategy, SCYVault {
 
 	function _stratValidate() internal override {}
 
-	function _getFloatingAmount(address token) internal view override returns (uint256) {
+	function getFloatingAmount(address token) public view override returns (uint256) {
 		if (token == address(underlying)) return underlying.balanceOf(strategy) - underlyingBalance;
 		return _selfBalance(token);
 	}

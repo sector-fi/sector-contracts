@@ -345,8 +345,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	}
 
 	/// make sure to override this - actual logic should use floating strategy balances
-	function _getFloatingAmount(address token)
-		internal
+	function getFloatingAmount(address token)
+		public
 		view
 		virtual
 		override

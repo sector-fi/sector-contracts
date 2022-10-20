@@ -11,13 +11,12 @@ import { SCYVault, IMXVault, Strategy, AuthConfig, FeeConfig } from "../../vault
 import { IMX, IMXCore } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { StratUtils } from "./StratUtils.sol";
-import { IntegrationTest } from "./Integration.sol";
 
 import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
 
-contract SetupImx is SectorTest, StratUtils, IntegrationTest {
+contract SetupImx is SectorTest, StratUtils {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
@@ -160,5 +159,12 @@ contract SetupImx is SectorTest, StratUtils, IntegrationTest {
 	{
 		expectedPrice = strategy.getExpectedPrice();
 		maxDelta = (expectedPrice * slippage) / BASIS;
+	}
+
+	function adjustOraclePrice(uint256 fraction) public {
+		// move both
+		adjustPrice(fraction);
+		// undo uniswap move
+		moveUniswapPrice(uniPair, config.underlying, config.short, (1e18 * 1e18) / fraction);
 	}
 }

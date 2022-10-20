@@ -13,13 +13,12 @@ import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { MasterChefCompMulti } from "strategies/hlp/implementations/MasterChefCompMulti.sol";
 import { StratUtils } from "./StratUtils.sol";
-import { IntegrationTest } from "./Integration.sol";
 
 import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
 
-contract SetupHlp is SectorTest, StratUtils, IntegrationTest {
+contract SetupHlp is SectorTest, StratUtils {
 	using stdJson for string;
 
 	string TEST_STRATEGY = "USDC-MOVR-SOLAR-WELL";
@@ -161,11 +160,6 @@ contract SetupHlp is SectorTest, StratUtils, IntegrationTest {
 		strategy.rebalance(priceOffset);
 	}
 
-	// slippage in basis points
-	function getSlippageParams() public view returns (uint256 priceOffset) {
-		return strategy.getPriceOffset();
-	}
-
 	function adjustPrice(uint256 fraction) public override {
 		ICompPriceOracle oracle = ICompound(address(strategy)).oracle();
 		address cToken = address(ICompound(address(strategy)).cTokenBorrow());
@@ -180,5 +174,12 @@ contract SetupHlp is SectorTest, StratUtils, IntegrationTest {
 		);
 		uint256 newPrice = oracle.getUnderlyingPrice(cToken);
 		assertApproxEqRel(newPrice, (price * fraction) / 1e18, .001e18);
+	}
+
+	function adjustOraclePrice(uint256 fraction) public {
+		ICompPriceOracle oracle = ICompound(address(strategy)).oracle();
+		address cToken = address(ICompound(address(strategy)).cTokenBorrow());
+		uint256 price = (fraction * oracle.getUnderlyingPrice(cToken)) / 1e18;
+		mockHlpOraclePrice(address(oracle), cToken, price);
 	}
 }

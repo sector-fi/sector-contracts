@@ -64,13 +64,20 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 		_;
 	}
 
+	modifier isPaused() {
+		if (_maxTvl != 0) revert NotPaused();
+		_;
+	}
+
 	modifier checkPrice(uint256 maxSlippage) {
 		if (maxSlippage == 0)
 			maxSlippage = maxDefaultPriceMismatch;
 			// manager accounts cannot set maxSlippage bigger than maxPriceOffset
 		else
 			require(
-				maxSlippage <= maxPriceOffset || hasRole(GUARDIAN, msg.sender),
+				maxSlippage <= maxPriceOffset ||
+					hasRole(GUARDIAN, msg.sender) ||
+					msg.sender == vault,
 				"HLP: MAX_MISMATCH"
 			);
 		require(getPriceOffset() <= maxSlippage, "HLP: PRICE_MISMATCH");
@@ -202,10 +209,13 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 	function deposit(uint256 underlyingAmnt) external onlyVault nonReentrant returns (uint256) {
 		if (underlyingAmnt == 0) return 0; // cannot deposit 0
 
+		// TODO this can cause DOS attack
 		if (underlyingAmnt < _underlying.balanceOf(address(this))) revert NonZeroFloat();
 
+		// deposit is already included in tvl
 		uint256 tvl = getAndUpdateTVL();
-		require(underlyingAmnt + tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
+		require(tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
+
 		uint256 startBalance = _getLiquidity();
 		// this method should not change % allocation to lp vs collateral
 		_increasePosition(underlyingAmnt);
@@ -221,6 +231,7 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 		onlyVault
 		returns (uint256 amountTokenOut)
 	{
+		if (removeLp == 0) return 0;
 		// this is the full amount of LP tokens totalSupply of shares is entitled to
 		_decreasePosition(removeLp);
 
@@ -241,8 +252,9 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 		uint256 shortPosition = _updateAndGetBorrowBalance();
 
 		uint256 totalLp = _getLiquidity();
+		if (removeLp > totalLp) removeLp = totalLp;
 
-		uint256 redeemAmnt = collateralBalance.mulDivUp(removeLp, totalLp);
+		uint256 redeemAmnt = collateralBalance.mulDivDown(removeLp, totalLp);
 		uint256 repayAmnt = shortPosition.mulDivUp(removeLp, totalLp);
 
 		// TODO do we need this?
@@ -349,6 +361,9 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 		onlyVault
 		returns (uint256 balance)
 	{
+		// lock deposits
+		_maxTvl = 0;
+		emit SetMaxTvl(0);
 		_closePosition();
 		balance = _underlying.balanceOf(address(this));
 		_underlying.safeTransfer(vault, balance);
@@ -360,19 +375,24 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 		public
 		checkPrice(maxSlippage)
 		onlyRole(GUARDIAN)
+		isPaused
 	{
 		_removeLiquidity(removeLp);
 		emit UpdatePosition();
 	}
 
 	// in case of emergency - withdraw lp tokens from farm
-	function withdrawFromFarm() public onlyRole(GUARDIAN) {
+	function withdrawFromFarm() public isPaused onlyRole(GUARDIAN) {
 		_withdrawFromFarm(_getFarmLp());
 		emit UpdatePosition();
 	}
 
 	// in case of emergency - withdraw stuck collateral
-	function redeemCollateral(uint256 repayAmnt, uint256 withdrawAmnt) public onlyRole(GUARDIAN) {
+	function redeemCollateral(uint256 repayAmnt, uint256 withdrawAmnt)
+		public
+		isPaused
+		onlyRole(GUARDIAN)
+	{
 		_repay(repayAmnt);
 		_redeem(withdrawAmnt);
 		emit UpdatePosition();
@@ -632,6 +652,7 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 
 	receive() external payable {}
 
+	error NotPaused();
 	error RebalanceThreshold();
 	error NonZeroFloat();
 	error MinLiquidity();

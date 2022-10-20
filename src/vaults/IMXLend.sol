@@ -71,7 +71,7 @@ contract IMXLend is SCYStrategy, SCYVault {
 		return IBorrowable(strategy).exchangeRateLast();
 	}
 
-	function _getFloatingAmount(address token) internal view override returns (uint256) {
+	function getFloatingAmount(address token) public view override returns (uint256) {
 		if (token == address(underlying))
 			return underlying.balanceOf(strategy) - IPoolToken(strategy).totalBalance();
 		return _selfBalance(token);

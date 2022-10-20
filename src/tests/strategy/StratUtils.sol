@@ -29,7 +29,11 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 	IERC20 underlying;
 	IUniswapV2Pair uniPair;
 	address short;
-	IStrategy genericStrategy;
+	IStrategy strat;
+
+	uint256 dec;
+	bytes32 GUARDIAN;
+	bytes32 MANAGER;
 
 	function configureUtils(
 		address _underlying,
@@ -40,22 +44,42 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		underlying = IERC20(_underlying);
 		short = _short;
 		uniPair = IUniswapV2Pair(_uniPair);
-		genericStrategy = IStrategy(_strategy);
+		strat = IStrategy(_strategy);
+		dec = 10**underlying.decimals();
+		GUARDIAN = vault.GUARDIAN();
+		MANAGER = vault.MANAGER();
 	}
 
 	function deposit(uint256 amount) public {
-		deposit(amount, address(this));
+		deposit(address(this), amount);
 	}
 
-	function deposit(uint256 amount, address acc) public {
+	function depositRevert(
+		address user,
+		uint256 amnt,
+		bytes memory err
+	) public {
+		deal(address(underlying), user, amnt);
+		vm.startPrank(user);
+		underlying.approve(address(vault), amnt);
+		vm.expectRevert(err);
+		vault.deposit(user, address(underlying), amnt, 0);
+		vm.stopPrank();
+	}
+
+	function deposit(address user, uint256 amount) public {
 		uint256 startTvl = vault.getAndUpdateTvl();
-		uint256 startAccBalance = vault.underlyingBalance(acc);
-		deal(address(underlying), acc, amount);
+		uint256 startAccBalance = vault.underlyingBalance(user);
+		deal(address(underlying), user, amount);
 		uint256 minSharesOut = vault.underlyingToShares(amount);
+
+		vm.startPrank(user);
 		underlying.approve(address(vault), amount);
-		vault.deposit(acc, address(underlying), amount, (minSharesOut * 9930) / 10000);
+		vault.deposit(user, address(underlying), amount, (minSharesOut * 9930) / 10000);
+		vm.stopPrank();
+
 		uint256 tvl = vault.getAndUpdateTvl();
-		uint256 endAccBalance = vault.underlyingBalance(acc);
+		uint256 endAccBalance = vault.underlyingBalance(user);
 		assertApproxEqRel(tvl, startTvl + amount, .01e18, "tvl should update");
 		assertApproxEqRel(
 			tvl - startTvl,
@@ -63,37 +87,45 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 			.01e18,
 			"underlying balance"
 		);
-		// assertEq(vault.getStrategyTvl(), 0);
+		assertEq(vault.getFloatingAmount(address(underlying)), 0);
 	}
 
-	function withdraw(uint256 fraction) public {
-		uint256 sharesToWithdraw = (vault.balanceOf(address(this)) * fraction) / 1e18;
+	function withdrawAmnt(address user, uint256 amnt) public {
+		uint256 balance = vault.underlyingBalance(user);
+		if (balance == 0) return;
+		if (amnt > balance) amnt = balance;
+		withdraw(user, (1e18 * amnt) / balance);
+	}
+
+	function withdraw(address user, uint256 fraction) public {
+		uint256 sharesToWithdraw = (vault.balanceOf(user) * fraction) / 1e18;
 		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
+		vm.prank(user);
 		vault.redeem(
-			address(this),
+			user,
 			sharesToWithdraw,
 			address(underlying),
 			(minUnderlyingOut * 9990) / 10000
 		);
 	}
 
-	function withdrawCheck(uint256 fraction) public {
+	function withdrawCheck(address user, uint256 fraction) public {
 		uint256 startTvl = vault.getAndUpdateTvl(); // us updates iterest
-		withdraw(fraction);
+		withdraw(user, fraction);
 		uint256 tvl = vault.getAndUpdateTvl();
 		assertApproxEqAbs(tvl, (startTvl * (1e18 - fraction)) / 1e18, mLp + 10, "tvl");
-		assertApproxEqAbs(vault.underlyingBalance(address(this)), tvl, mLp + 10, "tvl balance");
+		assertApproxEqAbs(vault.underlyingBalance(user), tvl, mLp + 10, "tvl balance");
 	}
 
-	function withdrawAll() public {
-		uint256 balance = vault.balanceOf(address(this));
-
-		vault.redeem(address(this), balance, address(underlying), 0);
+	function withdrawAll(address user) public {
+		uint256 balance = vault.balanceOf(user);
+		vm.prank(user);
+		vault.redeem(user, balance, address(underlying), 0);
 
 		uint256 tvl = vault.getStrategyTvl();
 		assertApproxEqAbs(tvl, 0, mLp, "strategy tvl");
-		assertEq(vault.balanceOf(address(this)), 0, "account shares");
-		assertEq(vault.underlyingBalance(address(this)), 0, "account value");
+		assertEq(vault.balanceOf(user), 0, "account shares");
+		assertEq(vault.underlyingBalance(user), 0, "account value");
 	}
 
 	function logTvl(IStrategy _strategy) internal view {
@@ -125,4 +157,9 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 	function noRebalance() public virtual;
 
 	function adjustPrice(uint256 fraction) public virtual;
+
+	// slippage in basis points only used by hlp strat
+	function priceSlippageParam() public view virtual returns (uint256) {
+		return 0;
+	}
 }

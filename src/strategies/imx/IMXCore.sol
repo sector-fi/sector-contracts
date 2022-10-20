@@ -41,7 +41,6 @@ abstract contract IMXCore is
 
 	uint256 constant MINIMUM_LIQUIDITY = 1000;
 	uint256 constant BPS_ADJUST = 10000;
-	uint256 constant MIN_LOAN_HEALTH = 1.02e18;
 
 	IERC20 private _underlying;
 	IERC20 private _short;
@@ -117,6 +116,7 @@ abstract contract IMXCore is
 	// OWNER CONFIG
 
 	function setRebalanceThreshold(uint16 rebalanceThreshold_) public onlyOwner {
+		require(rebalanceThreshold_ >= 100, "HLP: BAD_INPUT");
 		rebalanceThreshold = rebalanceThreshold_;
 		emit SetRebalanceThreshold(rebalanceThreshold_);
 	}
@@ -144,8 +144,9 @@ abstract contract IMXCore is
 	// deposit underlying and recieve lp tokens
 	function deposit(uint256 underlyingAmnt) external onlyVault nonReentrant returns (uint256) {
 		if (underlyingAmnt == 0) return 0; // cannot deposit 0
+		// deposit is already included in tvl
 		uint256 tvl = getAndUpdateTVL();
-		require(underlyingAmnt + tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
+		require(tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
 		uint256 startBalance = collateralToken().balanceOf(address(this));
 		_increasePosition(underlyingAmnt);
 		uint256 endBalance = collateralToken().balanceOf(address(this));
@@ -175,9 +176,6 @@ abstract contract IMXCore is
 	/// @dev ** does not rebalance remaining portfolio
 	/// @param removeCollateral amount of callateral token to remove
 	function _decreasePosition(uint256 removeCollateral) internal {
-		// make sure we are not close to liquidation
-		if (loanHealth() < MIN_LOAN_HEALTH) revert LowLoanHealth();
-
 		(uint256 uBorrowBalance, uint256 sBorrowBalance) = _updateAndGetBorrowBalances();
 
 		uint256 balance = collateralToken().balanceOf(address(this));
@@ -407,6 +405,10 @@ abstract contract IMXCore is
 	// UTILS
 	function getExpectedPrice() external view returns (uint256) {
 		return _shortToUnderlying(1e18);
+	}
+
+	function getLPBalances() public view returns (uint256 underlyingLp, uint256 shortLp) {
+		return _getLPBalances();
 	}
 
 	function getLiquidity() external view returns (uint256) {
