@@ -11,6 +11,8 @@ import { Endpoint } from "../mocks/MockEndpoint.sol";
 import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
+import { MockSocketRegistry } from "../mocks/MockSocketRegistry.sol";
+
 import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
@@ -30,6 +32,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 	LayerZeroPostman postmanLz;
 	MultichainPostman postmanMc;
+	MockSocketRegistry socketRegistry;
 
 	function depositXVault(address acc, uint256 amount) public {
 		depositVault(acc, amount, address(xVault));
@@ -66,7 +69,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		vm.recordLogs();
 		// Deposit into a vault
 		vm.prank(manager);
-		xVault.depositIntoVaults(requests);
+		xVault.depositIntoXVaults(requests);
 
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
@@ -98,7 +101,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 		vm.recordLogs();
 		vm.prank(manager);
-		xVault.withdrawFromVaults(requests);
+		xVault.withdrawFromXVaults(requests);
 
 		if (!assertOn) return;
 
@@ -273,5 +276,19 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		(uint16 vChainId, , ) = xVault.addrBook(vaultAddr);
 
 		return vChainId;
+	}
+
+	function buildBridgeRequest(address vault, uint256 amount)
+		public
+		view
+		returns (Request memory request)
+	{
+		request = Request({
+			vaultAddr: vault,
+			amount: amount,
+			allowanceTarget: address(0),
+			registry: address(socketRegistry),
+			txData: "0x0"
+		});
 	}
 }

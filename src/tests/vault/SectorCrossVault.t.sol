@@ -11,7 +11,8 @@ import { Endpoint } from "../mocks/MockEndpoint.sol";
 import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
-import { SectorCrossVaultTestSetup } from "./SectorCrossVaultSetup.t.sol";
+import { SectorCrossVaultTestSetup, MockSocketRegistry } from "./SectorCrossVaultSetup.t.sol";
+
 import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
@@ -22,7 +23,8 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	uint256 avaxFork;
 	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");
 	string AVAX_RPC_URL = vm.envString("AVAX_RPC_URL");
-	string MAINNET_RPC_URL = vm.envString("INFURA_COMPLETE_RPC");
+
+	// string MAINNET_RPC_URL = vm.envString("INFURA_COMPLETE_RPC");
 
 	// uint16 anotherChainId = 1;
 	// uint16 postmanId = 1;
@@ -71,6 +73,8 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
+
+		socketRegistry = new MockSocketRegistry();
 
 		// F*** stupid
 		chainPair[] memory inptChainPair = new chainPair[](9);
@@ -125,13 +129,13 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	}
 
 	function testOneChainDepositIntoVaults() public {
-		// Request(addr, amount);
+		// buildBridgeRequest(addr, amount);
 		uint256 amount = 1 ether;
 
 		depositXVault(user1, amount);
 
 		Request[] memory requests = new Request[](1);
-		requests[0] = Request(address(childVault), amount);
+		requests[0] = buildBridgeRequest(address(childVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 0, 0, true);
@@ -143,7 +147,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount);
 
 		Request[] memory requests = new Request[](1);
-		requests[0] = Request(address(nephewVault), amount);
+		requests[0] = buildBridgeRequest(address(nephewVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 1, 1, true);
@@ -155,8 +159,8 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount * 2);
 
 		Request[] memory requests = new Request[](2);
-		requests[0] = Request(address(childVault), amount);
-		requests[1] = Request(address(nephewVault), amount);
+		requests[0] = buildBridgeRequest(address(childVault), amount);
+		requests[1] = buildBridgeRequest(address(nephewVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount * 2, 1, 1, true);
@@ -172,9 +176,9 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user3, amount3);
 
 		Request[] memory requests = new Request[](3);
-		requests[0] = Request(address(childVault), amount1);
-		requests[1] = Request(address(nephewVault), amount2);
-		requests[2] = Request(address(nephewVault), amount3);
+		requests[0] = buildBridgeRequest(address(childVault), amount1);
+		requests[1] = buildBridgeRequest(address(nephewVault), amount2);
+		requests[2] = buildBridgeRequest(address(nephewVault), amount3);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 2, 2, true);
@@ -189,13 +193,13 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount);
 
 		Request[] memory requests = new Request[](1);
-		requests[0] = Request(address(childVault), amount);
+		requests[0] = buildBridgeRequest(address(childVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
 
 		// uint256 shares = childVault.balanceOf(address(xVault));
-		requests[0] = Request(address(childVault), 100);
+		requests[0] = buildBridgeRequest(address(childVault), 100);
 
 		// Requests, total amount, msgSent events, withdraw events
 		xvaultWithdrawFromVaults(requests, 0, 1, true);
@@ -207,13 +211,13 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount);
 
 		Request[] memory requests = new Request[](1);
-		requests[0] = Request(address(nephewVault), amount);
+		requests[0] = buildBridgeRequest(address(nephewVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
 
 		// uint256 shares = nephewVault.balanceOf(address(xVault));
-		requests[0] = Request(address(nephewVault), 100);
+		requests[0] = buildBridgeRequest(address(nephewVault), 100);
 
 		// Requests, total amount, msgSent events, withdraw events
 		xvaultWithdrawFromVaults(requests, 1, 0, true);
@@ -229,16 +233,16 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user3, amount3);
 
 		Request[] memory requests = new Request[](3);
-		requests[0] = Request(address(childVault), amount1);
-		requests[1] = Request(address(nephewVault), amount2);
-		requests[2] = Request(address(nephewVault), amount3);
+		requests[0] = buildBridgeRequest(address(childVault), amount1);
+		requests[1] = buildBridgeRequest(address(nephewVault), amount2);
+		requests[2] = buildBridgeRequest(address(nephewVault), amount3);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 0, 0, false);
 
-		requests[0] = Request(address(childVault), 100);
-		requests[1] = Request(address(nephewVault), 100);
-		requests[2] = Request(address(nephewVault), 100);
+		requests[0] = buildBridgeRequest(address(childVault), 100);
+		requests[1] = buildBridgeRequest(address(nephewVault), 100);
+		requests[2] = buildBridgeRequest(address(nephewVault), 100);
 
 		// Requests, total amount, msgSent events, withdraw events
 		xvaultWithdrawFromVaults(requests, 2, 1, true);
@@ -250,14 +254,14 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount1);
 
 		Request[] memory requests = new Request[](1);
-		requests[0] = Request(address(childVault), amount1);
+		requests[0] = buildBridgeRequest(address(childVault), amount1);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount1, 0, 0, false);
 
 		uint256 sharesBefore = childVault.balanceOf(address(xVault));
 		uint256 sharesWithdraw = (childVault.balanceOf(address(xVault)) * 25) / 100;
-		requests[0] = Request(address(childVault), 25);
+		requests[0] = buildBridgeRequest(address(childVault), 25);
 		// Requests, msgSent events, withdraw events
 		xvaultWithdrawFromVaults(requests, 0, 0, false);
 
@@ -272,7 +276,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount);
 
 		Request[] memory requests = new Request[](1);
-		requests[0] = Request(address(childVault), amount);
+		requests[0] = buildBridgeRequest(address(childVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
@@ -287,7 +291,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount);
 
 		Request[] memory requests = new Request[](1);
-		requests[0] = Request(address(nephewVault), amount);
+		requests[0] = buildBridgeRequest(address(nephewVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
@@ -304,9 +308,9 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount1);
 
 		Request[] memory requests = new Request[](3);
-		requests[0] = Request(address(nephewVault), amount1);
-		requests[1] = Request(address(childVault), amount2);
-		requests[2] = Request(address(childVault), amount3);
+		requests[0] = buildBridgeRequest(address(nephewVault), amount1);
+		requests[1] = buildBridgeRequest(address(childVault), amount2);
+		requests[2] = buildBridgeRequest(address(childVault), amount3);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount1 + amount2 + amount3, 0, 0, false);
@@ -321,6 +325,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			true
 		);
 	}
+
 	// More variations on that (no messages for example)
 
 	function testOneChainFinalizeHarvest() public {
@@ -329,7 +334,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount);
 
 		Request[] memory requests = new Request[](1);
-		requests[0] = Request(address(childVault), amount);
+		requests[0] = buildBridgeRequest(address(childVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
@@ -338,7 +343,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		vaults[0] = address(childVault);
 		vaults[1] = address(nephewVault);
 
-		uint[] memory amounts = new uint[](2);
+		uint256[] memory amounts = new uint256[](2);
 		amounts[0] = amount;
 		amounts[1] = 0;
 		xvaultFinalizeHarvest(vaults, amounts);
@@ -351,7 +356,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount);
 
 		Request[] memory requests = new Request[](1);
-		requests[0] = Request(address(nephewVault), amount);
+		requests[0] = buildBridgeRequest(address(nephewVault), amount);
 
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
@@ -359,7 +364,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		address[] memory vaults = new address[](1);
 		vaults[0] = address(nephewVault);
 
-		uint[] memory amounts = new uint[](1);
+		uint256[] memory amounts = new uint256[](1);
 		amounts[0] = amount;
 		xvaultFinalizeHarvest(vaults, amounts);
 	}
