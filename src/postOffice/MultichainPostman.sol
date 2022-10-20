@@ -71,7 +71,6 @@ contract MultichainPostman is Ownable, IPostman {
 		uint256 srcChainId
 	);
 
-	// allow this contract to receive ether
 	fallback() external payable {
 		(bool sent, ) = refundTo.call{value: msg.value}("");
 		if (!sent) revert RefundFailed();

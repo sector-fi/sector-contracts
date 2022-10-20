@@ -45,8 +45,8 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
     event RegisterIncomingFunds(uint256 total);
 
 	function setUp() public {
-		avaxFork = vm.createFork(AVAX_RPC_URL);
-        ethFork = vm.createFork(ETH_RPC_URL);
+		avaxFork = vm.createFork(AVAX_RPC_URL, 21148939);
+        ethFork = vm.createFork(ETH_RPC_URL, 15790742);
 
         chainPair[] memory pairArray = new chainPair[](2);
 		pairArray[0] = chainPair(AVAX_CHAIN_ID, AVAX_LAYERZERO_ID);
@@ -88,7 +88,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	}
 
 
-    // Test if LayerZero message goes trough
+    // Test if LayerZero message goes through
     // and if manager is refunded for the extra value sent
 	function testSendLzMessage() public {
 
@@ -125,7 +125,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
         vm.stopPrank();
 	}
 
-	// Test if MultiChain message goes trough
+	// Test if MultiChain message goes through
     // and if manager is refunded for the extra value sent
     function testSendMcMessage() public {
 
@@ -185,16 +185,21 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
         EthLZpostman.lzReceive(AVAX_LAYERZERO_ID, mock, 1, _payload);
 
-        vm.deal(_dstVault, 100 ether);
-
         vm.stopPrank();
 
         vm.startPrank(manager);
+
+        underlying.deposit{value: 1000}();
+        underlying.transfer(address(EthSectorVault), 1000);
 
         vm.expectEmit(true, true, false, true);
         emit RegisterIncomingFunds(1000);
 
         EthSectorVault.processIncomingXFunds();
+
+        uint256 _srcVaultUnderlyingBalance = EthSectorVault.currentUnderlyingBalance(_srcVault);
+
+        assertEq(1000, _srcVaultUnderlyingBalance);
 
         vm.stopPrank();
     }
