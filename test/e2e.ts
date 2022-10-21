@@ -96,8 +96,6 @@ describe('e2e x', function () {
     if (parseFloat(formatUnits(balance, 6)) < 5) {
       let tx = await l1Underlying.approve(xVault.address, amount);
       await tx.wait();
-
-      console.log('deposit funds');
       tx = await xVault.deposit(amount, owner);
       await tx.wait();
     }
@@ -105,11 +103,17 @@ describe('e2e x', function () {
     const float = await xVault.floatAmnt();
     const toVault = await getDeployment('SectorVault', l2ChainName);
 
-    // fund vault gas for message
-    const vaultBalance = await xVault.provider.getBalance(xVault.address);
+    const vaultRecord = await xVault.addrBook(toVault.address);
+    const postman = await xVault.postmanAddr(
+      vaultRecord.postmanId,
+      network.config?.chainId?.toString()! /// TODO chainge for live test
+    );
+
+    // fund postman gas
+    const vaultBalance = await xVault.provider.getBalance(postman);
     if (vaultBalance.lt(parseUnits('.002'))) {
       const tx = await l1Signer.sendTransaction({
-        to: xVault.address,
+        to: postman,
         value: ethers.utils.parseEther('.004'),
       });
       await tx.wait();
