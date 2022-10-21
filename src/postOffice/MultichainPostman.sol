@@ -31,14 +31,14 @@ contract MultichainPostman is Ownable, IPostman {
 		address
 	) external payable {
 
-		Message memory msgToLayerZero = Message({
+		Message memory msgToMultichain = Message({
 			value: _msg.value,
 			sender: msg.sender,
 			client: _msg.client,
 			chainId: _msg.chainId
 		});
 
-		bytes memory payload = abi.encode(msgToLayerZero, _dstVautAddress, _messageType);
+		bytes memory payload = abi.encode(msgToMultichain, _dstVautAddress, _messageType);
 		CallProxy(anyCall).anyCall{value: msg.value}(_dstPostman, payload, address(0), _dstChainId, 2);
 	}
 

@@ -89,7 +89,7 @@ contract LayerZeroPostman is
 	}
 
 	function lzReceive(
-		uint16 _srcChainId,
+		uint16,
 		bytes memory,
 		uint64, /*_nonce*/
 		bytes memory _payload
@@ -103,7 +103,7 @@ contract LayerZeroPostman is
 			(Message, address, uint16)
 		);
 
-		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _srcChainId);
+		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _msg.chainId);
 
 		// Send message to dst vault
 		XChainIntegrator(_dstVaultAddress).receiveMessage(_msg, messageType(_messageType));

@@ -18,7 +18,8 @@ import "hardhat/console.sol";
 contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	LayerZeroPostman EthLZpostman;
     LayerZeroPostman AvaxLZpostman;
-	MultichainPostman MCpostman;
+	MultichainPostman AvaxMCpostman;
+    MultichainPostman EthMCpostman;
 	SectorVault EthSectorVault;
     SectorVault AvaxSectorVault;
 
@@ -66,7 +67,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		EthLZpostman = new LayerZeroPostman(ETH_LAYERZERO_ENDPOINT, pairArray);
 
-		MCpostman = new MultichainPostman(MULTICHAIN_ENDPOINT, manager);
+		EthMCpostman = new MultichainPostman(MULTICHAIN_ENDPOINT, manager);
 
         vm.deal(address(manager), 100 ether);
 
@@ -82,7 +83,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		AvaxLZpostman = new LayerZeroPostman(AVAX_LAYERZERO_ENDPOINT, pairArray);
 
-		MCpostman = new MultichainPostman(MULTICHAIN_ENDPOINT, manager);
+		AvaxMCpostman = new MultichainPostman(MULTICHAIN_ENDPOINT, manager);
 
         vm.deal(address(manager), 100 ether);
 	}
@@ -139,7 +140,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
         uint256 _amountBefore = manager.balance;
 
-		MCpostman.deliverMessage{ value: 2 ether }(
+		AvaxMCpostman.deliverMessage{ value: 2 ether }(
 			_msg,
 			_dstVault,
 			_dstPostman,
@@ -179,11 +180,52 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
         vm.startPrank(ETH_LAYERZERO_ENDPOINT);
 
         vm.expectEmit(true, true, false, true);
-        emit MessageReceived(_srcVault, 1000, _dstVault, uint16(messageType.DEPOSIT), AVAX_LAYERZERO_ID);
+        emit MessageReceived(_srcVault, 1000, _dstVault, uint16(messageType.DEPOSIT), AVAX_CHAIN_ID);
 
         bytes memory mock = abi.encode(_srcVault);
 
         EthLZpostman.lzReceive(AVAX_LAYERZERO_ID, mock, 1, _payload);
+
+        vm.stopPrank();
+
+        vm.startPrank(manager);
+
+        underlying.deposit{value: 1000}();
+        underlying.transfer(address(EthSectorVault), 1000);
+
+        vm.expectEmit(true, true, false, true);
+        emit RegisterIncomingFunds(1000);
+
+        EthSectorVault.processIncomingXFunds();
+
+        uint256 _srcVaultUnderlyingBalance = EthSectorVault.currentUnderlyingBalance(_srcVault);
+
+        assertEq(1000, _srcVaultUnderlyingBalance);
+
+        vm.stopPrank();
+    }
+
+    // Test if Multichain message is received by the detination Postman
+    // and if the destination vault register the message
+    function testMcReceiveMessage() public {
+        address _srcVault = address(AvaxSectorVault);
+        address _dstVault = address(EthSectorVault);
+
+        Message memory _msg = Message(1000, _srcVault, address(0), AVAX_CHAIN_ID);
+
+        bytes memory _payload = abi.encode(_msg, _dstVault, messageType.DEPOSIT);
+
+        vm.selectFork(ethFork);
+
+        EthSectorVault.managePostman(1, ETHEREUM_CHAIN_ID, address(EthMCpostman));
+        EthSectorVault.addVault(_srcVault, AVAX_CHAIN_ID, 1, true);
+
+        vm.startPrank(MULTICHAIN_ENDPOINT);
+
+        vm.expectEmit(true, true, false, true);
+        emit MessageReceived(_srcVault, 1000, _dstVault, uint16(messageType.DEPOSIT), AVAX_CHAIN_ID);
+
+        EthMCpostman.anyExecute(_payload);
 
         vm.stopPrank();
 
