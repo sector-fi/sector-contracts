@@ -1,5 +1,6 @@
-import { ethers, config, network } from 'hardhat';
+import { ethers, config, network, deployments } from 'hardhat';
 import { Contract, Signer } from 'ethers';
+import fs from 'fs/promises';
 
 const { parseUnits } = ethers.utils;
 
@@ -11,6 +12,8 @@ export const forkBlock = {
   // fantom: 35896922,
   moonriver: 2189870,
   moonbeam: 1432482,
+  arbitrum: 31603808,
+  optimism: undefined,
 };
 
 export const setupAccount = async (address: string): Promise<Signer> => {
@@ -54,6 +57,7 @@ export const forkNetwork = async (
   chain: string,
   blockNumber?: number
 ): Promise<void> => {
+  // console.log('fork', config.networks[chain as string]?.url);
   await network.provider.request({
     method: 'hardhat_reset',
     params: [
@@ -62,6 +66,8 @@ export const forkNetwork = async (
           // @ts-ignore
           jsonRpcUrl: config.networks[chain as string]?.url,
           blockNumber,
+          enabled: true,
+          ignoreUnknownTxType: true,
         },
       },
     ],
@@ -70,4 +76,15 @@ export const forkNetwork = async (
 
 export const fastForwardDays = async (days: number): Promise<void> => {
   await network.provider.send('evm_increaseTime', [days * 24 * 60 * 60]);
+};
+
+export const getDeployment = async (name: string, chain: string) => {
+  if (chain == 'hardhat') return deployments.get(name);
+  const filePath = `./deployments/${chain}/${name}.json`;
+  const contractData: any = await fs.readFile(filePath, {
+    encoding: 'utf8',
+  });
+  if (contractData == null)
+    throw Error(`Missing deployment ${name} on ${chain}`);
+  return JSON.parse(contractData);
 };

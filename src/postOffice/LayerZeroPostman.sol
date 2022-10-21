@@ -156,8 +156,6 @@ contract LayerZeroPostman is
 	// allow this contract to receive ether
 	fallback() external payable {}
 
-	receive() external payable {}
-
 	/* EVENTS */
 	event MessageReceived(
 		address srcVaultAddress,

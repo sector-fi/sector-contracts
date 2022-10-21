@@ -68,7 +68,7 @@ contract SectorCrossVault is SectorBase {
 				vaults[i].registry,
 				vaultAddr,
 				amount,
-				uint256(addrBook[vaultAddr].chainId),
+				uint256(vault.chainId),
 				vaults[i].txData
 			);
 

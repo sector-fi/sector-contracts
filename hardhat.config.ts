@@ -50,7 +50,7 @@ const {
   GOERLI_ALCHEMY,
   ALCHEMY_OP,
   ALCHEMY_ARB,
-  ALCHEMY_KEY
+  ALCHEMY_KEY,
 } = process.env;
 
 const keys = [DEPLOYER_KEY].filter((k) => k != null);
@@ -79,29 +79,34 @@ export default {
       default: MANAGER2,
     },
     usdc: {
-      mainnet: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+      mainnet: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      arbitrum: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
+      optimism: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607',
+      moonriver: '0xE3F5a90F9cb311505cd691a46596599aA1A0AD7D',
     },
     layerZeroEndpoint: {
-      goerli: "0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23",
-      fuji: "0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706",
-      mainnet: "0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675",
-      avalanche: "0x3c2269811836af69497E5F486A85D7316753cf62",
-      fantom: "0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7",
-      moonbean: "0x9740FF91F1985D8d2B71494aE1A2f723bb3Ed9E4",
-      optimism: "0x3c2269811836af69497E5F486A85D7316753cf62",
-      hardhat: "0x3c2269811836af69497E5F486A85D7316753cf62",
-      fantom_testnet: "0x7dcAD72640F835B0FA36EFD3D6d3ec902C7E5acf"
+      goerli: '0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23',
+      fuji: '0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706',
+      mainnet: '0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675',
+      avalanche: '0x3c2269811836af69497E5F486A85D7316753cf62',
+      fantom: '0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7',
+      moonbean: '0x9740FF91F1985D8d2B71494aE1A2f723bb3Ed9E4',
+      optimism: '0x3c2269811836af69497E5F486A85D7316753cf62',
+      hardhat: '0x3c2269811836af69497E5F486A85D7316753cf62',
+      localhost: '0x3c2269811836af69497E5F486A85D7316753cf62',
+      fantom_testnet: '0x7dcAD72640F835B0FA36EFD3D6d3ec902C7E5acf',
     },
     multichainEndpoint: {
-      fantom_testnet: "0xD7c295E399CA928A3a14b01D760E794f1AdF8990",
-      default: "0xC10Ef9F491C9B59f936957026020C321651ac078"
-    }
+      fantom_testnet: '0xD7c295E399CA928A3a14b01D760E794f1AdF8990',
+      default: '0xC10Ef9F491C9B59f936957026020C321651ac078',
+    },
   },
   networks: {
     hardhat: {
       chainId: 1337,
       tags: [FORK_CHAIN],
       allowUnlimitedContractSize: true,
+      supportMultichain: true,
       chains: {
         43114: {
           hardforkHistory: {
@@ -114,10 +119,19 @@ export default {
           },
         },
       },
+      companionNetworks: {
+        l1: FORK_CHAIN,
+        l2: 'optimism',
+      },
     },
     localhost: {
-      // accounts: keys.length ? keys : undefined,
+      chainId: 1337,
+      accounts: keys.length ? keys : undefined,
       tags: [FORK_CHAIN],
+      companionNetworks: {
+        l1: FORK_CHAIN,
+        l2: 'optimism',
+      },
     },
     fantom: {
       url: 'https://rpc.ftm.tools/',
@@ -223,7 +237,9 @@ export default {
       },
     },
     arbitrum: {
+      accounts: keys.length ? keys : undefined,
       url: `https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_ARB}`,
+      // url: `https://arbitrum-mainnet.infura.io/v3/${INFURA_API_KEY}`,
       chainId: 42161,
       layerZeroId: 110,
       supportMultichain: true,
@@ -235,16 +251,18 @@ export default {
       // },
     },
     optimism: {
+      accounts: keys.length ? keys : undefined,
       url: `https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}`,
       chainId: 10,
       layerZeroId: 111,
       supportMultichain: true,
-      gasPrice: 0.001e9,
+      // gasPrice: 0.001e9,
       name: 'optimism',
       tags: ['optimism'],
       companionNetworks: {
         l1: 'arbitrum',
       },
+      ovm: true,
     },
     mainnet: {
       accounts: keys.length ? keys : undefined,
@@ -277,7 +295,7 @@ export default {
   gasReporter: {
     enabled: SHOW_GAS === 'true',
     currency: 'USD',
-    gasPrice: 30,
+    gasPrice: 1,
     coinmarketcap: COIN_MARKET_CAP_API,
   },
   paths: {
@@ -296,9 +314,9 @@ export default {
   },
   external: {
     // this allows us to fork deployments (specify folders we can import deployments from)
-    deployments: {
-      localhost: FORK_CHAIN ? [`deployments/${FORK_CHAIN}`] : [],
-      hardhat: FORK_CHAIN ? [`deployments/${FORK_CHAIN}`] : [],
-    },
+    // deployments: {
+    //   localhost: FORK_CHAIN ? [`deployments/${FORK_CHAIN}`] : [],
+    //   hardhat: FORK_CHAIN ? [`deployments/${FORK_CHAIN}`] : [],
+    // },
   },
 };
