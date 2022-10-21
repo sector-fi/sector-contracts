@@ -280,46 +280,43 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 	// 	// More variations on that (no messages for example)
 
-	// 	function testOneChainFinalizeHarvest() public {
-	// 		uint256 amount = 1 ether;
+	function testOneFinalizeHarvest() public {
+		uint256[] memory amount = new uint256[](vaults.length);
+		amount[0] = 1 ether;
+		for (uint i = 1; i < vaults.length; i++) amount[i] = 0;
 
-	// 		depositXVault(user1, amount);
+		depositXVault(user1, amount[0]);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(childVault), amount);
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount[0]);
 
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+		// getRequests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount[0], 0, 0, false);
 
-	// 		address[] memory vaults = new address[](2);
-	// 		vaults[0] = address(childVault);
-	// 		vaults[1] = address(nephewVault);
+		xvaultFinalizeHarvest(amount);
+	}
 
-	// 		uint256[] memory amounts = new uint256[](2);
-	// 		amounts[0] = amount;
-	// 		amounts[1] = 0;
-	// 		xvaultFinalizeHarvest(vaults, amounts);
-	// 	}
+	function testMultipleFinalizeHarvest() public {
+		uint256[] memory amount = new uint256[](vaults.length);
 
-	// 	// // More variations on that (no messages for example)
-	// 	function testOneCrossFinalizeHarvest() public {
-	// 		uint256 amount = 1 ether;
+		amount[0] = 1 ether;
+		uint256 total = amount[0];
+		for (uint i = 1; i < vaults.length; i++) {
+			amount[i] = i * 1209371 gwei;
+			total += amount[i];
+		}
+		depositXVault(user1, total);
 
-	// 		depositXVault(user1, amount);
+		Request[] memory requests = new Request[](vaults.length);
+		for (uint i; i < vaults.length; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount[i]);
+		}
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(nephewVault), amount);
+		// getRequests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, total, 0, 0, false);
 
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
-
-	// 		address[] memory vaults = new address[](1);
-	// 		vaults[0] = address(nephewVault);
-
-	// 		uint256[] memory amounts = new uint256[](1);
-	// 		amounts[0] = amount;
-	// 		xvaultFinalizeHarvest(vaults, amounts);
-	// 	}
+		xvaultFinalizeHarvest(amount);
+	}
 
 	// 	// // Assert errors
 
