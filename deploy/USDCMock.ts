@@ -10,15 +10,14 @@ const func: DeployFunction = async function ({
     const { deployer, usdc } = await getNamedAccounts();
     const { deploy } = deployments;
 
-    // we can deploy multiple vaults with different name extensions -1, -2 etc
     if (!usdc) {
-        const vault = await deploy('USDCMock', {
+        const usdcMock = await deploy('USDCMock', {
             from: deployer,
             args: [ethers.utils.parseUnits('2000000', 6)],
             skipIfAlreadyDeployed: false,
             log: true,
         });
-        console.log('usdc-mock deployed to', vault.address);
+        console.log('usdc-mock deployed to', usdcMock.address);
     }
     else return;
 };

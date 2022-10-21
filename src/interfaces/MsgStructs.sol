@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 struct Message {
     uint256 value;
     address sender;
-    address client;
+    address client; // In case of emergency withdraw, this is the address to send the funds to
     uint16 chainId;
 }
 

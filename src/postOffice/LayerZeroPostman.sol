@@ -4,7 +4,6 @@ pragma solidity 0.8.16;
 import { ILayerZeroReceiver } from "../interfaces/adapters/ILayerZeroReceiver.sol";
 import { ILayerZeroEndpoint } from "../interfaces/adapters/ILayerZeroEndpoint.sol";
 import { ILayerZeroUserApplicationConfig } from "../interfaces/adapters/ILayerZeroUserApplicationConfig.sol";
-// import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { IPostman } from "../interfaces/postOffice/IPostman.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";

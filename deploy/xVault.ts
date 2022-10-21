@@ -17,8 +17,7 @@ const func: DeployFunction = async function ({
   const authConfig = [owner, guardian, manager];
   const feeConfig = [owner, 0, 0];
 
-  const vault = await deploy('SectorCrossVault-0', {
-    contract: 'SectorCrossVault',
+  const vault = await deploy('SectorCrossVault', {
     from: deployer,
     args: [
       USDC,
