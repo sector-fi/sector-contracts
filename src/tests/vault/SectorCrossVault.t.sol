@@ -107,7 +107,8 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			guardian,
 			address(postmanLz)
 		];
-		for (uint256 i = 0; i < gaveMoneyAccs.length; i++) vm.deal(gaveMoneyAccs[i], 10 ether);
+		for (uint256 i = 0; i < gaveMoneyAccs.length; i++)
+			vm.deal(gaveMoneyAccs[i], 1000000000 ether);
 
 		// Add min liquidity to xVault
 		depositXVault(manager, mLp);
@@ -126,132 +127,102 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		xvaultDepositIntoVaults(requests, amount, 1, 1, true);
 	}
 
-	// 	function testOneCrossDepositIntoVaults() public {
-	// 		uint256 amount = 1 ether;
+	function testMultipleDepositIntoVaults() public {
+		uint256 amount = 1 ether;
 
-	// 		depositXVault(user1, amount);
+		depositXVault(user1, amount * vaults.length);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(nephewVault), amount);
+		Request[] memory requests = new Request[](vaults.length);
+		for (uint256 i; i < vaults.length; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount);
+		}
 
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 1, 1, true);
-	// 	}
-
-	// 	function testMultipleDepositIntoVauls() public {
-	// 		uint256 amount = 1 ether;
-
-	// 		depositXVault(user1, amount * 2);
-
-	// 		Request[] memory requests = new Request[](2);
-	// 		requests[0] = getRequest(address(childVault), amount);
-	// 		requests[1] = getRequest(address(nephewVault), amount);
-
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount * 2, 1, 1, true);
-	// 	}
-
-	// 	function testMultipleUsersDepositIntoVaults() public {
-	// 		uint256 amount1 = 1 ether;
-	// 		uint256 amount2 = 123424323 wei;
-	// 		uint256 amount3 = 3310928371 wei;
-
-	// 		depositXVault(user1, amount1);
-	// 		depositXVault(user2, amount2);
-	// 		depositXVault(user3, amount3);
-
-	// 		Request[] memory requests = new Request[](3);
-	// 		requests[0] = getRequest(address(childVault), amount1);
-	// 		requests[1] = getRequest(address(nephewVault), amount2);
-	// 		requests[2] = getRequest(address(nephewVault), amount3);
-
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 2, 2, true);
-	// 	}
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(
+			requests,
+			amount * vaults.length,
+			vaults.length,
+			vaults.length,
+			true
+		);
+	}
 
 	// 	// Assert from deposit errors
 	// 	// Not in addr book
 
-	// 	function testOneChainWithdrawFromVaults() public {
-	// 		uint256 amount = 1 ether;
+	function testOneWithdrawFromVaults() public {
+		uint256 amount = 1 ether;
 
-	// 		depositXVault(user1, amount);
+		depositXVault(user1, amount);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(childVault), amount);
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
 
-	// 		// uint256 shares = childVault.balanceOf(address(xVault));
-	// 		requests[0] = getRequest(address(childVault), 100);
+		// uint256 shares = childVault.balanceOf(address(xVault));
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), 1e18);
 
-	// 		// Requests, total amount, msgSent events, withdraw events
-	// 		xvaultWithdrawFromVaults(requests, 0, 1, true);
-	// 	}
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 1, 0, true);
+	}
 
-	// 	function testOneCrossWithdrawFromVaults() public {
-	// 		uint256 amount = 1 ether;
+	function testMultipleWithdrawFromVaults() public {
+		uint256[3] memory amounts = [uint256(1 ether), 918 gwei, 13231 wei];
+		// uint256 total = amount1 + amount2 + amount3;
+		address[3] memory users = [user1, user2, user3];
 
-	// 		depositXVault(user1, amount);
+		for (uint256 i; i < 3; i++) depositXVault(users[i], amounts[i]);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(nephewVault), amount);
+		uint256 total = 0;
+		Request[] memory requests = new Request[](3);
+		for (uint256 i; i < 3; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amounts[i]);
+			total += amounts[i];
+		}
 
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, total, 0, 0, false);
 
-	// 		// uint256 shares = nephewVault.balanceOf(address(xVault));
-	// 		requests[0] = getRequest(address(nephewVault), 100);
+		for (uint256 i; i < 3; i++)
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), 1e18);
 
-	// 		// Requests, total amount, msgSent events, withdraw events
-	// 		xvaultWithdrawFromVaults(requests, 1, 0, true);
-	// 	}
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 3, 0, true);
+	}
 
-	// 	function testMultipleWithdrawFromVaults() public {
-	// 		uint256 amount1 = 1 ether;
-	// 		uint256 amount2 = 918 gwei;
-	// 		uint256 amount3 = 13231 wei;
+	function testChainPartialWithdrawFromVaults() public {
+		uint256[3] memory amounts = [uint256(1 ether), 918 gwei, 13231 wei];
+		// uint256 total = amount1 + amount2 + amount3;
+		address[3] memory users = [user1, user2, user3];
 
-	// 		depositXVault(user1, amount1);
-	// 		depositXVault(user2, amount2);
-	// 		depositXVault(user3, amount3);
+		for (uint256 i; i < 3; i++) depositXVault(users[i], amounts[i]);
 
-	// 		Request[] memory requests = new Request[](3);
-	// 		requests[0] = getRequest(address(childVault), amount1);
-	// 		requests[1] = getRequest(address(nephewVault), amount2);
-	// 		requests[2] = getRequest(address(nephewVault), amount3);
+		uint256 total = 0;
+		Request[] memory requests = new Request[](3);
+		for (uint256 i; i < 3; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amounts[i]);
+			total += amounts[i];
+		}
 
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 0, 0, false);
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, total, 0, 0, false);
 
-	// 		requests[0] = getRequest(address(childVault), 100);
-	// 		requests[1] = getRequest(address(nephewVault), 100);
-	// 		requests[2] = getRequest(address(nephewVault), 100);
+		uint256[3] memory sharesBefore;
+		for (uint256 i; i < 3; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), 1e9);
+			sharesBefore[i] = vaults[i].balanceOf(address(xVault));
+		}
 
-	// 		// Requests, total amount, msgSent events, withdraw events
-	// 		xvaultWithdrawFromVaults(requests, 2, 1, true);
-	// 	}
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 3, 0, true);
 
-	// 	function testChainPartialWithdrawFromVaults() public {
-	// 		uint256 amount1 = 1 ether;
-
-	// 		depositXVault(user1, amount1);
-
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(childVault), amount1);
-
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount1, 0, 0, false);
-
-	// 		uint256 sharesBefore = childVault.balanceOf(address(xVault));
-	// 		uint256 sharesWithdraw = (childVault.balanceOf(address(xVault)) * 25) / 100;
-	// 		requests[0] = getRequest(address(childVault), 25);
-	// 		// getRequests, msgSent events, withdraw events
-	// 		xvaultWithdrawFromVaults(requests, 0, 0, false);
-
-	// 		assertEq(childVault.balanceOf(address(xVault)), sharesBefore - sharesWithdraw);
-	// 	}
+		// Check if half of shares were withdraw
+		for (uint256 i; i < 3; i++) {
+			assertEq(vaults[i].balanceOf(address(xVault)), sharesBefore[i] / 2);
+		}
+	}
 
 	// 	// Assert errors
 

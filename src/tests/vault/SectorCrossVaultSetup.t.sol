@@ -78,9 +78,6 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 		if (!assertOn) return;
 
-		console.log(xVaultFloatAmountBefore);
-		console.log(totalAmount);
-
 		// Accounting tests
 		assertEq(xVault.totalChildHoldings(), totalAmount, "XVault accounting is correct");
 		assertEq(
@@ -127,7 +124,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		for (uint256 i = 0; i < requests.length; i++) {
 			SectorVault vault = SectorVault(requests[i].vaultAddr);
 			// uint256 share = shares[i];
-			uint256 value = (shares[i] * requests[i].amount) / 100;
+			uint256 value = (shares[i] * requests[i].amount) / 1e18;
 
 			(uint16 vaultChainId, , ) = xVault.addrBook(address(vault));
 			// On same chain as xVault

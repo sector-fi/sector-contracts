@@ -6,8 +6,6 @@ import { Auth } from "./Auth.sol";
 import "../interfaces/MsgStructs.sol";
 import "../interfaces/postOffice/IPostman.sol";
 
-import "hardhat/console.sol";
-
 /// @notice Struct encoded in Bungee calldata
 /// @dev Derived from socket registry contract
 struct MiddlewareRequest {
