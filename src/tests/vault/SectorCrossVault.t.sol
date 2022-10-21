@@ -238,49 +238,45 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
 
 		// localDeposit, crossDeposit, pending, received, message sent, assert on
-		xvaultHarvestVault(vaults[0].balanceOf(address(xVault)), 0, 1, 0, 1, true);
+		xvaultHarvestVault(
+			0,
+			vaults[0].balanceOf(address(xVault)),
+			vaults.length,
+			0,
+			vaults.length,
+			true
+		);
 	}
 
-	// 	function testOneCrossHarvestVaults() public {
-	// 		uint256 amount = 1 ether;
+	function testMultipleHarvestVaults() public {
+		uint256[3] memory amounts = [uint256(1 ether), 918 gwei, 13231 wei];
+		address[3] memory users = [user1, user2, user3];
 
-	// 		depositXVault(user1, amount);
+		for (uint256 i; i < 3; i++) depositXVault(users[i], amounts[i]);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(nephewVault), amount);
+		uint256 total = 0;
+		Request[] memory requests = new Request[](3);
+		for (uint256 i; i < 3; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amounts[i]);
+			total += amounts[i];
+		}
 
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, total, 0, 0, false);
 
-	// 		// localDeposit, crossDeposit, pending, received, message sent, assert on
-	// 		xvaultHarvestVault(0, nephewVault.balanceOf(address(xVault)), 1, 0, 1, true);
-	// 	}
+		uint totalShares = 0;
+		for (uint256 i; i < 3; i++) totalShares += vaults[i].balanceOf(address(xVault));
 
-	// 	function testMultipleHarvestVaults() public {
-	// 		uint256 amount1 = 1 ether;
-	// 		uint256 amount2 = 1987198723 wei;
-	// 		uint256 amount3 = 389 gwei;
-
-	// 		depositXVault(user1, amount1);
-
-	// 		Request[] memory requests = new Request[](3);
-	// 		requests[0] = getRequest(address(nephewVault), amount1);
-	// 		requests[1] = getRequest(address(childVault), amount2);
-	// 		requests[2] = getRequest(address(childVault), amount3);
-
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount1 + amount2 + amount3, 0, 0, false);
-
-	// 		// localDeposit, crossDeposit, pending, received, message sent, assert on
-	// 		xvaultHarvestVault(
-	// 			childVault.balanceOf(address(xVault)),
-	// 			nephewVault.balanceOf(address(xVault)),
-	// 			1,
-	// 			0,
-	// 			1,
-	// 			true
-	// 		);
-	// 	}
+		// localDeposit, crossDeposit, pending, received, message sent, assert on
+		xvaultHarvestVault(
+			0,
+			totalShares,
+			vaults.length,
+			0,
+			vaults.length,
+			true
+		);
+	}
 
 	// 	// More variations on that (no messages for example)
 

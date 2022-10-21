@@ -181,12 +181,12 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		assertEventCount(entries, "MessageSent(uint256,address,uint16,uint8,address)", mSent);
 	}
 
-	function xvaultFinalizeHarvest(address[] memory vaults, uint256[] memory amounts) public {
+	function xvaultFinalizeHarvest(address[] memory _vaults, uint256[] memory amounts) public {
 		uint256 totalAmount = 0;
 		for (uint256 i; i < vaults.length; i++) {
 			totalAmount += amounts[i];
-			if (getVaultChainId(vaults[i]) == chainId) continue;
-			fakeIncomingXDeposit(vaults[i], amounts[i]);
+			if (getVaultChainId(_vaults[i]) == chainId) continue;
+			fakeIncomingXDeposit(_vaults[i], amounts[i]);
 		}
 
 		// Go back to harvest test
@@ -194,9 +194,9 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		xvaultHarvestVault(0, 0, 0, 0, 0, false);
 
 		for (uint256 i; i < vaults.length; i++) {
-			if (getVaultChainId(vaults[i]) == chainId) continue;
+			if (getVaultChainId(_vaults[i]) == chainId) continue;
 			fakeAnswerXHarvest(
-				vaults[i],
+				_vaults[i],
 				SectorVault(vaults[i]).underlyingBalance(address(xVault))
 			);
 		}
