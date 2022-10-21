@@ -18,10 +18,9 @@ const func: DeployFunction = async function ({
       layerZeroEndpoint,
       multichainEndpoint,
     } = await getNamedAccounts();
-    const { deploy, execute } = dep[i];
+    const { deploy } = dep[i];
 
     const networks = config.networks;
-    // console.log("NETWORKS", networks);
 
     if (!multichainEndpoint) {
       throw new Error('multichainEndpoint not set');
@@ -55,7 +54,7 @@ const func: DeployFunction = async function ({
     if (network.config.supportMultichain) {
       const multichain = await deploy('MultichainPostman', {
         from: deployer,
-        args: [multichainEndpoint],
+        args: [multichainEndpoint, manager],
         skipIfAlreadyDeployed: false,
         log: true,
       });

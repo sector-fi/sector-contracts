@@ -97,7 +97,8 @@ export default {
       fantom_testnet: '0x7dcAD72640F835B0FA36EFD3D6d3ec902C7E5acf',
     },
     multichainEndpoint: {
-      fantom_testnet: '0xD7c295E399CA928A3a14b01D760E794f1AdF8990',
+      fantom_testnet: '0xc629d02732EE932db1fa83E1fcF93aE34aBFc96B',
+      goerli: '0x3D4e1981f822e87A1A4C05F2e4b3bcAdE5406AE3',
       default: '0xC10Ef9F491C9B59f936957026020C321651ac078',
     },
   },
@@ -202,7 +203,7 @@ export default {
       accounts: keys.length ? keys : undefined,
       chainId: 5,
       layerZeroId: 10121,
-      supportMultichain: false,
+      supportMultichain: true,
       verify: {
         etherscan: {
           apiKey: ETHERSCAN_API_KEY,

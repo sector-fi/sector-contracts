@@ -254,7 +254,8 @@ abstract contract XChainIntegrator is Auth {
 			receiverAddr,
 			dstPostman,
 			msgType,
-			vault.chainId
+			vault.chainId,
+			msg.sender
 		);
 
 		emit MessageSent(message.value, receiverAddr, vault.chainId, msgType, srcPostman);
