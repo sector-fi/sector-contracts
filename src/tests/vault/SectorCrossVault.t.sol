@@ -226,20 +226,20 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 	// 	// Assert errors
 
-	// 	function testOneChainHarvestVaults() public {
-	// 		uint256 amount = 1 ether;
+	function testOneChainHarvestVaults() public {
+		uint256 amount = 1 ether;
 
-	// 		depositXVault(user1, amount);
+		depositXVault(user1, amount);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(childVault), amount);
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+		// getRequests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
 
-	// 		// localDeposit, crossDeposit, pending, received, message sent, assert on
-	// 		xvaultHarvestVault(childVault.balanceOf(address(xVault)), 0, 1, 0, 1, true);
-	// 	}
+		// localDeposit, crossDeposit, pending, received, message sent, assert on
+		xvaultHarvestVault(vaults[0].balanceOf(address(xVault)), 0, 1, 0, 1, true);
+	}
 
 	// 	function testOneCrossHarvestVaults() public {
 	// 		uint256 amount = 1 ether;

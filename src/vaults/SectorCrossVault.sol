@@ -48,6 +48,7 @@ contract SectorCrossVault is SectorBase {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
+			uint256 fee = vaults[i].fee;
 
 			Vault memory vault = checkVault(vaultAddr);
 			if (vault.chainId == chainId) revert SameChainOperation();
@@ -57,7 +58,7 @@ contract SectorCrossVault is SectorBase {
 			_sendMessage(
 				vaultAddr,
 				vault,
-				Message(amount, address(this), address(0), chainId),
+				Message(amount - fee, address(this), address(0), chainId),
 				messageType.DEPOSIT
 			);
 

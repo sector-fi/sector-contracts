@@ -69,6 +69,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		bool assertOn
 	) public {
 		uint256 xVaultFloatAmountBefore = xVault.floatAmnt();
+
 		vm.recordLogs();
 		// Deposit into a vault
 		vm.prank(manager);
@@ -297,6 +298,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 			Request(
 				vault,
 				amount,
+				0,
 				address(socketRegistry),
 				address(socketRegistry),
 				getUserRequest(vault, toChainId, amount, address(underlying))
