@@ -204,7 +204,7 @@ abstract contract XChainIntegrator is Auth {
 	) internal onlyOwner {
 		Vault memory vault = addrBook[_vault];
 
-		if (vault.chainId != 0) revert VaultAlreadyAdded();
+		if (vault.allowed) revert VaultAlreadyAdded();
 
 		addrBook[_vault] = Vault(_chainId, _postmanId, _allowed);
 		emit AddedVault(_vault, _chainId);
