@@ -2,8 +2,79 @@ import { SectorCrossVault, SectorVault } from 'typechain';
 import { getCompanionNetworks } from './network';
 import { ethers } from 'hardhat';
 import { Signer } from 'ethers';
+import { getQuote, getRouteTransactionData } from './socketAPI';
+
 const { utils } = ethers;
 const { parseUnits, parseEther } = utils;
+
+export const bridgeFunds = async (
+  xVault: SectorCrossVault,
+  toAddress: string,
+  fromAsset: string,
+  toAsset: string,
+  fromChain: number,
+  toChain: number,
+  amount: number
+) => {
+  // Set Socket quote request params
+  const uniqueRoutesPerBridge = true; // Set to true the best route for each bridge will be returned
+  const sort = 'output'; // "output" | "gas" | "time"
+  const singleTxOnly = true; // Set to true to look for a single transaction route
+
+  // Get quote
+  const quote = await getQuote(
+    fromChain,
+    fromAsset,
+    toChain,
+    toAsset,
+    amount,
+    toAddress,
+    uniqueRoutesPerBridge,
+    sort,
+    singleTxOnly
+  );
+
+  console.log(
+    fromChain,
+    fromAsset,
+    toChain,
+    toAsset,
+    amount,
+    toAddress,
+    uniqueRoutesPerBridge,
+    sort,
+    singleTxOnly
+  );
+
+  const routes = quote.result.routes;
+
+  // loop routes
+  let apiReturnData: any = {};
+  for (const route of routes) {
+    try {
+      apiReturnData = await getRouteTransactionData(route);
+
+      // console.log(apiReturnData);
+      const request = {
+        vaultAddr: toAddress,
+        amount,
+        allowanceTarget: apiReturnData.result.approvalData.allowanceTarget,
+        registry: apiReturnData.result.txTarget,
+        txData: apiReturnData.result.txData,
+      };
+      console.log(request);
+
+      const tx = await xVault.depositIntoXVaults([request]);
+      const res = await tx.wait();
+      return res;
+    } catch (e) {
+      console.log(e);
+      e;
+      continue;
+    }
+    break;
+  }
+};
 
 export const fundPostmen = async (
   xVault: SectorCrossVault,

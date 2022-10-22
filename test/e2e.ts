@@ -4,6 +4,7 @@ import {
   getDeployment,
   getCompanionNetworks,
   fundPostmen,
+  bridgeFunds,
 } from '../ts/utils';
 import {
   ethers,
@@ -17,7 +18,6 @@ import { parseUnits, formatUnits } from 'ethers/lib/utils';
 import { Web3Provider, ExternalProvider } from '@ethersproject/providers';
 import fetch from 'node-fetch';
 import { assert } from 'chai';
-import { Signer } from 'ethers';
 
 global.fetch = fetch;
 
@@ -99,6 +99,7 @@ describe('e2e x', function () {
     const float = await xVault.floatAmnt();
     if (parseFloat(formatUnits(float, 6)) > 0) {
       const tx = await bridgeFunds(
+        xVault,
         toVault.address,
         fromAsset,
         toAsset,
@@ -110,72 +111,4 @@ describe('e2e x', function () {
       assert(tx?.status == 1, 'Transaction seccess');
     }
   });
-
-  const bridgeFunds = async (
-    toAddress: string,
-    fromAsset: string,
-    toAsset: string,
-    fromChain: number,
-    toChain: number,
-    amount: number
-  ) => {
-    // Set Socket quote request params
-    const uniqueRoutesPerBridge = true; // Set to true the best route for each bridge will be returned
-    const sort = 'output'; // "output" | "gas" | "time"
-    const singleTxOnly = true; // Set to true to look for a single transaction route
-
-    // Get quote
-    const quote = await getQuote(
-      fromChain,
-      fromAsset,
-      toChain,
-      toAsset,
-      amount,
-      toAddress,
-      uniqueRoutesPerBridge,
-      sort,
-      singleTxOnly
-    );
-
-    console.log(
-      fromChain,
-      fromAsset,
-      toChain,
-      toAsset,
-      amount,
-      toAddress,
-      uniqueRoutesPerBridge,
-      sort,
-      singleTxOnly
-    );
-
-    const routes = quote.result.routes;
-
-    // loop routes
-    let apiReturnData: any = {};
-    for (const route of routes) {
-      try {
-        apiReturnData = await getRouteTransactionData(route);
-
-        // console.log(apiReturnData);
-        const request = {
-          vaultAddr: toAddress,
-          amount,
-          allowanceTarget: apiReturnData.result.approvalData.allowanceTarget,
-          registry: apiReturnData.result.txTarget,
-          txData: apiReturnData.result.txData,
-        };
-        console.log(request);
-
-        const tx = await xVault.depositIntoXVaults([request]);
-        const res = await tx.wait();
-        return res;
-      } catch (e) {
-        console.log(e);
-        e;
-        continue;
-      }
-      break;
-    }
-  };
 });
