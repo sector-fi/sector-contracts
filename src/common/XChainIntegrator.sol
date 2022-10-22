@@ -248,6 +248,8 @@ abstract contract XChainIntegrator is Auth {
 	) internal {
 		address srcPostman = postmanAddr[vault.postmanId][chainId];
 		address dstPostman = postmanAddr[vault.postmanId][vault.chainId];
+		if (srcPostman == address(0)) revert MissingPostman(vault.postmanId, chainId);
+		if (dstPostman == address(0)) revert MissingPostman(vault.postmanId, vault.chainId);
 
 		IPostman(srcPostman).deliverMessage(
 			message,
@@ -305,6 +307,7 @@ abstract contract XChainIntegrator is Auth {
 							Errors
 	/////////////////////////////////////////////////////*/
 
+	error MissingPostman(uint16 postmanId, uint256 chainId);
 	error SenderNotAllowed(address sender);
 	error WrongPostman(address postman);
 	error VaultNotAllowed(address vault);

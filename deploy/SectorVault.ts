@@ -1,16 +1,23 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { network } from 'hardhat';
+import { getCompanionNetworks } from '../ts/utils';
 
+// sector vault is allways an l2 deployment
 const func: DeployFunction = async function ({
   getNamedAccounts,
   deployments,
   companionNetworks,
 }: HardhatRuntimeEnvironment) {
-  const l2 = companionNetworks.l2;
+  const { l2 } = await getCompanionNetworks();
 
-  const { deployer, owner, guardian, manager, usdc } =
-    (await l2?.getNamedAccounts()) || l2?.getNamedAccounts();
+  const {
+    deployer,
+    owner,
+    guardian,
+    manager,
+    usdc,
+  } = await l2.getNamedAccounts();
 
   const { deploy } = deployments;
 

@@ -1,4 +1,11 @@
-import { ethers, config, network, deployments } from 'hardhat';
+import {
+  ethers,
+  config,
+  network,
+  deployments,
+  companionNetworks,
+  getNamedAccounts,
+} from 'hardhat';
 import { Contract, Signer } from 'ethers';
 import fs from 'fs/promises';
 
@@ -87,4 +94,23 @@ export const getDeployment = async (name: string, chain: string) => {
   if (contractData == null)
     throw Error(`Missing deployment ${name} on ${chain}`);
   return JSON.parse(contractData);
+};
+
+export const getCompanionNetworks = async () => {
+  const l1 = companionNetworks.l1;
+  if (!l1) throw Error('Missing l1 companion network');
+  // live networks don't need to specify l2
+  const l2 = companionNetworks.l2 || {
+    getNamedAccounts,
+    deployments,
+    getChainId: () => network.config.chainId,
+  };
+
+  const l1Id = await l1.getChainId();
+  const l2Id = await l2.getChainId();
+
+  const l1Name = network.config.companionNetworks?.l1;
+  const l2Name = network.config.companionNetworks?.l2 || network.name;
+
+  return { l1, l2, l1Id, l2Id, l1Name, l2Name };
 };

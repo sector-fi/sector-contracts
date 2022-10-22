@@ -1,24 +1,26 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
 import { config } from 'hardhat';
+import { getCompanionNetworks } from '../ts/utils';
 
 const func: DeployFunction = async function ({
   getNamedAccounts,
   deployments,
   network,
-  companionNetworks,
 }: HardhatRuntimeEnvironment) {
-  const dep = !network.live
-    ? [deployments]
-    : [deployments, companionNetworks.l1.deployments];
-  for (let i = 0; i < dep.length; i++) {
+  const { l1, l2 } = await getCompanionNetworks();
+
+  const chains = !network.live ? [l1] : [l1, l2];
+  for (let i = 0; i < chains.length; i++) {
+    const c = chains[i];
     const {
       deployer,
       manager,
       layerZeroEndpoint,
       multichainEndpoint,
-    } = await getNamedAccounts();
-    const { deploy } = dep[i];
+    } = await c.getNamedAccounts();
+    // if not on live network, only current chain deployments
+    const deploy = !network.live ? deployments.deploy : c.deployments.deploy;
 
     const networks = config.networks;
 

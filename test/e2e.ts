@@ -1,12 +1,8 @@
 import {
   getQuote,
   getRouteTransactionData,
-  grantToken,
-  forkNetwork,
-  chain,
-  forkBlock,
-  waitFor,
   getDeployment,
+  getCompanionNetworks,
 } from '../ts/utils';
 import {
   ethers,
@@ -19,6 +15,7 @@ import { SectorCrossVault, SectorVault, ERC20 } from '../typechain';
 import { parseUnits, formatUnits } from 'ethers/lib/utils';
 import { Web3Provider, ExternalProvider } from '@ethersproject/providers';
 import fetch from 'node-fetch';
+import { assert } from 'chai';
 
 global.fetch = fetch;
 
@@ -30,39 +27,32 @@ describe('e2e x', function () {
   let xVault: SectorCrossVault;
   let vault: SectorVault;
   let owner;
-  let l2Chain;
-  let l1Chain;
+  let l2Id;
+  let l1Id;
   let l1Signer;
   let l2Signer;
-  let l2ChainName;
+  let l1Name, l2Name;
+  let l1, l2;
 
   before(async () => {
     if (!network.live) await setupTest();
     ({ owner } = await getNamedAccounts());
-    const l1 = companionNetworks.l1;
-    const l2 = companionNetworks.l2;
-    if (!l1) throw new Error('Missing l1 companion network');
+    ({ l1, l2, l1Id, l2Id, l1Name, l2Name } = await getCompanionNetworks());
 
     const l1Provider = new Web3Provider(
       (companionNetworks.l1.provider as unknown) as ExternalProvider
     );
-
-    const l1ChainName = network.config.companionNetworks?.l1;
-    l2ChainName = network.config.companionNetworks?.l2 || network.name;
 
     l1Signer = network.live
       ? new ethers.Wallet(network.config.accounts[0], l1Provider)
       : await ethers.getSigner(owner);
     l2Signer = await ethers.getSigner(owner);
 
-    l2Chain = l2 ? await l2.getChainId() : network.config.chainId;
-    l1Chain = await l1.getChainId();
+    console.log('Current network:', l2Id, l2Name);
+    console.log('L1 network:', l1Id, l1Name);
 
-    console.log('Current network:', l2Chain, `(${network.name})`);
-    console.log('L1 network:', l1Chain);
-
-    const xVaultArtifact = await getDeployment('SectorXVault', l1ChainName);
-    const vaultArtifact = await getDeployment('SectorVault', l2ChainName);
+    const xVaultArtifact = await getDeployment('SectorXVault', l1Name);
+    const vaultArtifact = await getDeployment('SectorVault', l2Name);
 
     xVault = network.live
       ? (new ethers.Contract(
@@ -80,8 +70,8 @@ describe('e2e x', function () {
 
   it('e2e', async function () {
     const fromAsset = await xVault.underlying();
-    const toAsset = '0x7F5c764cBc14f9669B88837ca1490cCa17c31607';
-    // const toAsset = await vault.underlying();
+    // const toAsset = '0x7F5c764cBc14f9669B88837ca1490cCa17c31607';
+    const toAsset = await vault.underlying();
 
     const amount = parseUnits('10', 6);
 
@@ -100,35 +90,23 @@ describe('e2e x', function () {
       await tx.wait();
     }
 
+    await fundPostmen();
+
+    // this is used in local hh test
+    const toVault = await getDeployment('SectorVault', l2Name);
+
     const float = await xVault.floatAmnt();
-    const toVault = await getDeployment('SectorVault', l2ChainName);
-
-    const vaultRecord = await xVault.addrBook(toVault.address);
-    const postman = await xVault.postmanAddr(
-      vaultRecord.postmanId,
-      network.config?.chainId?.toString()! /// TODO chainge for live test
-    );
-
-    // fund postman gas
-    const vaultBalance = await xVault.provider.getBalance(postman);
-    if (vaultBalance.lt(parseUnits('.002'))) {
-      const tx = await l1Signer.sendTransaction({
-        to: postman,
-        value: ethers.utils.parseEther('.004'),
-      });
-      await tx.wait();
-    }
-
     if (parseFloat(formatUnits(float, 6)) > 0) {
       const tx = await bridgeFunds(
         toVault.address,
         fromAsset,
         toAsset,
-        l1Chain,
-        l2Chain,
+        l1Id,
+        l2Id,
         amount.toNumber()
       );
       console.log('bridge tx', tx);
+      assert(tx?.status == 1, 'Transaction seccess');
     }
   });
 
@@ -190,13 +168,45 @@ describe('e2e x', function () {
 
         const tx = await xVault.depositIntoXVaults([request]);
         const res = await tx.wait();
-        console.log(res);
+        return res;
       } catch (e) {
         console.log(e);
         e;
         continue;
       }
       break;
+    }
+  };
+
+  const fundPostmen = async () => {
+    const toVault = await getDeployment('SectorVault', l2Name);
+
+    // src postman
+    const l1VaultRecord = await xVault.addrBook(toVault.address);
+    const l1Postman = await xVault.postmanAddr(l1VaultRecord.postmanId, l1Id);
+
+    // dest postman
+    const l2VaultRecord = await xVault.addrBook(xVault.address);
+    const l2Postman = await vault.postmanAddr(l2VaultRecord.postmanId, l2Id);
+
+    // fund l1 postman
+    const l1Balance = await xVault.provider.getBalance(l1Postman);
+    if (l1Balance.lt(parseUnits('.002'))) {
+      const tx = await l1Signer.sendTransaction({
+        to: l1Postman,
+        value: ethers.utils.parseEther('.004'),
+      });
+      await tx.wait();
+    }
+
+    // fund l2 postman
+    const l2Balance = await xVault.provider.getBalance(l1Postman);
+    if (l2Balance.lt(parseUnits('.002'))) {
+      const tx = await l2Signer.sendTransaction({
+        to: l2Postman,
+        value: ethers.utils.parseEther('.004'),
+      });
+      await tx.wait();
     }
   };
 });

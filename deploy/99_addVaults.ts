@@ -1,6 +1,7 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { getDeployment } from '../ts/utils';
+import { getDeployment, getCompanionNetworks } from '../ts/utils';
+import { network } from 'hardhat';
 
 const func: DeployFunction = async function ({
   getNamedAccounts,
@@ -8,19 +9,16 @@ const func: DeployFunction = async function ({
   deployments,
   companionNetworks,
 }: HardhatRuntimeEnvironment) {
-  const l1 = companionNetworks.l1;
-  // live netwkrs don't need to specify l2
-  const l2 = companionNetworks?.l2 || deployments;
+  const { l1, l2, l1Id, l2Id, l1Name, l2Name } = await getCompanionNetworks();
+
   const { owner, layerZeroEndpoint } = await l2.getNamedAccounts();
 
-  // hardhat network will allways execute on self
+  // hardhat network should allways execute on self
   const { execute: l1Execute } = network.live ? l1.deployments : deployments;
   const { execute: l2Execute } = network.live ? l2.deployments : deployments;
 
-  const l1Chain = await l1.getChainId();
-  const l2Chain = await l2.getChainId();
-  const l1ChainName = network.config.companionNetworks?.l1;
-  const l2ChainName = network.config.companionNetworks?.l2 || network.name;
+  const { read: l1Read } = network.live ? l1.deployments : deployments;
+  const { read: l2Read } = network.live ? l2.deployments : deployments;
 
   // decide which postman to use
   const l0PostmanId = 0;
@@ -31,82 +29,115 @@ const func: DeployFunction = async function ({
     layerZeroEndpoint == null ? multiChainPostmanId : l0PostmanId;
 
   // getting this info via deployments on hardhat doesn't work for some reason
-  const sectorVault = await getDeployment('SectorVault', l2ChainName);
-  const xVault = await getDeployment('SectorXVault', l1ChainName);
-
-  const localChain = network.live ? l1Chain : network.config.chainId;
-  const localChainName: string = network.live ? l1ChainName : network.name;
+  const sectorVault = await getDeployment('SectorVault', l2Name);
+  const xVault = await getDeployment('SectorXVault', l1Name);
 
   // setup own postman
-  await l1Execute(
+  await configPostman(
     'SectorXVault',
-    { from: owner, log: true },
-    'managePostman',
+    l1Execute,
+    l1Read,
+    owner,
     postmanId,
-    localChain,
-    // XVault needs l1 postman
-    await getPostmanAddr(postmanId, localChainName)
+    l1Name,
+    l1Id
   );
 
-  // setup own remote postman
-  await l1Execute(
+  await configPostman(
     'SectorXVault',
-    { from: owner, log: true },
-    'managePostman',
+    l1Execute,
+    l1Read,
+    owner,
     postmanId,
-    l2Chain,
-    // XVault needs l1 postman
-    await getPostmanAddr(postmanId, l2ChainName)
+    l2Name,
+    l2Id
   );
 
-  await l2Execute(
+  await configPostman(
     'SectorVault',
-    { from: owner, log: true },
-    'managePostman',
+    l2Execute,
+    l2Read,
+    owner,
     postmanId,
-    l1Chain,
-    // ChainVault needs own network postman
-    await getPostmanAddr(postmanId, l1ChainName)
+    l1Name,
+    l1Id
   );
 
-  await l2Execute(
+  await configPostman(
     'SectorVault',
-    { from: owner, log: true },
-    'managePostman',
+    l2Execute,
+    l2Read,
+    owner,
     postmanId,
-    l2Chain,
-    // ChainVault needs own network postman
-    await getPostmanAddr(postmanId, l2ChainName)
+    l2Name,
+    l2Id
   );
 
   // add vaults
-  await l1Execute(
+  const { allowed: sectorVaultExists } = await l1Read(
     'SectorXVault',
-    { from: owner, log: true },
-    'addVault',
-    sectorVault.address,
-    l2Chain,
-    postmanId,
-    true
+    'addrBook',
+    sectorVault.address
   );
+  if (!sectorVaultExists)
+    await l1Execute(
+      'SectorXVault',
+      { from: owner, log: true },
+      'addVault',
+      sectorVault.address,
+      l2Id,
+      postmanId,
+      true
+    );
 
-  // add vaults
-  await l2Execute(
+  let { allowed: SectorXVaultExists } = await l2Read(
     'SectorVault',
-    { from: owner, log: true },
-    'addVault',
-    xVault.address,
-    l1Chain,
-    postmanId,
-    true
+    'addrBook',
+    xVault.address
   );
+  if (!SectorXVaultExists)
+    await l2Execute(
+      'SectorVault',
+      { from: owner, log: true },
+      'addVault',
+      xVault.address,
+      l1Id,
+      postmanId,
+      true
+    );
 };
 
 export default func;
 func.tags = ['AddVaults'];
 func.dependencies = ['Setup', 'Postmen', 'XVault', 'SectorVault'];
-
 func.runAtTheEnd = true;
+
+const configPostman = async (
+  vaultName,
+  execute,
+  read,
+  owner,
+  postmanId,
+  chainName,
+  chainId
+) => {
+  const deployedPostman = await getPostmanAddr(postmanId, chainName);
+  const currentPostman = await read(
+    vaultName,
+    'postmanAddr',
+    postmanId,
+    chainId
+  );
+  if (deployedPostman !== currentPostman)
+    await execute(
+      vaultName,
+      { from: owner, log: true },
+      'managePostman',
+      postmanId,
+      chainId,
+      deployedPostman
+    );
+};
 
 const getPostmanAddr = async (postmanId: number, chain: string) => {
   switch (postmanId) {

@@ -58,7 +58,7 @@ const keys = [DEPLOYER_KEY].filter((k) => k != null);
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
-export default {
+const config = {
   namedAccounts: {
     deployer: {
       default: DEPLOYER,
@@ -85,6 +85,7 @@ export default {
       moonriver: '0xE3F5a90F9cb311505cd691a46596599aA1A0AD7D',
     },
     layerZeroEndpoint: {
+      arbitrum: '0x3c2269811836af69497E5F486A85D7316753cf62',
       goerli: '0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23',
       fuji: '0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706',
       mainnet: '0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675',
@@ -315,9 +316,22 @@ export default {
   },
   external: {
     // this allows us to fork deployments (specify folders we can import deployments from)
-    // deployments: {
-    //   localhost: FORK_CHAIN ? [`deployments/${FORK_CHAIN}`] : [],
-    //   hardhat: FORK_CHAIN ? [`deployments/${FORK_CHAIN}`] : [],
-    // },
+    deployments: {
+      localhost: FORK_CHAIN ? [`deployments/${FORK_CHAIN}`] : [],
+      hardhat: FORK_CHAIN ? [`deployments/${FORK_CHAIN}`] : [],
+    },
+  },
+};
+
+export default {
+  ...config,
+  networks: {
+    ...config.networks,
+    hardhat: {
+      ...config.networks.hardhat,
+      chainId: FORK_CHAIN
+        ? config.networks[FORK_CHAIN].chainId
+        : config.networks.hardhat.chainId,
+    },
   },
 };
