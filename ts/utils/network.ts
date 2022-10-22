@@ -19,8 +19,8 @@ export const forkBlock = {
   // fantom: 35896922,
   moonriver: 2189870,
   moonbeam: 1432482,
-  arbitrum: 31603808,
-  optimism: undefined,
+  // arbitrum: 31803223,
+  // optimism: undefined,
 };
 
 export const setupAccount = async (address: string): Promise<Signer> => {

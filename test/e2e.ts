@@ -3,6 +3,7 @@ import {
   getRouteTransactionData,
   getDeployment,
   getCompanionNetworks,
+  fundPostmen,
 } from '../ts/utils';
 import {
   ethers,
@@ -16,6 +17,7 @@ import { parseUnits, formatUnits } from 'ethers/lib/utils';
 import { Web3Provider, ExternalProvider } from '@ethersproject/providers';
 import fetch from 'node-fetch';
 import { assert } from 'chai';
+import { Signer } from 'ethers';
 
 global.fetch = fetch;
 
@@ -90,10 +92,9 @@ describe('e2e x', function () {
       await tx.wait();
     }
 
-    await fundPostmen();
-
     // this is used in local hh test
     const toVault = await getDeployment('SectorVault', l2Name);
+    await fundPostmen(xVault, toVault.address, l1Signer, l2Signer);
 
     const float = await xVault.floatAmnt();
     if (parseFloat(formatUnits(float, 6)) > 0) {
@@ -175,38 +176,6 @@ describe('e2e x', function () {
         continue;
       }
       break;
-    }
-  };
-
-  const fundPostmen = async () => {
-    const toVault = await getDeployment('SectorVault', l2Name);
-
-    // src postman
-    const l1VaultRecord = await xVault.addrBook(toVault.address);
-    const l1Postman = await xVault.postmanAddr(l1VaultRecord.postmanId, l1Id);
-
-    // dest postman
-    const l2VaultRecord = await xVault.addrBook(xVault.address);
-    const l2Postman = await vault.postmanAddr(l2VaultRecord.postmanId, l2Id);
-
-    // fund l1 postman
-    const l1Balance = await xVault.provider.getBalance(l1Postman);
-    if (l1Balance.lt(parseUnits('.002'))) {
-      const tx = await l1Signer.sendTransaction({
-        to: l1Postman,
-        value: ethers.utils.parseEther('.004'),
-      });
-      await tx.wait();
-    }
-
-    // fund l2 postman
-    const l2Balance = await xVault.provider.getBalance(l1Postman);
-    if (l2Balance.lt(parseUnits('.002'))) {
-      const tx = await l2Signer.sendTransaction({
-        to: l2Postman,
-        value: ethers.utils.parseEther('.004'),
-      });
-      await tx.wait();
     }
   };
 });
