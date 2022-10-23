@@ -197,6 +197,8 @@ contract SectorCrossVault is SectorBase {
 			if (vaultList[i] == _vault) {
 				vaultList[i] = vaultList[length - 1];
 				vaultList.pop();
+
+				emit ChangedVaultStatus(_vault, false);
 				return;
 			}
 			unchecked {

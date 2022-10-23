@@ -12,6 +12,7 @@ import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { SectorCrossVaultTestSetup, MockSocketRegistry } from "./SectorCrossVaultSetup.t.sol";
+import { SectorCrossVault } from "../../vaults/SectorCrossVault.sol";
 
 import "../../interfaces/MsgStructs.sol";
 
@@ -320,15 +321,48 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 	// 	// // Assert errors
 
-	// 	// function testOneChainEmergencyWithdrawVaults() public {
+	function testOneEmergencyWithdrawVaults() public {
+		// Request(addr, amount);
+		uint256 amount = 1 ether;
 
-	// 	// }
-	// 	// function testOneCrossEmergencyWithdrawVaults() public {
+		depositXVault(user1, amount);
 
-	// 	// }
-	// 	// function testMultipleEmergencyWithdrawVaults() public {
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
-	// 	// }
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+
+		vm.prank(user1);
+		xVault.emergencyWithdraw();
+
+		assertEq(xVault.balanceOf(user1), 0);
+	}
+
+	function testMultipleEmergencyWithdrawVaults() public {
+		uint256 amount = 1 ether;
+
+		depositXVault(user1, amount * vaults.length);
+
+		Request[] memory requests = new Request[](vaults.length);
+		for (uint256 i; i < vaults.length; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount);
+		}
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(
+			requests,
+			amount * vaults.length,
+			vaults.length,
+			vaults.length,
+			true
+		);
+
+		vm.prank(user1);
+		xVault.emergencyWithdraw();
+
+		assertEq(xVault.balanceOf(user1), 0);
+	}
 
 	// 	// // Passive calls (receive message)
 
@@ -340,25 +374,57 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 	// 	// }
 
-	// 	// // XChain part (also vault management)
+	// Vault management
 
-	// 	// function testAddVault() public {
+	function testAddVault() public {
+		address newVault = address(0xffffffffffff);
+		vm.expectEmit(true, false, false, true);
+		emit AddedVault(newVault, chainId);
 
-	// 	// }
+		vm.prank(owner);
+		xVault.addVault(newVault, chainId, 1, true);
 
-	// 	// function testRemoveVault() public {
+		(uint16 cId, uint16 pId, bool isAllowed) = xVault.addrBook(newVault);
+		assertEq(isAllowed, true);
+		assertEq(pId, 1);
+		assertEq(cId, chainId);
+	}
 
-	// 	// }
+	function testRemoveVault() public {
+		address removedVault = address(vaults[0]);
+		vm.expectEmit(true, false, false, true);
+		emit ChangedVaultStatus(removedVault, false);
 
-	// 	// function testChangeVaultStatus() public {
+		vm.prank(owner);
+		xVault.removeVault(removedVault);
 
-	// 	// }
+		(, , bool isAllowed) = xVault.addrBook(removedVault);
+		assertEq(isAllowed, false);
 
-	// 	// function testUpdateVaultPostman() public {
+		// Also, needs to test if vault was removed from vaultList
+		// lDeposit, cDeposit, pAnswers, rAnswers, mSent, assertOn
+		xvaultHarvestVault(0, 0, vaults.length - 1, 0, vaults.length - 1, true);
+	}
 
-	// 	// }
+	// Test a revert after deleting a vault
 
-	// 	// function testManagePostman() public {
+	function testChangeVaultStatus() public {
 
-	// 	// }
+	}
+
+	function testUpdateVaultPostman() public {
+
+	}
+
+	function testManagePostman() public {
+
+	}
+
+	// Copied from SectorCrossVault to test events
+	event AddedVault(address indexed vault, uint16 chainId);
+	event ChangedVaultStatus(address indexed vault, bool status);
+	event UpdatedVaultPostman(address indexed vault, uint16 postmanId);
+	event PostmanUpdated(uint16 indexed postmanId, uint16 chanId, address postman);
+	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
+	event RegisterIncomingFunds(uint256 total);
 }

@@ -270,6 +270,7 @@ abstract contract XChainIntegrator is Auth {
 	}
 
 	function _handleMessage(messageType _type, Message calldata _msg) internal virtual {}
+
 	function processIncomingXFunds() external virtual {}
 
 	/*/////////////////////////////////////////////////////
