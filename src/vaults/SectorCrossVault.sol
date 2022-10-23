@@ -62,7 +62,6 @@ contract SectorCrossVault is SectorBase {
 				messageType.DEPOSIT
 			);
 
-			// This is fucked but dont know why
 			_sendTokens(
 				underlying(),
 				vaults[i].allowanceTarget,
