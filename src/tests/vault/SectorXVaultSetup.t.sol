@@ -8,7 +8,7 @@ import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
-import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
+import { SectorXVault, Request } from "../../vaults/SectorXVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { MockSocketRegistry } from "../mocks/MockSocketRegistry.sol";
@@ -19,7 +19,7 @@ import "../../interfaces/MsgStructs.sol";
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
-contract SectorCrossVaultTestSetup is SectorTest {
+contract SectorXVaultTestSetup is SectorTest {
 	uint16 chainId;
 
 	uint16 anotherChainId = 1;
@@ -27,7 +27,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 	WETH underlying;
 
-	SectorCrossVault xVault;
+	SectorXVault xVault;
 	SectorVault[] vaults;
 
 	LayerZeroPostman postmanLz;

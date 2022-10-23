@@ -20,7 +20,7 @@ struct HarvestLedger {
 	uint256 receivedAnswers;
 }
 
-contract SectorCrossVault is SectorBase {
+contract SectorXVault is SectorBase {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 

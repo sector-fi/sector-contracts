@@ -35,7 +35,7 @@ const func: DeployFunction = async function ({
   const feeConfig = [owner, 0, 0];
 
   const vault = await deploy('SectorXVault', {
-    contract: 'SectorCrossVault',
+    contract: 'SectorXVault',
     from: deployer,
     args: [USDC, 'XVault', 'XVLT', authConfig, feeConfig],
     skipIfAlreadyDeployed: false,

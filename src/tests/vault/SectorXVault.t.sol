@@ -8,18 +8,18 @@ import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
-import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
+import { SectorXVault, Request } from "../../vaults/SectorXVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
-import { SectorCrossVaultTestSetup, MockSocketRegistry } from "./SectorCrossVaultSetup.t.sol";
-import { SectorCrossVault } from "../../vaults/SectorCrossVault.sol";
+import { SectorXVaultTestSetup, MockSocketRegistry } from "./SectorXVaultSetup.t.sol";
+import { SectorXVault } from "../../vaults/SectorXVault.sol";
 
 import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
-contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
+contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 	uint256 mainnetFork;
 	uint256 avaxFork;
 	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");
@@ -34,7 +34,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 	// WETH underlying;
 
-	// SectorCrossVault xVault;
+	// SectorXVault xVault;
 	// SectorVault[] vaults;
 
 	// LayerZeroPostman postmanLz;
@@ -58,7 +58,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		// Must be address of layerZero service provider
 		postmanLz = new LayerZeroPostman(avaxLzAddr, inptChainPair);
 
-		xVault = new SectorCrossVault(
+		xVault = new SectorXVault(
 			underlying,
 			"SECT_X_VAULT",
 			"SECT_X_VAULT",
@@ -494,7 +494,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		assertEq(checkPostman, newPostman);
 	}
 
-	// Copied from SectorCrossVault to test
+	// Copied from SectorXVault to test
 	/*/////////////////////////////////////////////////////
 							Events
 	/////////////////////////////////////////////////////*/
