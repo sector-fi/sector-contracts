@@ -28,6 +28,7 @@ abstract contract IMXCore is
 
 	event Deposit(address sender, uint256 amount);
 	event Redeem(address sender, uint256 amount);
+
 	// event RebalanceLoan(address indexed sender, uint256 startLoanHealth, uint256 updatedLoanHealth);
 	event SetRebalanceThreshold(uint256 rebalanceThreshold);
 	event SetMaxTvl(uint256 maxTvl);
@@ -40,7 +41,6 @@ abstract contract IMXCore is
 
 	uint256 constant MINIMUM_LIQUIDITY = 1000;
 	uint256 constant BPS_ADJUST = 10000;
-	uint256 constant MIN_LOAN_HEALTH = 1.02e18;
 
 	IERC20 private _underlying;
 	IERC20 private _short;
@@ -116,6 +116,7 @@ abstract contract IMXCore is
 	// OWNER CONFIG
 
 	function setRebalanceThreshold(uint16 rebalanceThreshold_) public onlyOwner {
+		require(rebalanceThreshold_ >= 100, "HLP: BAD_INPUT");
 		rebalanceThreshold = rebalanceThreshold_;
 		emit SetRebalanceThreshold(rebalanceThreshold_);
 	}
@@ -143,8 +144,9 @@ abstract contract IMXCore is
 	// deposit underlying and recieve lp tokens
 	function deposit(uint256 underlyingAmnt) external onlyVault nonReentrant returns (uint256) {
 		if (underlyingAmnt == 0) return 0; // cannot deposit 0
+		// deposit is already included in tvl
 		uint256 tvl = getAndUpdateTVL();
-		require(underlyingAmnt + tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
+		require(tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
 		uint256 startBalance = collateralToken().balanceOf(address(this));
 		_increasePosition(underlyingAmnt);
 		uint256 endBalance = collateralToken().balanceOf(address(this));
@@ -170,13 +172,10 @@ abstract contract IMXCore is
 		emit Redeem(msg.sender, amountTokenOut);
 	}
 
-	// decreases position based to desired LP amount
-	// ** does not rebalance remaining portfolio
-	// ** make sure to update lending positions before calling this
+	/// @notice decreases position based to desired LP amount
+	/// @dev ** does not rebalance remaining portfolio
+	/// @param removeCollateral amount of callateral token to remove
 	function _decreasePosition(uint256 removeCollateral) internal {
-		// make sure we are not close to liquidation
-		if (loanHealth() < MIN_LOAN_HEALTH) revert LowLoanHealth();
-
 		(uint256 uBorrowBalance, uint256 sBorrowBalance) = _updateAndGetBorrowBalances();
 
 		uint256 balance = collateralToken().balanceOf(address(this));
@@ -408,6 +407,10 @@ abstract contract IMXCore is
 		return _shortToUnderlying(1e18);
 	}
 
+	function getLPBalances() public view returns (uint256 underlyingLp, uint256 shortLp) {
+		return _getLPBalances();
+	}
+
 	function getLiquidity() external view returns (uint256) {
 		return _getLiquidity();
 	}
@@ -417,7 +420,7 @@ abstract contract IMXCore is
 		(uint256 uR, uint256 sR, ) = pair().getReserves();
 		(uR, sR) = address(_underlying) == pair().token0() ? (uR, sR) : (sR, uR);
 		uint256 lp = pair().totalSupply();
-		// for deposit of 1 underlying we get 1+_optimalUBorrow worth or lp -> collateral token
+		// for deposit of 1 underlying we get 1+_optimalUBorrow worth of lp -> collateral token
 		return (1e18 * (uR * _getLiquidity(1e18))) / lp / (1e18 + _optimalUBorrow());
 	}
 

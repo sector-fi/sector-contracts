@@ -107,4 +107,27 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 		assertApproxEqAbs(vault.underlyingBalance(treasury), 1e18, mLp);
 		assertApproxEqAbs(vault.underlyingBalance(user1), 99e18, mLp);
 	}
+
+	function testLockedProfit() public {
+		uint256 amnt = 100e18;
+		scyDeposit(vault, user1, amnt);
+		underlying.mint(address(vault.strategy()), 10e18 + (mLp) / 10); // 10% profit
+		skip(7 days);
+		vault.harvest(vault.getTvl(), 0);
+		assertApproxEqRel(vault.underlyingBalance(user1), amnt, .001e18);
+
+		skip(7 days);
+		assertEq(vault.underlyingBalance(user1), 109e18);
+	}
+
+	function testLockedProfitWithdraw() public {
+		uint256 amnt = 100e18;
+		scyDeposit(vault, user1, amnt);
+		underlying.mint(address(vault.strategy()), 10e18 + (mLp) / 10); // 10% profit
+		skip(7 days);
+		vault.harvest(vault.getTvl(), 0);
+		uint256 balance = vault.underlyingBalance(user1);
+		scyWithdraw(vault, user1, 1e18);
+		assertEq(underlying.balanceOf(user1), balance);
+	}
 }

@@ -2,6 +2,7 @@
 pragma solidity 0.8.16;
 
 import { Test } from "forge-std/Test.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract SectorTest is Test {
 	address manager = address(101);
@@ -10,8 +11,23 @@ contract SectorTest is Test {
 	address owner = address(this);
 
 	address user1 = address(201);
-	// 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
 	address user2 = address(202);
-	// 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC
 	address user3 = address(203);
+	address self = address(this);
+
+	function _accessErrorString(bytes32 role, address account)
+		internal
+		pure
+		returns (bytes memory)
+	{
+		return
+			bytes(
+				abi.encodePacked(
+					"AccessControl: account ",
+					Strings.toHexString(uint160(account), 20),
+					" is missing role ",
+					Strings.toHexString(uint256(role), 32)
+				)
+			);
+	}
 }

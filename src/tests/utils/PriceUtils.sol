@@ -7,11 +7,11 @@ import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOracle.sol";
 import { UQ112x112 } from "../utils/UQ112x112.sol";
-import { IMX } from "../../strategies/imx/IMX.sol";
+import { ICompPriceOracle } from "interfaces/compound/ICompPriceOracle.sol";
 
 import "hardhat/console.sol";
 
-abstract contract IMXUtils is Test {
+abstract contract PriceUtils is Test {
 	using UniUtils for IUniswapV2Pair;
 	using FixedPointMathLib for uint256;
 	using UQ112x112 for uint112;
@@ -24,18 +24,6 @@ abstract contract IMXUtils is Test {
 		uint256 sDebt;
 	}
 	FlashCost flashCost;
-
-	function mockOraclePrice(
-		address oracle,
-		address pair,
-		uint224 price
-	) public {
-		vm.mockCall(
-			oracle,
-			abi.encodeWithSelector(ISimpleUniswapOracle.getResult.selector, pair),
-			abi.encode(price, 360)
-		);
-	}
 
 	function trackCost() public {
 		flashCost.u = 0;
@@ -95,7 +83,31 @@ abstract contract IMXUtils is Test {
 		}
 	}
 
-	function movePrice(
+	function mockImxOraclePrice(
+		address oracle,
+		address pair,
+		uint224 price
+	) public {
+		vm.mockCall(
+			oracle,
+			abi.encodeWithSelector(ISimpleUniswapOracle.getResult.selector, pair),
+			abi.encode(price, 360)
+		);
+	}
+
+	function mockHlpOraclePrice(
+		address oracle,
+		address cToken,
+		uint256 price
+	) public {
+		vm.mockCall(
+			oracle,
+			abi.encodeWithSelector(ICompPriceOracle.getUnderlyingPrice.selector, cToken),
+			abi.encode(price)
+		);
+	}
+
+	function moveImxPrice(
 		address _pair,
 		address stakedToken,
 		address underlying,
@@ -107,22 +119,20 @@ abstract contract IMXUtils is Test {
 		moveUniswapPrice(pair, underlying, short, fraction);
 		(uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(stakedToken).getReserves();
 		uint224 price = uint112(reserve1).encode().uqdiv(uint112(reserve0));
-		mockOraclePrice(oracle, stakedToken, price);
+		mockImxOraclePrice(oracle, stakedToken, price);
 	}
 
-	function logTvl(IMX strategy) internal view {
-		(
-			uint256 tvl,
-			,
-			uint256 shortPosition,
-			uint256 borrowBalance,
-			uint256 lpBalance,
-			uint256 underlyingBalance
-		) = strategy.getTVL();
-		console.log("tvl", tvl);
-		console.log("shortPosition", shortPosition);
-		console.log("borrowBalance", borrowBalance);
-		console.log("lpBalance", lpBalance);
-		console.log("underlyingBalance", underlyingBalance);
+	function moveHlpPrice(
+		address _pair,
+		address cToken,
+		address underlying,
+		address short,
+		address oracle,
+		uint256 fraction
+	) public {
+		IUniswapV2Pair pair = IUniswapV2Pair(_pair);
+		moveUniswapPrice(pair, underlying, short, fraction);
+		uint256 price = (fraction * ICompPriceOracle(oracle).getUnderlyingPrice(cToken)) / 1e18;
+		mockHlpOraclePrice(oracle, cToken, price);
 	}
 }

@@ -136,6 +136,7 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 			uint256 sBalance = short().balanceOf(address(this));
 			uint256 uBalance = underlying().balanceOf(address(this));
 
+			// TODO use swap fee to get exact amount out
 			// if we have extra short tokens, trade them for underlying
 			if (sBalance > sAmnt) {
 				// TODO edge case - not enough underlying?
@@ -151,11 +152,14 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 					address(short())
 				);
 			}
-			// we know that now our sBalance = sAmnt
+			// we know that now our short balance is exact sBalance = sAmnt
+			// if we don't have enough underlying, we need to decrase sAmnt slighlty
 			if (uBalance < uAmnt) {
 				uAmnt = uBalance;
 				sAmnt = _underlyingToShort(uAmnt);
 			} else if (uBalance > uAmnt) {
+				// if we have extra underlying return to borrowable
+				// TODO check that this gets accounted for
 				underlying().safeTransfer(address(_uBorrowable), uBalance - uAmnt);
 			}
 		}
@@ -196,16 +200,11 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 	) public {
 		require(msg.sender == address(_collateralToken), "IMXFarm: NOT_COLLATERAL");
 
-		// (uint256 , uint256 shortfall) = _collateralToken.accountLiquidity(address(this));
-
 		RemoveLiqAndRepayCalldata memory d = abi.decode(data, (RemoveLiqAndRepayCalldata));
 
 		// redeem withdrawn staked coins
 		IERC20(address(stakedToken)).transfer(address(stakedToken), redeemAmount);
 		stakedToken.redeem(address(this));
-
-		// TODO this is not flash-swap safe!!!
-		// add slippage param check modifier
 
 		// remove collateral
 		(, uint256 shortAmnt) = _removeLiquidity(d.removeLpAmnt);
