@@ -406,18 +406,68 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		xvaultHarvestVault(0, 0, vaults.length - 1, 0, vaults.length - 1, true);
 	}
 
-	// Test a revert after deleting a vault
+	function testCannotInteractAfterRemove() public {
+		address removedVault = address(vaults[0]);
+		uint256 amount = 1 ether;
+
+		depositXVault(user1, amount);
+
+		vm.prank(owner);
+		xVault.removeVault(removedVault);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
+
+		vm.expectRevert(abi.encodeWithSelector(VaultNotAllowed.selector, removedVault));
+		vm.prank(manager);
+		xVault.depositIntoXVaults(requests);
+	}
 
 	function testChangeVaultStatus() public {
+		address testVault = address(vaults[1]);
+		vm.expectEmit(true, false, false, true);
+		emit ChangedVaultStatus(testVault, false);
 
+		vm.prank(owner);
+		xVault.changeVaultStatus(testVault, false);
+
+		(, , bool isFalse) = xVault.addrBook(testVault);
+		assertEq(isFalse, false);
+
+		vm.prank(owner);
+		xVault.changeVaultStatus(testVault, true);
+
+		(, , bool isTrue) = xVault.addrBook(testVault);
+		assertEq(isTrue, true);
 	}
 
 	function testUpdateVaultPostman() public {
+		address testVault = address(vaults[1]);
+		uint16 newPostmanId = 2;
+		vm.expectEmit(true, false, false, true);
+		emit UpdatedVaultPostman(testVault, newPostmanId);
 
+		vm.prank(owner);
+		xVault.updateVaultPostman(testVault, newPostmanId);
+
+		(, uint16 postId ,) = xVault.addrBook(testVault);
+		assertEq(postId, newPostmanId);
 	}
 
 	function testManagePostman() public {
+		uint16 newPostmanId = 2;
+		uint16 newChainId = 1337;
+		address newPostman = address(0xffffffffffff);
 
+		vm.expectEmit(true, false, false, true);
+		emit PostmanUpdated(newPostmanId, newChainId, newPostman);
+
+		vm.prank(owner);
+		xVault.managePostman(newPostmanId, newChainId, newPostman);
+
+		address checkPostman = xVault.postmanAddr(newPostmanId, newChainId);
+
+		assertEq(checkPostman, newPostman);
 	}
 
 	// Copied from SectorCrossVault to test events
@@ -427,4 +477,17 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	event PostmanUpdated(uint16 indexed postmanId, uint16 chanId, address postman);
 	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
 	event RegisterIncomingFunds(uint256 total);
+
+	/*/////////////////////////////////////////////////////
+							Errors
+	/////////////////////////////////////////////////////*/
+
+	error SenderNotAllowed(address sender);
+	error WrongPostman(address postman);
+	error VaultNotAllowed(address vault);
+	error VaultMissing(address vault);
+	error VaultAlreadyAdded();
+	error BridgeError();
+	error SameChainOperation();
+	error MissingIncomingXFunds();
 }
