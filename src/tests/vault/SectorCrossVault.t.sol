@@ -265,18 +265,11 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(requests, total, 0, 0, false);
 
-		uint totalShares = 0;
+		uint256 totalShares = 0;
 		for (uint256 i; i < 3; i++) totalShares += vaults[i].balanceOf(address(xVault));
 
 		// localDeposit, crossDeposit, pending, received, message sent, assert on
-		xvaultHarvestVault(
-			0,
-			totalShares,
-			vaults.length,
-			0,
-			vaults.length,
-			true
-		);
+		xvaultHarvestVault(0, totalShares, vaults.length, 0, vaults.length, true);
 	}
 
 	// 	// More variations on that (no messages for example)
@@ -284,7 +277,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	function testOneFinalizeHarvest() public {
 		uint256[] memory amount = new uint256[](vaults.length);
 		amount[0] = 1 ether;
-		for (uint i = 1; i < vaults.length; i++) amount[i] = 0;
+		for (uint256 i = 1; i < vaults.length; i++) amount[i] = 0;
 
 		depositXVault(user1, amount[0]);
 
@@ -302,14 +295,14 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		amount[0] = 1 ether;
 		uint256 total = amount[0];
-		for (uint i = 1; i < vaults.length; i++) {
+		for (uint256 i = 1; i < vaults.length; i++) {
 			amount[i] = i * 1209371 gwei;
 			total += amount[i];
 		}
 		depositXVault(user1, total);
 
 		Request[] memory requests = new Request[](vaults.length);
-		for (uint i; i < vaults.length; i++) {
+		for (uint256 i; i < vaults.length; i++) {
 			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount[i]);
 		}
 
@@ -364,15 +357,46 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		assertEq(xVault.balanceOf(user1), 0);
 	}
 
-	// 	// // Passive calls (receive message)
+	// Passive calls (receive message)
 
-	// 	// function testReceiveWithdraw() public {
+	function testReceiveWithdraw() public {
+		uint256 amount = 1 ether;
 
-	// 	// }
+		depositXVault(user1, amount);
 
-	// 	// function testReceiveHarvest() public {
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
-	// 	// }
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
+
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), 1e18);
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 0, 0, false);
+
+		uint256 beforeFinalize = xVault.totalChildHoldings();
+		assertEq(beforeFinalize, amount);
+
+		// Fake receiving funds from another chain
+		vm.deal(address(xVault), amount);
+		vm.prank(address(xVault));
+		underlying.deposit{ value: amount }();
+
+		// Fake receiving message from another chain
+		vm.prank(address(postmanLz));
+		xVault.receiveMessage(
+			Message(amount, address(vaults[0]), address(0), anotherChainId),
+			messageType.WITHDRAW
+		);
+
+		vm.prank(manager);
+		vm.expectEmit(false, false, false, false);
+		emit RegisterIncomingFunds(amount);
+		xVault.processIncomingXFunds();
+
+		uint256 afterFinalize = xVault.totalChildHoldings();
+		assertEq(afterFinalize, beforeFinalize - amount);
+	}
 
 	// Vault management
 
@@ -450,7 +474,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		vm.prank(owner);
 		xVault.updateVaultPostman(testVault, newPostmanId);
 
-		(, uint16 postId ,) = xVault.addrBook(testVault);
+		(, uint16 postId, ) = xVault.addrBook(testVault);
 		assertEq(postId, newPostmanId);
 	}
 
@@ -470,7 +494,11 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		assertEq(checkPostman, newPostman);
 	}
 
-	// Copied from SectorCrossVault to test events
+	// Copied from SectorCrossVault to test
+	/*/////////////////////////////////////////////////////
+							Events
+	/////////////////////////////////////////////////////*/
+
 	event AddedVault(address indexed vault, uint16 chainId);
 	event ChangedVaultStatus(address indexed vault, bool status);
 	event UpdatedVaultPostman(address indexed vault, uint16 postmanId);

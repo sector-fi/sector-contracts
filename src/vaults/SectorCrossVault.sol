@@ -11,7 +11,7 @@ import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import { SectorBase } from "./SectorBase.sol";
 import "../interfaces/MsgStructs.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 struct HarvestLedger {
 	uint256 localDepositValue;
@@ -256,6 +256,11 @@ contract SectorCrossVault is SectorBase {
 		}
 		// Should account for fees paid in tokens for using bridge
 		// Also, if a value hasn't arrived manager will not be able to register any value
+		console.log(total);
+		console.log(asset.balanceOf(address(this)));
+		console.log(floatAmnt);
+		console.log(pendingWithdraw);
+
 		if (total < (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
 			revert MissingIncomingXFunds();
 
