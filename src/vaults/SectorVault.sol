@@ -33,7 +33,7 @@ contract SectorVault is SectorBase {
 
 	mapping(ISCYStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
-	address[] internal bridgeQueue;
+	address[] public bridgeQueue;
 	Message[] internal depositQueue;
 
 	uint256 public totalStrategyHoldings;
@@ -281,12 +281,16 @@ contract SectorVault is SectorBase {
 		emit RegisterIncomingFunds(totalDeposit);
 	}
 
-	function processXWithdraw() external onlyRole(MANAGER) {
+	// Problem -> bridgeQueue has an order and request array has to follow this order
+	// Maybe change how withdraws are saved?
+	function processXWithdraw(Request[] calldata requests) external onlyRole(MANAGER) {
 		uint256 length = bridgeQueue.length;
 
 		uint256 total = 0;
-		for (uint256 i = length; i > 0; ) {
-			address vAddr = bridgeQueue[i - 1];
+		for (uint256 i = length - 1; i > 0; ) {
+			address vAddr = bridgeQueue[i];
+
+			if (requests[i].vaultAddr != vAddr) revert VaultAddressNotMatch();
 
 			// this returns the underlying amount the vault is withdrawing
 			uint256 amountOut = _xRedeem(vAddr);
@@ -300,6 +304,16 @@ contract SectorVault is SectorBase {
 				messageType.WITHDRAW
 			);
 
+			_sendTokens(
+				underlying(),
+				requests[i].allowanceTarget,
+				requests[i].registry,
+				vAddr,
+				amountOut,
+				addrBook[vAddr].chainId,
+				requests[i].txData
+			);
+
 			emit BridgeAsset(chainId, addrBook[vAddr].chainId, amountOut);
 
 			unchecked {
@@ -307,7 +321,8 @@ contract SectorVault is SectorBase {
 				i--;
 			}
 		}
-
 		beforeWithdraw(total, 0);
 	}
+
+	error VaultAddressNotMatch();
 }

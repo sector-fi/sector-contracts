@@ -6,40 +6,40 @@ import { Auth } from "./Auth.sol";
 import "../interfaces/MsgStructs.sol";
 import "../interfaces/postOffice/IPostman.sol";
 
+/// @notice Struct encoded in Bungee calldata
+/// @dev Derived from socket registry contract
+struct MiddlewareRequest {
+	uint256 id;
+	uint256 optionalNativeAmount;
+	address inputToken;
+	bytes data;
+}
+
+/// @notice Struct encoded in Bungee calldata
+/// @dev Derived from socket registry contract
+struct BridgeRequest {
+	uint256 id;
+	uint256 optionalNativeAmount;
+	address inputToken;
+	bytes data;
+}
+
+/// @notice Struct encoded in Bungee calldata
+/// @dev Derived from socket registry contract
+struct UserRequest {
+	address receiverAddress;
+	uint256 toChainId;
+	uint256 amount;
+	MiddlewareRequest middlewareRequest;
+	BridgeRequest bridgeRequest;
+}
+
 abstract contract XChainIntegrator is Auth {
 	mapping(address => Vault) public addrBook;
 	mapping(uint16 => mapping(uint16 => address)) public postmanAddr;
 	// mapping(messageType => function(Message calldata)) internal messageAction;
 
 	uint16 immutable chainId = uint16(block.chainid);
-
-	/// @notice Struct encoded in Bungee calldata
-	/// @dev Derived from socket registry contract
-	struct MiddlewareRequest {
-		uint256 id;
-		uint256 optionalNativeAmount;
-		address inputToken;
-		bytes data;
-	}
-
-	/// @notice Struct encoded in Bungee calldata
-	/// @dev Derived from socket registry contract
-	struct BridgeRequest {
-		uint256 id;
-		uint256 optionalNativeAmount;
-		address inputToken;
-		bytes data;
-	}
-
-	/// @notice Struct encoded in Bungee calldata
-	/// @dev Derived from socket registry contract
-	struct UserRequest {
-		address receiverAddress;
-		uint256 toChainId;
-		uint256 amount;
-		MiddlewareRequest middlewareRequest;
-		BridgeRequest bridgeRequest;
-	}
 
 	constructor() {}
 
@@ -93,7 +93,7 @@ abstract contract XChainIntegrator is Auth {
 	/// @param amount amount of tokens to bridge
 	/// @param destinationChainId chain Id of receiving chain
 	/// @param data calldata of txn to be sent
-	function sendTokens(
+	function _sendTokens(
 		address asset,
 		address allowanceTarget,
 		address socketRegistry,
@@ -101,7 +101,7 @@ abstract contract XChainIntegrator is Auth {
 		uint256 amount,
 		uint256 destinationChainId,
 		bytes calldata data
-	) public onlyRole(MANAGER) {
+	) internal onlyRole(MANAGER) {
 		verifySocketCalldata(data, destinationChainId, asset, destinationAddress);
 
 		ERC20(asset).approve(allowanceTarget, amount);
@@ -270,6 +270,7 @@ abstract contract XChainIntegrator is Auth {
 	}
 
 	function _handleMessage(messageType _type, Message calldata _msg) internal virtual {}
+
 	function processIncomingXFunds() external virtual {}
 
 	/*/////////////////////////////////////////////////////
@@ -307,5 +308,6 @@ abstract contract XChainIntegrator is Auth {
 	error VaultMissing(address vault);
 	error VaultAlreadyAdded();
 	error BridgeError();
+	error SameChainOperation();
 	error MissingIncomingXFunds();
 }

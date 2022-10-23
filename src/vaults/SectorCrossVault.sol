@@ -11,11 +11,7 @@ import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import { SectorBase } from "./SectorBase.sol";
 import "../interfaces/MsgStructs.sol";
 
-// import "hardhat/console.sol";
-struct Request {
-	address vaultAddr;
-	uint256 amount;
-}
+import "hardhat/console.sol";
 
 struct HarvestLedger {
 	uint256 localDepositValue;
@@ -46,54 +42,62 @@ contract SectorCrossVault is SectorBase {
 					Cross Vault Interface
 	/////////////////////////////////////////////////////*/
 
-	function depositIntoVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+	function depositIntoXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+		uint256 totalAmount = 0;
+
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
+			uint256 fee = vaults[i].fee;
 
 			Vault memory vault = checkVault(vaultAddr);
+			if (vault.chainId == chainId) revert SameChainOperation();
 
-			if (vault.chainId == chainId) {
-				ERC20(underlying()).approve(vaultAddr, amount);
-				BatchedWithdraw(vaultAddr).deposit(amount, address(this));
-			} else {
-				_sendMessage(
-					vaultAddr,
-					vault,
-					Message(amount, address(this), address(0), chainId),
-					messageType.DEPOSIT
-				);
+			totalAmount += amount;
 
-				emit BridgeAsset(chainId, vault.chainId, amount);
-			}
+			_sendMessage(
+				vaultAddr,
+				vault,
+				Message(amount - fee, address(this), address(0), chainId),
+				messageType.DEPOSIT
+			);
+
+			_sendTokens(
+				underlying(),
+				vaults[i].allowanceTarget,
+				vaults[i].registry,
+				vaultAddr,
+				amount,
+				uint256(addrBook[vaultAddr].chainId),
+				vaults[i].txData
+			);
+
+			emit BridgeAsset(chainId, vault.chainId, amount);
 
 			unchecked {
 				i++;
 			}
-
-			// update total holdings by child vaults
-			totalChildHoldings += amount;
 		}
+
+		beforeWithdraw(totalAmount, 0);
+		totalChildHoldings += totalAmount;
 	}
 
-	function withdrawFromVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+	function withdrawFromXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
 
 			Vault memory vault = checkVault(vaultAddr);
 
-			if (vault.chainId == chainId) {
-				BatchedWithdraw bWithdraw = BatchedWithdraw(vaultAddr);
-				bWithdraw.requestRedeem((bWithdraw.balanceOf(address(this)) * amount) / 100);
-			} else {
-				_sendMessage(
-					vaultAddr,
-					vault,
-					Message(amount, address(this), address(0), chainId),
-					messageType.WITHDRAW
-				);
-			}
+			if (vault.chainId == chainId) revert SameChainOperation();
+
+			_sendMessage(
+				vaultAddr,
+				vault,
+				Message(amount, address(this), address(0), chainId),
+				messageType.WITHDRAW
+			);
 
 			unchecked {
 				i++;
@@ -192,6 +196,8 @@ contract SectorCrossVault is SectorBase {
 			if (vaultList[i] == _vault) {
 				vaultList[i] = vaultList[length - 1];
 				vaultList.pop();
+
+				emit ChangedVaultStatus(_vault, false);
 				return;
 			}
 			unchecked {
@@ -249,6 +255,11 @@ contract SectorCrossVault is SectorBase {
 		}
 		// Should account for fees paid in tokens for using bridge
 		// Also, if a value hasn't arrived manager will not be able to register any value
+		console.log(total);
+		console.log(asset.balanceOf(address(this)));
+		console.log(floatAmnt);
+		console.log(pendingWithdraw);
+
 		if (total < (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
 			revert MissingIncomingXFunds();
 
