@@ -13,11 +13,13 @@ import "hardhat/console.sol";
 contract MultichainPostman is Ownable, IPostman {
 	address public anyCall;
 	address public anycallExecutor;
+	address public refundTo;
 
 
-	constructor(address _anyCall) {
+	constructor(address _anyCall, address _refundTo) {
 		anyCall = _anyCall;
 		anycallExecutor = CallProxy(_anyCall).executor();
+		refundTo = _refundTo;
 	}
 
 	function deliverMessage(
@@ -25,10 +27,19 @@ contract MultichainPostman is Ownable, IPostman {
 		address _dstVautAddress,
 		address _dstPostman,
 		messageType _messageType,
-		uint16 _dstChainId
-	) external onlyOwner {
-		bytes memory payload = abi.encode(_msg, _dstVautAddress, _messageType);
-		CallProxy(anyCall).anyCall(_dstPostman, payload, address(0), _dstChainId, 2);
+		uint16 _dstChainId,
+		address
+	) external payable {
+
+		Message memory msgToMultichain = Message({
+			value: _msg.value,
+			sender: msg.sender,
+			client: _msg.client,
+			chainId: _msg.chainId
+		});
+
+		bytes memory payload = abi.encode(msgToMultichain, _dstVautAddress, _messageType);
+		CallProxy(anyCall).anyCall{value: msg.value}(_dstPostman, payload, address(0), _dstChainId, 2);
 	}
 
 	function anyExecute(bytes memory _data) external returns (bool success, bytes memory result) {
@@ -47,6 +58,10 @@ contract MultichainPostman is Ownable, IPostman {
 		result = "";
 	}
 
+	function setRefundTo(address _refundTo) external onlyOwner {
+		refundTo = _refundTo;
+	}
+
 	/* EVENTS */
 	event MessageReceived(
 		address srcVaultAddress,
@@ -55,4 +70,14 @@ contract MultichainPostman is Ownable, IPostman {
 		uint16 messageType,
 		uint256 srcChainId
 	);
+
+	fallback() external payable {
+		(bool sent, ) = refundTo.call{value: msg.value}("");
+		if (!sent) revert RefundFailed();
+	}
+
+	// receive() external payable {}
+
+	/** ERROR **/
+	error RefundFailed();
 }
