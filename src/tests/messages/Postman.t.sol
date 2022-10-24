@@ -201,7 +201,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		EthSectorVault.processIncomingXFunds();
 
-		uint256 _srcVaultUnderlyingBalance = EthSectorVault.currentUnderlyingBalance(_srcVault);
+		uint256 _srcVaultUnderlyingBalance = EthSectorVault.estimateUnderlyingBalance(_srcVault);
 
 		assertEq(1000, _srcVaultUnderlyingBalance);
 
@@ -248,7 +248,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		EthSectorVault.processIncomingXFunds();
 
-		uint256 _srcVaultUnderlyingBalance = EthSectorVault.currentUnderlyingBalance(_srcVault);
+		uint256 _srcVaultUnderlyingBalance = EthSectorVault.estimateUnderlyingBalance(_srcVault);
 
 		assertEq(1000, _srcVaultUnderlyingBalance);
 

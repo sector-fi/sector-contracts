@@ -69,6 +69,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		bool assertOn
 	) public {
 		uint256 xVaultFloatAmountBefore = xVault.floatAmnt();
+
 		vm.recordLogs();
 		// Deposit into a vault
 		vm.prank(manager);
@@ -77,9 +78,6 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
 		if (!assertOn) return;
-
-		console.log(xVaultFloatAmountBefore);
-		console.log(totalAmount);
 
 		// Accounting tests
 		assertEq(xVault.totalChildHoldings(), totalAmount, "XVault accounting is correct");
@@ -127,7 +125,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		for (uint256 i = 0; i < requests.length; i++) {
 			SectorVault vault = SectorVault(requests[i].vaultAddr);
 			// uint256 share = shares[i];
-			uint256 value = (shares[i] * requests[i].amount) / 100;
+			uint256 value = (shares[i] * requests[i].amount) / 1e18;
 
 			(uint16 vaultChainId, , ) = xVault.addrBook(address(vault));
 			// On same chain as xVault
@@ -183,12 +181,12 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		assertEventCount(entries, "MessageSent(uint256,address,uint16,uint8,address)", mSent);
 	}
 
-	function xvaultFinalizeHarvest(address[] memory vaults, uint256[] memory amounts) public {
+	function xvaultFinalizeHarvest(uint256[] memory amounts) public {
 		uint256 totalAmount = 0;
 		for (uint256 i; i < vaults.length; i++) {
 			totalAmount += amounts[i];
-			if (getVaultChainId(vaults[i]) == chainId) continue;
-			fakeIncomingXDeposit(vaults[i], amounts[i]);
+			if (getVaultChainId(address(vaults[i])) == chainId) continue;
+			fakeIncomingXDeposit(address(vaults[i]), amounts[i]);
 		}
 
 		// Go back to harvest test
@@ -196,10 +194,10 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		xvaultHarvestVault(0, 0, 0, 0, 0, false);
 
 		for (uint256 i; i < vaults.length; i++) {
-			if (getVaultChainId(vaults[i]) == chainId) continue;
+			if (getVaultChainId(address(vaults[i])) == chainId) continue;
 			fakeAnswerXHarvest(
-				vaults[i],
-				SectorVault(vaults[i]).underlyingBalance(address(xVault))
+				address(vaults[i]),
+				vaults[i].underlyingBalance(address(xVault))
 			);
 		}
 
@@ -211,7 +209,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
 		// Calculate somehow expectedValue and maxDelta
-		assertEq(xVault.totalChildHoldings(), totalAmount, "Harvest was updated value.");
+		assertEq(xVault.totalChildHoldings(), totalAmount, "Harvest has updated value.");
 		(uint256 lDeposit, uint256 cDeposit, uint256 pAnswers, uint256 rAnswers) = xVault
 			.harvestLedger();
 		assertEq(lDeposit, 0, "No more info on harvest Ledger");
@@ -300,6 +298,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 			Request(
 				vault,
 				amount,
+				0,
 				address(socketRegistry),
 				address(socketRegistry),
 				getUserRequest(vault, toChainId, amount, address(underlying))

@@ -224,12 +224,12 @@ contract SectorVault is SectorBase {
 		/// value here is the fraction of the shares owned by the vault
 		/// since the xVault doesn't know how many shares it holds
 		uint256 xVaultShares = balanceOf(_msg.sender);
-		uint256 shares = (_msg.value * xVaultShares) / 100;
+		uint256 shares = (_msg.value * xVaultShares) / 1e18;
 		requestRedeem(shares, _msg.sender);
 	}
 
 	function _receiveEmergencyWithdraw(Message calldata _msg) internal {
-		uint256 transferShares = (_msg.value * balanceOf(_msg.sender)) / 100;
+		uint256 transferShares = (_msg.value * balanceOf(_msg.sender)) / 1e18;
 
 		_transfer(_msg.sender, _msg.client, transferShares);
 		emit EmergencyWithdraw(_msg.sender, _msg.client, transferShares);

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
 contract MockSocketRegistry {
 	constructor() {}
 
@@ -70,5 +72,9 @@ contract MockSocketRegistry {
 	/**
 	 * @notice Function called in the socket registry for bridging
 	 */
-	function outboundTransferTo(UserRequest calldata _userRequest) external payable virtual {}
+	function outboundTransferTo(UserRequest calldata _userRequest) external payable virtual {
+		address token = _userRequest.bridgeRequest.inputToken;
+		uint256 amount = _userRequest.amount;
+		ERC20(token).transferFrom(msg.sender, address(0xffffffffffff), amount);
+	}
 }

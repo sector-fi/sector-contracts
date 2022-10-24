@@ -12,6 +12,7 @@ import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { SectorCrossVaultTestSetup, MockSocketRegistry } from "./SectorCrossVaultSetup.t.sol";
+import { SectorCrossVault } from "../../vaults/SectorCrossVault.sol";
 
 import "../../interfaces/MsgStructs.sol";
 
@@ -107,7 +108,8 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			guardian,
 			address(postmanLz)
 		];
-		for (uint256 i = 0; i < gaveMoneyAccs.length; i++) vm.deal(gaveMoneyAccs[i], 10 ether);
+		for (uint256 i = 0; i < gaveMoneyAccs.length; i++)
+			vm.deal(gaveMoneyAccs[i], 1000000000 ether);
 
 		// Add min liquidity to xVault
 		depositXVault(manager, mLp);
@@ -126,569 +128,394 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		xvaultDepositIntoVaults(requests, amount, 1, 1, true);
 	}
 
-	// 	function testOneCrossDepositIntoVaults() public {
-	// 		uint256 amount = 1 ether;
+	function testMultipleDepositIntoVaults() public {
+		uint256 amount = 1 ether;
 
-	// 		depositXVault(user1, amount);
+		depositXVault(user1, amount * vaults.length);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(nephewVault), amount);
+		Request[] memory requests = new Request[](vaults.length);
+		for (uint256 i; i < vaults.length; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount);
+		}
 
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 1, 1, true);
-	// 	}
-
-	// 	function testMultipleDepositIntoVauls() public {
-	// 		uint256 amount = 1 ether;
-
-	// 		depositXVault(user1, amount * 2);
-
-	// 		Request[] memory requests = new Request[](2);
-	// 		requests[0] = getRequest(address(childVault), amount);
-	// 		requests[1] = getRequest(address(nephewVault), amount);
-
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount * 2, 1, 1, true);
-	// 	}
-
-	// 	function testMultipleUsersDepositIntoVaults() public {
-	// 		uint256 amount1 = 1 ether;
-	// 		uint256 amount2 = 123424323 wei;
-	// 		uint256 amount3 = 3310928371 wei;
-
-	// 		depositXVault(user1, amount1);
-	// 		depositXVault(user2, amount2);
-	// 		depositXVault(user3, amount3);
-
-	// 		Request[] memory requests = new Request[](3);
-	// 		requests[0] = getRequest(address(childVault), amount1);
-	// 		requests[1] = getRequest(address(nephewVault), amount2);
-	// 		requests[2] = getRequest(address(nephewVault), amount3);
-
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 2, 2, true);
-	// 	}
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(
+			requests,
+			amount * vaults.length,
+			vaults.length,
+			vaults.length,
+			true
+		);
+	}
 
 	// 	// Assert from deposit errors
 	// 	// Not in addr book
 
-	// 	function testOneChainWithdrawFromVaults() public {
-	// 		uint256 amount = 1 ether;
+	function testOneWithdrawFromVaults() public {
+		uint256 amount = 1 ether;
 
-	// 		depositXVault(user1, amount);
+		depositXVault(user1, amount);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(childVault), amount);
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
 
-	// 		// uint256 shares = childVault.balanceOf(address(xVault));
-	// 		requests[0] = getRequest(address(childVault), 100);
+		// uint256 shares = childVault.balanceOf(address(xVault));
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), 1e18);
 
-	// 		// Requests, total amount, msgSent events, withdraw events
-	// 		xvaultWithdrawFromVaults(requests, 0, 1, true);
-	// 	}
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 1, 0, true);
+	}
 
-	// 	function testOneCrossWithdrawFromVaults() public {
-	// 		uint256 amount = 1 ether;
+	function testMultipleWithdrawFromVaults() public {
+		uint256[3] memory amounts = [uint256(1 ether), 918 gwei, 13231 wei];
+		// uint256 total = amount1 + amount2 + amount3;
+		address[3] memory users = [user1, user2, user3];
 
-	// 		depositXVault(user1, amount);
+		for (uint256 i; i < 3; i++) depositXVault(users[i], amounts[i]);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(nephewVault), amount);
+		uint256 total = 0;
+		Request[] memory requests = new Request[](3);
+		for (uint256 i; i < 3; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amounts[i]);
+			total += amounts[i];
+		}
 
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, total, 0, 0, false);
 
-	// 		// uint256 shares = nephewVault.balanceOf(address(xVault));
-	// 		requests[0] = getRequest(address(nephewVault), 100);
+		for (uint256 i; i < 3; i++)
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), 1e18);
 
-	// 		// Requests, total amount, msgSent events, withdraw events
-	// 		xvaultWithdrawFromVaults(requests, 1, 0, true);
-	// 	}
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 3, 0, true);
+	}
 
-	// 	function testMultipleWithdrawFromVaults() public {
-	// 		uint256 amount1 = 1 ether;
-	// 		uint256 amount2 = 918 gwei;
-	// 		uint256 amount3 = 13231 wei;
+	function testChainPartialWithdrawFromVaults() public {
+		uint256[3] memory amounts = [uint256(1 ether), 918 gwei, 13231 wei];
+		// uint256 total = amount1 + amount2 + amount3;
+		address[3] memory users = [user1, user2, user3];
 
-	// 		depositXVault(user1, amount1);
-	// 		depositXVault(user2, amount2);
-	// 		depositXVault(user3, amount3);
+		for (uint256 i; i < 3; i++) depositXVault(users[i], amounts[i]);
 
-	// 		Request[] memory requests = new Request[](3);
-	// 		requests[0] = getRequest(address(childVault), amount1);
-	// 		requests[1] = getRequest(address(nephewVault), amount2);
-	// 		requests[2] = getRequest(address(nephewVault), amount3);
+		uint256 total = 0;
+		Request[] memory requests = new Request[](3);
+		for (uint256 i; i < 3; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amounts[i]);
+			total += amounts[i];
+		}
 
-	// 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, (amount1 + amount2 + amount3), 0, 0, false);
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, total, 0, 0, false);
 
-	// 		requests[0] = getRequest(address(childVault), 100);
-	// 		requests[1] = getRequest(address(nephewVault), 100);
-	// 		requests[2] = getRequest(address(nephewVault), 100);
+		uint256[3] memory sharesBefore;
+		for (uint256 i; i < 3; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), 1e9);
+			sharesBefore[i] = vaults[i].balanceOf(address(xVault));
+		}
 
-	// 		// Requests, total amount, msgSent events, withdraw events
-	// 		xvaultWithdrawFromVaults(requests, 2, 1, true);
-	// 	}
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 3, 0, true);
 
-	// 	function testChainPartialWithdrawFromVaults() public {
-	// 		uint256 amount1 = 1 ether;
-
-	// 		depositXVault(user1, amount1);
-
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(childVault), amount1);
-
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount1, 0, 0, false);
-
-	// 		uint256 sharesBefore = childVault.balanceOf(address(xVault));
-	// 		uint256 sharesWithdraw = (childVault.balanceOf(address(xVault)) * 25) / 100;
-	// 		requests[0] = getRequest(address(childVault), 25);
-	// 		// getRequests, msgSent events, withdraw events
-	// 		xvaultWithdrawFromVaults(requests, 0, 0, false);
-
-	// 		assertEq(childVault.balanceOf(address(xVault)), sharesBefore - sharesWithdraw);
-	// 	}
+		// Check if half of shares were withdraw
+		for (uint256 i; i < 3; i++) {
+			assertEq(vaults[i].balanceOf(address(xVault)), sharesBefore[i] / 2);
+		}
+	}
 
 	// 	// Assert errors
 
-	// 	function testOneChainHarvestVaults() public {
-	// 		uint256 amount = 1 ether;
+	function testOneChainHarvestVaults() public {
+		uint256 amount = 1 ether;
 
-	// 		depositXVault(user1, amount);
+		depositXVault(user1, amount);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(childVault), amount);
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+		// getRequests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
 
-	// 		// localDeposit, crossDeposit, pending, received, message sent, assert on
-	// 		xvaultHarvestVault(childVault.balanceOf(address(xVault)), 0, 1, 0, 1, true);
-	// 	}
+		// localDeposit, crossDeposit, pending, received, message sent, assert on
+		xvaultHarvestVault(
+			0,
+			vaults[0].balanceOf(address(xVault)),
+			vaults.length,
+			0,
+			vaults.length,
+			true
+		);
+	}
 
-	// 	function testOneCrossHarvestVaults() public {
-	// 		uint256 amount = 1 ether;
+	function testMultipleHarvestVaults() public {
+		uint256[3] memory amounts = [uint256(1 ether), 918 gwei, 13231 wei];
+		address[3] memory users = [user1, user2, user3];
 
-	// 		depositXVault(user1, amount);
+		for (uint256 i; i < 3; i++) depositXVault(users[i], amounts[i]);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(nephewVault), amount);
+		uint256 total = 0;
+		Request[] memory requests = new Request[](3);
+		for (uint256 i; i < 3; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amounts[i]);
+			total += amounts[i];
+		}
 
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, total, 0, 0, false);
 
-	// 		// localDeposit, crossDeposit, pending, received, message sent, assert on
-	// 		xvaultHarvestVault(0, nephewVault.balanceOf(address(xVault)), 1, 0, 1, true);
-	// 	}
+		uint256 totalShares = 0;
+		for (uint256 i; i < 3; i++) totalShares += vaults[i].balanceOf(address(xVault));
 
-	// 	function testMultipleHarvestVaults() public {
-	// 		uint256 amount1 = 1 ether;
-	// 		uint256 amount2 = 1987198723 wei;
-	// 		uint256 amount3 = 389 gwei;
-
-	// 		depositXVault(user1, amount1);
-
-	// 		Request[] memory requests = new Request[](3);
-	// 		requests[0] = getRequest(address(nephewVault), amount1);
-	// 		requests[1] = getRequest(address(childVault), amount2);
-	// 		requests[2] = getRequest(address(childVault), amount3);
-
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount1 + amount2 + amount3, 0, 0, false);
-
-	// 		// localDeposit, crossDeposit, pending, received, message sent, assert on
-	// 		xvaultHarvestVault(
-	// 			childVault.balanceOf(address(xVault)),
-	// 			nephewVault.balanceOf(address(xVault)),
-	// 			1,
-	// 			0,
-	// 			1,
-	// 			true
-	// 		);
-	// 	}
+		// localDeposit, crossDeposit, pending, received, message sent, assert on
+		xvaultHarvestVault(0, totalShares, vaults.length, 0, vaults.length, true);
+	}
 
 	// 	// More variations on that (no messages for example)
 
-	// 	function testOneChainFinalizeHarvest() public {
-	// 		uint256 amount = 1 ether;
+	function testOneFinalizeHarvest() public {
+		uint256[] memory amount = new uint256[](vaults.length);
+		amount[0] = 1 ether;
+		for (uint256 i = 1; i < vaults.length; i++) amount[i] = 0;
 
-	// 		depositXVault(user1, amount);
+		depositXVault(user1, amount[0]);
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(childVault), amount);
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount[0]);
 
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+		// getRequests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount[0], 0, 0, false);
 
-	// 		address[] memory vaults = new address[](2);
-	// 		vaults[0] = address(childVault);
-	// 		vaults[1] = address(nephewVault);
+		xvaultFinalizeHarvest(amount);
+	}
 
-	// 		uint256[] memory amounts = new uint256[](2);
-	// 		amounts[0] = amount;
-	// 		amounts[1] = 0;
-	// 		xvaultFinalizeHarvest(vaults, amounts);
-	// 	}
+	function testMultipleFinalizeHarvest() public {
+		uint256[] memory amount = new uint256[](vaults.length);
 
-	// 	// // More variations on that (no messages for example)
-	// 	function testOneCrossFinalizeHarvest() public {
-	// 		uint256 amount = 1 ether;
+		amount[0] = 1 ether;
+		uint256 total = amount[0];
+		for (uint256 i = 1; i < vaults.length; i++) {
+			amount[i] = i * 1209371 gwei;
+			total += amount[i];
+		}
+		depositXVault(user1, total);
 
-	// 		depositXVault(user1, amount);
+		Request[] memory requests = new Request[](vaults.length);
+		for (uint256 i; i < vaults.length; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount[i]);
+		}
 
-	// 		Request[] memory requests = new Request[](1);
-	// 		requests[0] = getRequest(address(nephewVault), amount);
+		// getRequests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, total, 0, 0, false);
 
-	// 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-	// 		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
-
-	// 		address[] memory vaults = new address[](1);
-	// 		vaults[0] = address(nephewVault);
-
-	// 		uint256[] memory amounts = new uint256[](1);
-	// 		amounts[0] = amount;
-	// 		xvaultFinalizeHarvest(vaults, amounts);
-	// 	}
+		xvaultFinalizeHarvest(amount);
+	}
 
 	// 	// // Assert errors
 
-	// 	// function testOneChainEmergencyWithdrawVaults() public {
+	function testOneEmergencyWithdrawVaults() public {
+		// Request(addr, amount);
+		uint256 amount = 1 ether;
 
-	// 	// }
-	// 	// function testOneCrossEmergencyWithdrawVaults() public {
+		depositXVault(user1, amount);
 
-	// 	// }
-	// 	// function testMultipleEmergencyWithdrawVaults() public {
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
-	// 	// }
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
 
-	// 	// // Passive calls (receive message)
+		vm.prank(user1);
+		xVault.emergencyWithdraw();
 
-	// 	// function testReceiveWithdraw() public {
+		assertEq(xVault.balanceOf(user1), 0);
+	}
 
-	// 	// }
+	function testMultipleEmergencyWithdrawVaults() public {
+		uint256 amount = 1 ether;
 
-	// 	// function testReceiveHarvest() public {
+		depositXVault(user1, amount * vaults.length);
 
-	// 	// }
+		Request[] memory requests = new Request[](vaults.length);
+		for (uint256 i; i < vaults.length; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount);
+		}
 
-	// 	// // XChain part (also vault management)
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(
+			requests,
+			amount * vaults.length,
+			vaults.length,
+			vaults.length,
+			true
+		);
 
-	// 	// function testAddVault() public {
+		vm.prank(user1);
+		xVault.emergencyWithdraw();
 
-	// 	// }
+		assertEq(xVault.balanceOf(user1), 0);
+	}
 
-	// 	// function testRemoveVault() public {
+	// Passive calls (receive message)
 
-	// 	// }
+	function testReceiveWithdraw() public {
+		uint256 amount = 1 ether;
 
-	// 	// function testChangeVaultStatus() public {
+		depositXVault(user1, amount);
 
-	// 	// }
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
-	// 	// function testUpdateVaultPostman() public {
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
 
-	// 	// }
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), 1e18);
+		// Requests, total amount, msgSent events, withdraw events
+		xvaultWithdrawFromVaults(requests, 0, 0, false);
 
-	// 	// function testManagePostman() public {
+		uint256 beforeFinalize = xVault.totalChildHoldings();
+		assertEq(beforeFinalize, amount);
 
-	// 	// }
+		// Fake receiving funds from another chain
+		vm.deal(address(xVault), amount);
+		vm.prank(address(xVault));
+		underlying.deposit{ value: amount }();
 
-	// 	// function testSendToken() public {
-	// 	// 	// How?
-	// 	// }
+		// Fake receiving message from another chain
+		vm.prank(address(postmanLz));
+		xVault.receiveMessage(
+			Message(amount, address(vaults[0]), address(0), anotherChainId),
+			MessageType.WITHDRAW
+		);
 
-	// 	/* =============================== REFERENCE HELPER ============================= */
-	// 	// function testWithdraw() public {
-	// 	// 	uint256 amnt = 100e18;
-	// 	// 	sectDeposit(vault, user1, amnt);
-	// 	// 	uint256 shares = vault.balanceOf(user1);
-	// 	// 	sectInitRedeem(vault, user1, 1e18 / 4);
+		vm.prank(manager);
+		vm.expectEmit(false, false, false, false);
+		emit RegisterIncomingFunds(amount);
+		xVault.processIncomingXFunds();
 
-	// 	// 	assertEq(vault.balanceOf(user1), (shares * 3) / 4, "3/4 of shares remains");
+		uint256 afterFinalize = xVault.totalChildHoldings();
+		assertEq(afterFinalize, beforeFinalize - amount);
+	}
 
-	// 	// 	assertFalse(vault.redeemIsReady(user1), "redeem not ready");
+	// Vault management
 
-	// 	// 	vm.expectRevert(BatchedWithdraw.NotReady.selector);
-	// 	// 	vm.prank(user1);
-	// 	// 	vault.redeem();
+	function testAddVault() public {
+		address newVault = address(0xffffffffffff);
+		vm.expectEmit(true, false, false, true);
+		emit AddedVault(newVault, chainId);
 
-	// 	// 	sectHarvest(vault);
+		vm.prank(owner);
+		xVault.addVault(newVault, chainId, 1, true);
 
-	// 	// 	assertTrue(vault.redeemIsReady(user1), "redeem ready");
-	// 	// 	sectCompleteRedeem(vault, user1);
-	// 	// 	assertEq(vault.underlyingBalance(user1), (100e18 * 3) / 4, "3/4 of deposit remains");
+		(uint16 cId, uint16 pId, bool isAllowed) = xVault.addrBook(newVault);
+		assertEq(isAllowed, true);
+		assertEq(pId, 1);
+		assertEq(cId, chainId);
+	}
 
-	// 	// 	assertEq(underlying.balanceOf(user1), amnt / 4);
-
-	// 	// 	// amount should reset
-	// 	// 	vm.expectRevert(BatchedWithdraw.ZeroAmount.selector);
-	// 	// 	vm.prank(user1);
-	// 	// 	vault.redeem();
-	// 	// }
-
-	// 	// function testWithdrawAfterProfit() public {
-	// 	// 	uint256 amnt = 100e18;
-	// 	// 	sectDeposit(vault, user1, amnt);
-
-	// 	// 	// funds deposited
-	// 	// 	depositToStrat(strategy1, amnt);
-	// 	// 	underlying.mint(address(strategy1), 10e18); // 10% profit
-
-	// 	// 	sectInitRedeem(vault, user1, 1e18 / 4);
-
-	// 	// 	sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
-
-	// 	// 	withdrawFromStrat(strategy1, amnt / 4);
-
-	// 	// 	sectHarvest(vault);
-
-	// 	// 	vm.prank(user1);
-	// 	// 	assertApproxEqAbs(vault.getPenalty(), .09e18, mLp);
-
-	// 	// 	sectCompleteRedeem(vault, user1);
-
-	// 	// 	assertEq(underlying.balanceOf(user1), amnt / 4);
-	// 	// }
-
-	// 	// function testWithdrawAfterLoss() public {
-	// 	// 	uint256 amnt = 100e18;
-	// 	// 	sectDeposit(vault, user1, amnt);
-
-	// 	// 	// funds deposited
-	// 	// 	depositToStrat(strategy1, amnt);
-	// 	// 	underlying.burn(address(strategy1.strategy()), 10e18); // 10% loss
-
-	// 	// 	sectInitRedeem(vault, user1, 1e18 / 4);
-
-	// 	// 	withdrawFromStrat(strategy1, amnt / 4);
-
-	// 	// 	sectHarvest(vault);
-
-	// 	// 	vm.prank(user1);
-	// 	// 	assertEq(vault.getPenalty(), 0);
-
-	// 	// 	sectCompleteRedeem(vault, user1);
-
-	// 	// 	assertApproxEqAbs(underlying.balanceOf(user1), (amnt * .9e18) / 4e18, mLp);
-	// 	// }
-
-	// 	// function testCancelWithdraw() public {
-	// 	// 	uint256 amnt = 100e18;
-	// 	// 	sectDeposit(vault, user1, amnt / 4);
-	// 	// 	sectDeposit(vault, user2, (amnt * 3) / 4);
-
-	// 	// 	// funds deposited
-	// 	// 	depositToStrat(strategy1, amnt);
-	// 	// 	underlying.mint(address(strategy1), 10e18 + (mLp) / 10); // 10% profit
-
-	// 	// 	sectInitRedeem(vault, user1, 1e18);
-	// 	// 	sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
-
-	// 	// 	withdrawFromStrat(strategy1, amnt / 4);
-	// 	// 	sectHarvest(vault);
-
-	// 	// 	vm.prank(user1);
-	// 	// 	vault.cancelRedeem();
-
-	// 	// 	uint256 profit = ((10e18 + (mLp) / 10) * 9) / 10;
-	// 	// 	uint256 profitFromBurn = (profit / 4) / 4;
-	// 	// 	assertApproxEqAbs(vault.underlyingBalance(user1), amnt / 4 + profitFromBurn, .1e18);
-	// 	// 	assertEq(underlying.balanceOf(user1), 0);
-
-	// 	// 	// amount should reset
-	// 	// 	vm.expectRevert(BatchedWithdraw.ZeroAmount.selector);
-	// 	// 	vm.prank(user1);
-	// 	// 	vault.redeem();
-	// 	// }
-
-	// 	// function testDepositWithdrawStrats() public {
-	// 	// 	uint256 amnt = 1000e18;
-	// 	// 	sectDeposit(vault, user1, amnt - mLp);
-
-	// 	// 	sectDeposit3Strats(vault, 200e18, 300e18, 500e18);
-
-	// 	// 	assertEq(vault.getTvl(), amnt);
-	// 	// 	assertEq(vault.totalChildHoldings(), amnt);
-
-	// 	// 	sectRedeem3Strats(vault, 200e18 / 2, 300e18 / 2, 500e18 / 2);
-
-	// 	// 	assertEq(vault.getTvl(), amnt);
-	// 	// 	assertEq(vault.totalChildHoldings(), amnt / 2);
-	// 	// }
-
-	// 	// function testFloatAccounting() public {
-	// 	// 	uint256 amnt = 100e18;
-	// 	// 	sectDeposit(vault, user1, amnt);
-
-	// 	// 	assertEq(vault.floatAmnt(), amnt + mLp);
-
-	// 	// 	depositToStrat(strategy1, amnt);
-
-	// 	// 	assertEq(vault.floatAmnt(), mLp);
-
-	// 	// 	sectInitRedeem(vault, user1, 1e18 / 2);
-
-	// 	// 	withdrawFromStrat(strategy1, amnt / 2);
-
-	// 	// 	assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float");
-	// 	// 	assertEq(vault.pendingWithdraw(), amnt / 2, "pending withdraw");
-	// 	// 	sectHarvest(vault);
-	// 	// 	assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float amnt half");
-
-	// 	// 	DepositParams[] memory dParams = new DepositParams[](1);
-	// 	// 	dParams[0] = (DepositParams(strategy1, amnt / 2, 0));
-	// 	// 	vm.expectRevert(SectorBase.NotEnoughtFloat.selector);
-	// 	// 	vault.depositIntoStrategies(dParams);
-
-	// 	// 	vm.prank(user1);
-	// 	// 	vault.redeem();
-	// 	// 	assertEq(vault.floatAmnt(), mLp);
-	// 	// }
-
-	// 	// function testPerformanceFee() public {
-	// 	// 	uint256 amnt = 100e18;
-	// 	// 	sectDeposit(vault, user1, amnt);
-
-	// 	// 	depositToStrat(strategy1, amnt);
-	// 	// 	underlying.mint(address(strategy1), 10e18 + (mLp) / 10); // 10% profit
-
-	// 	// 	uint256 expectedTvl = vault.getTvl();
-	// 	// 	assertEq(expectedTvl, 110e18 + mLp);
-
-	// 	// 	sectHarvest(vault);
-
-	// 	// 	assertApproxEqAbs(vault.underlyingBalance(treasury), 1e18, mLp);
-	// 	// 	assertApproxEqAbs(vault.underlyingBalance(user1), 109e18, mLp);
-	// 	// }
-
-	// 	// function testManagementFee() public {
-	// 	// 	uint256 amnt = 100e18;
-	// 	// 	sectDeposit(vault, user1, amnt);
-	// 	// 	vault.setManagementFee(.01e18);
-
-	// 	// 	depositToStrat(strategy1, amnt);
-
-	// 	// 	skip(365 days);
-	// 	// 	sectHarvest(vault);
-
-	// 	// 	assertApproxEqAbs(vault.underlyingBalance(treasury), 1e18, mLp);
-	// 	// 	assertApproxEqAbs(vault.underlyingBalance(user1), 99e18, mLp);
-	// 	// }
-
-	// 	// function testEmergencyRedeem() public {
-	// 	// 	uint256 amnt = 1000e18;
-	// 	// 	sectDeposit(vault, user1, amnt);
-	// 	// 	sectDeposit3Strats(vault, 200e18, 300e18, 400e18);
-	// 	// 	skip(1);
-	// 	// 	vm.startPrank(user1);
-	// 	// 	vault.emergencyRedeem();
-
-	// 	// 	assertApproxEqAbs(underlying.balanceOf(user1), 100e18, mLp, "recovered float");
-
-	// 	// 	uint256 b1 = IERC20(address(strategy1)).balanceOf(user1);
-	// 	// 	uint256 b2 = IERC20(address(strategy2)).balanceOf(user1);
-	// 	// 	uint256 b3 = IERC20(address(strategy3)).balanceOf(user1);
-
-	// 	// 	strategy1.redeem(user1, b1, address(underlying), 0);
-	// 	// 	strategy2.redeem(user1, b2, address(underlying), 0);
-	// 	// 	strategy3.redeem(user1, b3, address(underlying), 0);
-
-	// 	// 	assertApproxEqAbs(underlying.balanceOf(user1), amnt, 1, "recovered amnt");
-	// 	// 	assertApproxEqAbs(vault.getTvl(), mLp, 1);
-	// 	// }
-
-	// 	// /// UTILS
-
-	// 	// function depositToStrat(ISCYStrategy strategy, uint256 amount) public {
-	// 	// 	DepositParams[] memory params = new DepositParams[](1);
-	// 	// 	params[0] = (DepositParams(strategy, amount, 0));
-	// 	// 	vault.depositIntoStrategies(params);
-	// 	// }
-
-	// 	// function withdrawFromStrat(ISCYStrategy strategy, uint256 amount) public {
-	// 	// 	RedeemParams[] memory rParams = new RedeemParams[](1);
-	// 	// 	rParams[0] = (RedeemParams(strategy, amount, 0));
-	// 	// 	vault.withdrawFromStrategies(rParams);
-	// 	// }
-
-	// 	// function sectHarvest(SectorVault _vault) public {
-	// 	// 	vm.startPrank(manager);
-	// 	// 	uint256 expectedTvl = vault.getTvl();
-	// 	// 	uint256 maxDelta = expectedTvl / 1000; // .1%
-	// 	// 	_vault.harvest(expectedTvl, maxDelta);
-	// 	// 	vm.stopPrank();
-	// 	// }
-
-	// 	// function sectHarvestRevert(SectorVault _vault, bytes4 err) public {
-	// 	// 	vm.startPrank(manager);
-	// 	// 	uint256 expectedTvl = vault.getTvl();
-	// 	// 	uint256 maxDelta = expectedTvl / 1000; // .1%
-	// 	// 	vm.expectRevert(err);
-	// 	// 	_vault.harvest(expectedTvl, maxDelta);
-	// 	// 	vm.stopPrank();
-	// 	// 	// advance 1s
-	// 	// }
-
-	// 	// function sectDeposit(
-	// 	// 	SectorVault _vault,
-	// 	// 	address acc,
-	// 	// 	uint256 amnt
-	// 	// ) public {
-	// 	// 	MockERC20 _underlying = MockERC20(address(_vault.underlying()));
-	// 	// 	vm.startPrank(acc);
-	// 	// 	_underlying.approve(address(_vault), amnt);
-	// 	// 	_underlying.mint(acc, amnt);
-	// 	// 	_vault.deposit(amnt, acc);
-	// 	// 	vm.stopPrank();
-	// 	// }
-
-	// 	// function sectInitRedeem(
-	// 	// 	SectorVault _vault,
-	// 	// 	address acc,
-	// 	// 	uint256 fraction
-	// 	// ) public {
-	// 	// 	vm.startPrank(acc);
-	// 	// 	uint256 sharesToWithdraw = (_vault.balanceOf(acc) * fraction) / 1e18;
-	// 	// 	_vault.requestRedeem(sharesToWithdraw);
-	// 	// 	vm.stopPrank();
-	// 	// 	// advance 1s to ensure we don't have =
-	// 	// 	skip(1);
-	// 	// }
-
-	// 	// function sectCompleteRedeem(SectorVault _vault, address acc) public {
-	// 	// 	vm.startPrank(acc);
-	// 	// 	_vault.redeem();
-	// 	// 	vm.stopPrank();
-	// 	// }
-
-	// 	// function sectDeposit3Strats(
-	// 	// 	SectorVault _vault,
-	// 	// 	uint256 a1,
-	// 	// 	uint256 a2,
-	// 	// 	uint256 a3
-	// 	// ) public {
-	// 	// 	DepositParams[] memory dParams = new DepositParams[](3);
-	// 	// 	dParams[0] = (DepositParams(strategy1, a1, 0));
-	// 	// 	dParams[1] = (DepositParams(strategy2, a2, 0));
-	// 	// 	dParams[2] = (DepositParams(strategy3, a3, 0));
-	// 	// 	_vault.depositIntoStrategies(dParams);
-	// 	// }
-
-	// 	// function sectRedeem3Strats(
-	// 	// 	SectorVault _vault,
-	// 	// 	uint256 a1,
-	// 	// 	uint256 a2,
-	// 	// 	uint256 a3
-	// 	// ) public {
-	// 	// 	RedeemParams[] memory rParams = new RedeemParams[](3);
-	// 	// 	rParams[0] = (RedeemParams(strategy1, a1, 0));
-	// 	// 	rParams[1] = (RedeemParams(strategy2, a2, 0));
-	// 	// 	rParams[2] = (RedeemParams(strategy3, a3, 0));
-	// 	// 	_vault.withdrawFromStrategies(rParams);
-	// 	// }
+	function testRemoveVault() public {
+		address removedVault = address(vaults[0]);
+		vm.expectEmit(true, false, false, true);
+		emit ChangedVaultStatus(removedVault, false);
+
+		vm.prank(owner);
+		xVault.removeVault(removedVault);
+
+		(, , bool isAllowed) = xVault.addrBook(removedVault);
+		assertEq(isAllowed, false);
+
+		// Also, needs to test if vault was removed from vaultList
+		// lDeposit, cDeposit, pAnswers, rAnswers, mSent, assertOn
+		xvaultHarvestVault(0, 0, vaults.length - 1, 0, vaults.length - 1, true);
+	}
+
+	function testCannotInteractAfterRemove() public {
+		address removedVault = address(vaults[0]);
+		uint256 amount = 1 ether;
+
+		depositXVault(user1, amount);
+
+		vm.prank(owner);
+		xVault.removeVault(removedVault);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
+
+		vm.expectRevert(abi.encodeWithSelector(VaultNotAllowed.selector, removedVault));
+		vm.prank(manager);
+		xVault.depositIntoXVaults(requests);
+	}
+
+	function testChangeVaultStatus() public {
+		address testVault = address(vaults[1]);
+		vm.expectEmit(true, false, false, true);
+		emit ChangedVaultStatus(testVault, false);
+
+		vm.prank(owner);
+		xVault.changeVaultStatus(testVault, false);
+
+		(, , bool isFalse) = xVault.addrBook(testVault);
+		assertEq(isFalse, false);
+
+		vm.prank(owner);
+		xVault.changeVaultStatus(testVault, true);
+
+		(, , bool isTrue) = xVault.addrBook(testVault);
+		assertEq(isTrue, true);
+	}
+
+	function testUpdateVaultPostman() public {
+		address testVault = address(vaults[1]);
+		uint16 newPostmanId = 2;
+		vm.expectEmit(true, false, false, true);
+		emit UpdatedVaultPostman(testVault, newPostmanId);
+
+		vm.prank(owner);
+		xVault.updateVaultPostman(testVault, newPostmanId);
+
+		(, uint16 postId, ) = xVault.addrBook(testVault);
+		assertEq(postId, newPostmanId);
+	}
+
+	function testManagePostman() public {
+		uint16 newPostmanId = 2;
+		uint16 newChainId = 1337;
+		address newPostman = address(0xffffffffffff);
+
+		vm.expectEmit(true, false, false, true);
+		emit PostmanUpdated(newPostmanId, newChainId, newPostman);
+
+		vm.prank(owner);
+		xVault.managePostman(newPostmanId, newChainId, newPostman);
+
+		address checkPostman = xVault.postmanAddr(newPostmanId, newChainId);
+
+		assertEq(checkPostman, newPostman);
+	}
+
+	// Copied from SectorCrossVault to test
+	/*/////////////////////////////////////////////////////
+							Events
+	/////////////////////////////////////////////////////*/
+
+	event AddedVault(address indexed vault, uint16 chainId);
+	event ChangedVaultStatus(address indexed vault, bool status);
+	event UpdatedVaultPostman(address indexed vault, uint16 postmanId);
+	event PostmanUpdated(uint16 indexed postmanId, uint16 chanId, address postman);
+	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
+	event RegisterIncomingFunds(uint256 total);
+
+	/*/////////////////////////////////////////////////////
+							Errors
+	/////////////////////////////////////////////////////*/
+
+	error SenderNotAllowed(address sender);
+	error WrongPostman(address postman);
+	error VaultNotAllowed(address vault);
+	error VaultMissing(address vault);
+	error VaultAlreadyAdded();
+	error BridgeError();
+	error SameChainOperation();
+	error MissingIncomingXFunds();
 }

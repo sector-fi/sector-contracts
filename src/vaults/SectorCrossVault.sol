@@ -48,6 +48,7 @@ contract SectorCrossVault is SectorBase {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
+			uint256 fee = vaults[i].fee;
 
 			Vault memory vault = checkVault(vaultAddr);
 			if (vault.chainId == chainId) revert SameChainOperation();
@@ -57,11 +58,10 @@ contract SectorCrossVault is SectorBase {
 			_sendMessage(
 				vaultAddr,
 				vault,
-				Message(amount, address(this), address(0), chainId),
+				Message(amount - fee, address(this), address(0), chainId),
 				MessageType.DEPOSIT
 			);
 
-			// This is fucked but dont know why
 			_sendTokens(
 				underlying(),
 				vaults[i].allowanceTarget,
@@ -196,6 +196,8 @@ contract SectorCrossVault is SectorBase {
 			if (vaultList[i] == _vault) {
 				vaultList[i] = vaultList[length - 1];
 				vaultList.pop();
+
+				emit ChangedVaultStatus(_vault, false);
 				return;
 			}
 			unchecked {
@@ -253,6 +255,11 @@ contract SectorCrossVault is SectorBase {
 		}
 		// Should account for fees paid in tokens for using bridge
 		// Also, if a value hasn't arrived manager will not be able to register any value
+		// console.log(total);
+		// console.log(asset.balanceOf(address(this)));
+		// console.log(floatAmnt);
+		// console.log(pendingWithdraw);
+
 		if (total < (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
 			revert MissingIncomingXFunds();
 
