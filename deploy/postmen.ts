@@ -42,6 +42,7 @@ const func: DeployFunction = async function ({
         chainIdMapping.push([value.chainId, value.layerZeroId]);
       }
     }
+    // console.log(chainIdMapping)
 
     const layerZero = await deploy('LayerZeroPostman', {
       from: deployer,

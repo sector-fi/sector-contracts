@@ -206,11 +206,11 @@ contract SectorVault is SectorBase {
 					CrossChain functionality
 	/////////////////////////////////////////////////////////*/
 
-	function _handleMessage(messageType _type, Message calldata _msg) internal override {
-		if (_type == messageType.DEPOSIT) _receiveDeposit(_msg);
-		else if (_type == messageType.HARVEST) _receiveHarvest(_msg);
-		else if (_type == messageType.WITHDRAW) _receiveWithdraw(_msg);
-		else if (_type == messageType.EMERGENCYWITHDRAW) _receiveEmergencyWithdraw(_msg);
+	function _handleMessage(MessageType _type, Message calldata _msg) internal override {
+		if (_type == MessageType.DEPOSIT) _receiveDeposit(_msg);
+		else if (_type == MessageType.HARVEST) _receiveHarvest(_msg);
+		else if (_type == MessageType.WITHDRAW) _receiveWithdraw(_msg);
+		else if (_type == MessageType.EMERGENCYWITHDRAW) _receiveEmergencyWithdraw(_msg);
 		else revert NotImplemented();
 	}
 
@@ -244,7 +244,7 @@ contract SectorVault is SectorBase {
 			_msg.sender,
 			vault,
 			Message(xVaultUnderlyingBalance, address(this), address(0), chainId),
-			messageType.HARVEST
+			MessageType.HARVEST
 		);
 	}
 
@@ -301,7 +301,7 @@ contract SectorVault is SectorBase {
 				vAddr,
 				vault,
 				Message(amountOut, address(this), address(0), chainId),
-				messageType.WITHDRAW
+				MessageType.WITHDRAW
 			);
 
 			_sendTokens(

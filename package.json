@@ -26,6 +26,7 @@
     "@types/mocha": "^9.0.0",
     "chai": "^4.3.4",
     "dotenv": "^16.0.2",
+    "ethereum-waffle": "^3.4.4",
     "ethers": "^5.7.1",
     "hardhat": "npm:@gzeoneth/hardhat@2.10.1-gzeon-c8fe47dd4",
     "hardhat-contract-sizer": "^2.6.1",

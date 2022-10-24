@@ -7,7 +7,7 @@ interface IPostman {
 		Message calldata _msg,
 		address _dstVautAddress,
 		address _dstPostman,
-		messageType _messageType,
+		MessageType _messageType,
 		uint16 _dstChainId,
 		address _refundTo
 	) external payable;

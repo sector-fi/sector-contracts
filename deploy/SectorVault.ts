@@ -35,7 +35,7 @@ const func: DeployFunction = async function ({
   const vault = await deploy('SectorVault', {
     from: deployer,
     args: [USDC, 'SectorVault', 'SVLT', authConfig, feeConfig],
-    skipIfAlreadyDeployed: true,
+    skipIfAlreadyDeployed: false,
     log: true,
   });
   console.log('sctorVault deplyed to', vault.address);

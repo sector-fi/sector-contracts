@@ -38,7 +38,7 @@ const func: DeployFunction = async function ({
     contract: 'SectorCrossVault',
     from: deployer,
     args: [USDC, 'XVault', 'XVLT', authConfig, feeConfig],
-    skipIfAlreadyDeployed: true,
+    skipIfAlreadyDeployed: false,
     log: true,
   });
   console.log('x-vault deplyed to', vault.address);

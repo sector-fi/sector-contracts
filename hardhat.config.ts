@@ -45,6 +45,8 @@ const {
   INFURA_API_KEY,
   FTM_TESTNET_API_KEY,
   ETHERSCAN_API_KEY,
+  ARBITRUM_API_KEY,
+  OPTIMISM_API_KEY,
 
   // rpc keys
   GOERLI_ALCHEMY,
@@ -248,6 +250,12 @@ const config = {
       gasPrice: 0.1e9,
       name: 'arbitrum',
       tags: ['arbitrum'],
+      verify: {
+        etherscan: {
+          apiKey: ARBITRUM_API_KEY,
+          apiUrl: `https://api.arbiscan.io/api?apikey=${ARBITRUM_API_KEY}`,
+        },
+      },
       // companionNetworks: {
       //   l1: 'arbitrum',
       // },
@@ -265,6 +273,12 @@ const config = {
         l1: 'arbitrum',
       },
       ovm: true,
+      verify: {
+        etherscan: {
+          apiKey: OPTIMISM_API_KEY,
+          apiUrl: `https://api-optimistic.etherscan.io/api?apikey=${OPTIMISM_API_KEY}`,
+        },
+      },
     },
     mainnet: {
       accounts: keys.length ? keys : undefined,
@@ -308,12 +322,12 @@ const config = {
     outDir: 'typechain',
     target: 'ethers-v5',
   },
-  etherscan: {
-    apiKey: {
-      moonbeam: MOONBEAM_API_KEY,
-      goerli: ETHERSCAN_API_KEY,
-    },
-  },
+  // etherscan: {
+  //   apiKey: {
+  //     moonbeam: MOONBEAM_API_KEY,
+  //     goerli: ETHERSCAN_API_KEY,
+  //   },
+  // },
   external: {
     // this allows us to fork deployments (specify folders we can import deployments from)
     deployments: {

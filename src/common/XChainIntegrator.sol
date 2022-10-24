@@ -6,7 +6,7 @@ import { Auth } from "./Auth.sol";
 import "../interfaces/MsgStructs.sol";
 import "../interfaces/postOffice/IPostman.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 /// @notice Struct encoded in Bungee calldata
 /// @dev Derived from socket registry contract
@@ -244,7 +244,7 @@ abstract contract XChainIntegrator is Auth {
 		address receiverAddr,
 		Vault memory vault,
 		Message memory message,
-		messageType msgType
+		MessageType msgType
 	) internal {
 		address srcPostman = postmanAddr[vault.postmanId][chainId];
 		address dstPostman = postmanAddr[vault.postmanId][vault.chainId];
@@ -263,7 +263,7 @@ abstract contract XChainIntegrator is Auth {
 		emit MessageSent(message.value, receiverAddr, vault.chainId, msgType, srcPostman);
 	}
 
-	function receiveMessage(Message calldata _msg, messageType _type) external {
+	function receiveMessage(Message calldata _msg, MessageType _type) external {
 		// First check if postman is allowed
 		Vault memory vault = addrBook[_msg.sender];
 		if (!vault.allowed || _msg.chainId != vault.chainId) revert SenderNotAllowed(_msg.sender);
@@ -274,7 +274,7 @@ abstract contract XChainIntegrator is Auth {
 		emit MessageReceived(_msg.value, _msg.sender, _msg.chainId, _type, msg.sender);
 	}
 
-	function _handleMessage(messageType _type, Message calldata _msg) internal virtual {}
+	function _handleMessage(MessageType _type, Message calldata _msg) internal virtual {}
 
 	function processIncomingXFunds() external virtual {}
 
@@ -286,14 +286,14 @@ abstract contract XChainIntegrator is Auth {
 		uint256 value,
 		address indexed sender,
 		uint16 indexed srcChainId,
-		messageType mType,
+		MessageType mType,
 		address postman
 	);
 	event MessageSent(
 		uint256 value,
 		address indexed receiver,
 		uint16 indexed dstChainId,
-		messageType mtype,
+		MessageType mtype,
 		address postman
 	);
 	event AddedVault(address indexed vault, uint16 chainId);
