@@ -8,10 +8,9 @@ const func: DeployFunction = async function ({
     network
 }: HardhatRuntimeEnvironment) {
     const { deployer, manager, layerZeroEndpoint, multichainEndpoint } = await getNamedAccounts();
-    const { deploy, execute } = deployments;
+    const { deploy } = deployments;
 
     const networks = config.networks;
-    // console.log("NETWORKS", networks);
 
     if (!multichainEndpoint) {
         throw new Error('multichainEndpoint not set');
@@ -42,7 +41,7 @@ const func: DeployFunction = async function ({
     if (network.config.supportMultichain) {
         const multichain = await deploy('MultichainPostman', {
             from: deployer,
-            args: [multichainEndpoint],
+            args: [multichainEndpoint, manager],
             skipIfAlreadyDeployed: false,
             log: true,
         });
