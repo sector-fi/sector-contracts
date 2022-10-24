@@ -1,12 +1,11 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
-import { network } from 'hardhat';
+import { config, network, deployments } from 'hardhat';
 import { getCompanionNetworks } from '../ts/utils';
 
 // sector vault is allways an l1 deployment
 const func: DeployFunction = async function ({
   getNamedAccounts,
-  deployments,
   companionNetworks,
 }: HardhatRuntimeEnvironment) {
   // xVault gets deployed on l1 companion network
@@ -38,7 +37,7 @@ const func: DeployFunction = async function ({
     contract: 'SectorCrossVault',
     from: deployer,
     args: [USDC, 'XVault', 'XVLT', authConfig, feeConfig],
-    skipIfAlreadyDeployed: false,
+    skipIfAlreadyDeployed: true,
     log: true,
   });
   console.log('x-vault deplyed to', vault.address);
