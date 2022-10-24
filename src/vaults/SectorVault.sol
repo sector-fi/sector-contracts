@@ -32,7 +32,7 @@ contract SectorVault is SectorBase {
 
 	mapping(ISCYStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
-	address[] public bridgeQueue;
+	VaultAddr[] public bridgeQueue;
 	Message[] internal depositQueue;
 
 	uint256 public totalStrategyHoldings;
@@ -219,7 +219,7 @@ contract SectorVault is SectorBase {
 	}
 
 	function _receiveWithdraw(Message calldata _msg) internal {
-		if (withdrawLedger[_msg.sender].value == 0) bridgeQueue.push(_msg.sender);
+		if (withdrawLedger[_msg.sender].value == 0) bridgeQueue.push(VaultAddr(_msg.sender, _msg.chainId));
 
 		/// value here is the fraction of the shares owned by the vault
 		/// since the xVault doesn't know how many shares it holds
@@ -239,9 +239,10 @@ contract SectorVault is SectorBase {
 	function _receiveHarvest(Message calldata _msg) internal {
 		uint256 xVaultUnderlyingBalance = underlyingBalance(_msg.sender);
 
-		Vault memory vault = addrBook[_msg.sender];
+		Vault memory vault = addrBook[_msg.sender][_msg.chainId];
 		_sendMessage(
 			_msg.sender,
+			_msg.chainId,
 			vault,
 			Message(xVaultUnderlyingBalance, address(this), address(0), chainId),
 			MessageType.HARVEST
@@ -288,17 +289,18 @@ contract SectorVault is SectorBase {
 
 		uint256 total = 0;
 		for (uint256 i = length - 1; i > 0; ) {
-			address vAddr = bridgeQueue[i];
+			VaultAddr memory v = bridgeQueue[i];
 
-			if (requests[i].vaultAddr != vAddr) revert VaultAddressNotMatch();
+			if (requests[i].vaultAddr != v.addr) revert VaultAddressNotMatch();
 
 			// this returns the underlying amount the vault is withdrawing
-			uint256 amountOut = _xRedeem(vAddr);
+			uint256 amountOut = _xRedeem(v.addr);
 			bridgeQueue.pop();
 
-			Vault memory vault = addrBook[vAddr];
+			Vault memory vault = addrBook[v.addr][v.chainId];
 			_sendMessage(
-				vAddr,
+				v.addr,
+				v.chainId,
 				vault,
 				Message(amountOut, address(this), address(0), chainId),
 				MessageType.WITHDRAW
@@ -308,13 +310,13 @@ contract SectorVault is SectorBase {
 				underlying(),
 				requests[i].allowanceTarget,
 				requests[i].registry,
-				vAddr,
+				v.addr,
 				amountOut,
-				addrBook[vAddr].chainId,
+				v.chainId,
 				requests[i].txData
 			);
 
-			emit BridgeAsset(chainId, addrBook[vAddr].chainId, amountOut);
+			emit BridgeAsset(chainId, v.chainId, amountOut);
 
 			unchecked {
 				total += amountOut;

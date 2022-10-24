@@ -25,7 +25,7 @@ contract SectorXVault is SectorBase {
 	using FixedPointMathLib for uint256;
 
 	// Used to harvest from deposited vaults
-	address[] internal vaultList;
+	VaultAddr[] internal vaultList;
 	// Harvest state
 	HarvestLedger public harvestLedger;
 	Message[] internal withdrawQueue;
@@ -47,18 +47,20 @@ contract SectorXVault is SectorBase {
 
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
+            uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
-			uint256 fee = vaults[i].fee;
 
-			Vault memory vault = checkVault(vaultAddr);
-			if (vault.chainId == chainId) revert SameChainOperation();
+			if (vaultChainId == chainId) revert SameChainOperation();
+			Vault memory vault = checkVault(vaultAddr, vaultChainId);
 
 			totalAmount += amount;
 
+			// TODO make a fee validation HERE
 			_sendMessage(
 				vaultAddr,
+				vaultChainId,
 				vault,
-				Message(amount - fee, address(this), address(0), chainId),
+				Message(amount - vaults[i].fee, address(this), address(0), chainId),
 				MessageType.DEPOSIT
 			);
 
@@ -68,11 +70,11 @@ contract SectorXVault is SectorBase {
 				vaults[i].registry,
 				vaultAddr,
 				amount,
-				uint256(vault.chainId),
+				uint256(vaultChainId),
 				vaults[i].txData
 			);
 
-			emit BridgeAsset(chainId, vault.chainId, amount);
+			emit BridgeAsset(chainId, vaultChainId, amount);
 
 			unchecked {
 				i++;
@@ -86,14 +88,16 @@ contract SectorXVault is SectorBase {
 	function withdrawFromXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
+            uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
 
-			Vault memory vault = checkVault(vaultAddr);
+			if (vaultChainId == chainId) revert SameChainOperation();
 
-			if (vault.chainId == chainId) revert SameChainOperation();
+			Vault memory vault = checkVault(vaultAddr, vaultChainId);
 
 			_sendMessage(
 				vaultAddr,
+				vaultChainId,
 				vault,
 				Message(amount, address(this), address(0), chainId),
 				MessageType.WITHDRAW
@@ -114,14 +118,15 @@ contract SectorXVault is SectorBase {
 		uint256 xvaultsCount = 0;
 
 		for (uint256 i = 0; i < vaultsLength; ) {
-			address vaultAddr = vaultList[i];
-			Vault memory vault = addrBook[vaultAddr];
+			VaultAddr memory v = vaultList[i];
+			Vault memory vault = addrBook[v.addr][v.chainId];
 
-			if (vault.chainId == chainId) {
-				localDepositValue += SectorVault(vaultAddr).underlyingBalance(address(this));
+			if (v.chainId == chainId) {
+				localDepositValue += SectorVault(v.addr).underlyingBalance(address(this));
 			} else {
 				_sendMessage(
-					vaultAddr,
+					v.addr,
+					v.chainId,
 					vault,
 					Message(0, address(this), address(0), chainId),
 					MessageType.HARVEST
@@ -165,16 +170,17 @@ contract SectorXVault is SectorBase {
 
 		uint256 vaultsLength = vaultList.length;
 		for (uint256 i = 0; i < vaultsLength; ) {
-			address vaultAddr = vaultList[i];
-			Vault memory vault = checkVault(vaultAddr);
+			VaultAddr memory v = vaultList[i];
+			Vault memory vault = checkVault(v.addr, v.chainId);
 
-			if (vault.chainId == chainId) {
-				BatchedWithdraw _vault = BatchedWithdraw(vaultAddr);
+			if (v.chainId == chainId) {
+				BatchedWithdraw _vault = BatchedWithdraw(v.addr);
 				uint256 transferShares = userPerc.mulWadDown(_vault.balanceOf(address(this)));
 				_vault.transfer(msg.sender, transferShares);
 			} else {
 				_sendMessage(
-					vaultAddr,
+					v.addr,
+					v.chainId,
 					vault,
 					Message(userPerc, address(this), msg.sender, chainId),
 					MessageType.EMERGENCYWITHDRAW
@@ -188,16 +194,18 @@ contract SectorXVault is SectorBase {
 	}
 
 	// Do linear search on vaultList -> O(n)
-	function removeVault(address _vault) external onlyOwner {
-		addrBook[_vault].allowed = false;
+	function removeVault(address _vault, uint16 _chainId) external onlyOwner {
+		addrBook[_vault][_chainId].allowed = false;
 
 		uint256 length = vaultList.length;
 		for (uint256 i = 0; i < length; ) {
-			if (vaultList[i] == _vault) {
+			VaultAddr memory v = vaultList[i];
+
+			if (v.addr == _vault && v.chainId == _chainId) {
 				vaultList[i] = vaultList[length - 1];
 				vaultList.pop();
 
-				emit ChangedVaultStatus(_vault, false);
+				emit ChangedVaultStatus(_vault, _chainId, false);
 				return;
 			}
 			unchecked {
@@ -217,7 +225,7 @@ contract SectorXVault is SectorBase {
 		bool _allowed
 	) external override onlyOwner {
 		_addVault(_vault, _chainId, _postmanId, _allowed);
-		vaultList.push(_vault);
+		vaultList.push(VaultAddr(_vault, _chainId));
 	}
 
 	/*/////////////////////////////////////////////////////
@@ -230,9 +238,9 @@ contract SectorXVault is SectorBase {
 		else revert NotImplemented();
 	}
 
-	function checkVault(address _vault) internal view returns (Vault memory) {
-		Vault memory vault = addrBook[_vault];
-		if (!vault.allowed) revert VaultNotAllowed(_vault);
+	function checkVault(address _vault, uint16 _chainId) internal view returns (Vault memory) {
+		Vault memory vault = addrBook[_vault][_chainId];
+		if (!vault.allowed) revert VaultNotAllowed(_vault, _chainId);
 		return vault;
 	}
 
