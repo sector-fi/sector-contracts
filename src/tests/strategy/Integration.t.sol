@@ -79,15 +79,13 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 	}
 
 	function testClosePosition() public {
-		uint256 amnt = 1000e6;
-		deposit(user1, 1000e6);
+		uint256 amnt = 100e6;
+		deposit(user1, 100e6);
 		vm.prank(guardian);
 		vault.closePosition(0, 0);
 		uint256 floatBalance = vault.uBalance();
 		assertApproxEqRel(floatBalance, amnt, .001e18);
 		assertEq(underlying.balanceOf(address(vault)), floatBalance);
-		vm.roll(block.number + 1);
-		vault.depositIntoStrategy(floatBalance, 0);
 	}
 }
 
