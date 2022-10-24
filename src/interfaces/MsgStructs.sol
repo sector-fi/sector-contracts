@@ -2,16 +2,16 @@
 pragma solidity 0.8.16;
 
 struct Message {
-    uint256 value;
-    address sender;
-    address client; // In case of emergency withdraw, this is the address to send the funds to
-    uint16 chainId;
+	uint256 value;
+	address sender;
+	address client; // In case of emergency withdraw, this is the address to send the funds to
+	uint16 chainId;
 }
 
 struct Vault {
-    uint16 chainId;
-    uint16 postmanId;
-    bool allowed;
+	uint16 chainId;
+	uint16 postmanId;
+	bool allowed;
 }
 
 struct Request {
@@ -23,10 +23,10 @@ struct Request {
 	bytes txData;
 }
 
-enum messageType {
-    NONE,
-    DEPOSIT,
-    WITHDRAW,
-    EMERGENCYWITHDRAW,
-    HARVEST
+enum MessageType {
+	NONE,
+	DEPOSIT,
+	WITHDRAW,
+	EMERGENCYWITHDRAW,
+	HARVEST
 }

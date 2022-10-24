@@ -3,14 +3,13 @@ import { DeployFunction } from 'hardhat-deploy/types';
 import { network } from 'hardhat';
 import { getCompanionNetworks } from '../ts/utils';
 
-// sector vault is allways an l1 deployment
+// sector vault is allways an l2 deployment
 const func: DeployFunction = async function ({
   getNamedAccounts,
   deployments,
   companionNetworks,
 }: HardhatRuntimeEnvironment) {
-  // xVault gets deployed on l1 companion network
-  const { l1 } = await getCompanionNetworks();
+  const { l2 } = await getCompanionNetworks();
 
   const {
     deployer,
@@ -18,13 +17,12 @@ const func: DeployFunction = async function ({
     guardian,
     manager,
     usdc,
-  } = await l1.getNamedAccounts();
-  const { deploy } = network.live
-    ? companionNetworks.l1.deployments
-    : deployments;
+  } = await l2.getNamedAccounts();
+
+  const { deploy } = deployments;
 
   let USDC = usdc;
-  if (!usdc && !network.live) {
+  if (!network.live && !usdc) {
     const usdcMock = await deployments.get('USDCMock');
     USDC = usdcMock.address;
   }
@@ -34,17 +32,16 @@ const func: DeployFunction = async function ({
   const authConfig = [owner, guardian, manager];
   const feeConfig = [owner, 0, 0];
 
-  const vault = await deploy('SectorXVault', {
-    contract: 'SectorCrossVault',
+  const vault = await deploy('SectorVault', {
     from: deployer,
-    args: [USDC, 'XVault', 'XVLT', authConfig, feeConfig],
+    args: [USDC, 'SectorVault', 'SVLT', authConfig, feeConfig],
     skipIfAlreadyDeployed: false,
     log: true,
   });
-  console.log('x-vault deplyed to', vault.address);
+  console.log('sctorVault deplyed to', vault.address);
 };
 
 export default func;
-func.tags = ['XVault'];
+func.tags = ['SectorVault'];
 // Since USDC Mock is already setting the setup, we don't need to set it as a dependency
 func.dependencies = ['Setup', 'USDCMock'];

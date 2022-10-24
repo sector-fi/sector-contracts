@@ -202,7 +202,7 @@ abstract contract XChainIntegrator is Auth {
 	) internal onlyOwner {
 		Vault memory vault = addrBook[_vault];
 
-		if (vault.chainId != 0) revert VaultAlreadyAdded();
+		if (vault.allowed) revert VaultAlreadyAdded();
 
 		addrBook[_vault] = Vault(_chainId, _postmanId, _allowed);
 		emit AddedVault(_vault, _chainId);
@@ -242,10 +242,12 @@ abstract contract XChainIntegrator is Auth {
 		address receiverAddr,
 		Vault memory vault,
 		Message memory message,
-		messageType msgType
+		MessageType msgType
 	) internal {
 		address srcPostman = postmanAddr[vault.postmanId][chainId];
 		address dstPostman = postmanAddr[vault.postmanId][vault.chainId];
+		if (srcPostman == address(0)) revert MissingPostman(vault.postmanId, chainId);
+		if (dstPostman == address(0)) revert MissingPostman(vault.postmanId, vault.chainId);
 
 		IPostman(srcPostman).deliverMessage(
 			message,
@@ -259,7 +261,7 @@ abstract contract XChainIntegrator is Auth {
 		emit MessageSent(message.value, receiverAddr, vault.chainId, msgType, srcPostman);
 	}
 
-	function receiveMessage(Message calldata _msg, messageType _type) external {
+	function receiveMessage(Message calldata _msg, MessageType _type) external {
 		// First check if postman is allowed
 		Vault memory vault = addrBook[_msg.sender];
 		if (!vault.allowed || _msg.chainId != vault.chainId) revert SenderNotAllowed(_msg.sender);
@@ -270,7 +272,7 @@ abstract contract XChainIntegrator is Auth {
 		emit MessageReceived(_msg.value, _msg.sender, _msg.chainId, _type, msg.sender);
 	}
 
-	function _handleMessage(messageType _type, Message calldata _msg) internal virtual {}
+	function _handleMessage(MessageType _type, Message calldata _msg) internal virtual {}
 
 	function processIncomingXFunds() external virtual {}
 
@@ -282,14 +284,14 @@ abstract contract XChainIntegrator is Auth {
 		uint256 value,
 		address indexed sender,
 		uint16 indexed srcChainId,
-		messageType mType,
+		MessageType mType,
 		address postman
 	);
 	event MessageSent(
 		uint256 value,
 		address indexed receiver,
 		uint16 indexed dstChainId,
-		messageType mtype,
+		MessageType mtype,
 		address postman
 	);
 	event AddedVault(address indexed vault, uint16 chainId);
@@ -303,6 +305,7 @@ abstract contract XChainIntegrator is Auth {
 							Errors
 	/////////////////////////////////////////////////////*/
 
+	error MissingPostman(uint16 postmanId, uint256 chainId);
 	error SenderNotAllowed(address sender);
 	error WrongPostman(address postman);
 	error VaultNotAllowed(address vault);

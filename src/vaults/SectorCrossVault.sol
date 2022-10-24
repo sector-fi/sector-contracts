@@ -11,7 +11,7 @@ import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import { SectorBase } from "./SectorBase.sol";
 import "../interfaces/MsgStructs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 struct HarvestLedger {
 	uint256 localDepositValue;
@@ -59,7 +59,7 @@ contract SectorCrossVault is SectorBase {
 				vaultAddr,
 				vault,
 				Message(amount - fee, address(this), address(0), chainId),
-				messageType.DEPOSIT
+				MessageType.DEPOSIT
 			);
 
 			_sendTokens(
@@ -68,7 +68,7 @@ contract SectorCrossVault is SectorBase {
 				vaults[i].registry,
 				vaultAddr,
 				amount,
-				uint256(addrBook[vaultAddr].chainId),
+				uint256(vault.chainId),
 				vaults[i].txData
 			);
 
@@ -96,7 +96,7 @@ contract SectorCrossVault is SectorBase {
 				vaultAddr,
 				vault,
 				Message(amount, address(this), address(0), chainId),
-				messageType.WITHDRAW
+				MessageType.WITHDRAW
 			);
 
 			unchecked {
@@ -124,7 +124,7 @@ contract SectorCrossVault is SectorBase {
 					vaultAddr,
 					vault,
 					Message(0, address(this), address(0), chainId),
-					messageType.HARVEST
+					MessageType.HARVEST
 				);
 
 				unchecked {
@@ -177,7 +177,7 @@ contract SectorCrossVault is SectorBase {
 					vaultAddr,
 					vault,
 					Message(userPerc, address(this), msg.sender, chainId),
-					messageType.EMERGENCYWITHDRAW
+					MessageType.EMERGENCYWITHDRAW
 				);
 			}
 
@@ -224,9 +224,9 @@ contract SectorCrossVault is SectorBase {
 							Internals
 	/////////////////////////////////////////////////////*/
 
-	function _handleMessage(messageType _type, Message calldata _msg) internal override {
-		if (_type == messageType.WITHDRAW) _receiveWithdraw(_msg);
-		else if (_type == messageType.HARVEST) _receiveHarvest(_msg);
+	function _handleMessage(MessageType _type, Message calldata _msg) internal override {
+		if (_type == MessageType.WITHDRAW) _receiveWithdraw(_msg);
+		else if (_type == MessageType.HARVEST) _receiveHarvest(_msg);
 		else revert NotImplemented();
 	}
 
@@ -255,10 +255,10 @@ contract SectorCrossVault is SectorBase {
 		}
 		// Should account for fees paid in tokens for using bridge
 		// Also, if a value hasn't arrived manager will not be able to register any value
-		console.log(total);
-		console.log(asset.balanceOf(address(this)));
-		console.log(floatAmnt);
-		console.log(pendingWithdraw);
+		// console.log(total);
+		// console.log(asset.balanceOf(address(this)));
+		// console.log(floatAmnt);
+		// console.log(pendingWithdraw);
 
 		if (total < (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
 			revert MissingIncomingXFunds();

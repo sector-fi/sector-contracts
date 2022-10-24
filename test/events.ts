@@ -14,13 +14,13 @@ import { SectorCrossVault } from '../typechain';
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'; // USDC ETHEREUM
 
 const setupTest = deployments.createFixture(async () => {
-  await deployments.fixture(['XVault']);
+  await deployments.fixture(['Setup', 'XVault', 'SectorVault', 'AddVaults']);
   const { deployer } = await getNamedAccounts();
 
   // this contract will be grabbed form the deployments generated via the deployment fixture
   // above, we can grab different contracts via the name we saved them as
   const vault: SectorCrossVault = await ethers.getContract(
-    'SectorCrossVault-0',
+    'SectorXVault',
     deployer
   );
 
@@ -46,7 +46,7 @@ describe('events', function () {
     const amount = 21000001;
 
     // TODO update this method
-    await vault.startBridgeRoute(fromChainId, toChainId, amount);
+    // await vault.startBridgeRoute(fromChainId, toChainId, amount);
     // wait a little bit for events to propagate
     waitFor(2000);
   });
@@ -123,15 +123,28 @@ async function listenToEvents(vault: SectorCrossVault) {
     for (const route of routes) {
       try {
         apiReturnData = await getRouteTransactionData(route);
-        await vault.sendTokens(
-          fromAssetAddress,
-          apiReturnData.result.approvalData.allowanceTarget,
-          apiReturnData.result.txTarget,
-          userAddress,
-          apiReturnData.result.approvalData.minimumApprovalAmount,
-          toChainId,
-          apiReturnData.result.txData
-        );
+
+        const request = {
+          vaultAddr: userAddress,
+          amount,
+          allowanceTarget: apiReturnData.result.approvalData.allowanceTarget,
+          registry: apiReturnData.result.txTarget,
+          txData: apiReturnData.result.txData,
+        };
+        console.log(request);
+
+        const tx = await vault.depositIntoXVaults([request]);
+        const res = await tx.wait();
+
+        // await vault.sendTokens(
+        //   fromAssetAddress,
+        //   apiReturnData.result.approvalData.allowanceTarget,
+        //   apiReturnData.result.txTarget,
+        //   userAddress,
+        //   apiReturnData.result.approvalData.minimumApprovalAmount,
+        //   toChainId,
+        //   apiReturnData.result.txData
+        // );
       } catch (e) {
         e;
         continue;

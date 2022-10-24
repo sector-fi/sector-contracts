@@ -1,7 +1,11 @@
 [profile.default]
-src = 'src/'
+src = 'src'
 out = 'out'
 solc-version = "0.8.16"
 # fuzz_runs=1000
+
+# doesn't work ?
+path_pattern_inverse = "src/tests/strategy/*"
+
 gas_reports = ["IMX", "IMXVault", "IMXLend", "MockScyVault"]
 fs_permissions = [{ access = "read", path = "./ts/config/"}]

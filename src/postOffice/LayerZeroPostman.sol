@@ -9,7 +9,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 struct chainPair {
 	uint16 from;
@@ -25,7 +25,7 @@ contract LayerZeroPostman is
 	ILayerZeroEndpoint public endpoint;
 
 	// map original chainIds to layerZero's chainIds
-	mapping(uint16 => uint16) chains;
+	mapping(uint16 => uint16) public chains;
 
 	constructor(address _layerZeroEndpoint, chainPair[] memory chainPairArr) {
 		endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
@@ -45,10 +45,10 @@ contract LayerZeroPostman is
 		Message calldata _msg,
 		address _dstVautAddress,
 		address _dstPostman,
-		messageType _messageType,
+		MessageType _messageType,
 		uint16 _dstChainId,
 		address _refundTo
-	) external payable {
+	) external payable override {
 		if (address(this).balance == 0) revert NoBalance();
 
 		Message memory msgToLayerZero = Message({
@@ -105,7 +105,7 @@ contract LayerZeroPostman is
 		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _msg.chainId);
 
 		// Send message to dst vault
-		XChainIntegrator(_dstVaultAddress).receiveMessage(_msg, messageType(_messageType));
+		XChainIntegrator(_dstVaultAddress).receiveMessage(_msg, MessageType(_messageType));
 	}
 
 	// With this access control structure we need a way to vault set chain.
@@ -164,8 +164,6 @@ contract LayerZeroPostman is
 
 	// allow this contract to receive ether
 	fallback() external payable {}
-
-	receive() external payable {}
 
 	/* EVENTS */
 	event MessageReceived(

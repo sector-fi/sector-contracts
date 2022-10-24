@@ -10,8 +10,6 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 import "../interfaces/MsgStructs.sol";
 
-import "hardhat/console.sol";
-
 abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
@@ -62,8 +60,6 @@ abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 		// this enables withdrawals requested prior to this timestamp
 		lastHarvestTimestamp = timestamp;
 	}
-
-	function enterEmergency() public onlyOwner {}
 
 	/// @notice this method allows an arbitrary method to be called by the owner in case of emergency
 	/// owner must be a timelock contract in order to allow users to redeem funds in case they suspect

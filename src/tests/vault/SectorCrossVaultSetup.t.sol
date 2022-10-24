@@ -245,7 +245,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		vm.startPrank(getPostmanAddr(vaultAddr));
 		xVault.receiveMessage(
 			Message(amount, vaultAddr, address(0), anotherChainId),
-			messageType.HARVEST
+			MessageType.HARVEST
 		);
 		vm.stopPrank();
 	}
@@ -256,7 +256,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		vm.startPrank(getPostmanAddr(vaultAddr));
 		vault.receiveMessage(
 			Message(amount, address(xVault), address(0), chainId),
-			messageType.DEPOSIT
+			MessageType.DEPOSIT
 		);
 		vm.stopPrank();
 

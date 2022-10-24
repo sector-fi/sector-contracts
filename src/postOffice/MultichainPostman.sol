@@ -8,13 +8,12 @@ import { IPostman } from "../interfaces/postOffice/IPostman.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract MultichainPostman is Ownable, IPostman {
 	address public anyCall;
 	address public anycallExecutor;
 	address public refundTo;
-
 
 	constructor(address _anyCall, address _refundTo) {
 		anyCall = _anyCall;
@@ -26,11 +25,10 @@ contract MultichainPostman is Ownable, IPostman {
 		Message calldata _msg,
 		address _dstVautAddress,
 		address _dstPostman,
-		messageType _messageType,
+		MessageType _messageType,
 		uint16 _dstChainId,
 		address
 	) external payable {
-
 		Message memory msgToMultichain = Message({
 			value: _msg.value,
 			sender: msg.sender,
@@ -39,7 +37,13 @@ contract MultichainPostman is Ownable, IPostman {
 		});
 
 		bytes memory payload = abi.encode(msgToMultichain, _dstVautAddress, _messageType);
-		CallProxy(anyCall).anyCall{value: msg.value}(_dstPostman, payload, address(0), _dstChainId, 2);
+		CallProxy(anyCall).anyCall{ value: msg.value }(
+			_dstPostman,
+			payload,
+			address(0),
+			_dstChainId,
+			2
+		);
 	}
 
 	function anyExecute(bytes memory _data) external returns (bool success, bytes memory result) {
@@ -52,7 +56,7 @@ contract MultichainPostman is Ownable, IPostman {
 		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _msg.chainId);
 
 		// Send message to dst vault
-		XChainIntegrator(_dstVaultAddress).receiveMessage(_msg, messageType(_messageType));
+		XChainIntegrator(_dstVaultAddress).receiveMessage(_msg, MessageType(_messageType));
 
 		success = true;
 		result = "";
@@ -72,7 +76,7 @@ contract MultichainPostman is Ownable, IPostman {
 	);
 
 	fallback() external payable {
-		(bool sent, ) = refundTo.call{value: msg.value}("");
+		(bool sent, ) = refundTo.call{ value: msg.value }("");
 		if (!sent) revert RefundFailed();
 	}
 

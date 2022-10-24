@@ -386,7 +386,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		vm.prank(address(postmanLz));
 		xVault.receiveMessage(
 			Message(amount, address(vaults[0]), address(0), anotherChainId),
-			messageType.WITHDRAW
+			MessageType.WITHDRAW
 		);
 
 		vm.prank(manager);

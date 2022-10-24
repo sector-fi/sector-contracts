@@ -105,7 +105,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			_msg,
 			_dstVault,
 			_dstPostman,
-			messageType.DEPOSIT,
+			MessageType.DEPOSIT,
 			ETHEREUM_CHAIN_ID,
 			manager
 		);
@@ -141,7 +141,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			_msg,
 			_dstVault,
 			_dstPostman,
-			messageType.DEPOSIT,
+			MessageType.DEPOSIT,
 			ETHEREUM_CHAIN_ID,
 			manager
 		);
@@ -167,7 +167,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		Message memory _msg = Message(1000, _srcVault, address(0), AVAX_CHAIN_ID);
 
-		bytes memory _payload = abi.encode(_msg, _dstVault, messageType.DEPOSIT);
+		bytes memory _payload = abi.encode(_msg, _dstVault, MessageType.DEPOSIT);
 
 		vm.selectFork(ethFork);
 
@@ -181,7 +181,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			_srcVault,
 			1000,
 			_dstVault,
-			uint16(messageType.DEPOSIT),
+			uint16(MessageType.DEPOSIT),
 			AVAX_CHAIN_ID
 		);
 
@@ -216,7 +216,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		Message memory _msg = Message(1000, _srcVault, address(0), AVAX_CHAIN_ID);
 
-		bytes memory _payload = abi.encode(_msg, _dstVault, messageType.DEPOSIT);
+		bytes memory _payload = abi.encode(_msg, _dstVault, MessageType.DEPOSIT);
 
 		vm.selectFork(ethFork);
 
@@ -230,7 +230,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			_srcVault,
 			1000,
 			_dstVault,
-			uint16(messageType.DEPOSIT),
+			uint16(MessageType.DEPOSIT),
 			AVAX_CHAIN_ID
 		);
 

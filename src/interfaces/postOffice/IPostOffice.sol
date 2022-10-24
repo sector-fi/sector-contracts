@@ -7,18 +7,18 @@ interface IPostOffice {
 		address receiverAddr,
 		Message calldata message,
 		uint16 receiverChainId,
-		messageType msgType
+		MessageType msgType
 	) external;
 
 	function writeMessage(
 		address receiver,
 		Message calldata message,
-		messageType msgType
+		MessageType msgType
 	) external;
 
-	function readMessage(messageType msgType) external returns (Message[] memory messages);
+	function readMessage(MessageType msgType) external returns (Message[] memory messages);
 
-	function readMessageSumReduce(messageType msgType)
+	function readMessageSumReduce(MessageType msgType)
 		external
 		returns (uint256 acc, uint256 count);
 }
