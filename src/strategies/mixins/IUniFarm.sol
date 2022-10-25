@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { IBase, HarvestSwapParms } from "./IBase.sol";
+import { IBase, HarvestSwapParams } from "./IBase.sol";
 import { IUniLp, SafeERC20, IERC20 } from "./IUniLp.sol";
 import { IFarmable, IUniswapV2Router01 } from "./IFarmable.sol";
 
@@ -12,7 +12,7 @@ abstract contract IUniFarm is IBase, IUniLp, IFarmable {
 
 	function _withdrawFromFarm(uint256 amount) internal virtual;
 
-	function _harvestFarm(HarvestSwapParms[] calldata swapParams)
+	function _harvestFarm(HarvestSwapParams[] calldata swapParams)
 		internal
 		virtual
 		returns (uint256[] memory);

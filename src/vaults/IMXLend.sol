@@ -8,6 +8,7 @@ import { SCYVault } from "./scy/SCYVault.sol";
 import { SafeETH } from "./../libraries/SafeETH.sol";
 import { AuthConfig, Auth } from "../common/Auth.sol";
 import { FeeConfig, Fees } from "../common/Fees.sol";
+import { HarvestSwapParams } from "../interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
@@ -70,6 +71,11 @@ contract IMXLend is SCYStrategy, SCYVault {
 	function _stratCollateralToUnderlying() internal view override returns (uint256) {
 		return IBorrowable(strategy).exchangeRateLast();
 	}
+
+	function _stratHarvest(
+		HarvestSwapParams[] calldata farm1Params,
+		HarvestSwapParams[] calldata farm2Parms
+	) internal override returns (uint256[] memory harvest1, uint256[] memory harvest2) {}
 
 	function getFloatingAmount(address token) public view override returns (uint256) {
 		if (token == address(underlying))

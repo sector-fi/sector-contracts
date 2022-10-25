@@ -6,7 +6,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IMasterChef } from "../../../interfaces/uniswap/IStakingRewards.sol";
 import { IUniswapV2Pair } from "../../../interfaces/uniswap/IUniswapV2Pair.sol";
 
-import { IUniFarm, IUniswapV2Router01, HarvestSwapParms } from "../../mixins/IUniFarm.sol";
+import { IUniFarm, IUniswapV2Router01, HarvestSwapParams } from "../../mixins/IUniFarm.sol";
 import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
@@ -57,7 +57,7 @@ abstract contract MasterChefFarm is IUniFarm {
 		_farm.deposit(_farmId, amount);
 	}
 
-	function _harvestFarm(HarvestSwapParms[] calldata swapParams)
+	function _harvestFarm(HarvestSwapParams[] calldata swapParams)
 		internal
 		override
 		returns (uint256[] memory harvested)

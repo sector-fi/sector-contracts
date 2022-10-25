@@ -6,7 +6,7 @@ import { SafeERC20Upgradeable as SafeERC20, IERC20Upgradeable as IERC20 } from "
 import { IUniswapV2Pair } from "../../../interfaces/uniswap/IUniswapV2Pair.sol";
 import { UniUtils } from "../../../libraries/UniUtils.sol";
 
-import { IBaseU, HarvestSwapParms } from "./IBaseU.sol";
+import { IBaseU, HarvestSwapParams } from "./IBaseU.sol";
 import { ILp } from "../ILp.sol";
 
 // import "hardhat/console.sol";

@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IBase, HarvestSwapParms } from "../mixins/IBase.sol";
+import { IBase, HarvestSwapParams } from "../mixins/IBase.sol";
 import { ILending } from "../mixins/ILending.sol";
 import { IUniFarm, SafeERC20, IERC20 } from "../mixins/IUniFarm.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
@@ -310,11 +310,11 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 
 	// use the return of the function to estimate pending harvest via staticCall
 	function harvest(
-		HarvestSwapParms[] calldata uniParams,
-		HarvestSwapParms[] calldata lendingParams
+		HarvestSwapParams[] calldata uniParams,
+		HarvestSwapParams[] calldata lendingParams
 	)
 		external
-		onlyRole(MANAGER)
+		onlyVault
 		checkPrice(0)
 		nonReentrant
 		returns (uint256[] memory farmHarvest, uint256[] memory lendHarvest)

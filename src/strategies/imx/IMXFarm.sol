@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { ICollateral, IPoolToken, IBorrowable, ImpermaxChef } from "../../interfaces/imx/IImpermax.sol";
-import { HarvestSwapParms, IIMXFarm, IERC20, SafeERC20, IUniswapV2Pair, IUniswapV2Router01 } from "../mixins/IIMXFarm.sol";
+import { HarvestSwapParams, IIMXFarm, IERC20, SafeERC20, IUniswapV2Pair, IUniswapV2Router01 } from "../mixins/IIMXFarm.sol";
 import { UniUtils } from "../../libraries/UniUtils.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -268,7 +268,7 @@ abstract contract IMXFarm is IIMXFarm {
 		return address(_impermaxChef) != address(0);
 	}
 
-	function _harvestFarm(HarvestSwapParms calldata harvestParams)
+	function _harvestFarm(HarvestSwapParams calldata harvestParams)
 		internal
 		override
 		returns (uint256 harvested)

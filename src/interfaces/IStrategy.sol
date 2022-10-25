@@ -7,7 +7,7 @@ struct AuthConfig {
 	address manager;
 }
 
-struct HarvestSwapParms {
+struct HarvestSwapParams {
 	address[] path;
 	uint256 min;
 	uint256 deadline;
@@ -75,7 +75,7 @@ interface IStrategy {
 
 	function grantRole(bytes32 role, address account) external;
 
-	function harvest(HarvestSwapParms memory harvestParams) external returns (uint256 farmHarvest);
+	function harvest(HarvestSwapParams memory harvestParams) external returns (uint256 farmHarvest);
 
 	function hasRole(bytes32 role, address account) external view returns (bool);
 
