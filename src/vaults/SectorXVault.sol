@@ -25,10 +25,9 @@ contract SectorXVault is SectorBase {
 	using FixedPointMathLib for uint256;
 
 	// Used to harvest from deposited vaults
-	VaultAddr[] internal vaultList;
+	VaultAddr[] public vaultList;
 	// Harvest state
 	HarvestLedger public harvestLedger;
-	Message[] internal withdrawQueue;
 
 	constructor(
 		ERC20 _asset,
@@ -119,11 +118,12 @@ contract SectorXVault is SectorBase {
 
 		for (uint256 i = 0; i < vaultsLength; ) {
 			VaultAddr memory v = vaultList[i];
-			Vault memory vault = addrBook[v.addr][v.chainId];
 
 			if (v.chainId == chainId) {
 				localDepositValue += SectorVault(v.addr).underlyingBalance(address(this));
 			} else {
+				Vault memory vault = addrBook[getXAddr(v.addr, v.chainId)];
+
 				_sendMessage(
 					v.addr,
 					v.chainId,
@@ -195,7 +195,7 @@ contract SectorXVault is SectorBase {
 
 	// Do linear search on vaultList -> O(n)
 	function removeVault(address _vault, uint16 _chainId) external onlyOwner {
-		addrBook[_vault][_chainId].allowed = false;
+		addrBook[getXAddr(_vault, _chainId)].allowed = false;
 
 		uint256 length = vaultList.length;
 		for (uint256 i = 0; i < length; ) {
@@ -238,22 +238,22 @@ contract SectorXVault is SectorBase {
 		else revert NotImplemented();
 	}
 
-	function checkVault(address _vault, uint16 _chainId) internal view returns (Vault memory) {
-		Vault memory vault = addrBook[_vault][_chainId];
+	function checkVault(address _vault, uint16 _chainId) internal returns (Vault memory) {
+		Vault memory vault = addrBook[getXAddr(_vault, _chainId)];
 		if (!vault.allowed) revert VaultNotAllowed(_vault, _chainId);
 		return vault;
 	}
 
 	function _receiveWithdraw(Message calldata _msg) internal {
-		withdrawQueue.push(_msg);
+		incomingQueue.push(_msg);
 	}
 
 	function processIncomingXFunds() external override onlyRole(MANAGER) {
-		uint256 length = withdrawQueue.length;
+		uint256 length = incomingQueue.length;
 		uint256 total = 0;
 		for (uint256 i = length; i > 0; ) {
-			Message memory _msg = withdrawQueue[i - 1];
-			withdrawQueue.pop();
+			Message memory _msg = incomingQueue[i - 1];
+			incomingQueue.pop();
 
 			total += _msg.value;
 

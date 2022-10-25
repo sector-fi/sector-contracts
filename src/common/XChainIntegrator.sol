@@ -35,9 +35,11 @@ struct UserRequest {
 }
 
 abstract contract XChainIntegrator is Auth {
-	mapping(address => mapping(uint16 => Vault)) public addrBook;
+	// mapping(address => mapping(uint16 => Vault)) public addrBook;
+	mapping(address => Vault) public addrBook;
 	mapping(uint16 => mapping(uint16 => address)) public postmanAddr;
-	// mapping(messageType => function(Message calldata)) internal messageAction;
+	mapping(address => mapping(uint16 => address)) public xAddr;
+	Message[] public incomingQueue;
 
 	uint16 immutable chainId = uint16(block.chainid);
 
@@ -200,11 +202,12 @@ abstract contract XChainIntegrator is Auth {
 		uint16 _postmanId,
 		bool _allowed
 	) internal onlyOwner {
-		Vault memory vault = addrBook[_vault][_chainId];
+		address xVaultAddr = getXAddr(_vault, _chainId);
+		Vault memory vault = addrBook[xVaultAddr];
 
 		if (vault.allowed) revert VaultAlreadyAdded();
 
-		addrBook[_vault][_chainId] = Vault(_postmanId, _allowed);
+		addrBook[xVaultAddr] = Vault(_postmanId, _allowed);
 		emit AddedVault(_vault, _chainId);
 	}
 
@@ -213,7 +216,7 @@ abstract contract XChainIntegrator is Auth {
 		uint16 _chainId,
 		bool _allowed
 	) external onlyOwner {
-		addrBook[_vault][_chainId].allowed = _allowed;
+		addrBook[getXAddr(_vault, _chainId)].allowed = _allowed;
 
 		emit ChangedVaultStatus(_vault, _chainId, _allowed);
 	}
@@ -223,11 +226,12 @@ abstract contract XChainIntegrator is Auth {
 		uint16 _chainId,
 		uint16 _postmanId
 	) external onlyOwner {
-		Vault memory vault = addrBook[_vault][_chainId];
+		address xVaultAddr = getXAddr(_vault, _chainId);
+		Vault memory vault = addrBook[xVaultAddr];
 
 		if (vault.postmanId == 0) revert VaultMissing(_vault);
 
-		addrBook[_vault][_chainId].postmanId = _postmanId;
+		addrBook[xVaultAddr].postmanId = _postmanId;
 
 		emit UpdatedVaultPostman(_vault, _chainId, _postmanId);
 	}
@@ -273,13 +277,29 @@ abstract contract XChainIntegrator is Auth {
 
 	function receiveMessage(Message calldata _msg, MessageType _type) external {
 		// First check if postman is allowed
-		Vault memory vault = addrBook[_msg.sender][_msg.chainId];
+		Vault memory vault = addrBook[getXAddr(_msg.sender, _msg.chainId)];
 		if (!vault.allowed) revert SenderNotAllowed(_msg.sender);
 		if (msg.sender != postmanAddr[vault.postmanId][chainId]) revert WrongPostman(msg.sender);
 
 		// messageAction[_type](_msg);
 		_handleMessage(_type, _msg);
 		emit MessageReceived(_msg.value, _msg.sender, _msg.chainId, _type, msg.sender);
+	}
+
+	function getXAddr(address xVault, uint16 _chainId) public returns (address computed) {
+		computed = xAddr[xVault][_chainId];
+		if (computed != address(0)) return computed;
+
+		computed = address(uint160(uint(keccak256(abi.encodePacked(_chainId, xVault)))));
+		xAddr[xVault][_chainId] = computed;
+	}
+
+	function getIncomingQueue() public view returns (Message[] memory) {
+		return incomingQueue;
+	}
+
+	function getIncomingQueueLength() public view returns (uint256) {
+		return incomingQueue.length;
 	}
 
 	function _handleMessage(MessageType _type, Message calldata _msg) internal virtual {}

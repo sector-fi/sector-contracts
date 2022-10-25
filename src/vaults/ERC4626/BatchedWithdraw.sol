@@ -72,11 +72,10 @@ abstract contract BatchedWithdraw is ERC4626 {
 	}
 
 	/// @dev should only be called by manager on behalf of xVaults
-	function _xRedeem(address xVault) internal virtual returns (uint256 amountOut) {
+	function _xRedeem(address xVault, address _vault) internal virtual returns (uint256 amountOut) {
 		uint256 shares;
 		(amountOut, shares) = _redeem(xVault);
-		_burn(address(this), shares);
-		emit Withdraw(xVault, xVault, xVault, amountOut, shares);
+		emit Withdraw(_vault, _vault, _vault, amountOut, shares);
 	}
 
 	function _redeem(address account) internal returns (uint256 amountOut, uint256 shares) {
