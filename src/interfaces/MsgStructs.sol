@@ -17,7 +17,7 @@ struct Vault {
 struct Request {
 	address vaultAddr;
 	uint256 amount;
-    uint256 fee;
+    uint256 bridgeFee;
 	address allowanceTarget;
 	address registry;
 	bytes txData;

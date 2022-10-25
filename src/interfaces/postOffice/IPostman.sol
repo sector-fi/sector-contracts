@@ -8,7 +8,15 @@ interface IPostman {
 		address _dstVautAddress,
 		address _dstPostman,
 		MessageType _messageType,
-		uint16 _dstChainId,
-		address _refundTo
+		uint16 _dstChainId
 	) external payable;
+
+	function estimateFee(
+		uint16 _dstChainId,
+		address _dstVaultAddress,
+		MessageType _messageType,
+		Message calldata _msg
+	) external view returns (uint256);
+
+	function setRefundTo(address _refundTo) external;
 }

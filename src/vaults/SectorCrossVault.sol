@@ -6,7 +6,6 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { SectorVault } from "./SectorVault.sol";
 import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "./ERC4626/ERC4626.sol";
-import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import { SectorBase } from "./SectorBase.sol";
 import "../interfaces/MsgStructs.sol";
@@ -25,7 +24,7 @@ contract SectorCrossVault is SectorBase {
 	using FixedPointMathLib for uint256;
 
 	// Used to harvest from deposited vaults
-	address[] internal vaultList;
+	address[] public vaultList;
 	// Harvest state
 	HarvestLedger public harvestLedger;
 	Message[] public withdrawQueue;
@@ -42,13 +41,13 @@ contract SectorCrossVault is SectorBase {
 					Cross Vault Interface
 	/////////////////////////////////////////////////////*/
 
-	function depositIntoXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+	function depositIntoXVaults(Request[] calldata vaults) public payable onlyRole(MANAGER) {
 		uint256 totalAmount = 0;
 
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
-			uint256 fee = vaults[i].fee;
+			uint256 bridgeFee = vaults[i].bridgeFee;
 
 			Vault memory vault = checkVault(vaultAddr);
 			if (vault.chainId == chainId) revert SameChainOperation();
@@ -58,7 +57,7 @@ contract SectorCrossVault is SectorBase {
 			_sendMessage(
 				vaultAddr,
 				vault,
-				Message(amount - fee, address(this), address(0), chainId),
+				Message(amount - bridgeFee, address(this), address(0), chainId),
 				MessageType.DEPOSIT
 			);
 
@@ -84,7 +83,7 @@ contract SectorCrossVault is SectorBase {
 	}
 
 	// TODO params should be just vault and amnt
-	function withdrawFromXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+	function withdrawFromXVaults(Request[] calldata vaults) public payable onlyRole(MANAGER) {
 		// withdrawing from xVaults should not happen during harvest
 		// this will mess up accounting
 		if (harvestLedger.pendingAnswers != 0) revert OnGoingHarvest();
@@ -110,7 +109,7 @@ contract SectorCrossVault is SectorBase {
 		}
 	}
 
-	function harvestVaults() public onlyRole(MANAGER) {
+	function harvestVaults() public payable onlyRole(MANAGER) {
 		uint256 localDepositValue = 0;
 
 		if (harvestLedger.pendingAnswers != 0) revert OnGoingHarvest();
@@ -162,7 +161,7 @@ contract SectorCrossVault is SectorBase {
 		harvestLedger = HarvestLedger(0, 0, 0, 0);
 	}
 
-	function emergencyWithdraw() external {
+	function emergencyWithdraw() external payable {
 		uint256 userShares = balanceOf(msg.sender);
 
 		_burn(msg.sender, userShares);
