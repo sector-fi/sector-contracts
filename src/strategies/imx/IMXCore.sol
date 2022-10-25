@@ -6,7 +6,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import { IBase, HarvestSwapParms } from "../mixins/IBase.sol";
+import { IBase, HarvestSwapParams } from "../mixins/IBase.sol";
 import { IIMXFarm } from "../mixins/IIMXFarm.sol";
 import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
@@ -216,14 +216,14 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	}
 
 	// use the return of the function to estimate pending harvest via staticCall
-	function harvest(HarvestSwapParms calldata harvestParams)
+	function harvest(HarvestSwapParams[] calldata harvestParams)
 		external
 		onlyRole(MANAGER)
 		nonReentrant
-		returns (uint256 farmHarvest)
+		returns (uint256[] memory farmHarvest)
 	{
 		(uint256 startTvl, , , , , ) = getTVL();
-		farmHarvest = _harvestFarm(harvestParams);
+		farmHarvest[0] = _harvestFarm(harvestParams[0]);
 
 		// compound our lp position
 		_increasePosition(_underlying.balanceOf(address(this)));

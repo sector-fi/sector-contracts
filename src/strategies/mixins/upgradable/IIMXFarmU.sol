@@ -3,7 +3,7 @@ pragma solidity ^0.8.6;
 
 import { IBorrowable, ICollateral, ImpermaxChef } from "../../../interfaces/imx/IImpermax.sol";
 
-import { IBaseU, HarvestSwapParms } from "./IBaseU.sol";
+import { IBaseU, HarvestSwapParams } from "./IBaseU.sol";
 import { IUniLpU, IUniswapV2Pair, SafeERC20, IERC20 } from "./IUniLpU.sol";
 import { IFarmableU, IUniswapV2Router01 } from "./IFarmableU.sol";
 
@@ -35,7 +35,7 @@ abstract contract IIMXFarmU is IBaseU, IFarmableU, IUniLpU {
 
 	function _optimalUBorrow() internal view virtual returns (uint256 uBorrow);
 
-	function _harvestFarm(HarvestSwapParms calldata swapParams) internal virtual returns (uint256);
+	function _harvestFarm(HarvestSwapParams calldata swapParams) internal virtual returns (uint256);
 
 	function safetyMarginSqrt() public view virtual returns (uint256);
 

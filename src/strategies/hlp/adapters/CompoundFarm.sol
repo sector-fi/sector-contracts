@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ICompound, ICTokenErc20 } from "../../mixins/ICompound.sol";
 import { IUniswapV2Pair } from "../../../interfaces/uniswap/IUniswapV2Pair.sol";
-import { IFarmable, HarvestSwapParms, IUniswapV2Router01 } from "../../mixins/IFarmable.sol";
+import { IFarmable, HarvestSwapParams, IUniswapV2Router01 } from "../../mixins/IFarmable.sol";
 
 // import "hardhat/console.sol";
 
@@ -24,7 +24,7 @@ abstract contract CompoundFarm is ICompound, IFarmable {
 		return _router;
 	}
 
-	function _harvestLending(HarvestSwapParms[] calldata swapParams)
+	function _harvestLending(HarvestSwapParams[] calldata swapParams)
 		internal
 		virtual
 		override

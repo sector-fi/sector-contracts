@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { IBase, HarvestSwapParms } from "./IBase.sol";
+import { IBase, HarvestSwapParams } from "./IBase.sol";
 import { IFarmable, IUniswapV2Router01 } from "./IFarmable.sol";
 
 // import "hardhat/console.sol";
@@ -33,7 +33,7 @@ abstract contract ILending is IBase {
 
 	function _repay(uint256 amount) internal virtual;
 
-	function _harvestLending(HarvestSwapParms[] calldata swapParams)
+	function _harvestLending(HarvestSwapParams[] calldata swapParams)
 		internal
 		virtual
 		returns (uint256[] memory);

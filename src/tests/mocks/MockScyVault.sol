@@ -9,6 +9,7 @@ import { SafeETH } from "./../../libraries/SafeETH.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 import { Fees, FeeConfig } from "../../common/Fees.sol";
+import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 
 // import "hardhat/console.sol";
 
@@ -77,6 +78,15 @@ contract MockScyVault is SCYStrategy, SCYVault {
 	}
 
 	function _stratValidate() internal override {}
+
+	function _stratHarvest(HarvestSwapParams[] calldata, HarvestSwapParams[] calldata)
+		internal
+		pure
+		override
+		returns (uint256[] memory, uint256[] memory)
+	{
+		return (new uint256[](0), new uint256[](0));
+	}
 
 	function getFloatingAmount(address token) public view override returns (uint256) {
 		if (token == address(underlying)) return underlying.balanceOf(strategy) - underlyingBalance;
