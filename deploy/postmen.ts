@@ -42,12 +42,11 @@ const func: DeployFunction = async function ({
         chainIdMapping.push([value.chainId, value.layerZeroId]);
       }
     }
-    // console.log(chainIdMapping)
 
     const layerZero = await deploy('LayerZeroPostman', {
       from: deployer,
       args: [layerZeroEndpoint, chainIdMapping],
-      skipIfAlreadyDeployed: false,
+      skipIfAlreadyDeployed: true,
       log: true,
     });
     console.log('LayerZero postman deployed to', layerZero.address);
@@ -58,7 +57,7 @@ const func: DeployFunction = async function ({
       const multichain = await deploy('MultichainPostman', {
         from: deployer,
         args: [multichainEndpoint, manager],
-        skipIfAlreadyDeployed: false,
+        skipIfAlreadyDeployed: true,
         log: true,
       });
       console.log('Multichain postman deployed to', multichain.address);

@@ -1,28 +1,34 @@
-import { SectorCrossVault, SectorVault } from 'typechain';
+import {
+  ILayerZeroEndpoint,
+  LayerZeroPostman,
+  SectorCrossVault,
+  SectorVault,
+} from 'typechain';
 import { getCompanionNetworks } from './network';
-import { ethers } from 'hardhat';
+import { ethers, config } from 'hardhat';
 import { Signer } from 'ethers';
 import { getQuote, getRouteTransactionData } from './socketAPI';
 
-const { utils } = ethers;
+const { utils, BigNumber } = ethers;
 const { parseUnits, parseEther } = utils;
 
 export const bridgeFunds = async (
-  xVault: SectorCrossVault,
+  bridgeTx:
+    | SectorCrossVault['depositIntoXVaults']
+    | SectorVault['processXWithdraw'],
   toAddress: string,
   fromAsset: string,
   toAsset: string,
   fromChain: number,
   toChain: number,
-  amount: number
+  amount: string
 ) => {
   // Set Socket quote request params
   const uniqueRoutesPerBridge = true; // Set to true the best route for each bridge will be returned
   const sort = 'output'; // "output" | "gas" | "time"
   const singleTxOnly = true; // Set to true to look for a single transaction route
 
-  // Get quote
-  const quote = await getQuote(
+  const args = [
     fromChain,
     fromAsset,
     toChain,
@@ -31,22 +37,16 @@ export const bridgeFunds = async (
     toAddress,
     uniqueRoutesPerBridge,
     sort,
-    singleTxOnly
-  );
+    singleTxOnly,
+  ] as const;
+  console.log(args);
 
-  console.log(
-    fromChain,
-    fromAsset,
-    toChain,
-    toAsset,
-    amount,
-    toAddress,
-    uniqueRoutesPerBridge,
-    sort,
-    singleTxOnly
-  );
+  // Get quote
+  const quote = await getQuote(...args);
+  console.log(quote);
 
   const routes = quote.result.routes;
+  routes.forEach((r) => console.log(r.toAmount));
 
   // loop routes
   let apiReturnData: any = {};
@@ -54,17 +54,19 @@ export const bridgeFunds = async (
     try {
       apiReturnData = await getRouteTransactionData(route);
 
-      // console.log(apiReturnData);
+      const fee = BigNumber.from(amount).sub(BigNumber.from(route.toAmount));
+      console.log('Fee', fee.toString());
+
       const request = {
         vaultAddr: toAddress,
         amount,
+        fee,
         allowanceTarget: apiReturnData.result.approvalData.allowanceTarget,
         registry: apiReturnData.result.txTarget,
         txData: apiReturnData.result.txData,
       };
-      console.log(request);
 
-      const tx = await xVault.depositIntoXVaults([request]);
+      const tx = await bridgeTx([request]);
       const res = await tx.wait();
       return res;
     } catch (e) {
@@ -107,4 +109,34 @@ export const fundPostmen = async (
     });
     await tx.wait();
   }
+};
+
+export const debugPostman = async (postmanAddr, signer, chainName, path) => {
+  const postman: LayerZeroPostman = await ethers.getContractAt(
+    'LayerZeroPostman',
+    postmanAddr,
+    signer
+  );
+
+  const enpointAddr = await postman.endpoint();
+
+  const endpoint: ILayerZeroEndpoint = await ethers.getContractAt(
+    'ILayerZeroEndpoint',
+    enpointAddr,
+    signer
+  );
+
+  // @ts-ignore
+  const chainId = config.networks[chainName].layerZeroId;
+  console.log(chainId);
+
+  const hasPayload = await endpoint.hasStoredPayload(chainId, path);
+  console.log('has payload', hasPayload);
+  if (!hasPayload) return;
+
+  // have to get payload somehow
+
+  // const tx = await endpoint.retryPayload(chainId, path, payload.payloadHash);
+  // const res = await tx.wait();
+  // console.log(res);
 };

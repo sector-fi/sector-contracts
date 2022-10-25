@@ -3,6 +3,7 @@ import {
   getCompanionNetworks,
   fundPostmen,
   bridgeFunds,
+  debugPostman,
 } from '../ts/utils';
 import {
   ethers,
@@ -11,13 +12,7 @@ import {
   network,
   companionNetworks,
 } from 'hardhat';
-import {
-  SectorCrossVault,
-  SectorVault,
-  ERC20,
-  LayerZeroPostman,
-  ILayerZeroEndpoint,
-} from '../typechain';
+import { SectorCrossVault, SectorVault, ERC20 } from '../typechain';
 import { parseUnits, formatUnits, solidityPack } from 'ethers/lib/utils';
 import { Web3Provider, ExternalProvider } from '@ethersproject/providers';
 import fetch from 'node-fetch';
@@ -27,10 +22,13 @@ import { solidity } from 'ethereum-waffle';
 chai.use(solidity);
 import { expect } from 'chai';
 
-// global.fetch = fetch;
+// @ts-ignore
+global.fetch = fetch;
 
 const setupTest = deployments.createFixture(async () => {
-  await deployments.fixture(['XVault', 'SectorVault', 'AddVaults']);
+  await deployments.fixture(['XVault', 'SectorVault', 'AddVaults'], {
+    keepExistingDeployments: true,
+  });
 });
 
 describe('e2e x', function () {
@@ -64,15 +62,23 @@ describe('e2e x', function () {
     const xVaultArtifact = await getDeployment('SectorXVault', l1Name);
     const vaultArtifact = await getDeployment('SectorVault', l2Name);
 
-    xVault = network.live
-      ? (new ethers.Contract(
+    // sometimes we may use these to test against
+    // await ethers.getContract('SectorXVault', l1Signer);
+    // vault = await ethers.getContract('SectorVault', l2Signer);
+
+    xVault = !network.live
+      ? await ethers.getContract('SectorXVault', l1Signer)
+      : (new ethers.Contract(
           xVaultArtifact.address,
           xVaultArtifact.abi,
           l1Signer
-        ) as SectorCrossVault)
-      : await ethers.getContract('SectorXVault', l1Signer);
+        ) as SectorCrossVault);
 
-    vault = await ethers.getContract('SectorVault', l2Signer);
+    vault = new ethers.Contract(
+      vaultArtifact.address,
+      vaultArtifact.abi,
+      l2Signer
+    ) as SectorVault;
 
     console.log('vault', vault.address);
     console.log('xVault', xVault.address);
@@ -107,20 +113,20 @@ describe('e2e x', function () {
     const float = await xVault.floatAmnt();
     if (parseFloat(formatUnits(float, 6)) > 0) {
       const tx = await bridgeFunds(
-        xVault,
+        xVault.depositIntoXVaults,
         toVault.address,
         fromAsset,
         toAsset,
         l1Id,
         l2Id,
-        amount.toNumber()
+        amount.toString()
       );
       console.log('bridge tx', tx);
       expect(tx?.status).to.be.eq(1);
     }
   });
 
-  it('process deposits', async function () {
+  it.skip('process deposits', async function () {
     const uAddr = await vault.underlying();
     const underlying = (await ethers.getContractAt(
       'IERC20',
@@ -136,12 +142,101 @@ describe('e2e x', function () {
     if (startXVaultShares.eq(0)) {
       const tx = await vault.processIncomingXFunds();
       const res = await tx.wait();
-      console.log(res);
+      // console.log(res);
+      expect(res?.status).to.be.eq(1);
     }
 
     const xVaultShares = await vault.balanceOf(xVault.address);
     const xVaultBlanace = await vault.underlyingBalance(xVault.address);
     expect(xVaultShares).to.be.gt(0);
-    expect(xVaultBlanace).to.be.eq(uBal);
+    expect(xVaultBlanace).to.be.closeTo(uBal, 1000);
+  });
+
+  it.skip('harvestReq', async function () {
+    await fundPostmen(xVault, vault.address, l1Signer, l2Signer);
+    {
+      const tx = await xVault.harvestVaults();
+      const res = await tx.wait();
+      expect(res?.status).to.be.eq(1);
+    }
+  });
+
+  it.skip('finalizeHarvest', async function () {
+    console.log(vault.address);
+
+    const expectedTvl = await vault.underlyingBalance(xVault.address);
+    // const expectedTvl = ethers.BigNumber.from('9664119');
+    console.log(xVault.address);
+
+    const {
+      receivedAnswers,
+      pendingAnswers,
+      crossDepositValue,
+    } = await xVault.harvestLedger();
+
+    {
+      const tx = await xVault.finalizeHarvest(
+        expectedTvl,
+        expectedTvl.div(100)
+      );
+      const res = await tx.wait();
+      expect(res?.status).to.be.eq(1);
+    }
+  });
+
+  it.skip('req withdraw', async function () {
+    const shares = await xVault.balanceOf(owner);
+    {
+      const tx = await xVault['requestRedeem(uint256)'](shares);
+      const res = await tx.wait();
+      expect(res?.status).to.be.eq(1);
+    }
+    const totalAssets = await xVault.totalAssets();
+    const pendingWithdraw = await xVault.pendingWithdraw();
+    const withdrawShare = parseUnits('1').mul(pendingWithdraw).div(totalAssets);
+    console.log('wShare', formatUnits(withdrawShare), withdrawShare.toString());
+
+    await fundPostmen(xVault, vault.address, l1Signer, l2Signer);
+
+    {
+      const request = {
+        vaultAddr: vault.address,
+        amount: withdrawShare,
+        fee: '0',
+        allowanceTarget: ethers.constants.AddressZero,
+        registry: ethers.constants.AddressZero,
+        txData: [],
+      };
+
+      const tx = await xVault.withdrawFromXVaults([request]);
+      const res = await tx.wait();
+      expect(res?.status).to.be.eq(1);
+    }
+  });
+
+  it('processXWithdraw', async function () {
+    const toAsset = await xVault.underlying();
+    const fromAsset = await vault.underlying();
+
+    const amount = await vault.pendingWithdraw();
+    console.log('pending withdraw', amount);
+
+    const postman1 = await xVault.postmanAddr(0, l1Id);
+    const postman2 = await vault.postmanAddr(0, l2Id);
+    const path = solidityPack(['address', 'address'], [postman1, postman2]);
+    console.log(path);
+
+    await debugPostman(postman2, l2Signer, l1Name, path);
+
+    //   const tx = await bridgeFunds(
+    //     vault.processXWithdraw,
+    //     xVault.address,
+    //     fromAsset,
+    //     toAsset,
+    //     l2Id,
+    //     l1Id,
+    //     amount.toString()
+    //   );
+    //   expect(tx?.status).to.be.eq(1);
   });
 });
