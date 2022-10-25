@@ -46,7 +46,7 @@ const func: DeployFunction = async function ({
 
     const layerZero = await deploy('LayerZeroPostman', {
       from: deployer,
-      args: [layerZeroEndpoint, chainIdMapping],
+      args: [layerZeroEndpoint, chainIdMapping, manager],
       skipIfAlreadyDeployed: false,
       log: true,
     });

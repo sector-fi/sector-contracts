@@ -31,6 +31,7 @@ contract MultichainPostman is Ownable, IPostman {
 		MessageType _messageType,
 		uint16 _dstChainId
 	) external payable {
+
 		if (address(this).balance == 0) revert NoBalance();
 
 		Message memory msgToMultichain = Message({
