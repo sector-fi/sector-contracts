@@ -5,6 +5,8 @@ import { MockERC20 as ERC20 } from "./MockERC20.sol";
 
 import { SafeETH } from "../../libraries/SafeETH.sol";
 
+import "hardhat/console.sol";
+
 /// @notice Minimalist and modern Wrapped Ether implementation.
 /// @author Solmate (https://github.com/Rari-Capital/solmate/blob/main/src/tokens/WETH.sol)
 /// @author Inspired by WETH9 (https://github.com/dapphub/ds-weth/blob/master/src/weth9.sol)

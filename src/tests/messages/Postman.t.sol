@@ -53,9 +53,9 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		pairArray[0] = chainPair(AVAX_CHAIN_ID, AVAX_LAYERZERO_ID);
 		pairArray[1] = chainPair(ETHEREUM_CHAIN_ID, ETHEREUM_LAYERZERO_ID);
 
-		underlying = new WETH();
-
 		vm.selectFork(ethFork);
+
+		underlying = new WETH();
 
 		EthSectorVault = new SectorVault(
 			underlying,
