@@ -13,16 +13,6 @@ abstract contract IFarmableU is IBaseU {
 		address fromToken,
 		uint256 amount
 	) internal {
-		return _swapTo(router, swapParams, fromToken, amount, address(this));
-	}
-
-	function _swapTo(
-		IUniswapV2Router01 router,
-		HarvestSwapParms calldata swapParams,
-		address fromToken,
-		uint256 amount,
-		address to
-	) internal {
 		address out = swapParams.path[swapParams.path.length - 1];
 		// ensure malicious harvester is not trading with wrong tokens
 		// TODO should we add more validation to prevent malicious path?
@@ -35,7 +25,7 @@ abstract contract IFarmableU is IBaseU {
 			amount,
 			swapParams.min,
 			swapParams.path, // optimal route determined externally
-			to,
+			address(this),
 			swapParams.deadline
 		);
 	}

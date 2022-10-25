@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { ICollateral, IPoolToken, IBorrowable, ImpermaxChef } from "../../interfaces/imx/IImpermax.sol";
-import { HarvestSwapParms, IIMXFarmU, IERC20, SafeERC20, IUniswapV2Pair, IUniswapV2Router01 } from "../mixins/upgradable/IIMXFarmU.sol";
+import { HarvestSwapParms, IIMXFarm, IERC20, SafeERC20, IUniswapV2Pair, IUniswapV2Router01 } from "../mixins/IIMXFarm.sol";
 import { UniUtils } from "../../libraries/UniUtils.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -10,7 +10,7 @@ import { CallType, CalleeData, AddLiquidityAndMintCalldata, BorrowBCalldata, Rem
 
 import "hardhat/console.sol";
 
-abstract contract IMXFarm is Initializable, IIMXFarmU {
+abstract contract IMXFarm is IIMXFarm {
 	using SafeERC20 for IERC20;
 	using UniUtils for IUniswapV2Pair;
 	// using FixedPointMathLib for uint256;
@@ -27,13 +27,13 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 
 	bool public flip;
 
-	function __IMXFarm_init_(
+	constructor(
 		address underlying_,
 		address pair_,
 		address collateralToken_,
 		address farmRouter_,
 		address farmToken_
-	) internal onlyInitializing {
+	) {
 		_pair = IUniswapV2Pair(pair_);
 		_collateralToken = ICollateral(collateralToken_);
 		_uBorrowable = IBorrowable(_collateralToken.borrowable0());

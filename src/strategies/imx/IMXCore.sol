@@ -1,27 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { SafeERC20Upgradeable as SafeERC20, IERC20Upgradeable as IERC20 } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import { IBaseU, HarvestSwapParms } from "../mixins/upgradable/IBaseU.sol";
-import { IIMXFarmU } from "../mixins/upgradable/IIMXFarmU.sol";
+import { IBase, HarvestSwapParms } from "../mixins/IBase.sol";
+import { IIMXFarm } from "../mixins/IIMXFarm.sol";
 import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
-import { IMXAuthU } from "./IMXAuthU.sol";
+import { IMXAuth } from "./IMXAuth.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract IMXCore is
-	Initializable,
-	ReentrancyGuardUpgradeable,
-	IMXAuthU,
-	IBaseU,
-	IIMXFarmU
-{
+abstract contract IMXCore is ReentrancyGuard, IMXAuth, IBase, IIMXFarm {
 	using FixedPointMathLib for uint256;
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
@@ -71,12 +65,12 @@ abstract contract IMXCore is
 		_;
 	}
 
-	function __IMX_init_(
+	constructor(
 		address vault_,
 		address underlying_,
 		address short_,
 		uint256 maxTvl_
-	) internal onlyInitializing {
+	) {
 		vault = vault_;
 		_underlying = IERC20(underlying_);
 		_short = IERC20(short_);
@@ -236,26 +230,6 @@ abstract contract IMXCore is
 		emit Harvest(startTvl);
 	}
 
-	// There is not a situation where we would need this
-	// function rebalanceLoan() public {
-	// 	uint256 tvl = getOracleTvl();
-	// 	uint256 tvl1 = getTotalTVL();
-
-	// 	uint256 uBorrow = (tvl * _optimalUBorrow()) / 1e18;
-	// 	(uint256 uBorrowBalance, ) = _getBorrowBalances();
-
-	// 	if (uBorrowBalance <= uBorrow) return;
-	// 	uint256 uRepay = uBorrowBalance - uBorrow;
-	// 	(uint256 uLp, ) = _getLPBalances();
-
-	// 	uint256 lp = _getLiquidity();
-
-	// 	// remove lp & repay underlying loan
-	// 	uint256 removeLp = (lp * uRepay) / uLp;
-	// 	uint256 sRepay = type(uint256).max;
-	// 	_removeIMXLiquidity(removeLp, uRepay, sRepay);
-	// }
-
 	function rebalance(uint256 expectedPrice, uint256 maxDelta)
 		external
 		onlyRole(MANAGER)
@@ -346,21 +320,6 @@ abstract contract IMXCore is
 	function getTotalTVL() public view returns (uint256 tvl) {
 		(tvl, , , , , ) = getTVL();
 	}
-
-	/// THere is no situation where we would need this
-	// function getOracleTvl() public returns (uint256 tvl) {
-	// 	(uint256 underlyingBorrow, uint256 borrowPosition) = _updateAndGetBorrowBalances();
-	// 	uint256 borrowBalance = _shortToUnderlyingOracle(borrowPosition) + underlyingBorrow;
-
-	// 	uint256 shortPosition = _short.balanceOf(address(this));
-	// 	uint256 shortBalance = shortPosition == 0 ? 0 : _shortToUnderlyingOracle(shortPosition);
-
-	// 	(uint256 underlyingLp, uint256 shortLp) = _getLPBalances();
-	// 	uint256 lpBalance = underlyingLp + _shortToUnderlyingOracle(shortLp);
-	// 	uint256 underlyingBalance = _underlying.balanceOf(address(this));
-
-	// 	tvl = lpBalance - borrowBalance + underlyingBalance + shortBalance;
-	// }
 
 	function getTVL()
 		public

@@ -59,9 +59,6 @@ contract SetupImx is SectorTest, StratUtils {
 		_config.farmToken = stratJson.e_farmToken;
 		_config.farmRouter = stratJson.f_farmRouter;
 		_config.maxTvl = type(uint128).max;
-		_config.owner = owner;
-		_config.manager = manager;
-		_config.guardian = guardian;
 
 		harvestParams.path = stratJson.h_harvestPath;
 
@@ -85,19 +82,18 @@ contract SetupImx is SectorTest, StratUtils {
 		strategyConfig.underlying = IERC20(config.underlying);
 		strategyConfig.maxTvl = uint128(config.maxTvl);
 
-		vault = SCYVault(
-			new IMXVault(
-				AuthConfig(owner, guardian, manager),
-				FeeConfig(treasury, .1e18, 0),
-				strategyConfig
-			)
-		);
+		AuthConfig memory authConfig = AuthConfig({
+			owner: owner,
+			manager: manager,
+			guardian: guardian
+		});
+
+		vault = SCYVault(new IMXVault(authConfig, FeeConfig(treasury, .1e18, 0), strategyConfig));
 
 		mLp = vault.MIN_LIQUIDITY();
 		config.vault = address(vault);
 
-		strategy = new IMX();
-		strategy.initialize(config);
+		strategy = new IMX(authConfig, config);
 
 		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);
