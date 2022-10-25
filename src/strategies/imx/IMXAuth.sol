@@ -5,11 +5,11 @@ import { SafeERC20Upgradeable as SafeERC20, IERC20Upgradeable as IERC20 } from "
 
 import { SafeETH } from "../../libraries/SafeETH.sol";
 
-import { AuthU } from "../../common/AuthU.sol";
+import { Auth } from "../../common/Auth.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract IMXAuthU is AuthU {
+abstract contract IMXAuth is Auth {
 	using SafeERC20 for IERC20;
 
 	address public vault;

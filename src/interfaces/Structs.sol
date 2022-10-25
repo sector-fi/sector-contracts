@@ -48,9 +48,6 @@ struct IMXConfig {
 	address farmToken;
 	address farmRouter;
 	uint256 maxTvl;
-	address owner;
-	address manager;
-	address guardian;
 }
 
 struct HLPConfig {

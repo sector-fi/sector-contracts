@@ -71,4 +71,14 @@ abstract contract IUniLp is IBase, ILp {
 		underlyingBalance = (totalUnderlyingBalance * totalLp) / total;
 		shortBalance = (totalShortBalance * totalLp) / total;
 	}
+
+	// this is the current uniswap price
+	function _shortToUnderlying(uint256 amount) internal view virtual returns (uint256) {
+		return amount == 0 ? 0 : _quote(amount, address(short()), address(underlying()));
+	}
+
+	// this is the current uniswap price
+	function _underlyingToShort(uint256 amount) internal view virtual returns (uint256) {
+		return amount == 0 ? 0 : _quote(amount, address(underlying()), address(short()));
+	}
 }

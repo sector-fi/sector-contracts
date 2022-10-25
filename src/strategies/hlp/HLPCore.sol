@@ -633,16 +633,6 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 		return (total * cRatio) / (BPS_ADJUST + cRatio);
 	}
 
-	// this is the current uniswap price
-	function _shortToUnderlying(uint256 amount) internal view returns (uint256) {
-		return amount == 0 ? 0 : _quote(amount, address(_short), address(_underlying));
-	}
-
-	// this is the current uniswap price
-	function _underlyingToShort(uint256 amount) internal view returns (uint256) {
-		return amount == 0 ? 0 : _quote(amount, address(_underlying), address(_short));
-	}
-
 	/**
 	 * @dev Returns the smallest of two numbers.
 	 */
