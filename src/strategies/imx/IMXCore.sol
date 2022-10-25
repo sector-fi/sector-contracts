@@ -11,11 +11,11 @@ import { IIMXFarm } from "../mixins/IIMXFarm.sol";
 import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
-import { IMXAuth } from "./IMXAuth.sol";
+import { StratAuth } from "../../common/StratAuth.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract IMXCore is ReentrancyGuard, IMXAuth, IBase, IIMXFarm {
+abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	using FixedPointMathLib for uint256;
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;

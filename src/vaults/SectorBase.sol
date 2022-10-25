@@ -7,6 +7,7 @@ import { ISCYStrategy } from "../interfaces/scy/ISCYStrategy.sol";
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { EAction } from "../interfaces/Structs.sol";
 
 import "../interfaces/MsgStructs.sol";
 
@@ -64,9 +65,15 @@ abstract contract SectorBase is BatchedWithdraw, XChainIntegrator {
 	/// @notice this method allows an arbitrary method to be called by the owner in case of emergency
 	/// owner must be a timelock contract in order to allow users to redeem funds in case they suspect
 	/// this action to be malicious
-	function emergencyAction(address target, bytes calldata callData) public onlyOwner {
-		Address.functionCall(target, callData);
-		emit EmergencyAction(target, callData);
+	function emergencyAction(EAction[] calldata actions) public onlyOwner {
+		uint256 l = actions.length;
+		for (uint256 i = 0; i < l; i++) {
+			address target = actions[i].target;
+			bytes memory data = actions[i].data;
+			(bool success, ) = target.call{ value: actions[i].value }(data);
+			require(success, "emergencyAction failed");
+			emit EmergencyAction(target, data);
+		}
 	}
 
 	function _checkSlippage(

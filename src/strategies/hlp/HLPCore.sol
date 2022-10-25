@@ -12,11 +12,12 @@ import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { Auth } from "../../common/Auth.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
+import { StratAuth } from "../../common/StratAuth.sol";
 
 import "hardhat/console.sol";
 
 // @custom: alphabetize dependencies to avoid linearization conflicts
-abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
+abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFarm {
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
@@ -55,14 +56,7 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 
 	uint256 public constant version = 1;
 
-	address public vault;
-
 	bool public harvestIsEnabled = true;
-
-	modifier onlyVault() {
-		require(msg.sender == vault, "Strat: ONLY_VAULT");
-		_;
-	}
 
 	modifier isPaused() {
 		if (_maxTvl != 0) revert NotPaused();
