@@ -365,5 +365,4 @@ abstract contract XChainIntegrator is Auth {
 	error SameChainOperation();
 	error MissingIncomingXFunds();
 	error InsufficientBalanceToSendMessage();
-	error RefundFailed();
 }
