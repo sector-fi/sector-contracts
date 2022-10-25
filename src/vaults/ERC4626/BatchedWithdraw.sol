@@ -32,7 +32,11 @@ abstract contract BatchedWithdraw is ERC4626 {
 	}
 
 	function requestRedeem(uint256 shares, address owner) public {
-		if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
+		_requestRedeem(shares, owner, true);
+	}
+
+	function _requestRedeem(uint256 shares, address owner, bool notXChain) internal {
+		if (msg.sender != owner && notXChain) _spendAllowance(owner, msg.sender, shares);
 		_transfer(owner, address(this), shares);
 		WithdrawRecord storage withdrawRecord = withdrawLedger[msg.sender];
 		withdrawRecord.timestamp = block.timestamp;
@@ -41,6 +45,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 		withdrawRecord.value = value;
 		pendingWithdraw += value;
 		emit RequestWithdraw(msg.sender, owner, shares);
+
 	}
 
 	function withdraw(
