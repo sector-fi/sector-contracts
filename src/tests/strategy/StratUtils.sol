@@ -122,6 +122,7 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		vm.prank(user);
 		vault.redeem(user, balance, address(underlying), 0);
 
+		skip(7 days);
 		uint256 fees = vault.underlyingBalance(treasury);
 
 		uint256 tvl = vault.getStrategyTvl();
