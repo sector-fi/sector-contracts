@@ -69,3 +69,9 @@ struct HLPConfig {
 	uint256 maxTvl;
 	NativeToken nativeToken;
 }
+
+struct EAction {
+	address target;
+	uint256 value;
+	bytes data;
+}
