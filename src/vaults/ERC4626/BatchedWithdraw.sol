@@ -160,7 +160,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 	/// UTILS
 	function redeemIsReady(address user) external view returns (bool) {
 		WithdrawRecord storage withdrawRecord = withdrawLedger[user];
-		return lastHarvestTimestamp > withdrawRecord.timestamp || withdrawRecord.value > 0;
+		return lastHarvestTimestamp > withdrawRecord.timestamp && withdrawRecord.value > 0;
 	}
 
 	function getWithdrawStatus(address user) external view returns (WithdrawRecord memory) {

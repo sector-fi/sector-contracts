@@ -86,6 +86,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vault.redeem();
 
 		sectHarvest(vault);
+		skip(1);
 
 		assertTrue(vault.redeemIsReady(user1), "redeem ready");
 		sectCompleteRedeem(vault, user1);
