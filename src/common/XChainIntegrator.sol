@@ -43,7 +43,12 @@ abstract contract XChainIntegrator is Auth {
 
 	uint16 immutable chainId = uint16(block.chainid);
 
-	constructor() {}
+	// A fixed point number where 1e18 represents 100% and 0 represents 0%.
+	uint256 public maxBridgeFeeAllowed;
+
+	constructor(uint256 _maxBridgeFeeAllowed) {
+		maxBridgeFeeAllowed = _maxBridgeFeeAllowed;
+	}
 
 	/*/////////////////////////////////////////////////////
 						Bridge utilities
@@ -181,6 +186,16 @@ abstract contract XChainIntegrator is Auth {
 		}
 
 		return tempBytes;
+	}
+
+	function checkBridgeFee(uint256 amount, uint256 fee) public view {
+		if (maxBridgeFeeAllowed * amount < fee * 1e18) revert MaxBridgeFee();
+	}
+
+	function setMaxBridgeFee(uint256 _maxFee) external onlyRole(GUARDIAN) {
+		maxBridgeFeeAllowed = _maxFee;
+
+		emit SetMaxBridgeFee(_maxFee);
 	}
 
 	/*/////////////////////////////////////////////////////
@@ -330,6 +345,7 @@ abstract contract XChainIntegrator is Auth {
 	event PostmanUpdated(uint16 indexed postmanId, uint16 chanId, address postman);
 	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
 	event RegisterIncomingFunds(uint256 total);
+	event SetMaxBridgeFee(uint256 _maxFee);
 
 	/*/////////////////////////////////////////////////////
 							Errors
@@ -344,4 +360,5 @@ abstract contract XChainIntegrator is Auth {
 	error BridgeError();
 	error SameChainOperation();
 	error MissingIncomingXFunds();
+	error MaxBridgeFee();
 }

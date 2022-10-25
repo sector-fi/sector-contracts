@@ -34,8 +34,15 @@ contract SectorXVault is SectorBase {
 		string memory _name,
 		string memory _symbol,
 		AuthConfig memory authConfig,
-		FeeConfig memory feeConfig
-	) ERC4626(_asset, _name, _symbol) Auth(authConfig) Fees(feeConfig) BatchedWithdraw() {}
+		FeeConfig memory feeConfig,
+		uint256 _maxBridgeFeeAllowed
+	)
+		ERC4626(_asset, _name, _symbol)
+		Auth(authConfig)
+		Fees(feeConfig)
+		BatchedWithdraw()
+		XChainIntegrator(_maxBridgeFeeAllowed)
+	{}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
@@ -46,8 +53,10 @@ contract SectorXVault is SectorBase {
 
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
-            uint16 vaultChainId = vaults[i].vaultChainId;
+			uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
+
+			checkBridgeFee(amount, vaults[i].fee);
 
 			if (vaultChainId == chainId) revert SameChainOperation();
 			Vault memory vault = checkVault(vaultAddr, vaultChainId);
@@ -87,7 +96,7 @@ contract SectorXVault is SectorBase {
 	function withdrawFromXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
-            uint16 vaultChainId = vaults[i].vaultChainId;
+			uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
 
 			if (vaultChainId == chainId) revert SameChainOperation();
