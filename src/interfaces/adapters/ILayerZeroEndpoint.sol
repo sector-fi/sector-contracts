@@ -4,6 +4,12 @@ pragma solidity >=0.5.0;
 
 import { ILayerZeroUserApplicationConfig } from "./ILayerZeroUserApplicationConfig.sol";
 
+struct StoredPayload {
+	uint64 payloadLength;
+	address dstAddress;
+	bytes32 payloadHash;
+}
+
 interface ILayerZeroEndpoint is ILayerZeroUserApplicationConfig {
 	// @notice send a LayerZero message to the specified address at a LayerZero endpoint.
 	// @param _dstChainId - the destination chain identifier
@@ -86,6 +92,11 @@ interface ILayerZeroEndpoint is ILayerZeroUserApplicationConfig {
 		external
 		view
 		returns (bool);
+
+	function storedPayload(uint16 _srcChainId, bytes calldata _srcAddress)
+		external
+		view
+		returns (StoredPayload calldata);
 
 	// @notice query if the _libraryAddress is valid for sending msgs.
 	// @param _userApplication - the user app address on this EVM chain

@@ -27,7 +27,7 @@ contract SectorCrossVault is SectorBase {
 	address[] public vaultList;
 	// Harvest state
 	HarvestLedger public harvestLedger;
-	Message[] internal withdrawQueue;
+	Message[] public withdrawQueue;
 
 	constructor(
 		ERC20 _asset,
@@ -82,7 +82,12 @@ contract SectorCrossVault is SectorBase {
 		totalChildHoldings += totalAmount;
 	}
 
+	// TODO params should be just vault and amnt
 	function withdrawFromXVaults(Request[] calldata vaults) public payable onlyRole(MANAGER) {
+		// withdrawing from xVaults should not happen during harvest
+		// this will mess up accounting
+		if (harvestLedger.pendingAnswers != 0) revert OnGoingHarvest();
+
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint256 amount = vaults[i].amount;
@@ -239,6 +244,14 @@ contract SectorCrossVault is SectorBase {
 		withdrawQueue.push(_msg);
 	}
 
+	function getWithdrawQueueLength() external view returns (Message[] memory) {
+		return withdrawQueue;
+	}
+
+	function getWithdrawQueue() external view returns (Message[] memory) {
+		return withdrawQueue;
+	}
+
 	function processIncomingXFunds() external override onlyRole(MANAGER) {
 		uint256 length = withdrawQueue.length;
 		uint256 total = 0;
@@ -262,19 +275,14 @@ contract SectorCrossVault is SectorBase {
 		if (total < (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
 			revert MissingIncomingXFunds();
 
-		_finalizedWithdraw(total);
+		totalChildHoldings -= total;
+		afterDeposit(total, 0);
 		emit RegisterIncomingFunds(total);
 	}
 
 	function _receiveHarvest(Message calldata _msg) internal {
 		harvestLedger.crossDepositValue += _msg.value;
 		harvestLedger.receivedAnswers += 1;
-	}
-
-	function _finalizedWithdraw(uint256 totalWithdraw) internal {
-		// uint256 totalWithdraw;
-		totalChildHoldings -= totalWithdraw;
-		afterDeposit(totalWithdraw, 0);
 	}
 
 	/*/////////////////////////////////////////////////////

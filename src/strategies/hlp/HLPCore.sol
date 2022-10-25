@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IBase, HarvestSwapParms } from "../mixins/IBase.sol";
+import { IBase, HarvestSwapParams } from "../mixins/IBase.sol";
 import { ILending } from "../mixins/ILending.sol";
 import { IUniFarm, SafeERC20, IERC20 } from "../mixins/IUniFarm.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
@@ -12,11 +12,12 @@ import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { Auth } from "../../common/Auth.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
+import { StratAuth } from "../../common/StratAuth.sol";
 
 import "hardhat/console.sol";
 
 // @custom: alphabetize dependencies to avoid linearization conflicts
-abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
+abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFarm {
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
@@ -55,14 +56,7 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 
 	uint256 public constant version = 1;
 
-	address public vault;
-
 	bool public harvestIsEnabled = true;
-
-	modifier onlyVault() {
-		require(msg.sender == vault, "Strat: ONLY_VAULT");
-		_;
-	}
 
 	modifier isPaused() {
 		if (_maxTvl != 0) revert NotPaused();
@@ -316,11 +310,11 @@ abstract contract HLPCore is Auth, ReentrancyGuard, IBase, ILending, IUniFarm {
 
 	// use the return of the function to estimate pending harvest via staticCall
 	function harvest(
-		HarvestSwapParms[] calldata uniParams,
-		HarvestSwapParms[] calldata lendingParams
+		HarvestSwapParams[] calldata uniParams,
+		HarvestSwapParams[] calldata lendingParams
 	)
 		external
-		onlyRole(MANAGER)
+		onlyVault
 		checkPrice(0)
 		nonReentrant
 		returns (uint256[] memory farmHarvest, uint256[] memory lendHarvest)

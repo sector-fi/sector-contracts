@@ -22,6 +22,9 @@ const func: DeployFunction = async function ({
   const { deploy } = deployments;
 
   let USDC = usdc;
+
+  // const v = await deployments.get('SectorVault');
+  // console.log(v.address);
   if (!network.live && !usdc) {
     const usdcMock = await deployments.get('USDCMock');
     USDC = usdcMock.address;
@@ -35,7 +38,7 @@ const func: DeployFunction = async function ({
   const vault = await deploy('SectorVault', {
     from: deployer,
     args: [USDC, 'SectorVault', 'SVLT', authConfig, feeConfig],
-    skipIfAlreadyDeployed: false,
+    skipIfAlreadyDeployed: true,
     log: true,
   });
   console.log('sctorVault deplyed to', vault.address);

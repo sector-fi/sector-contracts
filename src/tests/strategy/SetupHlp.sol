@@ -7,7 +7,7 @@ import { ICompPriceOracle } from "interfaces/compound/ICompPriceOracle.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { HLPConfig, HarvestSwapParms, NativeToken } from "interfaces/Structs.sol";
+import { HLPConfig, HarvestSwapParams, NativeToken } from "interfaces/Structs.sol";
 import { SCYVault, HLPVault, Strategy, AuthConfig, FeeConfig } from "vaults/HLPVault.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -138,13 +138,15 @@ contract SetupHlp is SectorTest, StratUtils {
 		strategy.getAndUpdateTVL();
 		uint256 tvl = strategy.getTotalTVL();
 
-		HarvestSwapParms[] memory farmParams = new HarvestSwapParms[](1);
+		HarvestSwapParams[] memory farmParams = new HarvestSwapParams[](1);
 		farmParams[0] = harvestParams;
 
-		HarvestSwapParms[] memory lendParams = new HarvestSwapParms[](1);
+		HarvestSwapParams[] memory lendParams = new HarvestSwapParams[](1);
 		lendParams[0] = harvestLendParams;
 
-		(uint256[] memory harvestAmnts, uint256[] memory harvestLendAmnts) = strategy.harvest(
+		(uint256[] memory harvestAmnts, uint256[] memory harvestLendAmnts) = vault.harvest(
+			vault.getTvl(),
+			vault.getTvl() / 10,
 			farmParams,
 			lendParams
 		);

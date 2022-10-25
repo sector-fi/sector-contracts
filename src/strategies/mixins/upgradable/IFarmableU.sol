@@ -2,14 +2,14 @@
 pragma solidity 0.8.16;
 
 import { IUniswapV2Router01 } from "../../../interfaces/uniswap/IUniswapV2Router01.sol";
-import { IBaseU, HarvestSwapParms } from "./IBaseU.sol";
+import { IBaseU, HarvestSwapParams } from "./IBaseU.sol";
 
 abstract contract IFarmableU is IBaseU {
 	event HarvestedToken(address indexed token, uint256 amount);
 
 	function _swap(
 		IUniswapV2Router01 router,
-		HarvestSwapParms calldata swapParams,
+		HarvestSwapParams calldata swapParams,
 		address fromToken,
 		uint256 amount
 	) internal {

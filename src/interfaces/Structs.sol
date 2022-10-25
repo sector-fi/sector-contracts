@@ -33,7 +33,7 @@ struct RemoveLiqAndRepayCalldata {
 	// uint256 amountBMin;
 }
 
-struct HarvestSwapParms {
+struct HarvestSwapParams {
 	address[] path; //path that the token takes
 	uint256 min; // min price of in token * 1e18 (computed externally based on spot * slippage + fees)
 	uint256 deadline;
@@ -68,4 +68,10 @@ struct HLPConfig {
 	address vault;
 	uint256 maxTvl;
 	NativeToken nativeToken;
+}
+
+struct EAction {
+	address target;
+	uint256 value;
+	bytes data;
 }

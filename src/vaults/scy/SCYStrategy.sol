@@ -2,6 +2,7 @@
 pragma solidity 0.8.16;
 
 import { IERC20 } from "./SCYBase.sol";
+import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 
 struct Strategy {
 	string symbol;
@@ -35,6 +36,11 @@ abstract contract SCYStrategy {
 	function _stratCollateralToUnderlying() internal view virtual returns (uint256);
 
 	function _stratValidate() internal virtual;
+
+	function _stratHarvest(
+		HarvestSwapParams[] calldata farm1Params,
+		HarvestSwapParams[] calldata farm2Parms
+	) internal virtual returns (uint256[] memory harvest1, uint256[] memory harvest2);
 
 	error NotImplemented();
 }

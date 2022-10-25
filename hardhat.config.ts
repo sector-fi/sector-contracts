@@ -124,8 +124,10 @@ const config = {
         },
       },
       companionNetworks: {
-        l1: FORK_CHAIN,
-        l2: 'optimism',
+        l1: 'arbitrum',
+        l2: FORK_CHAIN,
+        // l1: FORK_CHAIN,
+        // l2: 'optimism',
       },
     },
     localhost: {
