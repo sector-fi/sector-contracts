@@ -44,4 +44,4 @@ then run `Display Coverage` via Command Pallate
 
 ## Previous Audits
 
-src/strategies/hlp has been previously audited but does have some implementation changes: https://github.com/scion-finance/contracts/tree/dev/audits
+`src/strategies/hlp` has been previously audited but does have some implementation changes: https://github.com/scion-finance/contracts/tree/dev/audits
