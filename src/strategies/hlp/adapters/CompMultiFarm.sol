@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { IClaimReward } from "../../../interfaces/compound/IClaimReward.sol";
-import { CompoundFarm, HarvestSwapParms } from "./CompoundFarm.sol";
+import { CompoundFarm, HarvestSwapParams } from "./CompoundFarm.sol";
 import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
@@ -10,7 +10,7 @@ import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
 abstract contract CompMultiFarm is CompoundFarm {
 	// BenQi has two two token rewards
 	// pid 0 is Qi token and pid 1 is AVAX (not wrapped)
-	function _harvestLending(HarvestSwapParms[] calldata swapParams)
+	function _harvestLending(HarvestSwapParams[] calldata swapParams)
 		internal
 		override
 		returns (uint256[] memory harvested)

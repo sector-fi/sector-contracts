@@ -7,6 +7,7 @@ import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
+import { EAction } from "../../interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
@@ -86,6 +87,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vault.redeem();
 
 		sectHarvest(vault);
+		skip(1);
 
 		assertTrue(vault.redeemIsReady(user1), "redeem ready");
 		sectCompleteRedeem(vault, user1);
@@ -282,7 +284,11 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 			user2,
 			amnt / 2
 		);
-		vault.emergencyAction(address(underlying), callData);
+
+		EAction[] memory actions = new EAction[](1);
+		actions[0] = EAction(address(underlying), 0, callData);
+
+		vault.emergencyAction(actions);
 		assertEq(underlying.balanceOf(user2), amnt / 2);
 		assertEq(underlying.balanceOf(address(vault)), amnt / 2);
 	}

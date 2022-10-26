@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { HarvestSwapParms } from "../../interfaces/Structs.sol";
+import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 
 // all interfaces need to inherit from base
 abstract contract IBase {

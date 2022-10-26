@@ -41,3 +41,7 @@ https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gu
 
 run `yarn coverage:lcov`
 then run `Display Coverage` via Command Pallate
+
+## Previous Audits
+
+`src/strategies/hlp` has been previously audited but does have some implementation changes: https://github.com/scion-finance/contracts/tree/dev/audits

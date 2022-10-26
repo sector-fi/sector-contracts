@@ -9,7 +9,7 @@ import { SectorBase } from "./SectorBase.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 // TODO native asset deposit + flow
 
 struct RedeemParams {
@@ -298,7 +298,7 @@ contract SectorVault is SectorBase {
 
 	// Problem -> bridgeQueue has an order and request array has to follow this order
 	// Maybe change how withdraws are saved?
-	function processXWithdraw(Request[] calldata requests) external onlyRole(MANAGER) {
+	function processXWithdraw(Request[] calldata requests) external payable onlyRole(MANAGER) {
 		uint256 length = bridgeQueue.length;
 
 		uint256 total = 0;

@@ -6,7 +6,7 @@ import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.so
 import { PriceUtils, UniUtils, IUniswapV2Pair } from "../utils/PriceUtils.sol";
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { HLPConfig, HarvestSwapParms } from "interfaces/Structs.sol";
+import { HLPConfig, HarvestSwapParams } from "interfaces/Structs.sol";
 import { SCYVault } from "vaults/scy/SCYVault.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -23,8 +23,8 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 
 	SCYVault vault;
 
-	HarvestSwapParms harvestParams;
-	HarvestSwapParms harvestLendParams;
+	HarvestSwapParams harvestParams;
+	HarvestSwapParams harvestLendParams;
 
 	IERC20 underlying;
 	IUniswapV2Pair uniPair;
@@ -122,8 +122,12 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		vm.prank(user);
 		vault.redeem(user, balance, address(underlying), 0);
 
+		skip(7 days);
+		uint256 fees = vault.underlyingBalance(treasury);
+
 		uint256 tvl = vault.getStrategyTvl();
-		assertApproxEqAbs(tvl, 0, mLp, "strategy tvl");
+		assertApproxEqAbs(tvl, fees, mLp, "strategy tvl");
+
 		assertEq(vault.balanceOf(user), 0, "account shares");
 		assertEq(vault.underlyingBalance(user), 0, "account value");
 	}

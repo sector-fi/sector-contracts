@@ -23,12 +23,14 @@ contract LayerZeroPostman is
 	Ownable
 {
 	ILayerZeroEndpoint public endpoint;
+	address public refundTo;
 
 	// map original chainIds to layerZero's chainIds
 	mapping(uint16 => uint16) public chains;
 
-	constructor(address _layerZeroEndpoint, chainPair[] memory chainPairArr) {
+	constructor(address _layerZeroEndpoint, chainPair[] memory chainPairArr, address _refundTo) {
 		endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
+		refundTo = _refundTo;
 
 		uint256 length = chainPairArr.length;
 		for (uint256 i = 0; i < length; ) {
@@ -41,14 +43,18 @@ contract LayerZeroPostman is
 		}
 	}
 
+	/*/////////////////////////////////////////////////////
+					Messaging Logic
+	/////////////////////////////////////////////////////*/
+
 	function deliverMessage(
 		Message calldata _msg,
-		address _dstVautAddress,
+		address _dstVaultAddress,
 		address _dstPostman,
 		MessageType _messageType,
-		uint16 _dstChainId,
-		address _refundTo
+		uint16 _dstChainId
 	) external payable override {
+
 		if (address(this).balance == 0) revert NoBalance();
 
 		Message memory msgToLayerZero = Message({
@@ -58,12 +64,71 @@ contract LayerZeroPostman is
 			chainId: _msg.chainId
 		});
 
-		bytes memory payload = abi.encode(msgToLayerZero, _dstVautAddress, _messageType);
+		bytes memory adapterParams = _getAdapterParams();
+		bytes memory payload = abi.encode(msgToLayerZero, _dstVaultAddress, _messageType);
 
-		// encode adapterParams to specify more gas for the destination
+		endpoint.send{ value: msg.value }(
+			uint16(chains[_dstChainId]),
+			abi.encodePacked(_dstPostman, address(this)),
+			payload,
+			payable(refundTo),
+			address(0x0),
+			adapterParams
+		);
+	}
+
+	function lzReceive(
+		uint16,
+		bytes memory,
+		uint64,
+		bytes memory _payload
+	) external override {
+		if (msg.sender != address(endpoint)) revert Unauthorized();
+
+		(Message memory _msg, address _dstVaultAddress, uint16 _messageType) = abi.decode(
+			_payload,
+			(Message, address, uint16)
+		);
+
+		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _msg.chainId);
+
+		XChainIntegrator(_dstVaultAddress).receiveMessage(_msg, MessageType(_messageType));
+	}
+
+	/*/////////////////////////////////////////////////////
+					UTILS
+	/////////////////////////////////////////////////////*/
+
+	function _getAdapterParams() internal pure returns (bytes memory) {
 		uint16 version = 1;
 		uint256 gasForDestinationLzReceive = 350000;
-		bytes memory adapterParams = abi.encodePacked(version, gasForDestinationLzReceive);
+		return abi.encodePacked(version, gasForDestinationLzReceive);
+	}
+
+	function estimateFee(
+		uint16 _dstChainId,
+		address _dstVaultAddress,
+		MessageType _messageType,
+		Message calldata _msg
+	) external view returns (uint256) {
+		return _estimateFee(_dstChainId, _dstVaultAddress, _messageType, _msg);
+	}
+
+	function _estimateFee(
+		uint16 _dstChainId,
+		address _dstVaultAddress,
+		MessageType _messageType,
+		Message calldata _msg
+	) internal view returns (uint256) {
+		Message memory msgToLayerZero = Message({
+			value: _msg.value,
+			sender: msg.sender,
+			client: _msg.client,
+			chainId: _msg.chainId
+		});
+
+		bytes memory payload = abi.encode(msgToLayerZero, _dstVaultAddress, _messageType);
+		bytes memory adapterParams = _getAdapterParams();
 
 		(uint256 messageFee, ) = endpoint.estimateFees(
 			uint16(chains[_dstChainId]),
@@ -72,43 +137,18 @@ contract LayerZeroPostman is
 			false,
 			adapterParams
 		);
-		if (address(this).balance < messageFee) revert InsufficientBalanceToSendMessage();
 
-		// send LayerZero message
-		endpoint.send{ value: messageFee }( // {value: messageFee} will be paid out of this contract!
-			uint16(chains[_dstChainId]), // destination chainId
-			abi.encodePacked(_dstPostman, address(this)), // destination address of postman on dst chain
-			payload,
-			payable(_refundTo), // (msg.sender will be this contract) refund address (LayerZero will refund any extra gas back to caller of send()
-			address(0x0), // 'zroPaymentAddress'
-			adapterParams // 'adapterParams'
-		);
-
-		payable(_refundTo).transfer(address(this).balance);
+		return messageFee;
 	}
 
-	function lzReceive(
-		uint16,
-		bytes memory,
-		uint64, /*_nonce*/
-		bytes memory _payload
-	) external override {
-		// lzReceive can only be called by the LayerZero endpoint
-		if (msg.sender != address(endpoint)) revert Unauthorized();
+	/*/////////////////////////////////////////////////////
+					CONFIG
+	/////////////////////////////////////////////////////*/
 
-		// decode payload sent from source chain
-		(Message memory _msg, address _dstVaultAddress, uint16 _messageType) = abi.decode(
-			_payload,
-			(Message, address, uint16)
-		);
-
-		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _msg.chainId);
-
-		// Send message to dst vault
-		XChainIntegrator(_dstVaultAddress).receiveMessage(_msg, MessageType(_messageType));
+	function setRefundTo(address _refundTo) external onlyOwner {
+		refundTo = _refundTo;
 	}
 
-	// With this access control structure we need a way to vault set chain.
 	function setChain(uint16 _chainId, uint16 _lzChainId) external onlyOwner {
 		chains[_chainId] = _lzChainId;
 	}
@@ -162,10 +202,9 @@ contract LayerZeroPostman is
 		// do nth
 	}
 
-	// allow this contract to receive ether
-	fallback() external payable {}
-
-	/* EVENTS */
+	/*/////////////////////////////////////////////////////
+					EVENTS
+	/////////////////////////////////////////////////////*/
 	event MessageReceived(
 		address srcVaultAddress,
 		uint256 amount,
@@ -174,9 +213,9 @@ contract LayerZeroPostman is
 		uint256 srcChainId
 	);
 
-	/* ERRORS */
+	/*/////////////////////////////////////////////////////
+					ERRORS
+	/////////////////////////////////////////////////////*/
 	error Unauthorized();
 	error NoBalance();
-	error InsufficientBalanceToSendMessage();
-	error OnlyPostOffice();
 }

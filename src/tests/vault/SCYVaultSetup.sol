@@ -8,6 +8,7 @@ import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/ex
 import { WETH } from "../mocks/WETH.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { ISuperComposableYield as ISCY } from "../../interfaces/scy/ISuperComposableYield.sol";
+import { HarvestSwapParams } from "interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
@@ -68,5 +69,11 @@ contract SCYVaultSetup is SectorTest {
 		vault.redeem(acc, sharesToWithdraw, address(underlying), minUnderlyingOut);
 
 		vm.stopPrank();
+	}
+
+	function scyHarvest(SCYVault vault) public {
+		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](0);
+		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+		vault.harvest(vault.getTvl(), 0, params1, params2);
 	}
 }

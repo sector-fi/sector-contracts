@@ -2,7 +2,6 @@
 pragma solidity 0.8.16;
 
 import { CallProxy } from "../interfaces/adapters/IMultichainAdapter.sol";
-import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPostman } from "../interfaces/postOffice/IPostman.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
@@ -21,14 +20,20 @@ contract MultichainPostman is Ownable, IPostman {
 		refundTo = _refundTo;
 	}
 
+	/*/////////////////////////////////////////////////////
+					Messaging Logic
+	/////////////////////////////////////////////////////*/
+
 	function deliverMessage(
 		Message calldata _msg,
 		address _dstVautAddress,
 		address _dstPostman,
 		MessageType _messageType,
-		uint16 _dstChainId,
-		address
+		uint16 _dstChainId
 	) external payable {
+
+		if (address(this).balance == 0) revert NoBalance();
+
 		Message memory msgToMultichain = Message({
 			value: _msg.value,
 			sender: msg.sender,
@@ -47,7 +52,7 @@ contract MultichainPostman is Ownable, IPostman {
 	}
 
 	function anyExecute(bytes memory _data) external returns (bool success, bytes memory result) {
-		// decode payload sent from source chain
+
 		(Message memory _msg, address _dstVaultAddress, uint16 _messageType) = abi.decode(
 			_data,
 			(Message, address, uint16)
@@ -55,25 +60,48 @@ contract MultichainPostman is Ownable, IPostman {
 
 		emit MessageReceived(_msg.sender, _msg.value, _dstVaultAddress, _messageType, _msg.chainId);
 
-		// Send message to dst vault
 		XChainIntegrator(_dstVaultAddress).receiveMessage(_msg, MessageType(_messageType));
 
 		success = true;
 		result = "";
 	}
 
+	/*/////////////////////////////////////////////////////
+					UTILS
+	/////////////////////////////////////////////////////*/
+
+	function _estimateFee(
+		uint16 _dstChainId,
+		address _dstVaultAddress,
+		MessageType _messageType,
+		Message calldata _msg
+	) internal view returns (uint256) {
+		Message memory msgToMultichain = Message({
+			value: _msg.value,
+			sender: msg.sender,
+			client: _msg.client,
+			chainId: _msg.chainId
+		});
+
+		bytes memory payload = abi.encode(msgToMultichain, _dstVaultAddress, _messageType);
+
+		uint256 messageFee = CallProxy(anyCall).calcSrcFees("0", _dstChainId, payload.length);
+
+		return messageFee;
+	}
+
+	function estimateFee(
+		uint16 _dstChainId,
+		address _dstVaultAddress,
+		MessageType _messageType,
+		Message calldata _msg
+	) external view returns (uint256) {
+		return _estimateFee(_dstChainId, _dstVaultAddress, _messageType, _msg);
+	}
+
 	function setRefundTo(address _refundTo) external onlyOwner {
 		refundTo = _refundTo;
 	}
-
-	/* EVENTS */
-	event MessageReceived(
-		address srcVaultAddress,
-		uint256 amount,
-		address dstVaultAddress,
-		uint16 messageType,
-		uint256 srcChainId
-	);
 
 	fallback() external payable {
 		(bool sent, ) = refundTo.call{ value: msg.value }("");
@@ -82,6 +110,20 @@ contract MultichainPostman is Ownable, IPostman {
 
 	// receive() external payable {}
 
-	/** ERROR **/
+	/*/////////////////////////////////////////////////////
+					EVENTS
+	/////////////////////////////////////////////////////*/
+	event MessageReceived(
+		address srcVaultAddress,
+		uint256 amount,
+		address dstVaultAddress,
+		uint16 messageType,
+		uint256 srcChainId
+	);
+
+	/*/////////////////////////////////////////////////////
+					ERRORS
+	/////////////////////////////////////////////////////*/
 	error RefundFailed();
+	error NoBalance();
 }

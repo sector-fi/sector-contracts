@@ -10,6 +10,7 @@ import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
+import { EAction, HarvestSwapParams } from "../../interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
@@ -118,7 +119,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		// adjust share amount for lockedProfit
 		// we still burn the full sharesToRedeem, but fewer assets are returned
 		// this is required in order to prevent harvest front-running
-		sharesToRedeem = (sharesToRedeem * (_totalSupply - lockedProfit())) / _totalSupply;
+		sharesToRedeem = (sharesToRedeem * _totalSupply) / (_totalSupply + lockedProfit());
 		uint256 yeildTokenRedeem = convertToAssets(sharesToRedeem);
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
@@ -145,7 +146,13 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	}
 
 	/// @notice harvest strategy
-	function harvest(uint256 expectedTvl, uint256 maxDelta) external onlyRole(MANAGER) {
+	function harvest(
+		uint256 expectedTvl,
+		uint256 maxDelta,
+		HarvestSwapParams[] calldata swap1,
+		HarvestSwapParams[] calldata swap2
+	) external onlyRole(MANAGER) returns (uint256[] memory harvest1, uint256[] memory harvest2) {
+		(harvest1, harvest2) = _stratHarvest(swap1, swap2);
 		uint256 tvl = _stratGetAndUpdateTvl() + underlying.balanceOf(address(this));
 		_checkSlippage(expectedTvl, tvl, maxDelta);
 		uint256 prevTvl = vaultTvl;
@@ -176,9 +183,12 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		// we can do this if we issue the strategy harvest call from inside this method
 
 		// keep previous locked profits + add current profits
-		uint256 newLockedProfit = totalFees > profit
-			? 0
-			: (profit - totalFees).mulDivDown(totalSupply(), tvl);
+		// locked profit is denominated in shares
+		uint256 newLockedProfit;
+		if (profit > totalFees) {
+			uint256 lockedValue = profit - totalFees;
+			newLockedProfit = (lockedValue).mulDivDown(totalSupply(), tvl - lockedValue);
+		}
 		maxLockedProfit = lockedProfit() + newLockedProfit;
 
 		// we use 3/4 of the interval for locked profits
@@ -187,6 +197,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	}
 
 	/// @notice Calculates the current amount of locked profit.
+	/// lockedProfit is denominated in shares and is used to inflate total supplly	on withdrawal
 	/// @return The current amount of locked profit.
 	function lockedProfit() public view returns (uint256) {
 		// Get the last harvest and harvest delay.
@@ -254,9 +265,15 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	/// @notice this method allows an arbitrary method to be called by the owner in case of emergency
 	/// owner must be a timelock contract in order to allow users to redeem funds in case they suspect
 	/// this action to be malicious
-	function emergencyAction(address target, bytes calldata callData) public onlyOwner {
-		Address.functionCall(target, callData);
-		emit EmergencyAction(target, callData);
+	function emergencyAction(EAction[] calldata actions) public onlyOwner {
+		uint256 l = actions.length;
+		for (uint256 i = 0; i < l; i++) {
+			address target = actions[i].target;
+			bytes memory data = actions[i].data;
+			(bool success, ) = target.call{ value: actions[i].value }(data);
+			require(success, "emergencyAction failed");
+			emit EmergencyAction(target, data);
+		}
 	}
 
 	function getStrategyTvl() public view returns (uint256) {
@@ -306,7 +323,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0 || userBalance == 0) return 0;
 		uint256 tvl = underlying.balanceOf(address(this)) + _strategyTvl();
-		uint256 adjustedShares = (userBalance * (_totalSupply - lockedProfit())) / _totalSupply;
+		uint256 adjustedShares = (userBalance * _totalSupply) / (_totalSupply + lockedProfit());
 		return (tvl * adjustedShares) / _totalSupply;
 	}
 
@@ -319,7 +336,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	function sharesToUnderlying(uint256 shares) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0) return (shares * _stratCollateralToUnderlying()) / ONE;
-		uint256 adjustedShares = (shares * (_totalSupply - lockedProfit())) / _totalSupply;
+		uint256 adjustedShares = (shares * _totalSupply) / (_totalSupply + lockedProfit());
 		return adjustedShares.mulDivDown(getTvl(), _totalSupply);
 	}
 

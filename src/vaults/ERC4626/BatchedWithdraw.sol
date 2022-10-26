@@ -92,10 +92,9 @@ abstract contract BatchedWithdraw is ERC4626 {
 		shares = withdrawRecord.shares;
 		// value of shares at time of redemption request
 		uint256 redeemValue = withdrawRecord.value;
-		uint256 currentValue = convertToAssets(shares);
 
 		// actual amount out is the smaller of currentValue and redeemValue
-		amountOut = currentValue < redeemValue ? currentValue : redeemValue;
+		amountOut = _getWithdrawAmount(shares, redeemValue);
 
 		// update total pending withdraw
 		pendingWithdraw -= redeemValue;
@@ -104,6 +103,28 @@ abstract contract BatchedWithdraw is ERC4626 {
 		beforeWithdraw(amountOut, shares);
 		withdrawRecord.value = 0;
 		_burn(address(this), shares);
+	}
+
+	/// helper method to get xChain bridge amount
+	function pendingRedeem(address account) public view returns (uint256 amountOut) {
+		WithdrawRecord storage withdrawRecord = withdrawLedger[account];
+
+		if (withdrawRecord.value == 0) revert ZeroAmount();
+		if (withdrawRecord.timestamp >= lastHarvestTimestamp) revert NotReady();
+
+		// value of shares at time of redemption request
+		return _getWithdrawAmount(withdrawRecord.shares, withdrawRecord.value);
+	}
+
+	function _getWithdrawAmount(uint256 shares, uint256 redeemValue)
+		internal
+		view
+		returns (uint256 amountOut)
+	{
+		// value of shares at time of redemption request
+		uint256 currentValue = convertToAssets(shares);
+		// actual amount out is the smaller of currentValue and redeemValue
+		amountOut = currentValue < redeemValue ? currentValue : redeemValue;
 	}
 
 	function cancelRedeem() public virtual {
@@ -144,7 +165,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 	/// UTILS
 	function redeemIsReady(address user) external view returns (bool) {
 		WithdrawRecord storage withdrawRecord = withdrawLedger[user];
-		return lastHarvestTimestamp > withdrawRecord.timestamp;
+		return lastHarvestTimestamp > withdrawRecord.timestamp && withdrawRecord.value > 0;
 	}
 
 	function getWithdrawStatus(address user) external view returns (WithdrawRecord memory) {

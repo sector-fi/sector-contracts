@@ -47,7 +47,7 @@ contract SectorXVaultTestSetup is SectorTest {
 	) public {
 		SectorBase v = SectorBase(vault);
 
-		vm.deal(acc, amount);
+		vm.deal(acc, amount + acc.balance);
 
 		vm.startPrank(acc);
 
@@ -66,14 +66,15 @@ contract SectorXVaultTestSetup is SectorTest {
 		uint256 totalAmount,
 		uint256 msgsSent,
 		uint256 bridgeEvents,
-		bool assertOn
-	) public {
+		bool assertOn,
+		uint256 messageFee
+	) public payable {
 		uint256 xVaultFloatAmountBefore = xVault.floatAmnt();
 
 		vm.recordLogs();
 		// Deposit into a vault
 		vm.prank(manager);
-		xVault.depositIntoXVaults(requests);
+		xVault.depositIntoXVaults{ value: messageFee }(requests);
 
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
@@ -102,7 +103,8 @@ contract SectorXVaultTestSetup is SectorTest {
 		Request[] memory requests,
 		uint256 msgSent,
 		uint256 withdrawEvent,
-		bool assertOn
+		bool assertOn,
+		uint256 messageFee
 	) public {
 		uint256[] memory shares = new uint256[](requests.length);
 		for (uint256 i = 0; i < requests.length; i++) {
@@ -112,7 +114,7 @@ contract SectorXVaultTestSetup is SectorTest {
 
 		vm.recordLogs();
 		vm.prank(manager);
-		xVault.withdrawFromXVaults(requests);
+		xVault.withdrawFromXVaults{value: messageFee}(requests);
 
 		if (!assertOn) return;
 
@@ -155,8 +157,17 @@ contract SectorXVaultTestSetup is SectorTest {
 		bool assertOn
 	) public {
 		vm.recordLogs();
+
+		Request[] memory requests = new Request[](vaults.length);
+		for (uint256 i; i < vaults.length; i++) {
+			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), 0);
+		}
+
 		vm.prank(manager);
-		xVault.harvestVaults();
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.HARVEST);
+
+		vm.prank(manager);
+		xVault.harvestVaults{ value: messageFee }();
 
 		(
 			uint256 localDeposit,
@@ -195,10 +206,7 @@ contract SectorXVaultTestSetup is SectorTest {
 
 		for (uint256 i; i < vaults.length; i++) {
 			if (getVaultChainId(address(vaults[i])) == chainId) continue;
-			fakeAnswerXHarvest(
-				address(vaults[i]),
-				vaults[i].underlyingBalance(address(xVault))
-			);
+			fakeAnswerXHarvest(address(vaults[i]), vaults[i].underlyingBalance(address(xVault)));
 		}
 
 		vm.recordLogs();

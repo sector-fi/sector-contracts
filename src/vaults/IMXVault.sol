@@ -6,6 +6,7 @@ import { IMX } from "../strategies/imx/IMX.sol";
 import { SCYVault, IERC20 } from "./scy/SCYVault.sol";
 import { AuthConfig, Auth } from "../common/Auth.sol";
 import { FeeConfig, Fees } from "../common/Fees.sol";
+import { HarvestSwapParams } from "../interfaces/Structs.sol";
 
 contract IMXVault is SCYStrategy, SCYVault {
 	constructor(
@@ -54,6 +55,14 @@ contract IMXVault is SCYStrategy, SCYVault {
 
 	function _stratCollateralToUnderlying() internal view override returns (uint256) {
 		return IMX(strategy).collateralToUnderlying();
+	}
+
+	function _stratHarvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
+		internal
+		override
+		returns (uint256[] memory harvest1, uint256[] memory)
+	{
+		harvest1 = IMX(strategy).harvest(params);
 	}
 
 	function _selfBalance(address token) internal view virtual override returns (uint256) {

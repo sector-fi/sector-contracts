@@ -53,9 +53,9 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		pairArray[0] = chainPair(AVAX_CHAIN_ID, AVAX_LAYERZERO_ID);
 		pairArray[1] = chainPair(ETHEREUM_CHAIN_ID, ETHEREUM_LAYERZERO_ID);
 
-		underlying = new WETH();
-
 		vm.selectFork(ethFork);
+
+		underlying = new WETH();
 
 		EthSectorVault = new SectorVault(
 			underlying,
@@ -65,7 +65,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
 
-		EthLZpostman = new LayerZeroPostman(ETH_LAYERZERO_ENDPOINT, pairArray);
+		EthLZpostman = new LayerZeroPostman(ETH_LAYERZERO_ENDPOINT, pairArray, manager);
 
 		EthMCpostman = new MultichainPostman(MULTICHAIN_ENDPOINT, manager);
 
@@ -81,7 +81,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
 
-		AvaxLZpostman = new LayerZeroPostman(AVAX_LAYERZERO_ENDPOINT, pairArray);
+		AvaxLZpostman = new LayerZeroPostman(AVAX_LAYERZERO_ENDPOINT, pairArray, manager);
 
 		AvaxMCpostman = new MultichainPostman(MULTICHAIN_ENDPOINT, manager);
 
@@ -101,25 +101,26 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		uint256 _amountBefore = manager.balance;
 
+		uint256 messageFee = AvaxLZpostman.estimateFee(
+			ETHEREUM_CHAIN_ID,
+			_dstVault,
+			MessageType.DEPOSIT,
+			_msg
+		);
+
 		AvaxLZpostman.deliverMessage{ value: 2 ether }(
 			_msg,
 			_dstVault,
 			_dstPostman,
 			MessageType.DEPOSIT,
-			ETHEREUM_CHAIN_ID,
-			manager
+			ETHEREUM_CHAIN_ID
 		);
 
 		uint256 _amountAfter = manager.balance;
 
-		uint256 _fees = _amountBefore - _amountAfter;
+		uint256 diff = _amountBefore - _amountAfter;
 
-		bool _feesCorrect = false;
-		if (_amountAfter < _amountBefore && _fees < 2 ether) {
-			_feesCorrect = true;
-		}
-
-		assertEq(true, _feesCorrect);
+		assertEq(true, diff == messageFee);
 
 		vm.stopPrank();
 	}
@@ -129,7 +130,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	function testSendMcMessage() public {
 		address _srcVault = address(AvaxSectorVault);
 		address _dstVault = address(EthSectorVault);
-		address _dstPostman = address(EthLZpostman);
+		address _dstPostman = address(EthMCpostman);
 
 		Message memory _msg = Message(1000, _srcVault, address(0), AVAX_CHAIN_ID);
 
@@ -137,25 +138,27 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		uint256 _amountBefore = manager.balance;
 
+		uint256 messageFee = AvaxMCpostman.estimateFee(
+			ETHEREUM_CHAIN_ID,
+			_dstVault,
+			MessageType.DEPOSIT,
+			_msg
+		);
+
 		AvaxMCpostman.deliverMessage{ value: 2 ether }(
 			_msg,
 			_dstVault,
 			_dstPostman,
 			MessageType.DEPOSIT,
-			ETHEREUM_CHAIN_ID,
-			manager
+			ETHEREUM_CHAIN_ID
 		);
 
 		uint256 _amountAfter = manager.balance;
 
-		uint256 _fees = _amountBefore - _amountAfter;
+		uint256 diff = _amountBefore - _amountAfter;
 
-		bool _feesCorrect = false;
-		if (_amountAfter < _amountBefore && _fees < 2 ether) {
-			_feesCorrect = true;
-		}
+		assertEq(true, diff == messageFee);
 
-		assertEq(true, _feesCorrect);
 		vm.stopPrank();
 	}
 

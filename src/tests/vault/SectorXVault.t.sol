@@ -56,7 +56,7 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 		for (uint256 i = 0; i < srcId.length; i++) inptChainPair[i] = chainPair(srcId[i], dstId[i]);
 
 		// Must be address of layerZero service provider
-		postmanLz = new LayerZeroPostman(avaxLzAddr, inptChainPair);
+		postmanLz = new LayerZeroPostman(avaxLzAddr, inptChainPair, manager);
 
 		xVault = new SectorXVault(
 			underlying,
@@ -109,7 +109,7 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 			address(postmanLz)
 		];
 		for (uint256 i = 0; i < gaveMoneyAccs.length; i++)
-			vm.deal(gaveMoneyAccs[i], 1000000000 ether);
+			vm.deal(gaveMoneyAccs[i], 10000000000000 ether);
 
 		// Add min liquidity to xVault
 		depositXVault(manager, mLp);
@@ -124,8 +124,10 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 		Request[] memory requests = new Request[](1);
 		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount, 1, 1, true);
+		xvaultDepositIntoVaults(requests, amount, 1, 1, true, messageFee);
 	}
 
 	function testMultipleDepositIntoVaults() public {
@@ -138,13 +140,16 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount);
 		}
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(
 			requests,
 			amount * vaults.length,
 			vaults.length,
 			vaults.length,
-			true
+			true,
+			messageFee
 		);
 	}
 
@@ -159,14 +164,17 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 		Request[] memory requests = new Request[](1);
 		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false, messageFee);
 
 		// uint256 shares = childVault.balanceOf(address(xVault));
 		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), 1e18);
 
 		// Requests, total amount, msgSent events, withdraw events
-		xvaultWithdrawFromVaults(requests, 1, 0, true);
+		messageFee = xVault.estimateMessageFee(requests, MessageType.WITHDRAW);
+		xvaultWithdrawFromVaults(requests, 1, 0, true, messageFee);
 	}
 
 	function testMultipleWithdrawFromVaults() public {
@@ -183,17 +191,21 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 			total += amounts[i];
 		}
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.WITHDRAW);
+
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, total, 0, 0, false);
+		xvaultDepositIntoVaults(requests, total, 0, 0, false, messageFee);
 
 		for (uint256 i; i < 3; i++)
 			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), 1e18);
 
 		// Requests, total amount, msgSent events, withdraw events
-		xvaultWithdrawFromVaults(requests, 3, 0, true);
+		messageFee = xVault.estimateMessageFee(requests, MessageType.WITHDRAW);
+		xvaultWithdrawFromVaults(requests, 3, 0, true, messageFee);
 	}
 
 	function testChainPartialWithdrawFromVaults() public {
+
 		uint256[3] memory amounts = [uint256(1 ether), 918 gwei, 13231 wei];
 		// uint256 total = amount1 + amount2 + amount3;
 		address[3] memory users = [user1, user2, user3];
@@ -207,8 +219,10 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 			total += amounts[i];
 		}
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, total, 0, 0, false);
+		xvaultDepositIntoVaults(requests, total, 0, 0, false, messageFee);
 
 		uint256[3] memory sharesBefore;
 		for (uint256 i; i < 3; i++) {
@@ -217,7 +231,8 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 		}
 
 		// Requests, total amount, msgSent events, withdraw events
-		xvaultWithdrawFromVaults(requests, 3, 0, true);
+		messageFee = xVault.estimateMessageFee(requests, MessageType.WITHDRAW);
+		xvaultWithdrawFromVaults(requests, 3, 0, true, messageFee);
 
 		// Check if half of shares were withdraw
 		for (uint256 i; i < 3; i++) {
@@ -235,8 +250,10 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 		Request[] memory requests = new Request[](1);
 		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.HARVEST);
+
 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+		xvaultDepositIntoVaults(requests, amount, 0, 0, false, messageFee);
 
 		// localDeposit, crossDeposit, pending, received, message sent, assert on
 		xvaultHarvestVault(
@@ -262,8 +279,10 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 			total += amounts[i];
 		}
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.HARVEST);
+
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, total, 0, 0, false);
+		xvaultDepositIntoVaults(requests, total, 0, 0, false, messageFee);
 
 		uint256 totalShares = 0;
 		for (uint256 i; i < 3; i++) totalShares += vaults[i].balanceOf(address(xVault));
@@ -284,8 +303,10 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 		Request[] memory requests = new Request[](1);
 		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount[0]);
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.HARVEST);
+
 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount[0], 0, 0, false);
+		xvaultDepositIntoVaults(requests, amount[0], 0, 0, false, messageFee);
 
 		xvaultFinalizeHarvest(amount);
 	}
@@ -306,14 +327,15 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount[i]);
 		}
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.HARVEST);
+
 		// getRequests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, total, 0, 0, false);
+		xvaultDepositIntoVaults(requests, total, 0, 0, false, messageFee);
 
 		xvaultFinalizeHarvest(amount);
 	}
 
 	// 	// // Assert errors
-
 	function testOneEmergencyWithdrawVaults() public {
 		// Request(addr, amount);
 		uint256 amount = 1 ether;
@@ -323,11 +345,20 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 		Request[] memory requests = new Request[](1);
 		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.WITHDRAW);
+
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount, 0, 0, false);
+		xvaultDepositIntoVaults(requests, amount, 0, 0, false, messageFee);
+
+		Request[] memory withdrawRequests = new Request[](vaults.length);
+		for (uint256 i; i < vaults.length; i++) {
+			withdrawRequests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount);
+		}
+
+		messageFee = xVault.estimateMessageFee(withdrawRequests, MessageType.WITHDRAW);
 
 		vm.prank(user1);
-		xVault.emergencyWithdraw();
+		xVault.emergencyWithdraw{value: messageFee}();
 
 		assertEq(xVault.balanceOf(user1), 0);
 	}
@@ -342,17 +373,20 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount);
 		}
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.WITHDRAW);
+
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
 		xvaultDepositIntoVaults(
 			requests,
 			amount * vaults.length,
 			vaults.length,
 			vaults.length,
-			true
+			true,
+			messageFee
 		);
 
 		vm.prank(user1);
-		xVault.emergencyWithdraw();
+		xVault.emergencyWithdraw{value: messageFee}();
 
 		assertEq(xVault.balanceOf(user1), 0);
 	}
@@ -367,12 +401,15 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 		Request[] memory requests = new Request[](1);
 		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.WITHDRAW);
+
 		// Requests, total amount deposited, expected msgSent events, expected bridge events
-		xvaultDepositIntoVaults(requests, amount, 1, 1, false);
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false, messageFee);
 
 		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), 1e18);
 		// Requests, total amount, msgSent events, withdraw events
-		xvaultWithdrawFromVaults(requests, 0, 0, false);
+		messageFee = xVault.estimateMessageFee(requests, MessageType.WITHDRAW);
+		xvaultWithdrawFromVaults(requests, 0, 0, false, messageFee);
 
 		uint256 beforeFinalize = xVault.totalChildHoldings();
 		assertEq(beforeFinalize, amount);
@@ -415,6 +452,7 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 	}
 
 	function testRemoveVault() public {
+
 		address removedVault = address(vaults[0]);
 		vm.expectEmit(true, false, false, true);
 		emit ChangedVaultStatus(removedVault, false);

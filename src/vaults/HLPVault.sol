@@ -6,6 +6,7 @@ import { HLPCore } from "../strategies/hlp/HLPCore.sol";
 import { SCYVault, IERC20 } from "./scy/SCYVault.sol";
 import { AuthConfig, Auth } from "../common/Auth.sol";
 import { FeeConfig, Fees } from "../common/Fees.sol";
+import { HarvestSwapParams } from "../interfaces/Structs.sol";
 
 contract HLPVault is SCYStrategy, SCYVault {
 	constructor(
@@ -52,6 +53,13 @@ contract HLPVault is SCYStrategy, SCYVault {
 
 	function _stratCollateralToUnderlying() internal view override returns (uint256) {
 		return HLPCore(strategy).collateralToUnderlying();
+	}
+
+	function _stratHarvest(
+		HarvestSwapParams[] calldata farm1Params,
+		HarvestSwapParams[] calldata farm2Parms
+	) internal override returns (uint256[] memory harvest1, uint256[] memory harvest2) {
+		return HLPCore(strategy).harvest(farm1Params, farm2Parms);
 	}
 
 	function _selfBalance(address token) internal view virtual override returns (uint256) {

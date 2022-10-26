@@ -6,7 +6,7 @@ import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOra
 import { PriceUtils, UniUtils, IUniswapV2Pair } from "../utils/PriceUtils.sol";
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { IMXConfig, HarvestSwapParms } from "../../interfaces/Structs.sol";
+import { IMXConfig, HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { SCYVault, IMXVault, Strategy, AuthConfig, FeeConfig } from "../../vaults/IMXVault.sol";
 import { IMX, IMXCore } from "../../strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -59,9 +59,6 @@ contract SetupImx is SectorTest, StratUtils {
 		_config.farmToken = stratJson.e_farmToken;
 		_config.farmRouter = stratJson.f_farmRouter;
 		_config.maxTvl = type(uint128).max;
-		_config.owner = owner;
-		_config.manager = manager;
-		_config.guardian = guardian;
 
 		harvestParams.path = stratJson.h_harvestPath;
 
@@ -85,19 +82,18 @@ contract SetupImx is SectorTest, StratUtils {
 		strategyConfig.underlying = IERC20(config.underlying);
 		strategyConfig.maxTvl = uint128(config.maxTvl);
 
-		vault = SCYVault(
-			new IMXVault(
-				AuthConfig(owner, guardian, manager),
-				FeeConfig(treasury, .1e18, 0),
-				strategyConfig
-			)
-		);
+		AuthConfig memory authConfig = AuthConfig({
+			owner: owner,
+			manager: manager,
+			guardian: guardian
+		});
+
+		vault = SCYVault(new IMXVault(authConfig, FeeConfig(treasury, .1e18, 0), strategyConfig));
 
 		mLp = vault.MIN_LIQUIDITY();
 		config.vault = address(vault);
 
-		strategy = new IMX();
-		strategy.initialize(config);
+		strategy = new IMX(authConfig, config);
 
 		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);
@@ -134,13 +130,18 @@ contract SetupImx is SectorTest, StratUtils {
 	function harvest() public override {
 		if (!strategy.harvestIsEnabled()) return;
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
-		harvestParams.min = 0;
-		harvestParams.deadline = block.timestamp + 1;
+
+		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
+		params1[0] = harvestParams;
+		params1[0].min = 0;
+		params1[0].deadline = block.timestamp + 1;
+		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+
 		strategy.getAndUpdateTVL();
 		uint256 tvl = strategy.getTotalTVL();
-		uint256 harvestAmnt = strategy.harvest(harvestParams);
+		(uint256[] memory harvestAmnts, ) = vault.harvest(vault.getTvl(), 0, params1, params2);
 		uint256 newTvl = strategy.getTotalTVL();
-		assertGt(harvestAmnt, 0);
+		assertGt(harvestAmnts[0], 0);
 		assertGt(newTvl, tvl);
 	}
 

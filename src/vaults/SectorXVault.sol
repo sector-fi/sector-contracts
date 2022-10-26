@@ -6,7 +6,6 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
 import { SectorVault } from "./SectorVault.sol";
 import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "./ERC4626/ERC4626.sol";
-import { IPostOffice } from "../interfaces/postOffice/IPostOffice.sol";
 import { XChainIntegrator } from "../common/XChainIntegrator.sol";
 import { SectorBase } from "./SectorBase.sol";
 import "../interfaces/MsgStructs.sol";
@@ -48,13 +47,14 @@ contract SectorXVault is SectorBase {
 					Cross Vault Interface
 	/////////////////////////////////////////////////////*/
 
-	function depositIntoXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+	function depositIntoXVaults(Request[] calldata vaults) public payable onlyRole(MANAGER) {
 		uint256 totalAmount = 0;
 
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
+			uint256 bridgeFee = vaults[i].bridgeFee;
 
 			checkBridgeFee(amount, vaults[i].fee);
 
@@ -68,7 +68,7 @@ contract SectorXVault is SectorBase {
 				vaultAddr,
 				vaultChainId,
 				vault,
-				Message(amount - vaults[i].fee, address(this), address(0), chainId),
+				Message(amount - bridgeFee, address(this), address(0), chainId),
 				MessageType.DEPOSIT
 			);
 
@@ -93,7 +93,12 @@ contract SectorXVault is SectorBase {
 		totalChildHoldings += totalAmount;
 	}
 
-	function withdrawFromXVaults(Request[] calldata vaults) public onlyRole(MANAGER) {
+	// TODO params should be just vault and amnt
+	function withdrawFromXVaults(Request[] calldata vaults) public payable onlyRole(MANAGER) {
+		// withdrawing from xVaults should not happen during harvest
+		// this will mess up accounting
+		if (harvestLedger.pendingAnswers != 0) revert OnGoingHarvest();
+
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint16 vaultChainId = vaults[i].vaultChainId;
@@ -117,7 +122,7 @@ contract SectorXVault is SectorBase {
 		}
 	}
 
-	function harvestVaults() public onlyRole(MANAGER) {
+	function harvestVaults() public payable onlyRole(MANAGER) {
 		uint256 localDepositValue = 0;
 
 		if (harvestLedger.pendingAnswers != 0) revert OnGoingHarvest();
@@ -171,7 +176,7 @@ contract SectorXVault is SectorBase {
 		harvestLedger = HarvestLedger(0, 0, 0, 0);
 	}
 
-	function emergencyWithdraw() external {
+	function emergencyWithdraw() external payable {
 		uint256 userShares = balanceOf(msg.sender);
 
 		_burn(msg.sender, userShares);
@@ -257,6 +262,14 @@ contract SectorXVault is SectorBase {
 		incomingQueue.push(_msg);
 	}
 
+	function getWithdrawQueueLength() external view returns (Message[] memory) {
+		return incomingQueue;
+	}
+
+	function getWithdrawQueue() external view returns (Message[] memory) {
+		return incomingQueue;
+	}
+
 	function processIncomingXFunds() external override onlyRole(MANAGER) {
 		uint256 length = incomingQueue.length;
 		uint256 total = 0;
@@ -275,19 +288,14 @@ contract SectorXVault is SectorBase {
 		if (total < (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
 			revert MissingIncomingXFunds();
 
-		_finalizedWithdraw(total);
+		totalChildHoldings -= total;
+		afterDeposit(total, 0);
 		emit RegisterIncomingFunds(total);
 	}
 
 	function _receiveHarvest(Message calldata _msg) internal {
 		harvestLedger.crossDepositValue += _msg.value;
 		harvestLedger.receivedAnswers += 1;
-	}
-
-	function _finalizedWithdraw(uint256 totalWithdraw) internal {
-		// uint256 totalWithdraw;
-		totalChildHoldings -= totalWithdraw;
-		afterDeposit(totalWithdraw, 0);
 	}
 
 	/*/////////////////////////////////////////////////////

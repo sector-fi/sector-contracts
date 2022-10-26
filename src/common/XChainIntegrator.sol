@@ -5,6 +5,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Auth } from "./Auth.sol";
 import "../interfaces/MsgStructs.sol";
 import "../interfaces/postOffice/IPostman.sol";
+// import "hardhat/console.sol";
 
 /// @notice Struct encoded in Bungee calldata
 /// @dev Derived from socket registry contract
@@ -278,13 +279,16 @@ abstract contract XChainIntegrator is Auth {
 		if (srcPostman == address(0)) revert MissingPostman(vault.postmanId, chainId);
 		if (dstPostman == address(0)) revert MissingPostman(vault.postmanId, receiverChainId);
 
-		IPostman(srcPostman).deliverMessage(
+		uint256 messageFee = _estimateMessageFee(receiverAddr, receiverChainId, message, msgType, srcPostman);
+
+		if (address(this).balance < messageFee) revert InsufficientBalanceToSendMessage();
+
+		IPostman(srcPostman).deliverMessage{ value: messageFee }(
 			message,
 			receiverAddr,
 			dstPostman,
 			msgType,
-			receiverChainId,
-			msg.sender
+			receiverChainId
 		);
 
 		emit MessageSent(message.value, receiverAddr, receiverChainId, msgType, srcPostman);
@@ -318,6 +322,52 @@ abstract contract XChainIntegrator is Auth {
 	}
 
 	function _handleMessage(MessageType _type, Message calldata _msg) internal virtual {}
+
+	function _estimateMessageFee(
+		address receiverAddr,
+		uint16 receiverChainId,
+		Message memory message,
+		MessageType msgType,
+		address srcPostman
+	) internal view returns (uint256) {
+		uint256 messageFee = IPostman(srcPostman).estimateFee(
+			receiverChainId,
+			receiverAddr,
+			msgType,
+			message
+		);
+
+		return messageFee;
+	}
+
+	function estimateMessageFee(Request[] calldata vaults, MessageType _msgType)
+		external
+		returns (uint256)
+	{
+		uint256 totalFees = 0;
+		for (uint256 i = 0; i < vaults.length; ) {
+			address vaultAddr = vaults[i].vaultAddr;
+			uint16 vaultChainId = vaults[i].vaultChainId;
+			uint256 amount = vaults[i].amount;
+
+			Vault memory vault = addrBook[getXAddr(vaultAddr, vaultChainId)];
+			address srcPostman = postmanAddr[vault.postmanId][chainId];
+
+			totalFees += _estimateMessageFee(
+				vaultAddr,
+				vaultChainId,
+				Message(amount, address(this), address(0), chainId),
+				_msgType,
+				srcPostman
+			);
+
+			unchecked {
+				i++;
+			}
+		}
+
+		return totalFees;
+	}
 
 	function processIncomingXFunds() external virtual {}
 
@@ -361,4 +411,5 @@ abstract contract XChainIntegrator is Auth {
 	error SameChainOperation();
 	error MissingIncomingXFunds();
 	error MaxBridgeFee();
+	error InsufficientBalanceToSendMessage();
 }

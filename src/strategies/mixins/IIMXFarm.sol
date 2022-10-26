@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.6;
 
-import { IBorrowable, ICollateral, ImpermaxChef } from "../../../interfaces/imx/IImpermax.sol";
+import { IBorrowable, ICollateral, ImpermaxChef } from "../../interfaces/imx/IImpermax.sol";
 
-import { IBaseU, HarvestSwapParams } from "./IBaseU.sol";
-import { IUniLpU, IUniswapV2Pair, SafeERC20, IERC20 } from "./IUniLpU.sol";
-import { IFarmableU, IUniswapV2Router01 } from "./IFarmableU.sol";
+import { IBase, HarvestSwapParams } from "./IBase.sol";
+import { IUniLp, IUniswapV2Pair, SafeERC20, IERC20 } from "./IUniLp.sol";
+import { IFarmable, IUniswapV2Router01 } from "./IFarmable.sol";
 
-abstract contract IIMXFarmU is IBaseU, IFarmableU, IUniLpU {
+abstract contract IIMXFarm is IBase, IFarmable, IUniLp {
 	function loanHealth() public view virtual returns (uint256);
 
 	function sBorrowable() public view virtual returns (IBorrowable);
