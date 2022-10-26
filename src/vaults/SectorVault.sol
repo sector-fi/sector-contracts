@@ -310,14 +310,14 @@ contract SectorVault is SectorBase {
 
 			// this returns the underlying amount the vault is withdrawing
 			uint256 amountOut = _xRedeem(xVaultAddr, v.addr);
-			checkBridgeFee(amountOut, requests[i].fee);
+			checkBridgeFee(amountOut, requests[i].bridgeFee);
 			bridgeQueue.pop();
 
 			_sendMessage(
 				v.addr,
 				v.chainId,
 				addrBook[xVaultAddr],
-				Message(amountOut - requests[i].fee, address(this), address(0), chainId),
+				Message(amountOut - requests[i].bridgeFee, address(this), address(0), chainId),
 				MessageType.WITHDRAW
 			);
 

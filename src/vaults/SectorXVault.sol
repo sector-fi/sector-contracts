@@ -54,9 +54,8 @@ contract SectorXVault is SectorBase {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
-			uint256 bridgeFee = vaults[i].bridgeFee;
 
-			checkBridgeFee(amount, vaults[i].fee);
+			checkBridgeFee(amount, vaults[i].bridgeFee);
 
 			if (vaultChainId == chainId) revert SameChainOperation();
 			Vault memory vault = checkVault(vaultAddr, vaultChainId);
@@ -68,7 +67,7 @@ contract SectorXVault is SectorBase {
 				vaultAddr,
 				vaultChainId,
 				vault,
-				Message(amount - bridgeFee, address(this), address(0), chainId),
+				Message(amount - vaults[i].bridgeFee, address(this), address(0), chainId),
 				MessageType.DEPOSIT
 			);
 
@@ -260,14 +259,6 @@ contract SectorXVault is SectorBase {
 
 	function _receiveWithdraw(Message calldata _msg) internal {
 		incomingQueue.push(_msg);
-	}
-
-	function getWithdrawQueueLength() external view returns (Message[] memory) {
-		return incomingQueue;
-	}
-
-	function getWithdrawQueue() external view returns (Message[] memory) {
-		return incomingQueue;
 	}
 
 	function processIncomingXFunds() external override onlyRole(MANAGER) {
