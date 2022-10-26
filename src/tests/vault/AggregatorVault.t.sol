@@ -5,20 +5,20 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/SectorVault.sol";
+import { SectorBase, AggregatorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { EAction } from "interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
-contract SectorVaultTest is SectorTest, SCYVaultSetup {
+contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 	ISCYStrategy strategy1;
 	ISCYStrategy strategy2;
 	ISCYStrategy strategy3;
 
 	WETH underlying;
 
-	SectorVault vault;
+	AggregatorVault vault;
 
 	function setUp() public {
 		underlying = new WETH();
@@ -31,7 +31,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		strategy2 = ISCYStrategy(address(s2));
 		strategy3 = ISCYStrategy(address(s3));
 
-		vault = new SectorVault(
+		vault = new AggregatorVault(
 			underlying,
 			"SECT_VAULT",
 			"SECT_VAULT",
@@ -50,6 +50,8 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vault.addStrategy(strategy2);
 		vault.addStrategy(strategy3);
 	}
+
+	receive() external payable {}
 
 	function testAddRemoveStrat() public {
 		vault.removeStrategy(strategy2);
@@ -294,6 +296,33 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		assertEq(underlying.balanceOf(address(vault)), amnt / 2);
 	}
 
+	function testDepositRedeemNative() public {
+		vault = new AggregatorVault(
+			underlying,
+			"SECT_VAULT",
+			"SECT_VAULT",
+			true,
+			AuthConfig(owner, guardian, manager),
+			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
+		);
+		sectDeposit(vault, owner, mLp);
+
+		uint256 amnt = 1000e18;
+		deal(self, amnt);
+		vault.deposit{ value: amnt }(amnt, self);
+
+		assertEq(vault.underlyingBalance(self), amnt);
+		assertEq(self.balance, 0);
+
+		uint256 shares = vault.balanceOf(self);
+		vault.requestRedeem(shares, self);
+		skip(1);
+		sectHarvest(vault);
+		vault.redeemNative();
+
+		assertEq(self.balance, amnt);
+	}
+
 	/// UTILS
 
 	function depositToStrat(ISCYStrategy strategy, uint256 amount) public {
@@ -308,7 +337,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vault.withdrawFromStrategies(rParams);
 	}
 
-	function sectHarvest(SectorVault _vault) public {
+	function sectHarvest(AggregatorVault _vault) public {
 		vm.startPrank(manager);
 		uint256 expectedTvl = vault.getTvl();
 		uint256 maxDelta = expectedTvl / 1000; // .1%
@@ -316,18 +345,17 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		vm.stopPrank();
 	}
 
-	function sectHarvestRevert(SectorVault _vault, bytes4 err) public {
+	function sectHarvestRevert(AggregatorVault _vault, bytes4 err) public {
 		vm.startPrank(manager);
 		uint256 expectedTvl = vault.getTvl();
 		uint256 maxDelta = expectedTvl / 1000; // .1%
 		vm.expectRevert(err);
 		_vault.harvest(expectedTvl, maxDelta);
 		vm.stopPrank();
-		// advance 1s
 	}
 
 	function sectDeposit(
-		SectorVault _vault,
+		AggregatorVault _vault,
 		address acc,
 		uint256 amnt
 	) public {
@@ -340,7 +368,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 	}
 
 	function sectInitRedeem(
-		SectorVault _vault,
+		AggregatorVault _vault,
 		address acc,
 		uint256 fraction
 	) public {
@@ -352,14 +380,14 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		skip(1);
 	}
 
-	function sectCompleteRedeem(SectorVault _vault, address acc) public {
+	function sectCompleteRedeem(AggregatorVault _vault, address acc) public {
 		vm.startPrank(acc);
 		_vault.redeem();
 		vm.stopPrank();
 	}
 
 	function sectDeposit3Strats(
-		SectorVault _vault,
+		AggregatorVault _vault,
 		uint256 a1,
 		uint256 a2,
 		uint256 a3
@@ -372,7 +400,7 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 	}
 
 	function sectRedeem3Strats(
-		SectorVault _vault,
+		AggregatorVault _vault,
 		uint256 a1,
 		uint256 a2,
 		uint256 a3

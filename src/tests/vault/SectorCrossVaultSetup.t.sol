@@ -37,13 +37,13 @@ contract SectorCrossVaultTestSetup is SectorTest {
 	// address socketRegistry = 0x2b42AFFD4b7C14d9B7C2579229495c052672Ccd3;
 
 	function depositXVault(address acc, uint256 amount) public {
-		depositVault(acc, amount, address(xVault));
+		depositVault(acc, amount, payable(xVault));
 	}
 
 	function depositVault(
 		address acc,
 		uint256 amount,
-		address vault
+		address payable vault
 	) public {
 		SectorBase v = SectorBase(vault);
 
@@ -108,7 +108,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 	) public {
 		uint256[] memory shares = new uint256[](requests.length);
 		for (uint256 i = 0; i < requests.length; i++) {
-			SectorVault vault = SectorVault(requests[i].vaultAddr);
+			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 			shares[i] = vault.balanceOf(address(xVault));
 		}
 
@@ -125,7 +125,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		vm.warp(block.timestamp + 100);
 
 		for (uint256 i = 0; i < requests.length; i++) {
-			SectorVault vault = SectorVault(requests[i].vaultAddr);
+			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 			// uint256 share = shares[i];
 			uint256 value = (shares[i] * requests[i].amount) / 1e18;
 
@@ -197,7 +197,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		for (uint256 i; i < vaults.length; i++) {
 			totalAmount += amounts[i];
 			if (getVaultChainId(address(vaults[i])) == chainId) continue;
-			fakeIncomingXDeposit(address(vaults[i]), amounts[i]);
+			fakeIncomingXDeposit(payable(vaults[i]), amounts[i]);
 		}
 
 		// Go back to harvest test
@@ -258,7 +258,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		vm.stopPrank();
 	}
 
-	function fakeIncomingXDeposit(address vaultAddr, uint256 amount) public {
+	function fakeIncomingXDeposit(address payable vaultAddr, uint256 amount) public {
 		SectorVault vault = SectorVault(vaultAddr);
 
 		vm.startPrank(getPostmanAddr(vaultAddr));

@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
+import { BatchedWithdraw } from "./BatchedWithdraw.sol";
 import { SectorVault } from "./SectorVault.sol";
 import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
 import { SectorBase } from "./SectorBase.sol";
@@ -33,9 +33,15 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 		ERC20 _asset,
 		string memory _name,
 		string memory _symbol,
+		bool _useNativeAsset,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
-	) ERC4626(_asset, _name, _symbol) Auth(authConfig) Fees(feeConfig) BatchedWithdraw() {}
+	)
+		ERC4626(_asset, _name, _symbol, _useNativeAsset)
+		Auth(authConfig)
+		Fees(feeConfig)
+		BatchedWithdraw()
+	{}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
@@ -122,7 +128,9 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 			Vault memory vault = addrBook[vaultAddr];
 
 			if (vault.chainId == chainId) {
-				localDepositValue += SectorVault(vaultAddr).underlyingBalance(address(this));
+				localDepositValue += SectorVault(payable(vaultAddr)).underlyingBalance(
+					address(this)
+				);
 			} else {
 				_sendMessage(
 					vaultAddr,
@@ -173,7 +181,7 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 			Vault memory vault = checkVault(vaultAddr);
 
 			if (vault.chainId == chainId) {
-				BatchedWithdraw _vault = BatchedWithdraw(vaultAddr);
+				BatchedWithdraw _vault = BatchedWithdraw(payable(vaultAddr));
 				uint256 transferShares = userPerc.mulWadDown(_vault.balanceOf(address(this)));
 				_vault.transfer(msg.sender, transferShares);
 			} else {

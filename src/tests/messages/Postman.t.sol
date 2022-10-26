@@ -61,6 +61,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			underlying,
 			"SECT_VAULT",
 			"SECT_VAULT",
+			false,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
@@ -77,6 +78,7 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			underlying,
 			"SECT_VAULT",
 			"SECT_VAULT",
+			false,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);

@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
 import { ISCYStrategy } from "../../interfaces/scy/ISCYStrategy.sol";
-import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
+import { BatchedWithdraw } from "./BatchedWithdraw.sol";
 import { SectorBase } from "./SectorBase.sol";
 import { XChainIntegrator } from "./XChainIntegrator.sol";
 import "../../interfaces/MsgStructs.sol";
@@ -42,9 +42,15 @@ contract SectorVault is SectorBase, XChainIntegrator {
 		ERC20 asset_,
 		string memory _name,
 		string memory _symbol,
+		bool _useNativeAsset,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
-	) ERC4626(asset_, _name, _symbol) Auth(authConfig) Fees(feeConfig) BatchedWithdraw() {}
+	)
+		ERC4626(asset_, _name, _symbol, _useNativeAsset)
+		Auth(authConfig)
+		Fees(feeConfig)
+		BatchedWithdraw()
+	{}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
 		if (strategyExists[strategy]) revert StrategyExists();

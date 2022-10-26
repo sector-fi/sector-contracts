@@ -9,6 +9,7 @@ import { Accounting } from "../../common/Accounting.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 import { Fees, FeeConfig } from "../../common/Fees.sol";
+import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
@@ -28,14 +29,20 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
     //////////////////////////////////////////////////////////////*/
 
 	ERC20 immutable asset;
+	// flag that allows the vault to consume native asset
+	bool public useNativeAsset;
 
 	constructor(
 		ERC20 _asset,
 		string memory _name,
-		string memory _symbol
+		string memory _symbol,
+		bool _useNativeAsset
 	) ERC20(_name, _symbol) {
+		useNativeAsset = _useNativeAsset;
 		asset = _asset;
 	}
+
+	receive() external payable {}
 
 	function decimals() public view override returns (uint8) {
 		return asset.decimals();
@@ -49,14 +56,20 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
                         DEPOSIT/WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
-	function deposit(uint256 assets, address receiver) public virtual returns (uint256 shares) {
+	function deposit(uint256 assets, address receiver)
+		public
+		payable
+		virtual
+		returns (uint256 shares)
+	{
 		// This check is no longer necessary because we use MIN_LIQUIDITY
 		// Check for rounding error since we round down in previewDeposit.
 		// require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 		shares = previewDeposit(assets);
 
 		// Need to transfer before minting or ERC777s could reenter.
-		asset.safeTransferFrom(msg.sender, address(this), assets);
+		if (useNativeAsset && msg.value == assets) IWETH(address(asset)).deposit{ value: assets }();
+		else asset.safeTransferFrom(msg.sender, address(this), assets);
 
 		// lock minimum liquidity if totalSupply is 0
 		if (totalSupply() == 0) {
@@ -72,11 +85,17 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 		afterDeposit(assets, shares);
 	}
 
-	function mint(uint256 shares, address receiver) public virtual returns (uint256 assets) {
+	function mint(uint256 shares, address receiver)
+		public
+		payable
+		virtual
+		returns (uint256 assets)
+	{
 		assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.
 
 		// Need to transfer before minting or ERC777s could reenter.
-		asset.safeTransferFrom(msg.sender, address(this), assets);
+		if (useNativeAsset && msg.value == assets) IWETH(address(asset)).deposit{ value: assets }();
+		else asset.safeTransferFrom(msg.sender, address(this), assets);
 
 		_mint(receiver, shares);
 

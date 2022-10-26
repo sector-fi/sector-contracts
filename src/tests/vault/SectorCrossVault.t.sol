@@ -62,6 +62,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			underlying,
 			"SECT_X_VAULT",
 			"SECT_X_VAULT",
+			false,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
@@ -78,6 +79,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 					underlying,
 					"SECT_VAULT",
 					"SECT_VAULT",
+					false,
 					AuthConfig(owner, guardian, manager),
 					FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 				)
@@ -93,7 +95,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			vaults[i].addVault(address(xVault), chainId, 1, true);
 
 			// Add min liquidity
-			depositVault(manager, mLp, address(vaults[i]));
+			depositVault(manager, mLp, payable(vaults[i]));
 		}
 
 		// Must be address of multichain service provider
