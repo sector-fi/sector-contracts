@@ -236,7 +236,7 @@ contract SectorVault is SectorBase, XChainIntegrator {
 		/// since the xVault doesn't know how many shares it holds
 		uint256 xVaultShares = balanceOf(xVaultAddr);
 		uint256 shares = (_msg.value * xVaultShares) / 1e18;
-		_requestRedeem(shares, xVaultAddr, false);
+		_requestRedeem(shares, xVaultAddr, xVaultAddr);
 	}
 
 	function _receiveEmergencyWithdraw(Message calldata _msg) internal {

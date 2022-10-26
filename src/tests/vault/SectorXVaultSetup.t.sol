@@ -78,6 +78,17 @@ contract SectorXVaultSetup is SectorTest {
 
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
+		for (uint256 i = 0; i < requests.length; i++) {
+			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
+			mockRecieveFunds(
+				vault,
+				address(xVault),
+				chainId,
+				requests[i].vaultChainId,
+				requests[i].amount
+			);
+		}
+
 		if (!assertOn) return;
 
 		// Accounting tests
@@ -107,9 +118,17 @@ contract SectorXVaultSetup is SectorTest {
 		uint256 messageFee
 	) public {
 		uint256[] memory shares = new uint256[](requests.length);
+		address xAddr = xVault.getXAddr(address(xVault), chainId);
+
 		for (uint256 i = 0; i < requests.length; i++) {
 			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
-			shares[i] = vault.balanceOf(address(xVault));
+			shares[i] = vault.balanceOf(xAddr);
+			recieveMessage(
+				vault,
+				requests[i].vaultChainId,
+				Message(requests[i].amount, address(xVault), address(0), chainId),
+				MessageType.WITHDRAW
+			);
 		}
 
 		vm.recordLogs();
@@ -118,29 +137,28 @@ contract SectorXVaultSetup is SectorTest {
 
 		if (!assertOn) return;
 
-		// uint256 requestTimestamp = block.timestamp;
+		uint256 requestTimestamp = block.timestamp;
 
 		// Move forward in time and space
 		vm.roll(block.number + 100);
 		vm.warp(block.timestamp + 100);
 
-		// for (uint256 i = 0; i < requests.length; i++) {
-		// 	SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
-		// 	// uint256 share = shares[i];
-		// 	uint256 value = (shares[i] * requests[i].amount) / 1e18;
+		for (uint256 i = 0; i < requests.length; i++) {
+			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 
-		// 	(uint16 vaultChainId, , ) = xVault.addrBook(address(vault));
-		// 	// On same chain as xVault
-		// 	if (vaultChainId == chainId) {
-		// 		assertEq(vault.pendingWithdraw(), value, "Pending value must be equal to expected");
+			uint256 vaultShares = shares[i];
+			uint256 vaultBalance = vault.sharesToUnderlying(vaultShares);
+			uint256 value = (requests[i].amount * vaultBalance) / 1e18;
+			uint256 redeemShares = (requests[i].amount * vaultShares) / 1e18;
 
-		// 		(uint256 ts, uint256 sh, uint256 val) = vault.withdrawLedger(address(xVault));
+			assertEq(vault.pendingWithdraw(), value, "Pending value must be equal to expected");
 
-		// 		assertEq(ts, requestTimestamp, "Withdraw timestamp must be equal to expected");
-		// 		assertEq(sh, shares[i], "Shares must be equal to expected");
-		// 		assertEq(val, value, "Value assets must be equal to expected");
-		// 	}
-		// }
+			(uint256 ts, uint256 sh, uint256 val) = vault.withdrawLedger(xAddr);
+
+			assertEq(ts, requestTimestamp, "Withdraw timestamp must be equal to expected");
+			assertEq(sh, redeemShares, "Shares must be equal to expected");
+			assertEq(val, value, "Value assets must be equal to expected");
+		}
 
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
@@ -326,5 +344,56 @@ contract SectorXVaultSetup is SectorTest {
 				"outboundTransferTo((address,uint256,uint256,(uint256,uint256,address,bytes),(uint256,uint256,address,bytes)))",
 				ur
 			);
+	}
+
+	function mockRecieveFunds(
+		SectorVault vault,
+		address from,
+		uint16 fromChain,
+		uint16 toChain,
+		uint256 amount
+	) public {
+		recieveMessage(
+			vault,
+			toChain,
+			Message(amount, from, address(0), fromChain),
+			MessageType.DEPOSIT
+		);
+
+		vm.startPrank(manager);
+
+		deal(address(underlying), manager, amount);
+		underlying.transfer(address(vault), amount);
+
+		vault.processIncomingXFunds();
+
+		address xSrcAddr = vault.getXAddr(from, fromChain);
+		uint256 _srcVaultUnderlyingBalance = vault.estimateUnderlyingBalance(xSrcAddr);
+
+		assertEq(amount, _srcVaultUnderlyingBalance);
+
+		vm.stopPrank();
+	}
+
+	// Mocks a message being received from another chain
+	function recieveMessage(
+		SectorVault _dstVault,
+		uint16 toChain,
+		Message memory _msg,
+		MessageType _msgType
+	) public {
+		bytes memory _payload = abi.encode(_msg, address(_dstVault), _msgType);
+
+		address postmanAddr = getPostmanAddr(address(_dstVault), toChain);
+		LayerZeroPostman postman = LayerZeroPostman(postmanAddr);
+		address lzEndpoint = address(postman.endpoint());
+
+		vm.startPrank(lzEndpoint);
+
+		bytes memory mock = abi.encode(_msg.sender);
+		uint16 lzSrcId = postman.chains(_msg.chainId);
+		postman.lzReceive(lzSrcId, mock, 1, _payload);
+
+		vm.stopPrank();
 	}
 }
