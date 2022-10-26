@@ -5,8 +5,8 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { SectorCrossVaultTestSetup } from "../vault/SectorCrossVaultSetup.t.sol";
-import { SectorCrossVault } from "../../vaults/SectorCrossVault.sol";
+import { SectorXVaultTestSetup } from "../vault/SectorXVaultSetup.t.sol";
+import { SectorXVault } from "../../vaults/SectorXVault.sol";
 import { SectorVault, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
 import { SCYVaultSetup } from "../vault/SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
@@ -15,7 +15,7 @@ import "forge-std/Vm.sol";
 
 import "hardhat/console.sol";
 
-contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
+contract PostmanTest is SectorXVaultTestSetup, SCYVaultSetup {
 	LayerZeroPostman EthLZpostman;
 	LayerZeroPostman AvaxLZpostman;
 	MultichainPostman AvaxMCpostman;
@@ -62,7 +62,8 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
+			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
+			1e14
 		);
 
 		EthLZpostman = new LayerZeroPostman(ETH_LAYERZERO_ENDPOINT, pairArray, manager);
@@ -78,7 +79,8 @@ contract PostmanTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
+			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
+			1e14
 		);
 
 		AvaxLZpostman = new LayerZeroPostman(AVAX_LAYERZERO_ENDPOINT, pairArray, manager);

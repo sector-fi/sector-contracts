@@ -8,7 +8,7 @@ import {
   waitFor,
 } from '../ts/utils';
 import { ethers, getNamedAccounts, deployments, network } from 'hardhat';
-import { SectorCrossVault } from '../typechain';
+import { SectorXVault } from '../typechain';
 
 // TODO orgainze these into a config file
 const USDC = '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48'; // USDC ETHEREUM
@@ -19,8 +19,8 @@ const setupTest = deployments.createFixture(async () => {
 
   // this contract will be grabbed form the deployments generated via the deployment fixture
   // above, we can grab different contracts via the name we saved them as
-  const vault: SectorCrossVault = await ethers.getContract(
-    'SectorXVault',
+  const vault: SectorXVault = await ethers.getContract(
+    'SectorXVault-0',
     deployer
   );
 
@@ -33,7 +33,7 @@ const setupTest = deployments.createFixture(async () => {
 });
 
 describe('events', function () {
-  let vault: SectorCrossVault;
+  let vault: SectorXVault;
   before(async () => {
     // fork chain is set via .evn FORK_CHAIN param
     await forkNetwork(chain, forkBlock[chain]);
@@ -52,7 +52,7 @@ describe('events', function () {
   });
 });
 
-async function listenToEvents(vault: SectorCrossVault) {
+async function listenToEvents(vault: SectorXVault) {
   const erc20Addresses = {
     ethereum: {
       address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',

@@ -8,7 +8,7 @@ import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
-import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
+import { SectorXVault, Request } from "../../vaults/SectorXVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { MockSocketRegistry } from "../mocks/MockSocketRegistry.sol";
@@ -19,7 +19,7 @@ import "../../interfaces/MsgStructs.sol";
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
-contract SectorCrossVaultTestSetup is SectorTest {
+contract SectorXVaultTestSetup is SectorTest {
 	uint16 chainId;
 
 	uint16 anotherChainId = 1;
@@ -27,7 +27,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 	WETH underlying;
 
-	SectorCrossVault xVault;
+	SectorXVault xVault;
 	SectorVault[] vaults;
 
 	LayerZeroPostman postmanLz;
@@ -114,33 +114,21 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 		vm.recordLogs();
 		vm.prank(manager);
-		xVault.withdrawFromXVaults{value: messageFee}(requests);
+		xVault.withdrawFromXVaults{ value: messageFee }(requests);
 
 		if (!assertOn) return;
 
-		uint256 requestTimestamp = block.timestamp;
+		// uint256 requestTimestamp = block.timestamp;
 
 		// Move forward in time and space
 		vm.roll(block.number + 100);
 		vm.warp(block.timestamp + 100);
 
-		for (uint256 i = 0; i < requests.length; i++) {
-			SectorVault vault = SectorVault(requests[i].vaultAddr);
-			// uint256 share = shares[i];
-			uint256 value = (shares[i] * requests[i].amount) / 1e18;
-
-			(uint16 vaultChainId, , ) = xVault.addrBook(address(vault));
-			// On same chain as xVault
-			if (vaultChainId == chainId) {
-				assertEq(vault.pendingWithdraw(), value, "Pending value must be equal to expected");
-
-				(uint256 ts, uint256 sh, uint256 val) = vault.withdrawLedger(address(xVault));
-
-				assertEq(ts, requestTimestamp, "Withdraw timestamp must be equal to expected");
-				assertEq(sh, shares[i], "Shares must be equal to expected");
-				assertEq(val, value, "Value assets must be equal to expected");
-			}
-		}
+		// for (uint256 i = 0; i < requests.length; i++) {
+		// 	SectorVault vault = SectorVault(requests[i].vaultAddr);
+		// 	// uint256 share = shares[i];
+		// 	uint256 value = (shares[i] * requests[i].amount) / 1e18;
+		// }
 
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
@@ -196,7 +184,6 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		uint256 totalAmount = 0;
 		for (uint256 i; i < vaults.length; i++) {
 			totalAmount += amounts[i];
-			if (getVaultChainId(address(vaults[i])) == chainId) continue;
 			fakeIncomingXDeposit(address(vaults[i]), amounts[i]);
 		}
 
@@ -205,8 +192,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		xvaultHarvestVault(0, 0, 0, 0, 0, false);
 
 		for (uint256 i; i < vaults.length; i++) {
-			if (getVaultChainId(address(vaults[i])) == chainId) continue;
-			fakeAnswerXHarvest(address(vaults[i]), vaults[i].underlyingBalance(address(xVault)));
+			fakeAnswerXHarvest(address(vaults[i]), amounts[i]);
 		}
 
 		vm.recordLogs();
@@ -250,7 +236,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 	//////////////////////////////////////////////////////*/
 
 	function fakeAnswerXHarvest(address vaultAddr, uint256 amount) public {
-		vm.startPrank(getPostmanAddr(vaultAddr));
+		vm.startPrank(getPostmanAddr(vaultAddr, anotherChainId));
 		xVault.receiveMessage(
 			Message(amount, vaultAddr, address(0), anotherChainId),
 			MessageType.HARVEST
@@ -261,7 +247,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 	function fakeIncomingXDeposit(address vaultAddr, uint256 amount) public {
 		SectorVault vault = SectorVault(vaultAddr);
 
-		vm.startPrank(getPostmanAddr(vaultAddr));
+		vm.startPrank(getPostmanAddr(vaultAddr, anotherChainId));
 		vault.receiveMessage(
 			Message(amount, address(xVault), address(0), chainId),
 			MessageType.DEPOSIT
@@ -285,17 +271,17 @@ contract SectorCrossVaultTestSetup is SectorTest {
 						UTILITIES
 	//////////////////////////////////////////////////////*/
 
-	function getPostmanAddr(address vaultAddr) public view returns (address) {
-		(uint16 vChainId, uint16 id, ) = xVault.addrBook(vaultAddr);
+	function getPostmanAddr(address vaultAddr, uint16 vaultChainId) public returns (address) {
+		(uint16 id, ) = xVault.addrBook(xVault.getXAddr(vaultAddr, vaultChainId));
 
-		return xVault.postmanAddr(id, vChainId);
+		return xVault.postmanAddr(id, vaultChainId);
 	}
 
-	function getVaultChainId(address vaultAddr) public view returns (uint16) {
-		(uint16 vChainId, , ) = xVault.addrBook(vaultAddr);
+	// function getVaultChainId(address vaultAddr) public view returns (uint16) {
+	// 	(uint16 vChainId, , ) = xVault.addrBook(vaultAddr);
 
-		return vChainId;
-	}
+	// 	return vChainId;
+	// }
 
 	function getBasicRequest(
 		address vault,
@@ -305,6 +291,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 		return
 			Request(
 				vault,
+				uint16(toChainId),
 				amount,
 				0,
 				address(socketRegistry),
