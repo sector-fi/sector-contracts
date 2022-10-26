@@ -207,8 +207,8 @@ contract PostmanTest is SectorXVaultSetup, SCYVaultSetup {
 		emit RegisterIncomingFunds(1000);
 
 		EthSectorVault.processIncomingXFunds();
-
-		uint256 _srcVaultUnderlyingBalance = EthSectorVault.estimateUnderlyingBalance(_srcVault);
+		address xSrcAddr = EthSectorVault.getXAddr(_srcVault, AVAX_CHAIN_ID);
+		uint256 _srcVaultUnderlyingBalance = EthSectorVault.estimateUnderlyingBalance(xSrcAddr);
 
 		assertEq(1000, _srcVaultUnderlyingBalance);
 
@@ -255,7 +255,8 @@ contract PostmanTest is SectorXVaultSetup, SCYVaultSetup {
 
 		EthSectorVault.processIncomingXFunds();
 
-		uint256 _srcVaultUnderlyingBalance = EthSectorVault.estimateUnderlyingBalance(_srcVault);
+		address xSrcAddr = EthSectorVault.getXAddr(_srcVault, AVAX_CHAIN_ID);
+		uint256 _srcVaultUnderlyingBalance = EthSectorVault.estimateUnderlyingBalance(xSrcAddr);
 
 		assertEq(1000, _srcVaultUnderlyingBalance);
 
