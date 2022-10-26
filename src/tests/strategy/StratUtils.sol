@@ -10,7 +10,6 @@ import { HLPConfig, HarvestSwapParams } from "interfaces/Structs.sol";
 import { SCYVault } from "vaults/scy/SCYVault.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { MasterChefCompMulti } from "strategies/hlp/implementations/MasterChefCompMulti.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
 
 import "hardhat/console.sol";

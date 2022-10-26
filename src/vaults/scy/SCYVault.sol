@@ -35,7 +35,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 	// immutables
 	address public immutable yieldToken;
-	uint256 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
+	uint16 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
 	IERC20 public immutable underlying;
 
 	uint256 public maxTvl; // pack all params and balances
@@ -369,7 +369,11 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		override
 		returns (uint256 fltAmnt)
 	{
-		if (token == address(underlying)) return underlying.balanceOf(strategy);
+		if (token == address(underlying))
+			return
+				sendERC20ToStrategy
+					? underlying.balanceOf(strategy)
+					: underlying.balanceOf(address(this)) - uBalance;
 		if (token == NATIVE) return address(this).balance;
 	}
 

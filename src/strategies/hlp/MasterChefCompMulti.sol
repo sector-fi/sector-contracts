@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { HLPConfig, NativeToken } from "../../../interfaces/Structs.sol";
-import { HLPCore } from "../HLPCore.sol";
+import { HLPConfig, NativeToken } from "../../interfaces/Structs.sol";
+import { HLPCore } from "./HLPCore.sol";
 import { Compound } from "../adapters/Compound.sol";
 import { MasterChefFarm } from "../adapters/MasterChefFarm.sol";
 import { CompMultiFarm } from "../adapters/CompMultiFarm.sol";
-import { Auth, AuthConfig } from "../../../common/Auth.sol";
+import { Auth, AuthConfig } from "../../common/Auth.sol";
 
 // import "hardhat/console.sol";
 

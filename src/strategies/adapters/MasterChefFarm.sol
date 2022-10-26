@@ -3,42 +3,42 @@ pragma solidity 0.8.16;
 
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { IMiniChefV2 } from "../../../interfaces/uniswap/IStakingRewards.sol";
-import { IUniswapV2Pair } from "../../../interfaces/uniswap/IUniswapV2Pair.sol";
+import { IMasterChef } from "../../interfaces/uniswap/IStakingRewards.sol";
+import { IUniswapV2Pair } from "../../interfaces/uniswap/IUniswapV2Pair.sol";
 
-import { IUniFarm, IUniswapV2Router01, HarvestSwapParams } from "../../mixins/IUniFarm.sol";
-import { UniUtils } from "../../../libraries/UniUtils.sol";
+import { IUniFarm, IUniswapV2Router01, HarvestSwapParams } from "../mixins/IUniFarm.sol";
+import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract MiniChefFarm is IUniFarm {
-	using UniUtils for IUniswapV2Pair;
+abstract contract MasterChefFarm is IUniFarm {
 	using SafeERC20 for IERC20;
 
-	IMiniChefV2 private _farm;
+	IMasterChef private _farm;
 	IUniswapV2Router01 private _router;
 	IERC20 private _farmToken;
 	IUniswapV2Pair private _pair;
 	uint256 private _farmId;
 
-	function __MiniChefFarm_init_(
+	function __MasterChefFarm_init_(
 		address pair_,
 		address farm_,
 		address router_,
 		address farmToken_,
 		uint256 farmPid_
 	) internal initializer {
-		_farm = IMiniChefV2(farm_);
+		_farm = IMasterChef(farm_);
 		_router = IUniswapV2Router01(router_);
 		_farmToken = IERC20(farmToken_);
 		_pair = IUniswapV2Pair(pair_);
 		_farmId = farmPid_;
 	}
 
+	// assumption that _router and _farm are trusted
 	function _addFarmApprovals() internal override {
-		// farm approvals
 		IERC20(address(_pair)).safeApprove(address(_farm), type(uint256).max);
-		_farmToken.safeApprove(address(_router), type(uint256).max);
+		if (_farmToken.allowance(address(this), address(_router)) == 0)
+			_farmToken.safeApprove(address(_router), type(uint256).max);
 	}
 
 	function farmRouter() public view override returns (IUniswapV2Router01) {
@@ -50,11 +50,11 @@ abstract contract MiniChefFarm is IUniFarm {
 	}
 
 	function _withdrawFromFarm(uint256 amount) internal override {
-		_farm.withdraw(_farmId, amount, address(this));
+		_farm.withdraw(_farmId, amount);
 	}
 
 	function _depositIntoFarm(uint256 amount) internal override {
-		_farm.deposit(_farmId, amount, address(this));
+		_farm.deposit(_farmId, amount);
 	}
 
 	function _harvestFarm(HarvestSwapParams[] calldata swapParams)
@@ -62,13 +62,23 @@ abstract contract MiniChefFarm is IUniFarm {
 		override
 		returns (uint256[] memory harvested)
 	{
-		_farm.harvest(_farmId, address(this));
+		address[] memory addresses;
+		uint256[] memory amounts;
+
+		_farm.deposit(_farmId, 0);
 		harvested = new uint256[](1);
 		harvested[0] = _farmToken.balanceOf(address(this));
 		if (harvested[0] == 0) return harvested;
 
 		_swap(_router, swapParams[0], address(_farmToken), harvested[0]);
 		emit HarvestedToken(address(_farmToken), harvested[0]);
+
+		// additional chain token rewards
+		uint256 ethBalance = address(this).balance;
+		if (ethBalance > 0) {
+			IWETH(address(short())).deposit{ value: ethBalance }();
+			emit HarvestedToken(address(short()), ethBalance);
+		}
 	}
 
 	function _getFarmLp() internal view override returns (uint256) {
