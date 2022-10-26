@@ -6,7 +6,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { ERC4626, IWETH } from "../ERC4626/ERC4626.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 struct WithdrawRecord {
 	uint256 timestamp;
@@ -33,20 +33,23 @@ abstract contract BatchedWithdraw is ERC4626 {
 	}
 
 	function requestRedeem(uint256 shares, address owner) public {
-		_requestRedeem(shares, owner, true);
+		if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
+		_requestRedeem(shares, owner, msg.sender);
 	}
 
-	function _requestRedeem(uint256 shares, address owner, bool notXChain) internal {
-		if (msg.sender != owner && notXChain) _spendAllowance(owner, msg.sender, shares);
+	function _requestRedeem(
+		uint256 shares,
+		address owner,
+		address redeemer
+	) internal {
 		_transfer(owner, address(this), shares);
-		WithdrawRecord storage withdrawRecord = withdrawLedger[msg.sender];
+		WithdrawRecord storage withdrawRecord = withdrawLedger[redeemer];
 		withdrawRecord.timestamp = block.timestamp;
 		withdrawRecord.shares += shares;
 		uint256 value = convertToAssets(shares);
 		withdrawRecord.value = value;
 		pendingWithdraw += value;
 		emit RequestWithdraw(msg.sender, owner, shares);
-
 	}
 
 	function withdraw(
