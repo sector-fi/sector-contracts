@@ -5,15 +5,15 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
+import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
-import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
+import { SectorCrossVault, Request } from "vaults/sectorVaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { MockSocketRegistry } from "../mocks/MockSocketRegistry.sol";
 
-import { MiddlewareRequest, BridgeRequest, UserRequest } from "../../common/XChainIntegrator.sol";
+import { MiddlewareRequest, BridgeRequest, UserRequest } from "vaults/sectorVaults/XChainIntegrator.sol";
 import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
@@ -114,7 +114,7 @@ contract SectorCrossVaultTestSetup is SectorTest {
 
 		vm.recordLogs();
 		vm.prank(manager);
-		xVault.withdrawFromXVaults{value: messageFee}(requests);
+		xVault.withdrawFromXVaults{ value: messageFee }(requests);
 
 		if (!assertOn) return;
 

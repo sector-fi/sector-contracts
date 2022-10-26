@@ -5,14 +5,14 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
+import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/sectorVaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
-import { SectorCrossVault, Request } from "../../vaults/SectorCrossVault.sol";
+import { SectorCrossVault, Request } from "../../vaults/sectorVaults/SectorCrossVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { SectorCrossVaultTestSetup, MockSocketRegistry } from "./SectorCrossVaultSetup.t.sol";
-import { SectorCrossVault } from "../../vaults/SectorCrossVault.sol";
+import { SectorCrossVault } from "../../vaults/sectorVaults/SectorCrossVault.sol";
 
 import "../../interfaces/MsgStructs.sol";
 
@@ -205,7 +205,6 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	}
 
 	function testChainPartialWithdrawFromVaults() public {
-
 		uint256[3] memory amounts = [uint256(1 ether), 918 gwei, 13231 wei];
 		// uint256 total = amount1 + amount2 + amount3;
 		address[3] memory users = [user1, user2, user3];
@@ -352,13 +351,17 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 		Request[] memory withdrawRequests = new Request[](vaults.length);
 		for (uint256 i; i < vaults.length; i++) {
-			withdrawRequests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount);
+			withdrawRequests[i] = getBasicRequest(
+				address(vaults[i]),
+				uint256(anotherChainId),
+				amount
+			);
 		}
 
 		messageFee = xVault.estimateMessageFee(withdrawRequests, MessageType.WITHDRAW);
 
 		vm.prank(user1);
-		xVault.emergencyWithdraw{value: messageFee}();
+		xVault.emergencyWithdraw{ value: messageFee }();
 
 		assertEq(xVault.balanceOf(user1), 0);
 	}
@@ -386,7 +389,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		);
 
 		vm.prank(user1);
-		xVault.emergencyWithdraw{value: messageFee}();
+		xVault.emergencyWithdraw{ value: messageFee }();
 
 		assertEq(xVault.balanceOf(user1), 0);
 	}
@@ -452,7 +455,6 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	}
 
 	function testRemoveVault() public {
-
 		address removedVault = address(vaults[0]);
 		vm.expectEmit(true, false, false, true);
 		emit ChangedVaultStatus(removedVault, false);

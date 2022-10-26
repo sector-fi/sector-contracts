@@ -2,11 +2,12 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "./ERC4626/ERC4626.sol";
-import { ISCYStrategy } from "../interfaces/scy/ISCYStrategy.sol";
-import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
+import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
+import { ISCYStrategy } from "../../interfaces/scy/ISCYStrategy.sol";
+import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
 import { SectorBase } from "./SectorBase.sol";
-import "../interfaces/MsgStructs.sol";
+import { XChainIntegrator } from "./XChainIntegrator.sol";
+import "../../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
 // TODO native asset deposit + flow
@@ -23,7 +24,7 @@ struct DepositParams {
 	uint256 minSharesOut;
 }
 
-contract SectorVault is SectorBase {
+contract SectorVault is SectorBase, XChainIntegrator {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
 

@@ -19,4 +19,6 @@ interface IPostman {
 	) external view returns (uint256);
 
 	function setRefundTo(address _refundTo) external;
+
+	function fundPostman() external payable;
 }

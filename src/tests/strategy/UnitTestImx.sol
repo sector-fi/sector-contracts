@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICollateral } from "../../interfaces/imx/IImpermax.sol";
-import { IMX, IMXCore } from "../../strategies/imx/IMX.sol";
+import { ICollateral } from "interfaces/imx/IImpermax.sol";
+import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import { SetupImx, IUniswapV2Pair } from "./SetupImx.sol";

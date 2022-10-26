@@ -2,9 +2,9 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { Auth } from "./Auth.sol";
-import "../interfaces/MsgStructs.sol";
-import "../interfaces/postOffice/IPostman.sol";
+import { Auth } from "../../common/Auth.sol";
+import "../../interfaces/MsgStructs.sol";
+import "../../interfaces/postOffice/IPostman.sol";
 // import "hardhat/console.sol";
 
 /// @notice Struct encoded in Bungee calldata

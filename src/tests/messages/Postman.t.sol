@@ -6,11 +6,11 @@ import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.s
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SectorCrossVaultTestSetup } from "../vault/SectorCrossVaultSetup.t.sol";
-import { SectorCrossVault } from "../../vaults/SectorCrossVault.sol";
-import { SectorVault, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
+import { SectorCrossVault } from "vaults/sectorVaults/SectorCrossVault.sol";
+import { SectorVault, AuthConfig, FeeConfig } from "vaults/sectorVaults/SectorVault.sol";
 import { SCYVaultSetup } from "../vault/SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import "../../interfaces/MsgStructs.sol";
+import "interfaces/MsgStructs.sol";
 import "forge-std/Vm.sol";
 
 import "hardhat/console.sol";

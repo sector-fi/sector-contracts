@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import { SCYStrategy, Strategy } from "./scy/SCYStrategy.sol";
-import { HLPCore } from "../strategies/hlp/HLPCore.sol";
-import { SCYVault, IERC20 } from "./scy/SCYVault.sol";
-import { AuthConfig, Auth } from "../common/Auth.sol";
-import { FeeConfig, Fees } from "../common/Fees.sol";
-import { HarvestSwapParams } from "../interfaces/Structs.sol";
+import { SCYStrategy, Strategy } from "../scy/SCYStrategy.sol";
+import { HLPCore } from "../../strategies/hlp/HLPCore.sol";
+import { SCYVault, IERC20 } from "../scy/SCYVault.sol";
+import { AuthConfig, Auth } from "../../common/Auth.sol";
+import { FeeConfig, Fees } from "../../common/Fees.sol";
+import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 
 contract HLPVault is SCYStrategy, SCYVault {
 	constructor(

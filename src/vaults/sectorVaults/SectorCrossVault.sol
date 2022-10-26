@@ -3,12 +3,12 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
+import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
 import { SectorVault } from "./SectorVault.sol";
-import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "./ERC4626/ERC4626.sol";
-import { XChainIntegrator } from "../common/XChainIntegrator.sol";
+import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
 import { SectorBase } from "./SectorBase.sol";
-import "../interfaces/MsgStructs.sol";
+import { XChainIntegrator } from "./XChainIntegrator.sol";
+import "../../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
 
@@ -19,7 +19,7 @@ struct HarvestLedger {
 	uint256 receivedAnswers;
 }
 
-contract SectorCrossVault is SectorBase {
+contract SectorCrossVault is SectorBase, XChainIntegrator {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 
