@@ -5,17 +5,17 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { SectorXVaultTestSetup } from "../vault/SectorXVaultSetup.t.sol";
-import { SectorXVault } from "../../vaults/SectorXVault.sol";
-import { SectorVault, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
+import { SectorXVaultSetup } from "../vault/SectorXVaultSetup.t.sol";
+import { SectorXVault } from "vaults/sectorVaults/SectorXVault.sol";
+import { SectorVault, AuthConfig, FeeConfig } from "vaults/sectorVaults/SectorVault.sol";
 import { SCYVaultSetup } from "../vault/SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import "../../interfaces/MsgStructs.sol";
+import "interfaces/MsgStructs.sol";
 import "forge-std/Vm.sol";
 
 import "hardhat/console.sol";
 
-contract PostmanTest is SectorXVaultTestSetup, SCYVaultSetup {
+contract PostmanTest is SectorXVaultSetup, SCYVaultSetup {
 	LayerZeroPostman EthLZpostman;
 	LayerZeroPostman AvaxLZpostman;
 	MultichainPostman AvaxMCpostman;
@@ -61,6 +61,7 @@ contract PostmanTest is SectorXVaultTestSetup, SCYVaultSetup {
 			underlying,
 			"SECT_VAULT",
 			"SECT_VAULT",
+			false,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
 			1e14
@@ -78,6 +79,7 @@ contract PostmanTest is SectorXVaultTestSetup, SCYVaultSetup {
 			underlying,
 			"SECT_VAULT",
 			"SECT_VAULT",
+			false,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
 			1e14
@@ -205,8 +207,8 @@ contract PostmanTest is SectorXVaultTestSetup, SCYVaultSetup {
 		emit RegisterIncomingFunds(1000);
 
 		EthSectorVault.processIncomingXFunds();
-
-		uint256 _srcVaultUnderlyingBalance = EthSectorVault.estimateUnderlyingBalance(_srcVault);
+		address xSrcAddr = EthSectorVault.getXAddr(_srcVault, AVAX_CHAIN_ID);
+		uint256 _srcVaultUnderlyingBalance = EthSectorVault.estimateUnderlyingBalance(xSrcAddr);
 
 		assertEq(1000, _srcVaultUnderlyingBalance);
 
@@ -253,7 +255,8 @@ contract PostmanTest is SectorXVaultTestSetup, SCYVaultSetup {
 
 		EthSectorVault.processIncomingXFunds();
 
-		uint256 _srcVaultUnderlyingBalance = EthSectorVault.estimateUnderlyingBalance(_srcVault);
+		address xSrcAddr = EthSectorVault.getXAddr(_srcVault, AVAX_CHAIN_ID);
+		uint256 _srcVaultUnderlyingBalance = EthSectorVault.estimateUnderlyingBalance(xSrcAddr);
 
 		assertEq(1000, _srcVaultUnderlyingBalance);
 

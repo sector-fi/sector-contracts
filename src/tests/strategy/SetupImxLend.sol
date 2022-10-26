@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICollateral } from "../../interfaces/imx/IImpermax.sol";
-import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOracle.sol";
+import { ICollateral } from "interfaces/imx/IImpermax.sol";
+import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { IMXConfig, HarvestSwapParams } from "../../interfaces/Structs.sol";
-import { SCYVault, IMXLend, Strategy, AuthConfig, FeeConfig } from "../../vaults/IMXLend.sol";
-import { IMX } from "../../strategies/imx/IMX.sol";
+import { IMXConfig, HarvestSwapParams } from "interfaces/Structs.sol";
+import { SCYVault, IMXLend, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/IMXLend.sol";
+import { IMX } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { StratUtils } from "./StratUtils.sol";
 

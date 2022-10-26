@@ -8,7 +8,7 @@ import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.so
 
 import { SectorTest } from "../utils/SectorTest.sol";
 import { HLPConfig, HarvestSwapParams, NativeToken } from "interfaces/Structs.sol";
-import { SCYVault, HLPVault, Strategy, AuthConfig, FeeConfig } from "vaults/HLPVault.sol";
+import { SCYVault, HLPVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/HLPVault.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { MasterChefCompMulti } from "strategies/hlp/implementations/MasterChefCompMulti.sol";

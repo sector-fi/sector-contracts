@@ -5,21 +5,21 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
+import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
-import { SectorXVault, Request } from "../../vaults/SectorXVault.sol";
+import { SectorXVault, Request } from "vaults/sectorVaults/SectorXVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
 import { MockSocketRegistry } from "../mocks/MockSocketRegistry.sol";
 
-import { MiddlewareRequest, BridgeRequest, UserRequest } from "../../common/XChainIntegrator.sol";
+import { MiddlewareRequest, BridgeRequest, UserRequest } from "vaults/sectorVaults/XChainIntegrator.sol";
 import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
-contract SectorXVaultTestSetup is SectorTest {
+contract SectorXVaultSetup is SectorTest {
 	uint16 chainId;
 
 	uint16 anotherChainId = 1;
@@ -37,13 +37,13 @@ contract SectorXVaultTestSetup is SectorTest {
 	// address socketRegistry = 0x2b42AFFD4b7C14d9B7C2579229495c052672Ccd3;
 
 	function depositXVault(address acc, uint256 amount) public {
-		depositVault(acc, amount, address(xVault));
+		depositVault(acc, amount, payable(xVault));
 	}
 
 	function depositVault(
 		address acc,
 		uint256 amount,
-		address vault
+		address payable vault
 	) public {
 		SectorBase v = SectorBase(vault);
 
@@ -108,7 +108,7 @@ contract SectorXVaultTestSetup is SectorTest {
 	) public {
 		uint256[] memory shares = new uint256[](requests.length);
 		for (uint256 i = 0; i < requests.length; i++) {
-			SectorVault vault = SectorVault(requests[i].vaultAddr);
+			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 			shares[i] = vault.balanceOf(address(xVault));
 		}
 
@@ -125,9 +125,21 @@ contract SectorXVaultTestSetup is SectorTest {
 		vm.warp(block.timestamp + 100);
 
 		// for (uint256 i = 0; i < requests.length; i++) {
-		// 	SectorVault vault = SectorVault(requests[i].vaultAddr);
+		// 	SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 		// 	// uint256 share = shares[i];
 		// 	uint256 value = (shares[i] * requests[i].amount) / 1e18;
+
+		// 	(uint16 vaultChainId, , ) = xVault.addrBook(address(vault));
+		// 	// On same chain as xVault
+		// 	if (vaultChainId == chainId) {
+		// 		assertEq(vault.pendingWithdraw(), value, "Pending value must be equal to expected");
+
+		// 		(uint256 ts, uint256 sh, uint256 val) = vault.withdrawLedger(address(xVault));
+
+		// 		assertEq(ts, requestTimestamp, "Withdraw timestamp must be equal to expected");
+		// 		assertEq(sh, shares[i], "Shares must be equal to expected");
+		// 		assertEq(val, value, "Value assets must be equal to expected");
+		// 	}
 		// }
 
 		Vm.Log[] memory entries = vm.getRecordedLogs();
@@ -184,7 +196,7 @@ contract SectorXVaultTestSetup is SectorTest {
 		uint256 totalAmount = 0;
 		for (uint256 i; i < vaults.length; i++) {
 			totalAmount += amounts[i];
-			fakeIncomingXDeposit(address(vaults[i]), amounts[i]);
+			fakeIncomingXDeposit(payable(vaults[i]), amounts[i]);
 		}
 
 		// Go back to harvest test
@@ -244,7 +256,7 @@ contract SectorXVaultTestSetup is SectorTest {
 		vm.stopPrank();
 	}
 
-	function fakeIncomingXDeposit(address vaultAddr, uint256 amount) public {
+	function fakeIncomingXDeposit(address payable vaultAddr, uint256 amount) public {
 		SectorVault vault = SectorVault(vaultAddr);
 
 		vm.startPrank(getPostmanAddr(vaultAddr, anotherChainId));

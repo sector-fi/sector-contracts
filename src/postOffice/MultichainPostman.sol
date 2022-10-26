@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import { CallProxy } from "../interfaces/adapters/IMultichainAdapter.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IPostman } from "../interfaces/postOffice/IPostman.sol";
-import { XChainIntegrator } from "../common/XChainIntegrator.sol";
+import { XChainIntegrator } from "../vaults/sectorVaults/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
@@ -31,7 +31,6 @@ contract MultichainPostman is Ownable, IPostman {
 		MessageType _messageType,
 		uint16 _dstChainId
 	) external payable {
-
 		if (address(this).balance == 0) revert NoBalance();
 
 		Message memory msgToMultichain = Message({
@@ -52,7 +51,6 @@ contract MultichainPostman is Ownable, IPostman {
 	}
 
 	function anyExecute(bytes memory _data) external returns (bool success, bytes memory result) {
-
 		(Message memory _msg, address _dstVaultAddress, uint16 _messageType) = abi.decode(
 			_data,
 			(Message, address, uint16)
@@ -103,12 +101,12 @@ contract MultichainPostman is Ownable, IPostman {
 		refundTo = _refundTo;
 	}
 
-	fallback() external payable {
+	function fundPostman() external payable override {}
+
+	receive() external payable {
 		(bool sent, ) = refundTo.call{ value: msg.value }("");
 		if (!sent) revert RefundFailed();
 	}
-
-	// receive() external payable {}
 
 	/*/////////////////////////////////////////////////////
 					EVENTS

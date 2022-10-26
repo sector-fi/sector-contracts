@@ -5,21 +5,21 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/SectorVault.sol";
+import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/sectorVaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
-import { SectorXVault, Request } from "../../vaults/SectorXVault.sol";
+import { SectorXVault, Request } from "../../vaults/sectorVaults/SectorXVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
-import { SectorXVaultTestSetup, MockSocketRegistry } from "./SectorXVaultSetup.t.sol";
-import { SectorXVault } from "../../vaults/SectorXVault.sol";
+import { SectorXVaultSetup, MockSocketRegistry } from "./SectorXVaultSetup.t.sol";
+import { SectorXVault } from "../../vaults/sectorVaults/SectorXVault.sol";
 
 import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
-contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
+contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 	uint256 mainnetFork;
 	uint256 avaxFork;
 	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");
@@ -62,6 +62,7 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 			underlying,
 			"SECT_X_VAULT",
 			"SECT_X_VAULT",
+			false,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
 			1e14
@@ -79,6 +80,7 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 					underlying,
 					"SECT_VAULT",
 					"SECT_VAULT",
+					false,
 					AuthConfig(owner, guardian, manager),
 					FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
 					1e14
@@ -95,7 +97,7 @@ contract SectorXVaultTest is SectorXVaultTestSetup, SCYVaultSetup {
 			vaults[i].addVault(address(xVault), chainId, 1, true);
 
 			// Add min liquidity
-			depositVault(manager, mLp, address(vaults[i]));
+			depositVault(manager, mLp, payable(vaults[i]));
 		}
 
 		// Must be address of multichain service provider

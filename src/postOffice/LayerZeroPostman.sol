@@ -6,7 +6,7 @@ import { ILayerZeroEndpoint } from "../interfaces/adapters/ILayerZeroEndpoint.so
 import { ILayerZeroUserApplicationConfig } from "../interfaces/adapters/ILayerZeroUserApplicationConfig.sol";
 import { IPostman } from "../interfaces/postOffice/IPostman.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { XChainIntegrator } from "../common/XChainIntegrator.sol";
+import { XChainIntegrator } from "../vaults/sectorVaults/XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
@@ -28,7 +28,11 @@ contract LayerZeroPostman is
 	// map original chainIds to layerZero's chainIds
 	mapping(uint16 => uint16) public chains;
 
-	constructor(address _layerZeroEndpoint, chainPair[] memory chainPairArr, address _refundTo) {
+	constructor(
+		address _layerZeroEndpoint,
+		chainPair[] memory chainPairArr,
+		address _refundTo
+	) {
 		endpoint = ILayerZeroEndpoint(_layerZeroEndpoint);
 		refundTo = _refundTo;
 
@@ -54,7 +58,6 @@ contract LayerZeroPostman is
 		MessageType _messageType,
 		uint16 _dstChainId
 	) external payable override {
-
 		if (address(this).balance == 0) revert NoBalance();
 
 		Message memory msgToLayerZero = Message({
@@ -201,6 +204,8 @@ contract LayerZeroPostman is
 	function forceResumeReceive(uint16 _srcChainId, bytes calldata _srcAddress) external override {
 		// do nth
 	}
+
+	function fundPostman() external payable override {}
 
 	/*/////////////////////////////////////////////////////
 					EVENTS

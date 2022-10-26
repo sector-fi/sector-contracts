@@ -3,7 +3,8 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ERC4626 } from "./ERC4626.sol";
+import { ERC4626, IWETH } from "../ERC4626/ERC4626.sol";
+import { SafeETH } from "../../libraries/SafeETH.sol";
 
 import "hardhat/console.sol";
 
@@ -69,11 +70,27 @@ abstract contract BatchedWithdraw is ERC4626 {
 		return redeem(msg.sender);
 	}
 
+	/// @dev safest UI method
+	function redeemNative() public virtual returns (uint256 amountOut) {
+		return redeemNative(msg.sender);
+	}
+
+	function redeemNative(address receiver) public virtual returns (uint256 amountOut) {
+		if (!useNativeAsset) revert NotNativeAsset();
+		uint256 shares;
+		(amountOut, shares) = _redeem(msg.sender);
+
+		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
+
+		IWETH(address(asset)).withdraw(amountOut);
+		SafeETH.safeTransferETH(receiver, amountOut);
+	}
+
 	function redeem(address receiver) public virtual returns (uint256 amountOut) {
 		uint256 shares;
 		(amountOut, shares) = _redeem(msg.sender);
-		ERC20(asset).transfer(receiver, amountOut);
 		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
+		asset.safeTransfer(receiver, amountOut);
 	}
 
 	/// @dev should only be called by manager on behalf of xVaults
@@ -172,6 +189,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 		return withdrawLedger[user];
 	}
 
+	error NotNativeAsset();
 	error Expired();
 	error NotImplemented();
 	error NotReady();

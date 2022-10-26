@@ -3,12 +3,12 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { BatchedWithdraw } from "./ERC4626/BatchedWithdraw.sol";
+import { BatchedWithdraw } from "./BatchedWithdraw.sol";
 import { SectorVault } from "./SectorVault.sol";
-import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "./ERC4626/ERC4626.sol";
-import { XChainIntegrator } from "../common/XChainIntegrator.sol";
+import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
 import { SectorBase } from "./SectorBase.sol";
-import "../interfaces/MsgStructs.sol";
+import { XChainIntegrator } from "./XChainIntegrator.sol";
+import "../../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
 
@@ -19,7 +19,7 @@ struct HarvestLedger {
 	uint256 receivedAnswers;
 }
 
-contract SectorXVault is SectorBase {
+contract SectorXVault is SectorBase, XChainIntegrator {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 
@@ -32,11 +32,12 @@ contract SectorXVault is SectorBase {
 		ERC20 _asset,
 		string memory _name,
 		string memory _symbol,
+		bool _useNativeAsset,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig,
 		uint256 _maxBridgeFeeAllowed
 	)
-		ERC4626(_asset, _name, _symbol)
+		ERC4626(_asset, _name, _symbol, _useNativeAsset)
 		Auth(authConfig)
 		Fees(feeConfig)
 		BatchedWithdraw()
@@ -133,7 +134,7 @@ contract SectorXVault is SectorBase {
 			VaultAddr memory v = vaultList[i];
 
 			if (v.chainId == chainId) {
-				localDepositValue += SectorVault(v.addr).underlyingBalance(address(this));
+				localDepositValue += SectorVault(payable(v.addr)).underlyingBalance(address(this));
 			} else {
 				Vault memory vault = addrBook[getXAddr(v.addr, v.chainId)];
 
@@ -187,7 +188,7 @@ contract SectorXVault is SectorBase {
 			Vault memory vault = checkVault(v.addr, v.chainId);
 
 			if (v.chainId == chainId) {
-				BatchedWithdraw _vault = BatchedWithdraw(v.addr);
+				BatchedWithdraw _vault = BatchedWithdraw(payable(v.addr));
 				uint256 transferShares = userPerc.mulWadDown(_vault.balanceOf(address(this)));
 				_vault.transfer(msg.sender, transferShares);
 			} else {
