@@ -33,7 +33,11 @@ abstract contract BatchedWithdraw is ERC4626 {
 	}
 
 	function requestRedeem(uint256 shares, address owner) public {
-		if (msg.sender != owner) _spendAllowance(owner, msg.sender, shares);
+		_requestRedeem(shares, owner, true);
+	}
+
+	function _requestRedeem(uint256 shares, address owner, bool notXChain) internal {
+		if (msg.sender != owner && notXChain) _spendAllowance(owner, msg.sender, shares);
 		_transfer(owner, address(this), shares);
 		WithdrawRecord storage withdrawRecord = withdrawLedger[msg.sender];
 		withdrawRecord.timestamp = block.timestamp;
@@ -42,6 +46,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 		withdrawRecord.value = value;
 		pendingWithdraw += value;
 		emit RequestWithdraw(msg.sender, owner, shares);
+
 	}
 
 	function withdraw(
@@ -89,10 +94,10 @@ abstract contract BatchedWithdraw is ERC4626 {
 	}
 
 	/// @dev should only be called by manager on behalf of xVaults
-	function _xRedeem(address xVault) internal virtual returns (uint256 amountOut) {
+	function _xRedeem(address xVault, address _vault) internal virtual returns (uint256 amountOut) {
 		uint256 shares;
 		(amountOut, shares) = _redeem(xVault);
-		emit Withdraw(xVault, xVault, xVault, amountOut, shares);
+		emit Withdraw(_vault, _vault, _vault, amountOut, shares);
 	}
 
 	function _redeem(address account) internal returns (uint256 amountOut, uint256 shares) {

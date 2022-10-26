@@ -9,13 +9,18 @@ struct Message {
 }
 
 struct Vault {
-	uint16 chainId;
 	uint16 postmanId;
 	bool allowed;
 }
 
+struct VaultAddr {
+	address addr;
+	uint16 chainId;
+}
+
 struct Request {
 	address vaultAddr;
+	uint16 vaultChainId;
 	uint256 amount;
     uint256 bridgeFee;
 	address allowanceTarget;

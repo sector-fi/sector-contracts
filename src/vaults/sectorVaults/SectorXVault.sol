@@ -19,15 +19,14 @@ struct HarvestLedger {
 	uint256 receivedAnswers;
 }
 
-contract SectorCrossVault is SectorBase, XChainIntegrator {
+contract SectorXVault is SectorBase, XChainIntegrator {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 
 	// Used to harvest from deposited vaults
-	address[] public vaultList;
+	VaultAddr[] public vaultList;
 	// Harvest state
 	HarvestLedger public harvestLedger;
-	Message[] public withdrawQueue;
 
 	constructor(
 		ERC20 _asset,
@@ -35,12 +34,14 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 		string memory _symbol,
 		bool _useNativeAsset,
 		AuthConfig memory authConfig,
-		FeeConfig memory feeConfig
+		FeeConfig memory feeConfig,
+		uint256 _maxBridgeFeeAllowed
 	)
 		ERC4626(_asset, _name, _symbol, _useNativeAsset)
 		Auth(authConfig)
 		Fees(feeConfig)
 		BatchedWithdraw()
+		XChainIntegrator(_maxBridgeFeeAllowed)
 	{}
 
 	/*/////////////////////////////////////////////////////
@@ -52,18 +53,22 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
+			uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
-			uint256 bridgeFee = vaults[i].bridgeFee;
 
-			Vault memory vault = checkVault(vaultAddr);
-			if (vault.chainId == chainId) revert SameChainOperation();
+			checkBridgeFee(amount, vaults[i].bridgeFee);
+
+			if (vaultChainId == chainId) revert SameChainOperation();
+			Vault memory vault = checkVault(vaultAddr, vaultChainId);
 
 			totalAmount += amount;
 
+			// TODO make a fee validation HERE
 			_sendMessage(
 				vaultAddr,
+				vaultChainId,
 				vault,
-				Message(amount - bridgeFee, address(this), address(0), chainId),
+				Message(amount - vaults[i].bridgeFee, address(this), address(0), chainId),
 				MessageType.DEPOSIT
 			);
 
@@ -73,11 +78,11 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 				vaults[i].registry,
 				vaultAddr,
 				amount,
-				uint256(vault.chainId),
+				uint256(vaultChainId),
 				vaults[i].txData
 			);
 
-			emit BridgeAsset(chainId, vault.chainId, amount);
+			emit BridgeAsset(chainId, vaultChainId, amount);
 
 			unchecked {
 				i++;
@@ -96,14 +101,16 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
+			uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
 
-			Vault memory vault = checkVault(vaultAddr);
+			if (vaultChainId == chainId) revert SameChainOperation();
 
-			if (vault.chainId == chainId) revert SameChainOperation();
+			Vault memory vault = checkVault(vaultAddr, vaultChainId);
 
 			_sendMessage(
 				vaultAddr,
+				vaultChainId,
 				vault,
 				Message(amount, address(this), address(0), chainId),
 				MessageType.WITHDRAW
@@ -124,16 +131,16 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 		uint256 xvaultsCount = 0;
 
 		for (uint256 i = 0; i < vaultsLength; ) {
-			address vaultAddr = vaultList[i];
-			Vault memory vault = addrBook[vaultAddr];
+			VaultAddr memory v = vaultList[i];
 
-			if (vault.chainId == chainId) {
-				localDepositValue += SectorVault(payable(vaultAddr)).underlyingBalance(
-					address(this)
-				);
+			if (v.chainId == chainId) {
+				localDepositValue += SectorVault(payable(v.addr)).underlyingBalance(address(this));
 			} else {
+				Vault memory vault = addrBook[getXAddr(v.addr, v.chainId)];
+
 				_sendMessage(
-					vaultAddr,
+					v.addr,
+					v.chainId,
 					vault,
 					Message(0, address(this), address(0), chainId),
 					MessageType.HARVEST
@@ -177,16 +184,17 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 
 		uint256 vaultsLength = vaultList.length;
 		for (uint256 i = 0; i < vaultsLength; ) {
-			address vaultAddr = vaultList[i];
-			Vault memory vault = checkVault(vaultAddr);
+			VaultAddr memory v = vaultList[i];
+			Vault memory vault = checkVault(v.addr, v.chainId);
 
-			if (vault.chainId == chainId) {
-				BatchedWithdraw _vault = BatchedWithdraw(payable(vaultAddr));
+			if (v.chainId == chainId) {
+				BatchedWithdraw _vault = BatchedWithdraw(payable(v.addr));
 				uint256 transferShares = userPerc.mulWadDown(_vault.balanceOf(address(this)));
 				_vault.transfer(msg.sender, transferShares);
 			} else {
 				_sendMessage(
-					vaultAddr,
+					v.addr,
+					v.chainId,
 					vault,
 					Message(userPerc, address(this), msg.sender, chainId),
 					MessageType.EMERGENCYWITHDRAW
@@ -200,16 +208,18 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 	}
 
 	// Do linear search on vaultList -> O(n)
-	function removeVault(address _vault) external onlyOwner {
-		addrBook[_vault].allowed = false;
+	function removeVault(address _vault, uint16 _chainId) external onlyOwner {
+		addrBook[getXAddr(_vault, _chainId)].allowed = false;
 
 		uint256 length = vaultList.length;
 		for (uint256 i = 0; i < length; ) {
-			if (vaultList[i] == _vault) {
+			VaultAddr memory v = vaultList[i];
+
+			if (v.addr == _vault && v.chainId == _chainId) {
 				vaultList[i] = vaultList[length - 1];
 				vaultList.pop();
 
-				emit ChangedVaultStatus(_vault, false);
+				emit ChangedVaultStatus(_vault, _chainId, false);
 				return;
 			}
 			unchecked {
@@ -229,7 +239,7 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 		bool _allowed
 	) external override onlyOwner {
 		_addVault(_vault, _chainId, _postmanId, _allowed);
-		vaultList.push(_vault);
+		vaultList.push(VaultAddr(_vault, _chainId));
 	}
 
 	/*/////////////////////////////////////////////////////
@@ -242,30 +252,22 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 		else revert NotImplemented();
 	}
 
-	function checkVault(address _vault) internal view returns (Vault memory) {
-		Vault memory vault = addrBook[_vault];
-		if (!vault.allowed) revert VaultNotAllowed(_vault);
+	function checkVault(address _vault, uint16 _chainId) internal returns (Vault memory) {
+		Vault memory vault = addrBook[getXAddr(_vault, _chainId)];
+		if (!vault.allowed) revert VaultNotAllowed(_vault, _chainId);
 		return vault;
 	}
 
 	function _receiveWithdraw(Message calldata _msg) internal {
-		withdrawQueue.push(_msg);
-	}
-
-	function getWithdrawQueueLength() external view returns (Message[] memory) {
-		return withdrawQueue;
-	}
-
-	function getWithdrawQueue() external view returns (Message[] memory) {
-		return withdrawQueue;
+		incomingQueue.push(_msg);
 	}
 
 	function processIncomingXFunds() external override onlyRole(MANAGER) {
-		uint256 length = withdrawQueue.length;
+		uint256 length = incomingQueue.length;
 		uint256 total = 0;
 		for (uint256 i = length; i > 0; ) {
-			Message memory _msg = withdrawQueue[i - 1];
-			withdrawQueue.pop();
+			Message memory _msg = incomingQueue[i - 1];
+			incomingQueue.pop();
 
 			total += _msg.value;
 
@@ -275,11 +277,6 @@ contract SectorCrossVault is SectorBase, XChainIntegrator {
 		}
 		// Should account for fees paid in tokens for using bridge
 		// Also, if a value hasn't arrived manager will not be able to register any value
-		// console.log(total);
-		// console.log(asset.balanceOf(address(this)));
-		// console.log(floatAmnt);
-		// console.log(pendingWithdraw);
-
 		if (total < (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
 			revert MissingIncomingXFunds();
 

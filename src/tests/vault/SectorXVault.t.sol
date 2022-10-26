@@ -8,18 +8,18 @@ import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "../../vaults/sectorVaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
-import { SectorCrossVault, Request } from "../../vaults/sectorVaults/SectorCrossVault.sol";
+import { SectorXVault, Request } from "../../vaults/sectorVaults/SectorXVault.sol";
 import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
-import { SectorCrossVaultTestSetup, MockSocketRegistry } from "./SectorCrossVaultSetup.t.sol";
-import { SectorCrossVault } from "../../vaults/sectorVaults/SectorCrossVault.sol";
+import { SectorXVaultSetup, MockSocketRegistry } from "./SectorXVaultSetup.t.sol";
+import { SectorXVault } from "../../vaults/sectorVaults/SectorXVault.sol";
 
 import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
-contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
+contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 	uint256 mainnetFork;
 	uint256 avaxFork;
 	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");
@@ -34,7 +34,7 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 
 	// WETH underlying;
 
-	// SectorCrossVault xVault;
+	// SectorXVault xVault;
 	// SectorVault[] vaults;
 
 	// LayerZeroPostman postmanLz;
@@ -58,13 +58,14 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		// Must be address of layerZero service provider
 		postmanLz = new LayerZeroPostman(avaxLzAddr, inptChainPair, manager);
 
-		xVault = new SectorCrossVault(
+		xVault = new SectorXVault(
 			underlying,
 			"SECT_X_VAULT",
 			"SECT_X_VAULT",
 			false,
 			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
+			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
+			1e14
 		);
 
 		// // Config xVault to use postmen
@@ -81,7 +82,8 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 					"SECT_VAULT",
 					false,
 					AuthConfig(owner, guardian, manager),
-					FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
+					FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
+					1e14
 				)
 			);
 			// Pretend that vaults are outside xVault chain
@@ -450,21 +452,20 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		vm.prank(owner);
 		xVault.addVault(newVault, chainId, 1, true);
 
-		(uint16 cId, uint16 pId, bool isAllowed) = xVault.addrBook(newVault);
+		(uint16 pId, bool isAllowed) = xVault.addrBook(xVault.getXAddr(newVault, chainId));
 		assertEq(isAllowed, true);
 		assertEq(pId, 1);
-		assertEq(cId, chainId);
 	}
 
 	function testRemoveVault() public {
 		address removedVault = address(vaults[0]);
 		vm.expectEmit(true, false, false, true);
-		emit ChangedVaultStatus(removedVault, false);
+		emit ChangedVaultStatus(removedVault, anotherChainId, false);
 
 		vm.prank(owner);
-		xVault.removeVault(removedVault);
+		xVault.removeVault(removedVault, anotherChainId);
 
-		(, , bool isAllowed) = xVault.addrBook(removedVault);
+		(, bool isAllowed) = xVault.addrBook(xVault.getXAddr(removedVault, anotherChainId));
 		assertEq(isAllowed, false);
 
 		// Also, needs to test if vault was removed from vaultList
@@ -479,12 +480,14 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		depositXVault(user1, amount);
 
 		vm.prank(owner);
-		xVault.removeVault(removedVault);
+		xVault.removeVault(removedVault, anotherChainId);
 
 		Request[] memory requests = new Request[](1);
 		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
 
-		vm.expectRevert(abi.encodeWithSelector(VaultNotAllowed.selector, removedVault));
+		vm.expectRevert(
+			abi.encodeWithSelector(VaultNotAllowed.selector, removedVault, anotherChainId)
+		);
 		vm.prank(manager);
 		xVault.depositIntoXVaults(requests);
 	}
@@ -492,18 +495,18 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 	function testChangeVaultStatus() public {
 		address testVault = address(vaults[1]);
 		vm.expectEmit(true, false, false, true);
-		emit ChangedVaultStatus(testVault, false);
+		emit ChangedVaultStatus(testVault, anotherChainId, false);
 
 		vm.prank(owner);
-		xVault.changeVaultStatus(testVault, false);
+		xVault.changeVaultStatus(testVault, anotherChainId, false);
 
-		(, , bool isFalse) = xVault.addrBook(testVault);
+		(, bool isFalse) = xVault.addrBook(xVault.getXAddr(testVault, anotherChainId));
 		assertEq(isFalse, false);
 
 		vm.prank(owner);
-		xVault.changeVaultStatus(testVault, true);
+		xVault.changeVaultStatus(testVault, anotherChainId, true);
 
-		(, , bool isTrue) = xVault.addrBook(testVault);
+		(, bool isTrue) = xVault.addrBook(xVault.getXAddr(testVault, anotherChainId));
 		assertEq(isTrue, true);
 	}
 
@@ -511,12 +514,12 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		address testVault = address(vaults[1]);
 		uint16 newPostmanId = 2;
 		vm.expectEmit(true, false, false, true);
-		emit UpdatedVaultPostman(testVault, newPostmanId);
+		emit UpdatedVaultPostman(testVault, anotherChainId, newPostmanId);
 
 		vm.prank(owner);
-		xVault.updateVaultPostman(testVault, newPostmanId);
+		xVault.updateVaultPostman(testVault, anotherChainId, newPostmanId);
 
-		(, uint16 postId, ) = xVault.addrBook(testVault);
+		(uint16 postId, ) = xVault.addrBook(xVault.getXAddr(testVault, anotherChainId));
 		assertEq(postId, newPostmanId);
 	}
 
@@ -536,28 +539,46 @@ contract SectorCrossVaultTest is SectorCrossVaultTestSetup, SCYVaultSetup {
 		assertEq(checkPostman, newPostman);
 	}
 
-	// Copied from SectorCrossVault to test
+	// Copied from SectorXVault to test
 	/*/////////////////////////////////////////////////////
 							Events
 	/////////////////////////////////////////////////////*/
 
+	event MessageReceived(
+		uint256 value,
+		address indexed sender,
+		uint16 indexed srcChainId,
+		MessageType mType,
+		address postman
+	);
+	event MessageSent(
+		uint256 value,
+		address indexed receiver,
+		uint16 indexed dstChainId,
+		MessageType mtype,
+		address postman
+	);
 	event AddedVault(address indexed vault, uint16 chainId);
-	event ChangedVaultStatus(address indexed vault, bool status);
-	event UpdatedVaultPostman(address indexed vault, uint16 postmanId);
+	event ChangedVaultStatus(address indexed vault, uint16 indexed chainId, bool status);
+	event UpdatedVaultPostman(address indexed vault, uint16 indexed chainId, uint16 postmanId);
 	event PostmanUpdated(uint16 indexed postmanId, uint16 chanId, address postman);
 	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
 	event RegisterIncomingFunds(uint256 total);
+	event SetMaxBridgeFee(uint256 _maxFee);
 
 	/*/////////////////////////////////////////////////////
 							Errors
 	/////////////////////////////////////////////////////*/
 
+	error MissingPostman(uint16 postmanId, uint256 chainId);
 	error SenderNotAllowed(address sender);
 	error WrongPostman(address postman);
-	error VaultNotAllowed(address vault);
+	error VaultNotAllowed(address vault, uint16 chainId);
 	error VaultMissing(address vault);
 	error VaultAlreadyAdded();
 	error BridgeError();
 	error SameChainOperation();
 	error MissingIncomingXFunds();
+	error MaxBridgeFee();
+	error InsufficientBalanceToSendMessage();
 }

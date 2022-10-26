@@ -36,13 +36,20 @@ struct UserRequest {
 }
 
 abstract contract XChainIntegrator is Auth {
+	// mapping(address => mapping(uint16 => Vault)) public addrBook;
 	mapping(address => Vault) public addrBook;
 	mapping(uint16 => mapping(uint16 => address)) public postmanAddr;
-	// mapping(messageType => function(Message calldata)) internal messageAction;
+	mapping(address => mapping(uint16 => address)) public xAddr;
+	Message[] public incomingQueue;
 
 	uint16 immutable chainId = uint16(block.chainid);
 
-	constructor() {}
+	// A fixed point number where 1e18 represents 100% and 0 represents 0%.
+	uint256 public maxBridgeFeeAllowed;
+
+	constructor(uint256 _maxBridgeFeeAllowed) {
+		maxBridgeFeeAllowed = _maxBridgeFeeAllowed;
+	}
 
 	/*/////////////////////////////////////////////////////
 						Bridge utilities
@@ -182,6 +189,16 @@ abstract contract XChainIntegrator is Auth {
 		return tempBytes;
 	}
 
+	function checkBridgeFee(uint256 amount, uint256 fee) public view {
+		if (maxBridgeFeeAllowed * amount < fee * 1e18) revert MaxBridgeFee();
+	}
+
+	function setMaxBridgeFee(uint256 _maxFee) external onlyRole(GUARDIAN) {
+		maxBridgeFeeAllowed = _maxFee;
+
+		emit SetMaxBridgeFee(_maxFee);
+	}
+
 	/*/////////////////////////////////////////////////////
 					Address book management
 	/////////////////////////////////////////////////////*/
@@ -201,28 +218,38 @@ abstract contract XChainIntegrator is Auth {
 		uint16 _postmanId,
 		bool _allowed
 	) internal onlyOwner {
-		Vault memory vault = addrBook[_vault];
+		address xVaultAddr = getXAddr(_vault, _chainId);
+		Vault memory vault = addrBook[xVaultAddr];
 
 		if (vault.allowed) revert VaultAlreadyAdded();
 
-		addrBook[_vault] = Vault(_chainId, _postmanId, _allowed);
+		addrBook[xVaultAddr] = Vault(_postmanId, _allowed);
 		emit AddedVault(_vault, _chainId);
 	}
 
-	function changeVaultStatus(address _vault, bool _allowed) external onlyOwner {
-		addrBook[_vault].allowed = _allowed;
+	function changeVaultStatus(
+		address _vault,
+		uint16 _chainId,
+		bool _allowed
+	) external onlyOwner {
+		addrBook[getXAddr(_vault, _chainId)].allowed = _allowed;
 
-		emit ChangedVaultStatus(_vault, _allowed);
+		emit ChangedVaultStatus(_vault, _chainId, _allowed);
 	}
 
-	function updateVaultPostman(address _vault, uint16 _postmanId) external onlyOwner {
-		Vault memory vault = addrBook[_vault];
+	function updateVaultPostman(
+		address _vault,
+		uint16 _chainId,
+		uint16 _postmanId
+	) external onlyOwner {
+		address xVaultAddr = getXAddr(_vault, _chainId);
+		Vault memory vault = addrBook[xVaultAddr];
 
-		if (vault.chainId == 0) revert VaultMissing(_vault);
+		if (vault.postmanId == 0) revert VaultMissing(_vault);
 
-		addrBook[_vault].postmanId = _postmanId;
+		addrBook[xVaultAddr].postmanId = _postmanId;
 
-		emit UpdatedVaultPostman(_vault, _postmanId);
+		emit UpdatedVaultPostman(_vault, _chainId, _postmanId);
 	}
 
 	function managePostman(
@@ -239,18 +266,20 @@ abstract contract XChainIntegrator is Auth {
 					Cross-chain logic
 	/////////////////////////////////////////////////////*/
 
+	// Mising chainId info
 	function _sendMessage(
 		address receiverAddr,
+		uint16 receiverChainId,
 		Vault memory vault,
 		Message memory message,
 		MessageType msgType
 	) internal {
 		address srcPostman = postmanAddr[vault.postmanId][chainId];
-		address dstPostman = postmanAddr[vault.postmanId][vault.chainId];
+		address dstPostman = postmanAddr[vault.postmanId][receiverChainId];
 		if (srcPostman == address(0)) revert MissingPostman(vault.postmanId, chainId);
-		if (dstPostman == address(0)) revert MissingPostman(vault.postmanId, vault.chainId);
+		if (dstPostman == address(0)) revert MissingPostman(vault.postmanId, receiverChainId);
 
-		uint256 messageFee = _estimateMessageFee(receiverAddr, vault, message, msgType, srcPostman);
+		uint256 messageFee = _estimateMessageFee(receiverAddr, receiverChainId, message, msgType, srcPostman);
 
 		if (address(this).balance < messageFee) revert InsufficientBalanceToSendMessage();
 
@@ -259,16 +288,16 @@ abstract contract XChainIntegrator is Auth {
 			receiverAddr,
 			dstPostman,
 			msgType,
-			vault.chainId
+			receiverChainId
 		);
 
-		emit MessageSent(message.value, receiverAddr, vault.chainId, msgType, srcPostman);
+		emit MessageSent(message.value, receiverAddr, receiverChainId, msgType, srcPostman);
 	}
 
 	function receiveMessage(Message calldata _msg, MessageType _type) external {
 		// First check if postman is allowed
-		Vault memory vault = addrBook[_msg.sender];
-		if (!vault.allowed || _msg.chainId != vault.chainId) revert SenderNotAllowed(_msg.sender);
+		Vault memory vault = addrBook[getXAddr(_msg.sender, _msg.chainId)];
+		if (!vault.allowed) revert SenderNotAllowed(_msg.sender);
 		if (msg.sender != postmanAddr[vault.postmanId][chainId]) revert WrongPostman(msg.sender);
 
 		// messageAction[_type](_msg);
@@ -276,17 +305,33 @@ abstract contract XChainIntegrator is Auth {
 		emit MessageReceived(_msg.value, _msg.sender, _msg.chainId, _type, msg.sender);
 	}
 
+	function getXAddr(address xVault, uint16 _chainId) public returns (address computed) {
+		computed = xAddr[xVault][_chainId];
+		if (computed != address(0)) return computed;
+
+		computed = address(uint160(uint(keccak256(abi.encodePacked(_chainId, xVault)))));
+		xAddr[xVault][_chainId] = computed;
+	}
+
+	function getIncomingQueue() public view returns (Message[] memory) {
+		return incomingQueue;
+	}
+
+	function getIncomingQueueLength() public view returns (uint256) {
+		return incomingQueue.length;
+	}
+
 	function _handleMessage(MessageType _type, Message calldata _msg) internal virtual {}
 
 	function _estimateMessageFee(
 		address receiverAddr,
-		Vault memory vault,
+		uint16 receiverChainId,
 		Message memory message,
 		MessageType msgType,
 		address srcPostman
 	) internal view returns (uint256) {
 		uint256 messageFee = IPostman(srcPostman).estimateFee(
-			vault.chainId,
+			receiverChainId,
 			receiverAddr,
 			msgType,
 			message
@@ -297,20 +342,20 @@ abstract contract XChainIntegrator is Auth {
 
 	function estimateMessageFee(Request[] calldata vaults, MessageType _msgType)
 		external
-		view
 		returns (uint256)
 	{
 		uint256 totalFees = 0;
 		for (uint256 i = 0; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
+			uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
 
-			Vault memory vault = addrBook[vaultAddr];
+			Vault memory vault = addrBook[getXAddr(vaultAddr, vaultChainId)];
 			address srcPostman = postmanAddr[vault.postmanId][chainId];
 
 			totalFees += _estimateMessageFee(
 				vaultAddr,
-				vault,
+				vaultChainId,
 				Message(amount, address(this), address(0), chainId),
 				_msgType,
 				srcPostman
@@ -345,11 +390,12 @@ abstract contract XChainIntegrator is Auth {
 		address postman
 	);
 	event AddedVault(address indexed vault, uint16 chainId);
-	event ChangedVaultStatus(address indexed vault, bool status);
-	event UpdatedVaultPostman(address indexed vault, uint16 postmanId);
+	event ChangedVaultStatus(address indexed vault, uint16 indexed chainId, bool status);
+	event UpdatedVaultPostman(address indexed vault, uint16 indexed chainId, uint16 postmanId);
 	event PostmanUpdated(uint16 indexed postmanId, uint16 chanId, address postman);
 	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
 	event RegisterIncomingFunds(uint256 total);
+	event SetMaxBridgeFee(uint256 _maxFee);
 
 	/*/////////////////////////////////////////////////////
 							Errors
@@ -358,11 +404,12 @@ abstract contract XChainIntegrator is Auth {
 	error MissingPostman(uint16 postmanId, uint256 chainId);
 	error SenderNotAllowed(address sender);
 	error WrongPostman(address postman);
-	error VaultNotAllowed(address vault);
+	error VaultNotAllowed(address vault, uint16 chainId);
 	error VaultMissing(address vault);
 	error VaultAlreadyAdded();
 	error BridgeError();
 	error SameChainOperation();
 	error MissingIncomingXFunds();
+	error MaxBridgeFee();
 	error InsufficientBalanceToSendMessage();
 }

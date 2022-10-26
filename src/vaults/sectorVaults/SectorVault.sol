@@ -33,8 +33,7 @@ contract SectorVault is SectorBase, XChainIntegrator {
 
 	mapping(ISCYStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
-	address[] public bridgeQueue;
-	Message[] internal depositQueue;
+	VaultAddr[] public bridgeQueue;
 
 	uint256 public totalStrategyHoldings;
 
@@ -44,12 +43,14 @@ contract SectorVault is SectorBase, XChainIntegrator {
 		string memory _symbol,
 		bool _useNativeAsset,
 		AuthConfig memory authConfig,
-		FeeConfig memory feeConfig
+		FeeConfig memory feeConfig,
+		uint256 _maxBridgeFeeAllowed
 	)
 		ERC4626(asset_, _name, _symbol, _useNativeAsset)
 		Auth(authConfig)
 		Fees(feeConfig)
 		BatchedWithdraw()
+		XChainIntegrator(_maxBridgeFeeAllowed)
 	{}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
@@ -222,33 +223,41 @@ contract SectorVault is SectorBase, XChainIntegrator {
 	}
 
 	function _receiveDeposit(Message calldata _msg) internal {
-		depositQueue.push(_msg);
+		incomingQueue.push(_msg);
 	}
 
 	function _receiveWithdraw(Message calldata _msg) internal {
-		if (withdrawLedger[_msg.sender].value == 0) bridgeQueue.push(_msg.sender);
+		address xVaultAddr = getXAddr(_msg.sender, _msg.chainId);
+
+		if (withdrawLedger[xVaultAddr].value == 0)
+			bridgeQueue.push(VaultAddr(_msg.sender, _msg.chainId));
 
 		/// value here is the fraction of the shares owned by the vault
 		/// since the xVault doesn't know how many shares it holds
-		uint256 xVaultShares = balanceOf(_msg.sender);
+		uint256 xVaultShares = balanceOf(xVaultAddr);
 		uint256 shares = (_msg.value * xVaultShares) / 1e18;
-		requestRedeem(shares, _msg.sender);
+		_requestRedeem(shares, xVaultAddr, false);
 	}
 
 	function _receiveEmergencyWithdraw(Message calldata _msg) internal {
-		uint256 transferShares = (_msg.value * balanceOf(_msg.sender)) / 1e18;
+		address xVaultAddr = getXAddr(_msg.sender, _msg.chainId);
 
-		_transfer(_msg.sender, _msg.client, transferShares);
+		uint256 transferShares = (_msg.value * balanceOf(xVaultAddr)) / 1e18;
+
+		_transfer(xVaultAddr, _msg.client, transferShares);
 		emit EmergencyWithdraw(_msg.sender, _msg.client, transferShares);
 	}
 
 	// TODO should it trigger harvest first?
 	function _receiveHarvest(Message calldata _msg) internal {
-		uint256 xVaultUnderlyingBalance = underlyingBalance(_msg.sender);
+		address xVaultAddr = getXAddr(_msg.sender, _msg.chainId);
 
-		Vault memory vault = addrBook[_msg.sender];
+		uint256 xVaultUnderlyingBalance = underlyingBalance(xVaultAddr);
+
+		Vault memory vault = addrBook[xVaultAddr];
 		_sendMessage(
 			_msg.sender,
+			_msg.chainId,
 			vault,
 			Message(xVaultUnderlyingBalance, address(this), address(0), chainId),
 			MessageType.HARVEST
@@ -256,11 +265,11 @@ contract SectorVault is SectorBase, XChainIntegrator {
 	}
 
 	function processIncomingXFunds() external override onlyRole(MANAGER) {
-		uint256 length = depositQueue.length;
+		uint256 length = incomingQueue.length;
 		uint256 totalDeposit = 0;
 		for (uint256 i = length; i > 0; ) {
-			Message memory _msg = depositQueue[i - 1];
-			depositQueue.pop();
+			Message memory _msg = incomingQueue[i - 1];
+			incomingQueue.pop();
 
 			uint256 shares = previewDeposit(_msg.value);
 			// lock minimum liquidity if totalSupply is 0
@@ -270,7 +279,7 @@ contract SectorVault is SectorBase, XChainIntegrator {
 				shares -= MIN_LIQUIDITY;
 				_mint(address(1), MIN_LIQUIDITY);
 			}
-			_mint(_msg.sender, shares);
+			_mint(getXAddr(_msg.sender, _msg.chainId), shares);
 
 			unchecked {
 				totalDeposit += _msg.value;
@@ -295,19 +304,21 @@ contract SectorVault is SectorBase, XChainIntegrator {
 
 		uint256 total = 0;
 		for (uint256 i = length - 1; i > 0; ) {
-			address vAddr = bridgeQueue[i];
+			VaultAddr memory v = bridgeQueue[i];
 
-			if (requests[i].vaultAddr != vAddr) revert VaultAddressNotMatch();
+			if (requests[i].vaultAddr != v.addr) revert VaultAddressNotMatch();
+			address xVaultAddr = getXAddr(v.addr, v.chainId);
 
 			// this returns the underlying amount the vault is withdrawing
-			uint256 amountOut = _xRedeem(vAddr);
+			uint256 amountOut = _xRedeem(xVaultAddr, v.addr);
+			checkBridgeFee(amountOut, requests[i].bridgeFee);
 			bridgeQueue.pop();
 
-			Vault memory vault = addrBook[vAddr];
 			_sendMessage(
-				vAddr,
-				vault,
-				Message(amountOut, address(this), address(0), chainId),
+				v.addr,
+				v.chainId,
+				addrBook[xVaultAddr],
+				Message(amountOut - requests[i].bridgeFee, address(this), address(0), chainId),
 				MessageType.WITHDRAW
 			);
 
@@ -315,13 +326,13 @@ contract SectorVault is SectorBase, XChainIntegrator {
 				underlying(),
 				requests[i].allowanceTarget,
 				requests[i].registry,
-				vAddr,
+				v.addr,
 				amountOut,
-				addrBook[vAddr].chainId,
+				v.chainId,
 				requests[i].txData
 			);
 
-			emit BridgeAsset(chainId, addrBook[vAddr].chainId, amountOut);
+			emit BridgeAsset(chainId, v.chainId, amountOut);
 
 			unchecked {
 				total += amountOut;
