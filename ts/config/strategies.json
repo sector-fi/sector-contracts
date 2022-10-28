@@ -70,11 +70,7 @@
     "f1_farm": "0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176",
     "f2_farmToken": "0x6694340fc020c5E6B96567843da2df01b2CE1eb6",
     "g_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-    "h_harvestPath": [
-      "0x6694340fc020c5E6B96567843da2df01b2CE1eb6",
-      "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
-      "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
-    ],
+    "h_harvestPath": "0x6694340fc020c5e6b96567843da2df01b2ce1eb6000bb882af49447d8a07e3bd95bd0d56f35241523fbab10001f4ff970a61a04b1ca14834a43f5de4533ebddb5cc8",
     "x_chain": "ARBITRUM"
   }
 }

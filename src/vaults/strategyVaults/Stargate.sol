@@ -8,12 +8,12 @@ import { SafeETH } from "../../libraries/SafeETH.sol";
 import { AuthConfig, Auth } from "../../common/Auth.sol";
 import { FeeConfig, Fees } from "../../common/Fees.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";
-import { IStargateRouter } from "../../interfaces/strategies/IStargateRouter.sol";
-import { IStargatePool } from "../../interfaces/strategies/IStargatePool.sol";
-import { IStarchef } from "../../interfaces/strategies/IStarchef.sol";
+import { IStargateRouter, lzTxObj } from "../../interfaces/stargate/IStargateRouter.sol";
+import { IStargatePool } from "../../interfaces/stargate/IStargatePool.sol";
+import { IStarchef } from "../../interfaces/stargate/IStarchef.sol";
 import { StarChefFarm, FarmConfig } from "../../strategies/adapters/StarChefFarm.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 // This strategy assumes that sharedDecimans and localDecimals are the same
 contract Stargate is SCYStrategy, SCYVault, StarChefFarm {
@@ -94,5 +94,57 @@ contract Stargate is SCYStrategy, SCYVault, StarChefFarm {
 		if (amountOut > 0) _stratDeposit(amountOut);
 		harvested = new uint256[](1);
 		harvested[0] = tokenHarvest;
+	}
+
+	// EMERGENCY GUARDIAN METHODS
+	function redeemRemote(
+		uint16 _dstChainId,
+		uint256 _srcPoolId,
+		uint256 _dstPoolId,
+		address payable _refundAddress,
+		uint256 _amountLP,
+		uint256 _minAmountLD,
+		bytes calldata _to,
+		lzTxObj memory _lzTxParams
+	) external payable onlyRole(GUARDIAN) {
+		IStargateRouter(strategy).redeemRemote(
+			_dstChainId,
+			_srcPoolId,
+			_dstPoolId,
+			_refundAddress,
+			_amountLP,
+			_minAmountLD,
+			_to,
+			_lzTxParams
+		);
+	}
+
+	function redeemLocal(
+		uint16 _dstChainId,
+		uint256 _srcPoolId,
+		uint256 _dstPoolId,
+		address payable _refundAddress,
+		uint256 _amountLP,
+		bytes calldata _to,
+		lzTxObj memory _lzTxParams
+	) external payable onlyRole(GUARDIAN) {
+		IStargateRouter(strategy).redeemLocal(
+			_dstChainId,
+			_srcPoolId,
+			_dstPoolId,
+			_refundAddress,
+			_amountLP,
+			_to,
+			_lzTxParams
+		);
+	}
+
+	function sendCredits(
+		uint16 _dstChainId,
+		uint256 _srcPoolId,
+		uint256 _dstPoolId,
+		address payable _refundAddress
+	) external payable onlyRole(GUARDIAN) {
+		IStargateRouter(strategy).sendCredits(_dstChainId, _srcPoolId, _dstPoolId, _refundAddress);
 	}
 }

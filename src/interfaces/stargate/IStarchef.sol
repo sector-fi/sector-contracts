@@ -14,6 +14,8 @@ interface IStarchef {
 		uint256 rewardDebt;
 	}
 
+	function stargate() external view returns (address);
+
 	function poolLength() external view returns (uint256);
 
 	function poolInfo(uint256 _pid) external view returns (PoolInfo memory);

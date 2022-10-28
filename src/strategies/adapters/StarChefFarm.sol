@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { IStarchef } from "../../interfaces/strategies/IStarchef.sol";
+import { IStarchef } from "../../interfaces/stargate/IStarchef.sol";
 import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";

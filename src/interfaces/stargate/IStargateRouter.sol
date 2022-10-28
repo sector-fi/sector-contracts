@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.16;
 
-interface IStargateRouter {
-	struct lzTxObj {
-		uint256 dstGasForCall;
-		uint256 dstNativeAmount;
-		bytes dstNativeAddr;
-	}
+struct lzTxObj {
+	uint256 dstGasForCall;
+	uint256 dstNativeAmount;
+	bytes dstNativeAddr;
+}
 
+interface IStargateRouter {
 	function factory() external view returns (address);
 
 	function addLiquidity(

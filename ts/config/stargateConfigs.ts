@@ -1,10 +1,7 @@
-const POOL_ID = 1;
 const stargateRouters = {
   arbitrum: '0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614',
 };
-const farmTokens = {
-  arbitrum: '0x6694340fc020c5E6B96567843da2df01b2CE1eb6',
-};
+
 const farms = {
   arbitrum: '0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176',
 };
@@ -29,9 +26,8 @@ export const stargate = [
     underlying: tokens.USDC,
     strategy: stargateRouters['arbitrum'],
     farm: farms['arbitrum'],
-    farmToken: farmTokens['arbitrum'],
     farmRouter: uniswapRouter['arbitrum'],
-    harvestPath: [farmTokens['arbitrum'], tokens.ETH, tokens.USDC],
+    harvestPath: [tokens.ETH, tokens.USDC],
     chain: 'arbitrum',
   },
 ];

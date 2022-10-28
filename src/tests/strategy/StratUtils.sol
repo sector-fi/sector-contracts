@@ -126,7 +126,7 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 
 		uint256 tvl = vault.getStrategyTvl();
 
-		assertApproxEqAbs(tvl, fees, vault.sharesToUnderlying(mLp), "strategy tvl");
+		assertApproxEqAbs(tvl, fees, vault.sharesToUnderlying(mLp) + 10, "strategy tvl");
 
 		assertEq(vault.balanceOf(user), 0, "account shares");
 		assertEq(vault.underlyingBalance(user), 0, "account value");

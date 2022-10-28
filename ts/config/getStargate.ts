@@ -7,6 +7,7 @@ import {
   IStarchef,
 } from '../../typechain';
 import { stargate } from './stargateConfigs';
+import { getUniswapV3Path } from './utils';
 
 const main = async () => {
   stargate.filter((s) => s.chain == network.name).forEach(addStrategy);
@@ -38,6 +39,8 @@ const addStrategy = async (strategy) => {
     deployer
   );
 
+  const farmToken = await farm.stargate();
+
   const allPools = await farm.poolLength();
   let farmId;
   let i;
@@ -50,6 +53,8 @@ const addStrategy = async (strategy) => {
   }
   if (i != farmId) throw new Error('farmId not found');
 
+  const path = await getUniswapV3Path(farmToken, strategy.underlying);
+
   const config = {
     a_underlying: strategy.underlying,
     b_strategy: strategy.strategy,
@@ -57,9 +62,9 @@ const addStrategy = async (strategy) => {
     d_yieldToken: pool.address,
     e_farmId: farmId,
     f1_farm: strategy.farm,
-    f2_farmToken: strategy.farmToken,
+    f2_farmToken: farmToken,
     g_farmRouter: strategy.farmRouter,
-    h_harvestPath: strategy.harvestPath,
+    h_harvestPath: path,
     x_chain: 'ARBITRUM',
   };
   await addToConfig(strategy.name, config, strategy);

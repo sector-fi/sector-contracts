@@ -9,7 +9,7 @@ import { HarvestSwapParams } from "interfaces/Structs.sol";
 import { SCYVault, Stargate, FarmConfig, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/Stargate.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { StratUtils } from "./StratUtils.sol";
-import { IStarchef } from "interfaces/strategies/IStarchef.sol";
+import { IStarchef } from "interfaces/stargate/IStarchef.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -36,7 +36,7 @@ contract SetupStargate is SectorTest, StratUtils {
 		address f1_farm;
 		address f2_farmToken;
 		address g_farmRouter;
-		address[] h_harvestPath;
+		bytes h_harvestPath;
 		string x_chain;
 	}
 
@@ -64,15 +64,7 @@ contract SetupStargate is SectorTest, StratUtils {
 			router: stratJson.g_farmRouter
 		});
 
-		harvestParams.path = stratJson.h_harvestPath;
-		// todo automate this
-		harvestParams.pathData = bytes.concat(
-			bytes20(address(harvestParams.path[0])),
-			bytes3(uint24(3000)),
-			bytes20(address(harvestParams.path[1])),
-			bytes3(uint24(3000)),
-			bytes20(address(harvestParams.path[2]))
-		);
+		harvestParams.pathData = stratJson.h_harvestPath;
 
 		string memory RPC_URL = vm.envString(string.concat(stratJson.x_chain, "_RPC_URL"));
 		uint256 BLOCK = vm.envUint(string.concat(stratJson.x_chain, "_BLOCK"));
@@ -116,8 +108,7 @@ contract SetupStargate is SectorTest, StratUtils {
 	function harvest() public override {
 		// if (!strategy.harvestIsEnabled()) return;
 		skip(7 * 60 * 60 * 24);
-
-		deal(farmConfig.farmToken, address(vault), 1e18);
+		vm.roll(block.number + 1000);
 
 		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
 		params1[0] = harvestParams;
@@ -128,6 +119,7 @@ contract SetupStargate is SectorTest, StratUtils {
 		uint256 tvl = vault.getAndUpdateTvl();
 		(uint256[] memory harvestAmnts, ) = vault.harvest(vault.getTvl(), 0, params1, params2);
 		uint256 newTvl = vault.getTvl();
+
 		assertGt(harvestAmnts[0], 0);
 		assertGt(newTvl, tvl);
 	}
