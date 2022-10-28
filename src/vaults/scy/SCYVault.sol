@@ -103,7 +103,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		// if we have any float in the contract we cannot do deposit accounting
 		if (uBalance > 0) revert DepositsPaused();
 		if (token == NATIVE) _depositNative();
-		if (!sendERC20ToStrategy) underlying.safeTransfer(strategy, amount);
 		uint256 yieldTokenAdded = _stratDeposit(amount);
 		sharesOut = toSharesAfterDeposit(yieldTokenAdded);
 		vaultTvl += amount;
@@ -152,9 +151,14 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		HarvestSwapParams[] calldata swap1,
 		HarvestSwapParams[] calldata swap2
 	) external onlyRole(MANAGER) returns (uint256[] memory harvest1, uint256[] memory harvest2) {
+		/// TODO refactor this
+		uint256 startTvl = _stratGetAndUpdateTvl() + underlying.balanceOf(address(this));
+		_checkSlippage(expectedTvl, startTvl, maxDelta);
+
 		(harvest1, harvest2) = _stratHarvest(swap1, swap2);
+
 		uint256 tvl = _stratGetAndUpdateTvl() + underlying.balanceOf(address(this));
-		_checkSlippage(expectedTvl, tvl, maxDelta);
+
 		uint256 prevTvl = vaultTvl;
 		uint256 timestamp = block.timestamp;
 		uint256 profit = tvl > prevTvl ? tvl - prevTvl : 0;
@@ -239,7 +243,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	{
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
 		uBalance -= underlyingAmount;
-		underlying.safeTransfer(strategy, underlyingAmount);
+		if (sendERC20ToStrategy) underlying.safeTransfer(strategy, underlyingAmount);
 		uint256 yAdded = _stratDeposit(underlyingAmount);
 		uint256 virtualSharesOut = toSharesAfterDeposit(yAdded);
 		if (virtualSharesOut < minAmountOut) revert SlippageExceeded();
@@ -414,10 +418,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	) internal virtual override {
 		address to = sendERC20ToStrategy ? strategy : address(this);
 		IERC20(token).safeTransferFrom(from, to, amount);
-		// if (token == NATIVE) {
-		// 	// if strategy logic lives in this contract, don't do anything
-		// 	if (strategy != address(this)) return SafeETH.safeTransferETH(to, amount);
-		// } else IERC20(token).safeTransferFrom(from, to, amount);
 	}
 
 	// send funds to user

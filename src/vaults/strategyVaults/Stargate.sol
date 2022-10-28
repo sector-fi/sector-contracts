@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
 import { SCYStrategy, Strategy } from "../scy/SCYStrategy.sol";
@@ -10,22 +10,24 @@ import { FeeConfig, Fees } from "../../common/Fees.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { IStargateRouter } from "../../interfaces/strategies/IStargateRouter.sol";
 import { IStargatePool } from "../../interfaces/strategies/IStargatePool.sol";
+import { IStarchef } from "../../interfaces/strategies/IStarchef.sol";
+import { StarChefFarm, FarmConfig } from "../../strategies/adapters/StarChefFarm.sol";
 
 import "hardhat/console.sol";
 
 // This strategy assumes that sharedDecimans and localDecimals are the same
-contract Stargate is SCYStrategy, SCYVault {
+contract Stargate is SCYStrategy, SCYVault, StarChefFarm {
 	using SafeERC20 for IERC20;
-
-	IStargatePool public pool;
 
 	constructor(
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig,
 		Strategy memory _strategy,
-		IStargatePool _pool
-	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) {
+		FarmConfig memory _farmConfig
+	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) StarChefFarm(_farmConfig) {
 		underlying.approve(strategy, type(uint256).max);
+		IERC20(yieldToken).approve(address(farm), type(uint256).max);
+		sendERC20ToStrategy = false;
 	}
 
 	function _stratValidate() internal view override {
@@ -36,7 +38,10 @@ contract Stargate is SCYStrategy, SCYVault {
 	}
 
 	function _stratDeposit(uint256 amount) internal override returns (uint256) {
+		uint256 lp = (amount * 1e18) / IStargatePool(yieldToken).amountLPtoLD(1e18);
 		IStargateRouter(strategy).addLiquidity(strategyId, amount, address(this));
+		farm.deposit(farmId, lp);
+		return lp;
 	}
 
 	function _stratRedeem(address to, uint256 amount)
@@ -44,41 +49,50 @@ contract Stargate is SCYStrategy, SCYVault {
 		override
 		returns (uint256 amountOut, uint256 amntToTransfer)
 	{
+		farm.withdraw(farmId, amount);
 		amntToTransfer = 0;
 		amountOut = IStargateRouter(strategy).instantRedeemLocal(strategyId, amount, to);
 	}
 
-	function _stratGetAndUpdateTvl() internal override returns (uint256) {
-		// exchange rate does the accrual
-		return IERC20(yieldToken).balanceOf(address(this));
+	function _stratGetAndUpdateTvl() internal view override returns (uint256) {
+		return _strategyTvl();
 	}
 
 	function _strategyTvl() internal view override returns (uint256) {
-		return IERC20(yieldToken).balanceOf(address(this));
+		(uint256 balance, ) = farm.userInfo(uint256(farmId), address(this));
+		return IStargatePool(yieldToken).amountLPtoLD(balance);
 	}
 
 	function _stratClosePosition(uint256) internal override returns (uint256) {
-		uint256 yeildTokenAmnt = IERC20(yieldToken).balanceOf(address(this));
-		IERC20(strategy).safeTransfer(strategy, yeildTokenAmnt);
-		return
-			IStargateRouter(yieldToken).instantRedeemLocal(
-				strategyId,
-				yeildTokenAmnt,
-				address(this)
-			);
+		(uint256 balance, ) = farm.userInfo(farmId, address(this));
+		farm.withdraw(farmId, balance);
+		return IStargateRouter(strategy).instantRedeemLocal(strategyId, balance, address(this));
 	}
 
-	// TOOD fraction of total deposits
 	function _stratMaxTvl() internal view override returns (uint256) {
 		return IERC20(yieldToken).totalSupply() / 10; // 10% of total deposits
 	}
 
-	function _stratCollateralToUnderlying() internal pure override returns (uint256) {
-		return 1;
+	function _stratCollateralToUnderlying() internal view override returns (uint256) {
+		return IStargatePool(yieldToken).amountLPtoLD(1e18);
 	}
 
-	function _stratHarvest(
-		HarvestSwapParams[] calldata farm1Params,
-		HarvestSwapParams[] calldata farm2Parms
-	) internal override returns (uint256[] memory harvest1, uint256[] memory harvest2) {}
+	function _selfBalance(address token) internal view override returns (uint256) {
+		if (token == address(yieldToken)) {
+			(uint256 balance, ) = farm.userInfo(farmId, address(this));
+			return balance;
+		}
+		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
+	}
+
+	function _stratHarvest(HarvestSwapParams[] calldata farm1Params, HarvestSwapParams[] calldata)
+		internal
+		override
+		returns (uint256[] memory harvested, uint256[] memory)
+	{
+		(uint256 tokenHarvest, uint256 amountOut) = _harvest(farm1Params[0]);
+		if (amountOut > 0) _stratDeposit(amountOut);
+		harvested = new uint256[](1);
+		harvested[0] = tokenHarvest;
+	}
 }

@@ -9,6 +9,8 @@ interface IStargateRouter {
 		bytes dstNativeAddr;
 	}
 
+	function factory() external view returns (address);
+
 	function addLiquidity(
 		uint256 _poolId,
 		uint256 _amountLD,

@@ -37,6 +37,7 @@ struct HarvestSwapParams {
 	address[] path; //path that the token takes
 	uint256 min; // min price of in token * 1e18 (computed externally based on spot * slippage + fees)
 	uint256 deadline;
+	bytes pathData; // uniswap3 path data
 }
 
 struct IMXConfig {

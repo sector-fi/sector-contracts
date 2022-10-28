@@ -6,6 +6,7 @@ import { StratUtils, IERC20 } from "./StratUtils.sol";
 import { SetupImx } from "./SetupImx.sol";
 import { SetupHlp } from "./SetupHlp.sol";
 import { SetupImxLend } from "./SetupImxLend.sol";
+import { SetupStargate } from "./SetupStargate.sol";
 
 import "hardhat/console.sol";
 
@@ -94,3 +95,5 @@ contract IntegrationImx is SetupImx, IntegrationTest {}
 contract IntegrationImxLend is SetupImxLend, IntegrationTest {}
 
 contract IntegrationHlp is SetupHlp, IntegrationTest {}
+
+contract IntegrationStargate is SetupStargate, IntegrationTest {}

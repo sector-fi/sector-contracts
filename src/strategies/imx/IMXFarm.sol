@@ -279,11 +279,9 @@ abstract contract IMXFarm is IIMXFarm {
 		borrowables[0] = address(_sBorrowable);
 		borrowables[1] = address(_uBorrowable);
 
-		console.log("chef", address(_impermaxChef));
 		_impermaxChef.massHarvest(borrowables, address(this));
 
 		harvested = _farmToken.balanceOf(address(this));
-		console.log("harvested", harvested);
 		if (harvested == 0) return harvested;
 
 		_swap(_farmRouter, harvestParams, address(_farmToken), harvested);
