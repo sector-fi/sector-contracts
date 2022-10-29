@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import { ethers, getNamedAccounts } from 'hardhat';
 import { IIMXFactory, IVaultToken } from '../../typechain';
-import { imx } from './config';
+import { imx } from './imxConfigs';
 
 const main = async () => {
   imx.forEach(addIMXStrategy);

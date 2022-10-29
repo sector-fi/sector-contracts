@@ -8,7 +8,7 @@ struct Strategy {
 	string symbol;
 	string name;
 	address addr;
-	uint256 strategyId; // this is strategy specific token if 1155
+	uint16 strategyId; // this is strategy specific token if 1155
 	address yieldToken;
 	IERC20 underlying;
 	uint128 maxTvl; // pack all params and balances

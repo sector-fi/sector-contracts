@@ -11,7 +11,7 @@ import { HLPConfig, HarvestSwapParams, NativeToken } from "interfaces/Structs.so
 import { SCYVault, HLPVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/HLPVault.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { MasterChefCompMulti } from "strategies/hlp/implementations/MasterChefCompMulti.sol";
+import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
 import { StratUtils } from "./StratUtils.sol";
 
 import "forge-std/StdJson.sol";

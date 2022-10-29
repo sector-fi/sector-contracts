@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICTokenErc20 } from "../../../interfaces/compound/ICTokenInterfaces.sol";
-import { IComptroller } from "../../../interfaces/compound/IComptroller.sol";
-import { ICompPriceOracle } from "../../../interfaces/compound/ICompPriceOracle.sol";
-import { IComptroller, ComptrollerV1Storage } from "../../../interfaces/compound/IComptroller.sol";
+import { ICTokenErc20 } from "../../interfaces/compound/ICTokenInterfaces.sol";
+import { IComptroller } from "../../interfaces/compound/IComptroller.sol";
+import { ICompPriceOracle } from "../../interfaces/compound/ICompPriceOracle.sol";
+import { IComptroller, ComptrollerV1Storage } from "../../interfaces/compound/IComptroller.sol";
 
-import { ICompound, SafeERC20, IERC20 } from "../../mixins/ICompound.sol";
+import { ICompound, SafeERC20, IERC20 } from "../mixins/ICompound.sol";
 
 // import "hardhat/console.sol";
 

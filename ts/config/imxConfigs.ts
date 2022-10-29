@@ -23,3 +23,15 @@ export const imx = [
     harvestPath: [tokens.USDC],
   },
 ];
+
+export const stargate = [
+  {
+    type: 'stargate',
+    name: 'USDC-Arbitrum-Stargate',
+    pair: '0x2585d58367c9faccddecc7df05006cf7f0f3d18e', // address from interface - tarot vault or staked token
+    factory: factories.optimism.tarotVelours,
+    underlying: tokens.USDC,
+    farmRouter: VELO_ROUTER,
+    harvestPath: [tokens.USDC],
+  },
+];

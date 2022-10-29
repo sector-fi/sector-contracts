@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { IClaimReward } from "../../../interfaces/compound/IClaimReward.sol";
+import { IClaimReward } from "../../interfaces/compound/IClaimReward.sol";
 import { CompoundFarm, HarvestSwapParams } from "./CompoundFarm.sol";
-import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
+import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
 

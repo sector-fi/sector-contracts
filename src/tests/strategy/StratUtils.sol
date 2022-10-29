@@ -10,7 +10,6 @@ import { HLPConfig, HarvestSwapParams } from "interfaces/Structs.sol";
 import { SCYVault } from "vaults/scy/SCYVault.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { MasterChefCompMulti } from "strategies/hlp/implementations/MasterChefCompMulti.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
 
 import "hardhat/console.sol";
@@ -126,7 +125,8 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		uint256 fees = vault.underlyingBalance(treasury);
 
 		uint256 tvl = vault.getStrategyTvl();
-		assertApproxEqAbs(tvl, fees, mLp, "strategy tvl");
+
+		assertApproxEqAbs(tvl, fees, vault.sharesToUnderlying(mLp) + 10, "strategy tvl");
 
 		assertEq(vault.balanceOf(user), 0, "account shares");
 		assertEq(vault.underlyingBalance(user), 0, "account value");
