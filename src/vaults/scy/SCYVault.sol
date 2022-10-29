@@ -34,7 +34,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	address payable public strategy;
 
 	// immutables
-	address public immutable yieldToken;
+	address public immutable override yieldToken;
 	uint16 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
 	IERC20 public immutable underlying;
 

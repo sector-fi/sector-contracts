@@ -1,10 +1,7 @@
-const stargateRouters = {
-  arbitrum: '0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614',
+const farms = {
+  arbitrum: '0x73186f2Cf2493f20836b17b21ae79fc12934E207',
 };
 
-const farms = {
-  arbitrum: '0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176',
-};
 const tokens = {
   STG: '0x6694340fc020c5E6B96567843da2df01b2CE1eb6',
   ETH: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
@@ -15,13 +12,12 @@ const uniswapRouter = {
   arbitrum: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
 };
 
-export const stargate = [
+export const strategies = [
   {
     type: 'stargate',
-    poolId: 1, // get this from interface?
-    name: 'USDC-Arbitrum-Stargate',
+    name: 'USDC-Arbitrum-Synapse',
     underlying: tokens.USDC,
-    strategy: stargateRouters['arbitrum'],
+    strategy: '0x9Dd329F5411466d9e0C488fF72519CA9fEf0cb40',
     farm: farms['arbitrum'],
     farmRouter: uniswapRouter['arbitrum'],
     chain: 'arbitrum',

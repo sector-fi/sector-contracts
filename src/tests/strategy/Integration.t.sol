@@ -7,6 +7,7 @@ import { SetupImx } from "./SetupImx.sol";
 import { SetupHlp } from "./SetupHlp.sol";
 import { SetupImxLend } from "./SetupImxLend.sol";
 import { SetupStargate } from "./SetupStargate.sol";
+import { SetupSynapse } from "./SetupSynapse.sol";
 
 import "hardhat/console.sol";
 
@@ -97,3 +98,5 @@ contract IntegrationImxLend is SetupImxLend, IntegrationTest {}
 contract IntegrationHlp is SetupHlp, IntegrationTest {}
 
 contract IntegrationStargate is SetupStargate, IntegrationTest {}
+
+contract IntegrationSynapse is SetupSynapse, IntegrationTest {}
