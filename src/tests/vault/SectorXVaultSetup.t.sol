@@ -257,15 +257,8 @@ contract SectorXVaultSetup is SectorTest {
 
 		depositXVault(user1, amount);
 
-		Request[] memory requests = new Request[](1);
 		for (uint256 i = 0; i < _vaults.length; i++) {
 			SectorVault v = SectorVault(_vaults[i]);
-
-			requests[0] = getBasicRequest(address(v), uint256(anotherChainId), amountStep);
-			uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
-
-			// Requests, total amount deposited, expected msgSent events, expected bridge events
-			xvaultDepositIntoVaults(requests, amountStep, 1, 1, false, messageFee);
 
 			receiveMessage(
 				v,
@@ -273,6 +266,9 @@ contract SectorXVaultSetup is SectorTest {
 				Message(amountStep, address(xVault), address(0), chainId),
 				MessageType.DEPOSIT
 			);
+
+			vm.prank(address(xVault));
+			underlying.transfer(address(v), amountStep);
 		}
 
 		if (!assertOn) return;
