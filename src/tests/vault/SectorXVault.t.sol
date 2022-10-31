@@ -20,6 +20,8 @@ import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
 contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
+	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
+
 	uint256 mainnetFork;
 	uint256 avaxFork;
 	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");
@@ -569,18 +571,53 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		vaults[0].processIncomingXFunds();
 		vm.stopPrank();
 
-		assertEq(vaults[0].balanceOf(vaults[0].getXAddr(address(xVault), chainId)), amount, "XVault received amount shares");
+		assertEq(
+			vaults[0].balanceOf(vaults[0].getXAddr(address(xVault), chainId)),
+			amount,
+			"XVault received amount shares"
+		);
 		assertEq(vaults[0].getIncomingQueueLength(), 0, "Incoming queue must be empty");
 	}
 
-	// function testReceiveWithdrawVault() public {
-	// 	// reuse setup from above
+	function testReceiveWithdrawVault() public {
+		uint256 amount = 1 ether;
 
-	// 	// Receive withdraw message
-	// 	// receiveMessage();
-	// 	// Check that bridge queue is ok and requestRedeem happened
-	// 	// balanceOf(xVault) is zero
-	// }
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
+
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
+		address xVaultAddr = vaults[0].getXAddr(address(xVault), chainId);
+
+		xvaultDepositIntoVaults(requests, amount, 1, 1, true, messageFee);
+
+		vm.expectEmit(false, true, false, true);
+		emit RequestWithdraw(address(0), xVaultAddr, amount);
+
+		receiveMessage(
+			vaults[0],
+			anotherChainId,
+			Message(1e18, address(xVault), address(0), chainId),
+			MessageType.WITHDRAW
+		);
+
+		(address _xVault, uint16 _chainId) = vaults[0].bridgeQueue(0);
+
+		assertEq(_xVault, address(xVault), "xVault address should be on bridgeQueue");
+		assertEq(_chainId, chainId, "xVault chainId should be on bridgeQueue");
+
+		uint256 vaultSharesBalance = vaults[0].balanceOf(
+			vaults[0].getXAddr(address(xVault), chainId)
+		);
+
+		assertEq(vaultSharesBalance, 0, "xVault should have 0 shares on vault");
+
+		uint256 pendingWithdraw = vaults[0].pendingWithdraw();
+
+		assertEq(pendingWithdraw, amount, "amount should be on computed as pending");
+	}
 
 	// function testEmergencyWithdrawVault() public {
 	// 	// reuse setup from above
