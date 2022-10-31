@@ -589,7 +589,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		receiveMessage(
 			vaults[0],
 			anotherChainId,
-			Message(1e18, xVaultAddr, address(0), chainId),
+			Message(1e18, address(xVault), address(0), chainId),
 			MessageType.WITHDRAW
 		);
 
@@ -689,15 +689,18 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 			MessageType.WITHDRAW
 		);
 
+		vm.warp(block.timestamp + 10000000000000);
+
 		vm.expectEmit(false, false, false, true);
-		emit BridgeAsset(anotherChainId, chainId, amount);
+		emit BridgeAsset(chainId, chainId, amount);
 
-		requests[0] = getBasicRequest(address(xVault), chainId, amount);
+		requests[0] = getBasicRequest(address(xVault), uint256(chainId), amount);
 
-		vaults[0].processXWithdraw(requests);
+		vaults[0].harvest(amount + mLp, 0);
 
-		vm.expectRevert();
-		vaults[0].bridgeQueue(0);
+		messageFee = vaults[0].estimateMessageFee(requests, MessageType.WITHDRAW);
+
+		vaults[0].processXWithdraw{value: messageFee}(requests);
 	}
 
 	/*/////////////////////////////////////////////////////

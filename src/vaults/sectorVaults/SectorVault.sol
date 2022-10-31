@@ -9,7 +9,7 @@ import { SectorBase } from "./SectorBase.sol";
 import { XChainIntegrator } from "./XChainIntegrator.sol";
 import "../../interfaces/MsgStructs.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 // TODO native asset deposit + flow
 
 struct RedeemParams {
@@ -302,44 +302,41 @@ contract SectorVault is SectorBase, XChainIntegrator {
 	function processXWithdraw(Request[] calldata requests) external payable onlyRole(MANAGER) {
 		uint256 length = bridgeQueue.length;
 
-		uint256 total = 0;
-		for (uint256 i = length - 1; i > 0; ) {
-			VaultAddr memory v = bridgeQueue[i];
+		for (uint256 i = length; i > 0; ) {
+			VaultAddr memory v = bridgeQueue[i - 1];
 
-			if (requests[i].vaultAddr != v.addr) revert VaultAddressNotMatch();
+			if (requests[i - 1].vaultAddr != v.addr) revert VaultAddressNotMatch();
 			address xVaultAddr = getXAddr(v.addr, v.chainId);
 
 			// this returns the underlying amount the vault is withdrawing
 			uint256 amountOut = _xRedeem(xVaultAddr, v.addr);
-			checkBridgeFee(amountOut, requests[i].bridgeFee);
+			checkBridgeFee(amountOut, requests[i - 1].bridgeFee);
 			bridgeQueue.pop();
 
 			_sendMessage(
 				v.addr,
 				v.chainId,
 				addrBook[xVaultAddr],
-				Message(amountOut - requests[i].bridgeFee, address(this), address(0), chainId),
+				Message(amountOut - requests[i - 1].bridgeFee, address(this), address(0), chainId),
 				MessageType.WITHDRAW
 			);
 
 			_sendTokens(
 				underlying(),
-				requests[i].allowanceTarget,
-				requests[i].registry,
+				requests[i - 1].allowanceTarget,
+				requests[i - 1].registry,
 				v.addr,
 				amountOut,
 				v.chainId,
-				requests[i].txData
+				requests[i - 1].txData
 			);
 
 			emit BridgeAsset(chainId, v.chainId, amountOut);
 
 			unchecked {
-				total += amountOut;
 				i--;
 			}
 		}
-		beforeWithdraw(total, 0);
 	}
 
 	error VaultAddressNotMatch();
