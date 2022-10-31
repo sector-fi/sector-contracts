@@ -637,11 +637,33 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		assertEq(vaults[0].balanceOf(computedXV), 0, "XVault must have no balance");
 	}
 
-	// function testHarvestVault() public {
-	// 	// reuse setup from above
-	// 	// test if postman sends a proper message back
-	// 	// proper means with a value that makes sense in vault accouting
-	// }
+	function testHarvestVault() public {
+		uint256 amount = 1 ether;
+		// address computedXV = vaults[0].getXAddr(address(xVault), chainId);
+
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
+
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false, messageFee);
+
+		// Has to fund vault
+		vm.deal(address(vaults[0]), 1 ether);
+
+		vm.expectEmit(true, true, false, true);
+		emit MessageSent(amount, address(xVault), chainId, MessageType.HARVEST, address(postmanLz));
+
+		receiveMessage(
+			vaults[0],
+			anotherChainId,
+			Message(0, address(xVault), address(0), chainId),
+			MessageType.HARVEST
+		);
+	}
 
 	function testProcessXWithdraw() public {
 		uint256 amount = 1 ether;
