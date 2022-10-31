@@ -20,7 +20,6 @@ import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
 contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
-	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
 
 	uint256 mainnetFork;
 	uint256 avaxFork;
@@ -644,13 +643,41 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 	// 	// proper means with a value that makes sense in vault accouting
 	// }
 
-	// function testProcessXWithdraw() public {
-	// 	// do what ever receive withdraw does
-	// 	// Check that events are being emitted
-	// 	// and the bridge is being triggered
-	// }
+	function testProcessXWithdraw() public {
+		uint256 amount = 1 ether;
 
-	// Copied from SectorXVault to test
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
+
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
+		address xVaultAddr = vaults[0].getXAddr(address(xVault), chainId);
+
+		xvaultDepositIntoVaults(requests, amount, 1, 1, true, messageFee);
+
+		vm.expectEmit(false, true, false, true);
+		emit RequestWithdraw(address(0), xVaultAddr, amount);
+
+		receiveMessage(
+			vaults[0],
+			anotherChainId,
+			Message(1e18, address(xVault), address(0), chainId),
+			MessageType.WITHDRAW
+		);
+
+		vm.expectEmit(false, false, false, true);
+		emit BridgeAsset(anotherChainId, chainId, amount);
+
+		requests[0] = getBasicRequest(address(xVault), chainId, amount);
+
+		vaults[0].processXWithdraw(requests);
+
+		vm.expectRevert();
+		vaults[0].bridgeQueue(0);
+	}
+
 	/*/////////////////////////////////////////////////////
 							Events
 	/////////////////////////////////////////////////////*/
@@ -676,7 +703,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
 	event RegisterIncomingFunds(uint256 total);
 	event SetMaxBridgeFee(uint256 _maxFee);
-
+	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
 	event RegisterDeposit(uint256 total);
 	event EmergencyWithdraw(address vault, address client, uint256 shares);
 	event EmergencyAction(address target, bytes callData);
