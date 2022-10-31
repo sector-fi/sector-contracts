@@ -9,8 +9,7 @@ import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
 import { XChainIntegrator } from "../../xChain/XChainIntegrator.sol";
 import "../../interfaces/MsgStructs.sol";
 
-import "hardhat/console.sol";
-// TODO native asset deposit + flow
+// import "hardhat/console.sol";
 
 struct RedeemParams {
 	ISCYStrategy strategy;
