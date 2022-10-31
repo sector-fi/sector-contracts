@@ -539,13 +539,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		assertEq(checkPostman, newPostman);
 	}
 
-	// SectorVault _dstVault,
-	// 	uint16 toChain,
-	// 	Message memory _msg,
-	// 	MessageType _msgType
-
 	function testReceiveDepositVault() public {
-		// Request(addr, amount);
 		uint256 amount = 1 ether;
 
 		address payable[] memory _v = new address payable[](1);
@@ -555,9 +549,6 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 	}
 
 	function testProcessIncomingXFunds() public {
-		// Do it to finish blabla
-		// Shares are issued to xVault on Vault
-		// Request(addr, amount);
 		uint256 amount = 1 ether;
 
 		address payable[] memory _v = new address payable[](1);
