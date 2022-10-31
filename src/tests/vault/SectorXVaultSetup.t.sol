@@ -80,7 +80,7 @@ contract SectorXVaultSetup is SectorTest {
 
 		for (uint256 i = 0; i < requests.length; i++) {
 			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
-			mockRecieveFunds(
+			mockReceiveFunds(
 				vault,
 				address(xVault),
 				chainId,
@@ -123,7 +123,7 @@ contract SectorXVaultSetup is SectorTest {
 		for (uint256 i = 0; i < requests.length; i++) {
 			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 			shares[i] = vault.balanceOf(xAddr);
-			recieveMessage(
+			receiveMessage(
 				vault,
 				requests[i].vaultChainId,
 				Message(requests[i].amount, address(xVault), address(0), chainId),
@@ -243,6 +243,53 @@ contract SectorXVaultSetup is SectorTest {
 
 		// Harvest(treasury, profit, _performanceFee, _managementFee, feeShares, tvl)
 		assertEventCount(entries, "Harvest(address,uint256,uint256,uint256,uint256,uint256)", 1);
+	}
+
+	function receiveXDepositVault(
+		uint256 amount,
+		address payable[] memory _vaults,
+		bool assertOn
+	) public {
+		// Request(addr, amount);
+		// uint256 amount = 1 ether;
+
+		uint256 amountStep = amount / _vaults.length;
+
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		for (uint256 i = 0; i < _vaults.length; i++) {
+			SectorVault v = SectorVault(_vaults[i]);
+
+			requests[0] = getBasicRequest(address(v), uint256(anotherChainId), amountStep);
+			uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
+			// Requests, total amount deposited, expected msgSent events, expected bridge events
+			xvaultDepositIntoVaults(requests, amountStep, 1, 1, false, messageFee);
+
+			receiveMessage(
+				v,
+				anotherChainId,
+				Message(amountStep, address(xVault), address(0), chainId),
+				MessageType.DEPOSIT
+			);
+		}
+
+		if (!assertOn) return;
+
+		for (uint256 i = 0; i < _vaults.length; i++) {
+			SectorVault v = SectorVault(_vaults[i]);
+
+			(uint256 _value, address _sender, address _client, uint16 _chainId) = v.incomingQueue(
+				0
+			);
+
+			assertEq(_value, amountStep);
+			assertEq(_sender, address(xVault));
+			assertEq(_client, address(0));
+			assertEq(_chainId, chainId);
+			assertEq(v.getIncomingQueueLength(), 1, "Incoming queue length must be equal to one");
+		}
 	}
 
 	/*//////////////////////////////////////////////////////
