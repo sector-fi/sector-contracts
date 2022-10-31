@@ -3,11 +3,11 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { BatchedWithdraw } from "./BatchedWithdraw.sol";
 import { SectorVault } from "./SectorVault.sol";
 import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
-import { SectorBase } from "./SectorBase.sol";
-import { XChainIntegrator } from "./XChainIntegrator.sol";
+import { SectorBase } from "../ERC4626/SectorBase.sol";
+import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
+import { XChainIntegrator } from "../../xChain/XChainIntegrator.sol";
 import "../../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
@@ -277,6 +277,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		}
 		// Should account for fees paid in tokens for using bridge
 		// Also, if a value hasn't arrived manager will not be able to register any value
+		uint256 pendingWithdraw = convertToAssets(pendingRedeem);
 		if (total < (asset.balanceOf(address(this)) - floatAmnt - pendingWithdraw))
 			revert MissingIncomingXFunds();
 

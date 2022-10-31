@@ -3,12 +3,14 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20 } from "../ERC4626/ERC4626.sol";
-import { ISCYStrategy } from "../../interfaces/scy/ISCYStrategy.sol";
+import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 import { BatchedWithdraw } from "./BatchedWithdraw.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction } from "../../interfaces/Structs.sol";
 
 import "../../interfaces/MsgStructs.sol";
+
+// import "hardhat/console.sol";
 
 abstract contract SectorBase is BatchedWithdraw {
 	using FixedPointMathLib for uint256;
@@ -28,6 +30,15 @@ abstract contract SectorBase is BatchedWithdraw {
 
 	function _harvest(uint256 currentChildHoldings) internal {
 		// withdrawFromStrategies should be called prior to harvest to ensure this tx doesn't revert
+		// pendingWithdraw may be larger than the actual withdrawable amount if vault sufferred losses
+		// since the previous harvest
+
+		uint256 tvl = currentChildHoldings + floatAmnt;
+		uint256 _totalSupply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+
+		/// this is actually a max amount that can be withdrawn given current tvl
+		/// actual withdraw amount may be slightly less if there are stale withdraw requests
+		uint256 pendingWithdraw = pendingRedeem.mulDivDown(tvl, _totalSupply);
 		if (floatAmnt < pendingWithdraw) revert NotEnoughtFloat();
 
 		uint256 profit = currentChildHoldings > totalChildHoldings
@@ -35,7 +46,6 @@ abstract contract SectorBase is BatchedWithdraw {
 			: 0;
 
 		uint256 timestamp = block.timestamp;
-		uint256 tvl = currentChildHoldings + floatAmnt;
 
 		// totalChildHoldings need to be updated before fees computation
 		totalChildHoldings = currentChildHoldings;
@@ -51,7 +61,7 @@ abstract contract SectorBase is BatchedWithdraw {
 
 		if (totalFees > 0) {
 			// this results in more accurate accounting considering dilution
-			feeShares = totalFees.mulDivDown(totalSupply(), tvl - totalFees);
+			feeShares = totalFees.mulDivDown(_totalSupply, tvl - totalFees);
 			_mint(treasury, feeShares);
 		}
 
@@ -115,7 +125,8 @@ abstract contract SectorBase is BatchedWithdraw {
 	function beforeWithdraw(uint256 assets, uint256) internal override {
 		// this check prevents withdrawing more underlying from the vault then
 		// what we need to keep to honor withdrawals
-		if (floatAmnt < assets || floatAmnt - assets < pendingWithdraw) revert NotEnoughtFloat();
+		uint256 pendingWithdraw = convertToAssets(pendingRedeem);
+		if (floatAmnt < assets + pendingWithdraw) revert NotEnoughtFloat();
 		floatAmnt -= assets;
 	}
 

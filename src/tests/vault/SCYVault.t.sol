@@ -9,7 +9,7 @@ import { WETH } from "../mocks/WETH.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract SCYVaultTest is SectorTest, SCYVaultSetup {
 	MockScyVault vault;

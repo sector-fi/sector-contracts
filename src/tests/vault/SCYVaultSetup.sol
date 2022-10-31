@@ -7,7 +7,7 @@ import { MockERC20 } from "../mocks/MockERC20.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
-import { ISuperComposableYield as ISCY } from "../../interfaces/scy/ISuperComposableYield.sol";
+import { ISuperComposableYield as ISCY } from "../../interfaces/ERC5115/ISuperComposableYield.sol";
 import { HarvestSwapParams } from "interfaces/Structs.sol";
 
 import "hardhat/console.sol";

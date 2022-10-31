@@ -7,7 +7,7 @@ import { PriceUtils, UniUtils, IUniswapV2Pair } from "../utils/PriceUtils.sol";
 
 import { SectorTest } from "../utils/SectorTest.sol";
 import { HLPConfig, HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYVault } from "vaults/scy/SCYVault.sol";
+import { SCYVault } from "vaults/ERC5115/SCYVault.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";

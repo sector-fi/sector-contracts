@@ -9,8 +9,8 @@ import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, 
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
 import { SectorXVault, Request } from "../../vaults/sectorVaults/SectorXVault.sol";
-import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
-import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
+import { LayerZeroPostman, chainPair } from "../../xChain/LayerZeroPostman.sol";
+import { MultichainPostman } from "../../xChain/MultichainPostman.sol";
 import { SectorXVaultSetup, MockSocketRegistry } from "./SectorXVaultSetup.t.sol";
 import { SectorXVault } from "../../vaults/sectorVaults/SectorXVault.sol";
 

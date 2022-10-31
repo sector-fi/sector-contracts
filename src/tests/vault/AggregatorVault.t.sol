@@ -9,7 +9,7 @@ import { SectorBase, AggregatorVault, BatchedWithdraw, RedeemParams, DepositPara
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { EAction } from "interfaces/Structs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 	ISCYStrategy strategy1;
@@ -116,7 +116,10 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 
 		sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
 
-		withdrawFromStrat(strategy1, amnt / 4);
+		uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+		uint256 withdrawShares = (pendingWithdraw * strategy1.exchangeRateUnderlying()) / 1e18;
+
+		withdrawFromStrat(strategy1, withdrawShares);
 
 		sectHarvest(vault);
 
@@ -163,7 +166,10 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		sectInitRedeem(vault, user1, 1e18);
 		sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
 
-		withdrawFromStrat(strategy1, amnt / 4);
+		uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+		uint256 withdrawShares = (pendingWithdraw * strategy1.exchangeRateUnderlying()) / 1e18;
+
+		withdrawFromStrat(strategy1, withdrawShares);
 		sectHarvest(vault);
 
 		vm.prank(user1);
@@ -210,7 +216,8 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		withdrawFromStrat(strategy1, amnt / 2);
 
 		assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float");
-		assertEq(vault.pendingWithdraw(), amnt / 2, "pending withdraw");
+		uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+		assertEq(pendingWithdraw, amnt / 2, "pending withdraw");
 		sectHarvest(vault);
 		assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float amnt half");
 
@@ -321,6 +328,25 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		vault.redeemNative();
 
 		assertEq(self.balance, amnt);
+	}
+
+	function testPendingRedeemLoss() public {
+		uint256 amnt = 1000e18;
+		sectDeposit(vault, user1, amnt);
+
+		depositToStrat(strategy1, amnt);
+		sectInitRedeem(vault, user1, 1e18);
+
+		MockERC20(underlying).burn(address(strategy1.strategy()), amnt / 10);
+
+		uint256 shares = IERC20(address(strategy1)).balanceOf(address(vault));
+		withdrawFromStrat(strategy1, shares);
+
+		sectHarvest(vault);
+
+		sectHarvest(vault);
+		sectCompleteRedeem(vault, user1);
+		assertApproxEqAbs(underlying.balanceOf(user1), amnt - amnt / 10, mLp);
 	}
 
 	/// UTILS

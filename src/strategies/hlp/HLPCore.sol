@@ -14,7 +14,7 @@ import { Auth } from "../../common/Auth.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { StratAuth } from "../../common/StratAuth.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 // @custom: alphabetize dependencies to avoid linearization conflicts
 abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFarm {

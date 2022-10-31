@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import { SCYStrategy, Strategy } from "../scy/SCYStrategy.sol";
+import { SCYStrategy, Strategy } from "../ERC5115/SCYStrategy.sol";
 import { IPoolToken, IBorrowable } from "../../interfaces/imx/IImpermax.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { SCYVault } from "../scy/SCYVault.sol";
+import { SCYVault } from "../ERC5115/SCYVault.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { AuthConfig, Auth } from "../../common/Auth.sol";
 import { FeeConfig, Fees } from "../../common/Fees.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract IMXLend is SCYStrategy, SCYVault {
 	using SafeERC20 for IERC20;

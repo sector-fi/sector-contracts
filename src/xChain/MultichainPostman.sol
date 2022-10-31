@@ -3,8 +3,8 @@ pragma solidity 0.8.16;
 
 import { CallProxy } from "../interfaces/adapters/IMultichainAdapter.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IPostman } from "../interfaces/postOffice/IPostman.sol";
-import { XChainIntegrator } from "../vaults/sectorVaults/XChainIntegrator.sol";
+import { IPostman } from "../interfaces/xChain/IPostman.sol";
+import { XChainIntegrator } from "./XChainIntegrator.sol";
 import "../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";

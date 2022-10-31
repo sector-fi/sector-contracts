@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { SCYStrategy, Strategy } from "../scy/SCYStrategy.sol";
+import { SCYStrategy, Strategy } from "../ERC5115/SCYStrategy.sol";
 import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { SCYVault } from "../scy/SCYVault.sol";
+import { SCYVault } from "../ERC5115/SCYVault.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { AuthConfig, Auth } from "../../common/Auth.sol";
 import { FeeConfig, Fees } from "../../common/Fees.sol";
