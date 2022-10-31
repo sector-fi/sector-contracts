@@ -554,13 +554,24 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		receiveXDepositVault(amount, _v, true);
 	}
 
-	// function testProcessIncomingXFunds() public {
-	// 	// Pre test
-	// 	// XVault must have deposited funds on vault
-	// 	// Receive a deposit message
-	// 	// Do it to finish blabla
-	// 	// Shares are issued to xVault on Vault
-	// }
+	function testProcessIncomingXFunds() public {
+		// Do it to finish blabla
+		// Shares are issued to xVault on Vault
+		// Request(addr, amount);
+		uint256 amount = 1 ether;
+
+		address payable[] memory _v = new address payable[](1);
+		_v[0] = payable(vaults[0]);
+
+		receiveXDepositVault(amount, _v, false);
+
+		vm.startPrank(manager);
+		vaults[0].processIncomingXFunds();
+		vm.stopPrank();
+
+		assertEq(vaults[0].balanceOf(vaults[0].getXAddr(address(xVault), chainId)), amount, "XVault received amount shares");
+		assertEq(vaults[0].getIncomingQueueLength(), 0, "Incoming queue must be empty");
+	}
 
 	// function testReceiveWithdrawVault() public {
 	// 	// reuse setup from above
