@@ -2,8 +2,8 @@
 pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
-import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
+import { LayerZeroPostman, chainPair } from "../../xChain/LayerZeroPostman.sol";
+import { MultichainPostman } from "../../xChain/MultichainPostman.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SectorXVaultSetup } from "../vault/SectorXVaultSetup.t.sol";
 import { SectorXVault } from "vaults/sectorVaults/SectorXVault.sol";

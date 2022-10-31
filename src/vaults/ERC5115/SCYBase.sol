@@ -2,14 +2,14 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ISuperComposableYield, ISCYStrategy } from "../../interfaces/scy/ISuperComposableYield.sol";
+import { ISuperComposableYield, ISCYStrategy } from "../../interfaces/ERC5115/ISuperComposableYield.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { Accounting } from "../../common/Accounting.sol";
 import { ERC20Permit, EIP712 } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract SCYBase is
 	ISuperComposableYield,
@@ -164,7 +164,7 @@ abstract contract SCYBase is
 	function _depositNative() internal virtual;
 
 	// OVERRIDES
-	function totalSupply() public view override(Accounting, ERC20) returns (uint256) {
+	function totalSupply() public view override(Accounting, ERC20, IERC20) returns (uint256) {
 		return ERC20.totalSupply();
 	}
 

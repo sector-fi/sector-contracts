@@ -3,9 +3,9 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
-import { ISCYStrategy } from "../../interfaces/scy/ISCYStrategy.sol";
-import { BatchedWithdraw } from "./BatchedWithdraw.sol";
-import { SectorBase } from "./SectorBase.sol";
+import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
+import { SectorBase } from "../ERC4626/SectorBase.sol";
 import "../../interfaces/MsgStructs.sol";
 
 // import "hardhat/console.sol";
@@ -128,7 +128,12 @@ contract AggregatorVault is SectorBase {
 				address(asset), // token out is allways asset
 				param.minTokenOut
 			);
-			totalChildHoldings -= amountOut;
+
+			// if strategy was profitable, we may end up withdrawing more than totalChildHoldings
+			totalChildHoldings = amountOut > totalChildHoldings
+				? 0
+				: totalChildHoldings - amountOut;
+
 			// update underlying float accounting
 			afterDeposit(amountOut, 0);
 			emit WithdrawFromStrategy(msg.sender, address(strategy), amountOut);

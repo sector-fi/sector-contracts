@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-interface ISCYStrategy {
+interface ISCYStrategy is IERC20 {
 	function deposit(
 		address receiver,
 		address tokenIn,
@@ -33,6 +33,8 @@ interface ISCYStrategy {
 	function underlyingBalance(address) external view returns (uint256);
 
 	function underlyingToShares(uint256 amnt) external view returns (uint256);
+
+	function exchangeRateUnderlying() external view returns (uint256);
 
 	function sharesToUnderlying(uint256 shares) external view returns (uint256);
 

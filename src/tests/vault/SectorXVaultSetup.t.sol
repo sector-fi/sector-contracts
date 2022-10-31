@@ -9,11 +9,11 @@ import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, 
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
 import { SectorXVault, Request } from "vaults/sectorVaults/SectorXVault.sol";
-import { LayerZeroPostman, chainPair } from "../../postOffice/LayerZeroPostman.sol";
-import { MultichainPostman } from "../../postOffice/MultichainPostman.sol";
+import { LayerZeroPostman, chainPair } from "../../xChain/LayerZeroPostman.sol";
+import { MultichainPostman } from "../../xChain/MultichainPostman.sol";
 import { MockSocketRegistry } from "../mocks/MockSocketRegistry.sol";
 
-import { MiddlewareRequest, BridgeRequest, UserRequest } from "vaults/sectorVaults/XChainIntegrator.sol";
+import { MiddlewareRequest, BridgeRequest, UserRequest } from "../../libraries/XChainLib.sol";
 import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
@@ -151,7 +151,8 @@ contract SectorXVaultSetup is SectorTest {
 			uint256 value = (requests[i].amount * vaultBalance) / 1e18;
 			uint256 redeemShares = (requests[i].amount * vaultShares) / 1e18;
 
-			assertEq(vault.pendingWithdraw(), value, "Pending value must be equal to expected");
+			uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+			assertEq(pendingWithdraw, value, "Pending value must be equal to expected");
 
 			(uint256 ts, uint256 sh, uint256 val) = vault.withdrawLedger(xAddr);
 
@@ -287,7 +288,6 @@ contract SectorXVaultSetup is SectorTest {
 			assertEq(v.getIncomingQueueLength(), 1, "Incoming queue length must be equal to one");
 		}
 	}
-
 
 	/*//////////////////////////////////////////////////////
 						ASSERT HELPERS

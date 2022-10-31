@@ -12,7 +12,7 @@ import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction, HarvestSwapParams } from "../../interfaces/Structs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	using SafeERC20 for IERC20;

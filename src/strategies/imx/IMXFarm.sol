@@ -8,7 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { CallType, CalleeData, AddLiquidityAndMintCalldata, BorrowBCalldata, RemoveLiqAndRepayCalldata } from "../../interfaces/Structs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract IMXFarm is IIMXFarm {
 	using SafeERC20 for IERC20;

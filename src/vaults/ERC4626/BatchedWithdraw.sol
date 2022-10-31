@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ERC4626, IWETH } from "../ERC4626/ERC4626.sol";
+import { ERC4626, IWETH } from "./ERC4626.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 
 // import "hardhat/console.sol";
@@ -20,7 +20,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
 
 	uint256 public lastHarvestTimestamp;
-	uint256 public pendingWithdraw; // actual amount may be less
+	uint256 public pendingRedeem;
 
 	mapping(address => WithdrawRecord) public withdrawLedger;
 
@@ -37,6 +37,11 @@ abstract contract BatchedWithdraw is ERC4626 {
 		_requestRedeem(shares, owner, msg.sender);
 	}
 
+	/// @dev redeem request records the value of the redeemed shares at the time of request
+	/// at the time of claim, user is able to withdraw the minimum of the
+	/// current value and value at time of request
+	/// this is to prevent users from pre-emptively submitting redeem claims
+	/// and claiming any rewards after the request has been made
 	function _requestRedeem(
 		uint256 shares,
 		address owner,
@@ -48,7 +53,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 		withdrawRecord.shares += shares;
 		uint256 value = convertToAssets(shares);
 		withdrawRecord.value = value;
-		pendingWithdraw += value;
+		pendingRedeem += shares;
 		emit RequestWithdraw(msg.sender, owner, shares);
 	}
 
@@ -117,24 +122,25 @@ abstract contract BatchedWithdraw is ERC4626 {
 		amountOut = _getWithdrawAmount(shares, redeemValue);
 
 		// update total pending withdraw
-		pendingWithdraw -= redeemValue;
+		// pendingWithdraw -= redeemValue;
+		pendingRedeem -= shares;
 
-		// important pendingWithdraw should update prior to beforeWithdraw call
+		// important pendingRedeem should update prior to beforeWithdraw call
 		beforeWithdraw(amountOut, shares);
 		withdrawRecord.value = 0;
 		_burn(address(this), shares);
 	}
 
 	/// helper method to get xChain bridge amount
-	function pendingRedeem(address account) public view returns (uint256 amountOut) {
-		WithdrawRecord storage withdrawRecord = withdrawLedger[account];
+	// function pendingRedeem(address account) public view returns (uint256 amountOut) {
+	// 	WithdrawRecord storage withdrawRecord = withdrawLedger[account];
 
-		if (withdrawRecord.value == 0) revert ZeroAmount();
-		if (withdrawRecord.timestamp >= lastHarvestTimestamp) revert NotReady();
+	// 	if (withdrawRecord.value == 0) revert ZeroAmount();
+	// 	if (withdrawRecord.timestamp >= lastHarvestTimestamp) revert NotReady();
 
-		// value of shares at time of redemption request
-		return _getWithdrawAmount(withdrawRecord.shares, withdrawRecord.value);
-	}
+	// 	// value of shares at time of redemption request
+	// 	return _getWithdrawAmount(withdrawRecord.shares, withdrawRecord.value);
+	// }
 
 	function _getWithdrawAmount(uint256 shares, uint256 redeemValue)
 		internal
@@ -157,7 +163,8 @@ abstract contract BatchedWithdraw is ERC4626 {
 
 		// update accounting
 		withdrawRecord.value = 0;
-		pendingWithdraw -= redeemValue;
+		// pendingWithdraw -= redeemValue;
+		pendingRedeem -= shares;
 
 		// if vault lost money, shares stay the same
 		if (currentValue < redeemValue) return _transfer(address(this), msg.sender, shares);

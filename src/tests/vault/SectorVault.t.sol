@@ -9,7 +9,7 @@ import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, 
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { EAction } from "interfaces/Structs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract SectorVaultTest is SectorTest, SCYVaultSetup {
 	ISCYStrategy strategy1;
@@ -115,7 +115,10 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 
 		sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
 
-		withdrawFromStrat(strategy1, amnt / 4);
+		uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+		uint256 withdrawShares = (pendingWithdraw * strategy1.exchangeRateUnderlying()) / 1e18;
+
+		withdrawFromStrat(strategy1, withdrawShares);
 
 		sectHarvest(vault);
 
@@ -162,7 +165,10 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		sectInitRedeem(vault, user1, 1e18);
 		sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
 
-		withdrawFromStrat(strategy1, amnt / 4);
+		uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+		uint256 withdrawShares = (pendingWithdraw * strategy1.exchangeRateUnderlying()) / 1e18;
+
+		withdrawFromStrat(strategy1, withdrawShares);
 		sectHarvest(vault);
 
 		vm.prank(user1);
@@ -209,7 +215,8 @@ contract SectorVaultTest is SectorTest, SCYVaultSetup {
 		withdrawFromStrat(strategy1, amnt / 2);
 
 		assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float");
-		assertEq(vault.pendingWithdraw(), amnt / 2, "pending withdraw");
+		uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+		assertEq(pendingWithdraw, amnt / 2, "pending withdraw");
 		sectHarvest(vault);
 		assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float amnt half");
 
