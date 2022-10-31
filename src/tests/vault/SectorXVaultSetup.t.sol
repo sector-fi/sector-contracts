@@ -80,7 +80,7 @@ contract SectorXVaultSetup is SectorTest {
 
 		for (uint256 i = 0; i < requests.length; i++) {
 			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
-			mockRecieveFunds(
+			mockReceiveFunds(
 				vault,
 				address(xVault),
 				chainId,
@@ -123,7 +123,7 @@ contract SectorXVaultSetup is SectorTest {
 		for (uint256 i = 0; i < requests.length; i++) {
 			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 			shares[i] = vault.balanceOf(xAddr);
-			recieveMessage(
+			receiveMessage(
 				vault,
 				requests[i].vaultChainId,
 				Message(requests[i].amount, address(xVault), address(0), chainId),
@@ -246,6 +246,50 @@ contract SectorXVaultSetup is SectorTest {
 		assertEventCount(entries, "Harvest(address,uint256,uint256,uint256,uint256,uint256)", 1);
 	}
 
+	function receiveXDepositVault(
+		uint256 amount,
+		address payable[] memory _vaults,
+		bool assertOn
+	) public {
+		// Request(addr, amount);
+		// uint256 amount = 1 ether;
+
+		uint256 amountStep = amount / _vaults.length;
+
+		depositXVault(user1, amount);
+
+		for (uint256 i = 0; i < _vaults.length; i++) {
+			SectorVault v = SectorVault(_vaults[i]);
+
+			receiveMessage(
+				v,
+				anotherChainId,
+				Message(amountStep, address(xVault), address(0), chainId),
+				MessageType.DEPOSIT
+			);
+
+			vm.prank(address(xVault));
+			underlying.transfer(address(v), amountStep);
+		}
+
+		if (!assertOn) return;
+
+		for (uint256 i = 0; i < _vaults.length; i++) {
+			SectorVault v = SectorVault(_vaults[i]);
+
+			(uint256 _value, address _sender, address _client, uint16 _chainId) = v.incomingQueue(
+				0
+			);
+
+			assertEq(_value, amountStep);
+			assertEq(_sender, address(xVault));
+			assertEq(_client, address(0));
+			assertEq(_chainId, chainId);
+			assertEq(v.getIncomingQueueLength(), 1, "Incoming queue length must be equal to one");
+		}
+	}
+
+
 	/*//////////////////////////////////////////////////////
 						ASSERT HELPERS
 	//////////////////////////////////////////////////////*/
@@ -347,14 +391,14 @@ contract SectorXVaultSetup is SectorTest {
 			);
 	}
 
-	function mockRecieveFunds(
+	function mockReceiveFunds(
 		SectorVault vault,
 		address from,
 		uint16 fromChain,
 		uint16 toChain,
 		uint256 amount
 	) public {
-		recieveMessage(
+		receiveMessage(
 			vault,
 			toChain,
 			Message(amount, from, address(0), fromChain),
@@ -377,7 +421,7 @@ contract SectorXVaultSetup is SectorTest {
 	}
 
 	// Mocks a message being received from another chain
-	function recieveMessage(
+	function receiveMessage(
 		SectorVault _dstVault,
 		uint16 toChain,
 		Message memory _msg,

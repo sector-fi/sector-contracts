@@ -539,7 +539,172 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		assertEq(checkPostman, newPostman);
 	}
 
-	// Copied from SectorXVault to test
+	function testReceiveDepositVault() public {
+		uint256 amount = 1 ether;
+
+		address payable[] memory _v = new address payable[](1);
+		_v[0] = payable(vaults[0]);
+
+		receiveXDepositVault(amount, _v, true);
+	}
+
+	function testProcessIncomingXFunds() public {
+		uint256 amount = 1 ether;
+
+		address payable[] memory _v = new address payable[](1);
+		_v[0] = payable(vaults[0]);
+
+		receiveXDepositVault(amount, _v, false);
+
+		vm.startPrank(manager);
+		vaults[0].processIncomingXFunds();
+		vm.stopPrank();
+
+		assertEq(
+			vaults[0].balanceOf(vaults[0].getXAddr(address(xVault), chainId)),
+			amount,
+			"XVault received amount shares"
+		);
+		assertEq(vaults[0].getIncomingQueueLength(), 0, "Incoming queue must be empty");
+	}
+
+	function testReceiveWithdrawVault() public {
+		uint256 amount = 1 ether;
+
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
+
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
+		address xVaultAddr = vaults[0].getXAddr(address(xVault), chainId);
+
+		xvaultDepositIntoVaults(requests, amount, 1, 1, true, messageFee);
+
+		vm.expectEmit(false, true, false, true);
+		emit RequestWithdraw(address(0), xVaultAddr, amount);
+
+		receiveMessage(
+			vaults[0],
+			anotherChainId,
+			Message(1e18, address(xVault), address(0), chainId),
+			MessageType.WITHDRAW
+		);
+
+		(address _xVault, uint16 _chainId) = vaults[0].bridgeQueue(0);
+
+		assertEq(_xVault, address(xVault), "xVault address should be on bridgeQueue");
+		assertEq(_chainId, chainId, "xVault chainId should be on bridgeQueue");
+
+		uint256 vaultSharesBalance = vaults[0].balanceOf(xVaultAddr);
+
+		assertEq(vaultSharesBalance, 0, "xVault should have 0 shares on vault");
+
+		uint256 pendingWithdraw = vaults[0].pendingWithdraw();
+
+		assertEq(pendingWithdraw, amount, "amount should be on computed as pending");
+	}
+
+	function testEmergencyWithdrawVault() public {
+		// Request(addr, amount);
+		uint256 amount = 1 ether;
+		address computedXV = vaults[0].getXAddr(address(xVault), chainId);
+
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
+
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false, messageFee);
+
+		// Pretend that user1 has already requested on xVault
+		vm.expectEmit(false, false, false, true);
+		emit EmergencyWithdraw(address(xVault), user1, vaults[0].balanceOf(computedXV));
+
+		receiveMessage(
+			vaults[0],
+			anotherChainId,
+			Message(1e18, address(xVault), user1, chainId),
+			MessageType.EMERGENCYWITHDRAW
+		);
+
+		assertEq(vaults[0].balanceOf(user1), amount, "User must has funds on chain vault");
+		assertEq(vaults[0].balanceOf(computedXV), 0, "XVault must have no balance");
+	}
+
+	function testHarvestVault() public {
+		uint256 amount = 1 ether;
+		// address computedXV = vaults[0].getXAddr(address(xVault), chainId);
+
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
+
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false, messageFee);
+
+		// Has to fund vault
+		vm.deal(address(vaults[0]), 1 ether);
+
+		vm.expectEmit(true, true, false, true);
+		emit MessageSent(amount, address(xVault), chainId, MessageType.HARVEST, address(postmanLz));
+
+		receiveMessage(
+			vaults[0],
+			anotherChainId,
+			Message(0, address(xVault), address(0), chainId),
+			MessageType.HARVEST
+		);
+	}
+
+	function testProcessXWithdraw() public {
+		uint256 amount = 1 ether;
+
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
+
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
+		address xVaultAddr = vaults[0].getXAddr(address(xVault), chainId);
+
+		xvaultDepositIntoVaults(requests, amount, 1, 1, true, messageFee);
+
+		vm.expectEmit(false, true, false, true);
+		emit RequestWithdraw(address(0), xVaultAddr, amount);
+
+		receiveMessage(
+			vaults[0],
+			anotherChainId,
+			Message(1e18, address(xVault), address(0), chainId),
+			MessageType.WITHDRAW
+		);
+
+		vm.warp(block.timestamp + 10000000000000);
+
+		vm.expectEmit(false, false, false, true);
+		emit BridgeAsset(chainId, chainId, amount);
+
+		requests[0] = getBasicRequest(address(xVault), uint256(chainId), amount);
+
+		vaults[0].harvest(amount + mLp, 0);
+
+		messageFee = vaults[0].estimateMessageFee(requests, MessageType.WITHDRAW);
+
+		vaults[0].processXWithdraw{ value: messageFee }(requests);
+
+		vm.expectRevert();
+		vaults[0].bridgeQueue(0);
+	}
+
 	/*/////////////////////////////////////////////////////
 							Events
 	/////////////////////////////////////////////////////*/
@@ -565,6 +730,10 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
 	event RegisterIncomingFunds(uint256 total);
 	event SetMaxBridgeFee(uint256 _maxFee);
+	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
+	event RegisterDeposit(uint256 total);
+	event EmergencyWithdraw(address vault, address client, uint256 shares);
+	event EmergencyAction(address target, bytes callData);
 
 	/*/////////////////////////////////////////////////////
 							Errors
