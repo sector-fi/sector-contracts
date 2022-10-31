@@ -13,7 +13,7 @@ import { LayerZeroPostman, chainPair } from "../../xChain/LayerZeroPostman.sol";
 import { MultichainPostman } from "../../xChain/MultichainPostman.sol";
 import { MockSocketRegistry } from "../mocks/MockSocketRegistry.sol";
 
-import { MiddlewareRequest, BridgeRequest, UserRequest } from "../../xChain/XChainIntegrator.sol";
+import { MiddlewareRequest, BridgeRequest, UserRequest } from "../../libraries/XChainLib.sol";
 import "../../interfaces/MsgStructs.sol";
 
 import "forge-std/console.sol";
@@ -288,7 +288,6 @@ contract SectorXVaultSetup is SectorTest {
 			assertEq(v.getIncomingQueueLength(), 1, "Incoming queue length must be equal to one");
 		}
 	}
-
 
 	/*//////////////////////////////////////////////////////
 						ASSERT HELPERS
