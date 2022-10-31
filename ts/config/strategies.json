@@ -1,6 +1,7 @@
 {
   "stargateStrats": [
-    "USDC-Arbitrum-Stargate"
+    "USDC-Arbitrum-Stargate",
+    "USDC-Arbitrum-Synapse"
   ],
   "hlpStrats": [
     "USDC-OP-tarot-velo"
@@ -71,6 +72,18 @@
     "f2_farmToken": "0x6694340fc020c5E6B96567843da2df01b2CE1eb6",
     "g_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "h_harvestPath": "0x6694340fc020c5e6b96567843da2df01b2ce1eb6000bb882af49447d8a07e3bd95bd0d56f35241523fbab10001f4ff970a61a04b1ca14834a43f5de4533ebddb5cc8",
+    "x_chain": "ARBITRUM"
+  },
+  "USDC-Arbitrum-Synapse": {
+    "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    "b_strategy": "0x9Dd329F5411466d9e0C488fF72519CA9fEf0cb40",
+    "c_strategyId": 1,
+    "d_yieldToken": "0xcFd72be67Ee69A0dd7cF0f846Fc0D98C33d60F16",
+    "e_farmId": 3,
+    "f1_farm": "0x73186f2Cf2493f20836b17b21ae79fc12934E207",
+    "f2_farmToken": "0x080F6AEd32Fc474DD5717105Dba5ea57268F46eb",
+    "g_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "h_harvestPath": "0x080f6aed32fc474dd5717105dba5ea57268f46eb000bb8ff970a61a04b1ca14834a43f5de4533ebddb5cc8",
     "x_chain": "ARBITRUM"
   }
 }
