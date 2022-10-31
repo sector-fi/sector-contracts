@@ -590,7 +590,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		receiveMessage(
 			vaults[0],
 			anotherChainId,
-			Message(1e18, address(xVault), address(0), chainId),
+			Message(1e18, xVaultAddr, address(0), chainId),
 			MessageType.WITHDRAW
 		);
 
@@ -599,9 +599,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		assertEq(_xVault, address(xVault), "xVault address should be on bridgeQueue");
 		assertEq(_chainId, chainId, "xVault chainId should be on bridgeQueue");
 
-		uint256 vaultSharesBalance = vaults[0].balanceOf(
-			vaults[0].getXAddr(address(xVault), chainId)
-		);
+		uint256 vaultSharesBalance = vaults[0].balanceOf(xVaultAddr);
 
 		assertEq(vaultSharesBalance, 0, "xVault should have 0 shares on vault");
 
