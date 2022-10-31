@@ -20,7 +20,6 @@ import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
 contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
-
 	uint256 mainnetFork;
 	uint256 avaxFork;
 	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");
@@ -700,7 +699,10 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 
 		messageFee = vaults[0].estimateMessageFee(requests, MessageType.WITHDRAW);
 
-		vaults[0].processXWithdraw{value: messageFee}(requests);
+		vaults[0].processXWithdraw{ value: messageFee }(requests);
+
+		vm.expectRevert();
+		vaults[0].bridgeQueue(0);
 	}
 
 	/*/////////////////////////////////////////////////////
