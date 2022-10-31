@@ -346,14 +346,14 @@ contract SectorXVaultSetup is SectorTest {
 			);
 	}
 
-	function mockRecieveFunds(
+	function mockReceiveFunds(
 		SectorVault vault,
 		address from,
 		uint16 fromChain,
 		uint16 toChain,
 		uint256 amount
 	) public {
-		recieveMessage(
+		receiveMessage(
 			vault,
 			toChain,
 			Message(amount, from, address(0), fromChain),
@@ -376,7 +376,7 @@ contract SectorXVaultSetup is SectorTest {
 	}
 
 	// Mocks a message being received from another chain
-	function recieveMessage(
+	function receiveMessage(
 		SectorVault _dstVault,
 		uint16 toChain,
 		Message memory _msg,

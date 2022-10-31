@@ -539,6 +539,60 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		assertEq(checkPostman, newPostman);
 	}
 
+	// SectorVault _dstVault,
+	// 	uint16 toChain,
+	// 	Message memory _msg,
+	// 	MessageType _msgType
+
+	function testReceiveDepositVault() public {
+		// Pre test
+		// XVault must have deposited funds on vault
+
+		// This part is the next one
+		// Accounting and blablabla ok
+	}
+
+	function testProcessIncomingXFunds() public {
+		// Pre test
+		// XVault must have deposited funds on vault
+
+		// Receive a deposit message
+		// Do it to finish blabla
+		// Shares are issued to xVault on Vault
+	}
+
+
+	function testReceiveWithdrawVault() public {
+		// reuse setup from above
+
+		// Receive withdraw message
+		receiveMessage();
+		// Check that bridge queue is ok and requestRedeem happened
+		// balanceOf(xVault) is zero
+	}
+
+	function testEmergencyWithdrawVault() public {
+		// reuse setup from above
+
+		// balanceOf(xVault) must be decrease
+		// balanceOf(client) must increase
+	}
+
+	function testHarvestVault() public {
+		// reuse setup from above
+
+		// test if postman sends a proper message back
+		// proper means with a value that makes sense in vault accouting
+	}
+
+	function testProcessXWithdraw() public {
+		// do what ever receive withdraw does
+
+
+		// Check that events are being emitted
+		// and the bridge is being triggered
+	}
+
 	// Copied from SectorXVault to test
 	/*/////////////////////////////////////////////////////
 							Events
