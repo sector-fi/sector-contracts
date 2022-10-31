@@ -608,11 +608,35 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		assertEq(pendingWithdraw, amount, "amount should be on computed as pending");
 	}
 
-	// function testEmergencyWithdrawVault() public {
-	// 	// reuse setup from above
-	// 	// balanceOf(xVault) must be decrease
-	// 	// balanceOf(client) must increase
-	// }
+	function testEmergencyWithdrawVault() public {
+		// Request(addr, amount);
+		uint256 amount = 1 ether;
+		address computedXV = vaults[0].getXAddr(address(xVault), chainId);
+
+		depositXVault(user1, amount);
+
+		Request[] memory requests = new Request[](1);
+		requests[0] = getBasicRequest(address(vaults[0]), uint256(anotherChainId), amount);
+
+		uint256 messageFee = xVault.estimateMessageFee(requests, MessageType.DEPOSIT);
+
+		// Requests, total amount deposited, expected msgSent events, expected bridge events
+		xvaultDepositIntoVaults(requests, amount, 1, 1, false, messageFee);
+
+		// Pretend that user1 has already requested on xVault
+		vm.expectEmit(false, false, false, true);
+		emit EmergencyWithdraw(address(xVault), user1, vaults[0].balanceOf(computedXV));
+
+		receiveMessage(
+			vaults[0],
+			anotherChainId,
+			Message(1e18, address(xVault), user1, chainId),
+			MessageType.EMERGENCYWITHDRAW
+		);
+
+		assertEq(vaults[0].balanceOf(user1), amount, "User must has funds on chain vault");
+		assertEq(vaults[0].balanceOf(computedXV), 0, "XVault must have no balance");
+	}
 
 	// function testHarvestVault() public {
 	// 	// reuse setup from above
@@ -652,6 +676,10 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 	event BridgeAsset(uint16 _fromChainId, uint16 _toChainId, uint256 amount);
 	event RegisterIncomingFunds(uint256 total);
 	event SetMaxBridgeFee(uint256 _maxFee);
+
+	event RegisterDeposit(uint256 total);
+	event EmergencyWithdraw(address vault, address client, uint256 shares);
+	event EmergencyAction(address target, bytes callData);
 
 	/*/////////////////////////////////////////////////////
 							Errors
