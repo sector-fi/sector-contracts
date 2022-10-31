@@ -24,6 +24,7 @@ struct DepositParams {
 	uint256 minSharesOut;
 }
 
+
 contract SectorVault is SectorBase, XChainIntegrator {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
