@@ -7,6 +7,11 @@ enum CallType {
 	REMOVE_LIQ_AND_REPAY
 }
 
+enum VaultType {
+	Strategy,
+	Aggregator
+}
+
 enum NativeToken {
 	None,
 	Underlying,

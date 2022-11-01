@@ -8,7 +8,8 @@ import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from ".
 import { SectorBase } from "../ERC4626/SectorBase.sol";
 import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
 import { XChainIntegrator } from "../../xChain/XChainIntegrator.sol";
-import "../../interfaces/MsgStructs.sol";
+import { Message, VaultAddr, MessageType, Request, Vault } from "../../interfaces/MsgStructs.sol";
+import { VaultType } from "../../interfaces/Structs.sol";
 
 // import "hardhat/console.sol";
 

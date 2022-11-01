@@ -2,8 +2,9 @@
 pragma solidity 0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { VaultType } from "./Structs.sol";
 
-interface ISCYStrategy is IERC20 {
+interface IVaultStrategy is IERC20 {
 	// scy deposit
 	function deposit(
 		address receiver,
@@ -12,12 +13,21 @@ interface ISCYStrategy is IERC20 {
 		uint256 minSharesOut
 	) external payable returns (uint256 amountSharesOut);
 
+	// erc4626 deposit
+	function deposit(uint256 amount, address to) external payable returns (uint256 amountSharesOut);
+
+	function vaultType() external view returns (VaultType);
+
 	function redeem(
 		address receiver,
 		uint256 amountSharesToPull,
 		address tokenOut,
 		uint256 minTokenOut
 	) external returns (uint256 amountTokenOut);
+
+	function requestRedeem(uint256 shares) external;
+
+	function redeem() external returns (uint256 amountTokenOut);
 
 	function getAndUpdateTvl() external returns (uint256 tvl);
 
