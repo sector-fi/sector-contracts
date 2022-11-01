@@ -7,7 +7,7 @@ import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 import { SectorBase } from "../ERC4626/SectorBase.sol";
 import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
 import { XChainIntegrator } from "../../xChain/XChainIntegrator.sol";
-import "../../interfaces/MsgStructs.sol";
+import { Message, VaultAddr, MessageType, Request, Vault } from "../../interfaces/MsgStructs.sol";
 import { AggregatorVault, DepositParams, RedeemParams } from "./AggregatorVault.sol";
 
 // import "hardhat/console.sol";
@@ -16,6 +16,7 @@ contract SectorVault is AggregatorVault, XChainIntegrator {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
 	VaultAddr[] public bridgeQueue;
+	Message[] internal depositQueue;
 
 	constructor(
 		ERC20 asset_,

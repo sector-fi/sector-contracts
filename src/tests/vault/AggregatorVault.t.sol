@@ -5,31 +5,41 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorBase, AggregatorVault, BatchedWithdraw, RedeemParams, DepositParams, ISCYStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
+import { SectorBase, AggregatorVault, BatchedWithdraw, RedeemParams, DepositParams, IVaultStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { EAction } from "interfaces/Structs.sol";
+import { VaultType } from "interfaces/Structs.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
-	ISCYStrategy strategy1;
-	ISCYStrategy strategy2;
-	ISCYStrategy strategy3;
+	IVaultStrategy strategy1;
+	IVaultStrategy strategy2;
+	IVaultStrategy strategy3;
 
 	WETH underlying;
 
 	AggregatorVault vault;
+	AggregatorVault s3;
 
 	function setUp() public {
 		underlying = new WETH();
 
 		SCYVault s1 = setUpSCYVault(address(underlying));
 		SCYVault s2 = setUpSCYVault(address(underlying));
-		SCYVault s3 = setUpSCYVault(address(underlying));
+		s3 = new AggregatorVault(
+			underlying,
+			"SECT_VAULT",
+			"SECT_VAULT",
+			false,
+			3 days,
+			AuthConfig(owner, guardian, manager),
+			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
+		);
 
-		strategy1 = ISCYStrategy(address(s1));
-		strategy2 = ISCYStrategy(address(s2));
-		strategy3 = ISCYStrategy(address(s3));
+		strategy1 = IVaultStrategy(address(s1));
+		strategy2 = IVaultStrategy(address(s2));
+		strategy3 = IVaultStrategy(address(s3));
 
 		vault = new AggregatorVault(
 			underlying,
@@ -45,7 +55,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		sectDeposit(vault, owner, mLp);
 		scyDeposit(s1, owner, mLp);
 		scyDeposit(s2, owner, mLp);
-		scyDeposit(s3, owner, mLp);
+		sectDeposit(s3, owner, mLp);
 
 		vault.addStrategy(strategy1);
 		vault.addStrategy(strategy2);
@@ -196,6 +206,12 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		assertEq(vault.getTvl(), amnt);
 		assertEq(vault.totalChildHoldings(), amnt);
 
+		uint256 s3Balance = s3.balanceOf(address(vault));
+		requestRedeemFromStrat(strategy3, s3Balance / 2);
+		skip(1);
+		sectHarvest(s3);
+		skip(1);
+
 		sectRedeem3Strats(vault, 200e18 / 2, 300e18 / 2, 500e18 / 2);
 
 		assertEq(vault.getTvl(), amnt);
@@ -223,7 +239,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float amnt half");
 
 		DepositParams[] memory dParams = new DepositParams[](1);
-		dParams[0] = (DepositParams(strategy1, amnt / 2, 0));
+		dParams[0] = (DepositParams(strategy1, VaultType.Strategy, amnt / 2, 0));
 		vm.expectRevert(SectorBase.NotEnoughtFloat.selector);
 		vault.depositIntoStrategies(dParams);
 
@@ -283,7 +299,16 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 
 		strategy1.redeem(user1, b1, address(underlying), 0);
 		strategy2.redeem(user1, b2, address(underlying), 0);
-		strategy3.redeem(user1, b3, address(underlying), 0);
+
+		s3.requestRedeem(b3, user1);
+
+		vm.stopPrank();
+
+		skip(1);
+		sectHarvest(s3);
+
+		vm.prank(user1);
+		strategy3.redeem();
 
 		assertApproxEqAbs(underlying.balanceOf(user1), amnt, 1, "recovered amnt");
 		assertApproxEqAbs(vault.getTvl(), mLp, 1);
@@ -356,21 +381,27 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 
 	/// UTILS
 
-	function depositToStrat(ISCYStrategy strategy, uint256 amount) public {
+	function depositToStrat(IVaultStrategy strategy, uint256 amount) public {
 		DepositParams[] memory params = new DepositParams[](1);
-		params[0] = (DepositParams(strategy, amount, 0));
+		params[0] = (DepositParams(strategy, strategy.vaultType(), amount, 0));
 		vault.depositIntoStrategies(params);
 	}
 
-	function withdrawFromStrat(ISCYStrategy strategy, uint256 amount) public {
+	function withdrawFromStrat(IVaultStrategy strategy, uint256 amount) public {
 		RedeemParams[] memory rParams = new RedeemParams[](1);
-		rParams[0] = (RedeemParams(strategy, amount, 0));
+		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), amount, 0));
 		vault.withdrawFromStrategies(rParams);
+	}
+
+	function requestRedeemFromStrat(IVaultStrategy strategy, uint256 amount) public {
+		RedeemParams[] memory rParams = new RedeemParams[](1);
+		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), amount, 0));
+		vault.requestRedeemFromStrategies(rParams);
 	}
 
 	function sectHarvest(AggregatorVault _vault) public {
 		vm.startPrank(manager);
-		uint256 expectedTvl = vault.getTvl();
+		uint256 expectedTvl = _vault.getTvl();
 		uint256 maxDelta = expectedTvl / 1000; // .1%
 		_vault.harvest(expectedTvl, maxDelta);
 		vm.stopPrank();
@@ -424,9 +455,9 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		uint256 a3
 	) public {
 		DepositParams[] memory dParams = new DepositParams[](3);
-		dParams[0] = (DepositParams(strategy1, a1, 0));
-		dParams[1] = (DepositParams(strategy2, a2, 0));
-		dParams[2] = (DepositParams(strategy3, a3, 0));
+		dParams[0] = (DepositParams(strategy1, strategy1.vaultType(), a1, 0));
+		dParams[1] = (DepositParams(strategy2, strategy2.vaultType(), a2, 0));
+		dParams[2] = (DepositParams(strategy3, strategy3.vaultType(), a3, 0));
 		_vault.depositIntoStrategies(dParams);
 	}
 
@@ -437,9 +468,9 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		uint256 a3
 	) public {
 		RedeemParams[] memory rParams = new RedeemParams[](3);
-		rParams[0] = (RedeemParams(strategy1, a1, 0));
-		rParams[1] = (RedeemParams(strategy2, a2, 0));
-		rParams[2] = (RedeemParams(strategy3, a3, 0));
+		rParams[0] = (RedeemParams(strategy1, strategy1.vaultType(), a1, 0));
+		rParams[1] = (RedeemParams(strategy2, strategy2.vaultType(), a2, 0));
+		rParams[2] = (RedeemParams(strategy3, strategy3.vaultType(), a3, 0));
 		_vault.withdrawFromStrategies(rParams);
 	}
 }

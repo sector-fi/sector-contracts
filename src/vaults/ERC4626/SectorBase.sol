@@ -3,18 +3,18 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20 } from "../ERC4626/ERC4626.sol";
-import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 import { BatchedWithdraw } from "./BatchedWithdraw.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction } from "../../interfaces/Structs.sol";
-
-import "../../interfaces/MsgStructs.sol";
+import { VaultType } from "../../interfaces/Structs.sol";
 
 // import "hardhat/console.sol";
 
 abstract contract SectorBase is BatchedWithdraw {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
+
+	VaultType public constant vaultType = VaultType.Aggregator;
 
 	uint256 public totalChildHoldings;
 	uint256 public floatAmnt; // amount of underlying tracked in vault
@@ -101,6 +101,11 @@ abstract contract SectorBase is BatchedWithdraw {
 
 	/// @dev returns a cached value used for withdrawals
 	function underlyingBalance(address user) public view returns (uint256) {
+		uint256 shares = balanceOf(user);
+		return convertToAssets(shares);
+	}
+
+	function getUpdatedUnderlyingBalance(address user) public view returns (uint256) {
 		uint256 shares = balanceOf(user);
 		return convertToAssets(shares);
 	}
