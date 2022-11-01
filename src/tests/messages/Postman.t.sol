@@ -62,6 +62,7 @@ contract PostmanTest is SectorXVaultSetup, SCYVaultSetup {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			false,
+			3 days,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
 			1e14
@@ -80,6 +81,7 @@ contract PostmanTest is SectorXVaultSetup, SCYVaultSetup {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			false,
+			3 days,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
 			1e14

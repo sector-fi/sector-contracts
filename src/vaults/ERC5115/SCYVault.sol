@@ -152,12 +152,14 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		HarvestSwapParams[] calldata swap2
 	) external onlyRole(MANAGER) returns (uint256[] memory harvest1, uint256[] memory harvest2) {
 		/// TODO refactor this
-		uint256 startTvl = _stratGetAndUpdateTvl() + underlying.balanceOf(address(this));
+		uint256 _uBalance = underlying.balanceOf(address(this));
+		uint256 startTvl = _stratGetAndUpdateTvl() + _uBalance;
+
 		_checkSlippage(expectedTvl, startTvl, maxDelta);
 
 		(harvest1, harvest2) = _stratHarvest(swap1, swap2);
 
-		uint256 tvl = _stratGetAndUpdateTvl() + underlying.balanceOf(address(this));
+		uint256 tvl = _strategyTvl() + _uBalance;
 
 		uint256 prevTvl = vaultTvl;
 		uint256 timestamp = block.timestamp;
@@ -182,15 +184,14 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 		vaultTvl = tvl;
 
-		// TODO computing lockedProfit for all profits is a bit heavy-handed
-		// in reality it should only apply to the immediate profits from startegy's harvest
-		// we can do this if we issue the strategy harvest call from inside this method
+		// only use harvest profits in lockedProfit?
+		uint256 lProfit = tvl > startTvl ? tvl - startTvl : 0;
 
 		// keep previous locked profits + add current profits
 		// locked profit is denominated in shares
 		uint256 newLockedProfit;
-		if (profit > totalFees) {
-			uint256 lockedValue = profit - totalFees;
+		if (lProfit > totalFees) {
+			uint256 lockedValue = lProfit - totalFees;
 			newLockedProfit = (lockedValue).mulDivDown(totalSupply(), tvl - lockedValue);
 		}
 		maxLockedProfit = lockedProfit() + newLockedProfit;

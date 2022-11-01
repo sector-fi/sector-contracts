@@ -33,6 +33,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset,
+		uint256 _maxHarvestInterval,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig,
 		uint256 _maxBridgeFeeAllowed
@@ -42,7 +43,10 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		Fees(feeConfig)
 		BatchedWithdraw()
 		XChainIntegrator(_maxBridgeFeeAllowed)
-	{}
+	{
+		maxHarvestInterval = _maxHarvestInterval;
+		emit SetMaxHarvestInterval(_maxHarvestInterval);
+	}
 
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
@@ -177,6 +181,8 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 	}
 
 	function emergencyWithdraw() external payable {
+		if (block.timestamp - lastHarvestTimestamp < maxHarvestInterval) revert RecentHarvest();
+
 		uint256 userShares = balanceOf(msg.sender);
 
 		_burn(msg.sender, userShares);

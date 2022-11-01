@@ -101,7 +101,7 @@ contract SetupSynapse is SectorTest, StratUtils {
 			address(strategy)
 		);
 		mLp = vault.MIN_LIQUIDITY();
-		mLp = vault.sharesToUnderlying(mLp);
+		mLp = vault.convertToAssets(mLp);
 	}
 
 	function rebalance() public override {}

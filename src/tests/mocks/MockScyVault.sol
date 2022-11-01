@@ -81,12 +81,13 @@ contract MockScyVault is SCYStrategy, SCYVault {
 
 	function _stratValidate() internal override {}
 
-	function _stratHarvest(HarvestSwapParams[] calldata, HarvestSwapParams[] calldata)
+	function _stratHarvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
 		internal
-		pure
 		override
 		returns (uint256[] memory, uint256[] memory)
 	{
+		/// simulate harvest profits
+		if (params.length > 0) MockERC20(address(underlying)).mint(strategy, params[0].min);
 		return (new uint256[](0), new uint256[](0));
 	}
 

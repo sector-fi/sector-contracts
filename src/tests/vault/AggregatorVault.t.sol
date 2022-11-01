@@ -36,6 +36,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			false,
+			3 days,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
@@ -268,7 +269,10 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		skip(1);
 
 		vm.startPrank(user1);
+		vm.expectRevert(SectorBase.RecentHarvest.selector);
+		vault.emergencyRedeem();
 
+		skip(vault.maxHarvestInterval());
 		vault.emergencyRedeem();
 
 		assertApproxEqAbs(underlying.balanceOf(user1), 100e18, mLp, "recovered float");
@@ -309,6 +313,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			true,
+			3 days,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);

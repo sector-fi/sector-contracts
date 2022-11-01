@@ -72,8 +72,13 @@ contract SCYVaultSetup is SectorTest {
 	}
 
 	function scyHarvest(SCYVault vault) public {
-		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](0);
+		return scyHarvest(vault, 0);
+	}
+
+	function scyHarvest(SCYVault vault, uint256 underlyingProfit) public {
+		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
 		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+		params1[0].min = underlyingProfit;
 		vault.harvest(vault.getTvl(), 0, params1, params2);
 	}
 }

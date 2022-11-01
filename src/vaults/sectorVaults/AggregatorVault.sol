@@ -33,7 +33,6 @@ contract AggregatorVault is SectorBase {
 
 	mapping(ISCYStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
-	address[] public bridgeQueue;
 	Message[] internal depositQueue;
 
 	uint256 public totalStrategyHoldings;
@@ -43,6 +42,7 @@ contract AggregatorVault is SectorBase {
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset,
+		uint256 _maxHarvestInterval,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
 	)
@@ -50,7 +50,10 @@ contract AggregatorVault is SectorBase {
 		Auth(authConfig)
 		Fees(feeConfig)
 		BatchedWithdraw()
-	{}
+	{
+		maxHarvestInterval = _maxHarvestInterval;
+		emit SetMaxHarvestInterval(_maxHarvestInterval);
+	}
 
 	function addStrategy(ISCYStrategy strategy) public onlyOwner {
 		if (strategyExists[strategy]) revert StrategyExists();
@@ -140,16 +143,25 @@ contract AggregatorVault is SectorBase {
 		}
 	}
 
+	/// @dev this method allows direct redemption of shares in exchange for
+	/// a portion of the float amount + a portion of all the strategy shares the vault holds
+	/// deposits are paused when we are in the emergency redeem state
 	function emergencyRedeem() public {
+		if (block.timestamp - lastHarvestTimestamp < maxHarvestInterval) revert RecentHarvest();
 		uint256 _totalSupply = totalSupply();
 		uint256 shares = balanceOf(msg.sender);
 		if (shares == 0) return;
 		_burn(msg.sender, shares);
 
 		// redeem proportional share of vault's underlying float balance
-		uint256 underlyingShare = (floatAmnt * shares) / _totalSupply;
-		beforeWithdraw(underlyingShare, 0);
-		asset.safeTransfer(msg.sender, underlyingShare);
+		// (minus pendingWithdraw)
+		uint256 pendingWithdraw = convertToAssets(pendingRedeem);
+		if (floatAmnt > pendingWithdraw) {
+			uint256 availableFloat = floatAmnt - pendingWithdraw;
+			uint256 underlyingShare = (availableFloat * shares) / _totalSupply;
+			beforeWithdraw(underlyingShare, 0);
+			asset.safeTransfer(msg.sender, underlyingShare);
+		}
 
 		uint256 l = strategyIndex.length;
 
@@ -207,12 +219,12 @@ contract AggregatorVault is SectorBase {
 		return supply == 0 ? shares : shares.mulDivDown(getTvl(), supply);
 	}
 
-	/// @dev current exchange rate (different from previewDeposit / previewWithdrawal rate)
-	/// this should be used estimate of deposit fee
-	function underlyingToShares(uint256 underlyingAmnt) public view returns (uint256) {
-		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
-		return supply == 0 ? underlyingAmnt : underlyingAmnt.mulDivDown(supply, getTvl());
-	}
+	// /// @dev current exchange rate (different from previewDeposit / previewWithdrawal rate)
+	// /// this should be used estimate of deposit fee
+	// function underlyingToShares(uint256 underlyingAmnt) public view returns (uint256) {
+	// 	uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+	// 	return supply == 0 ? underlyingAmnt : underlyingAmnt.mulDivDown(supply, getTvl());
+	// }
 
 	error VaultAddressNotMatch();
 	event AddStrategy(address indexed strategy);
