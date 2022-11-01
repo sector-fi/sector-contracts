@@ -111,10 +111,17 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 	function testLockedProfit() public {
 		uint256 amnt = 100e18;
 		scyDeposit(vault, user1, amnt);
-		underlying.mint(address(vault.strategy()), 10e18 + (mLp) / 10); // 10% profit
-		skip(7 days);
-		scyHarvest(vault);
-		assertApproxEqRel(vault.underlyingBalance(user1), amnt, .001e18);
+
+		skip(7 days); // this determines locked profit duration
+
+		// scyHarvest(vault);
+		scyHarvest(vault, 10e18 + (mLp) / 10);
+		assertApproxEqRel(
+			vault.underlyingBalance(user1),
+			amnt,
+			.001e18,
+			"underlying balance should be the same"
+		);
 
 		skip(7 days);
 		assertEq(vault.underlyingBalance(user1), 109e18);
@@ -123,9 +130,9 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 	function testLockedProfitWithdraw() public {
 		uint256 amnt = 100e18;
 		scyDeposit(vault, user1, amnt);
-		underlying.mint(address(vault.strategy()), 10e18 + (mLp) / 10); // 10% profit
-		skip(7 days);
-		scyHarvest(vault);
+		skip(7 days); // this determines locked profit duration
+
+		scyHarvest(vault, 10e18 + (mLp) / 10);
 		uint256 balance = vault.underlyingBalance(user1);
 		scyWithdraw(vault, user1, 1e18);
 		assertEq(underlying.balanceOf(user1), balance);

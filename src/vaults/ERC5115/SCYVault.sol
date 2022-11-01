@@ -164,8 +164,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uint256 prevTvl = vaultTvl;
 		uint256 timestamp = block.timestamp;
 		uint256 profit = tvl > prevTvl ? tvl - prevTvl : 0;
-		// TODO - only use harvest profits in lockedProfit?
-		// uint256 profit = tvl > startTvl ? tvl - startTvl : 0;
 
 		// PROCESS VAULT FEES
 		uint256 _performanceFee = profit == 0 ? 0 : (profit * performanceFee) / 1e18;
@@ -186,15 +184,14 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 		vaultTvl = tvl;
 
-		// TODO computing lockedProfit for all profits is a bit heavy-handed
-		// in reality it should only apply to the immediate profits from startegy's harvest
-		// we can do this if we issue the strategy harvest call from inside this method
+		// only use harvest profits in lockedProfit?
+		uint256 lProfit = tvl > startTvl ? tvl - startTvl : 0;
 
 		// keep previous locked profits + add current profits
 		// locked profit is denominated in shares
 		uint256 newLockedProfit;
-		if (profit > totalFees) {
-			uint256 lockedValue = profit - totalFees;
+		if (lProfit > totalFees) {
+			uint256 lockedValue = lProfit - totalFees;
 			newLockedProfit = (lockedValue).mulDivDown(totalSupply(), tvl - lockedValue);
 		}
 		maxLockedProfit = lockedProfit() + newLockedProfit;
