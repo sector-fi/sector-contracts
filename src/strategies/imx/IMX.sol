@@ -19,7 +19,9 @@ contract IMX is IMXCore, IMXFarm {
 			config.farmToken
 		)
 		IMXCore(config.vault, config.underlying, config.short, config.maxTvl)
-	{}
+	{
+		isInitialized = true;
+	}
 
 	function tarotBorrow(
 		address a,

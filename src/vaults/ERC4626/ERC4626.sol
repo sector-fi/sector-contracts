@@ -10,10 +10,11 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 import { Fees, FeeConfig } from "../../common/Fees.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
+abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20, ReentrancyGuard {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 
@@ -60,6 +61,7 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 		public
 		payable
 		virtual
+		nonReentrant
 		returns (uint256 shares)
 	{
 		// This check is no longer necessary because we use MIN_LIQUIDITY
@@ -89,6 +91,7 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 		public
 		payable
 		virtual
+		nonReentrant
 		returns (uint256 assets)
 	{
 		assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.

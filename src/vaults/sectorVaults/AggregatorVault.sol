@@ -127,8 +127,8 @@ contract AggregatorVault is SectorBase {
 				asset.safeApprove(address(strategy), amountIn);
 				strategy.deposit(amountIn, address(this));
 			}
-
 			totalChildHoldings += amountIn;
+
 			emit DepositIntoStrategy(msg.sender, address(strategy), amountIn);
 		}
 	}

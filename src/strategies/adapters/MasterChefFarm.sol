@@ -62,9 +62,6 @@ abstract contract MasterChefFarm is IUniFarm {
 		override
 		returns (uint256[] memory harvested)
 	{
-		address[] memory addresses;
-		uint256[] memory amounts;
-
 		_farm.deposit(_farmId, 0);
 		harvested = new uint256[](1);
 		harvested[0] = _farmToken.balanceOf(address(this));

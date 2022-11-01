@@ -103,7 +103,6 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		// TODO should we add a revoke aprovals methods?
 		_addLendingApprovals();
 		_addFarmApprovals();
-
 		isInitialized = true;
 	}
 

@@ -203,7 +203,7 @@ abstract contract IMXFarm is IIMXFarm {
 		RemoveLiqAndRepayCalldata memory d = abi.decode(data, (RemoveLiqAndRepayCalldata));
 
 		// redeem withdrawn staked coins
-		IERC20(address(stakedToken)).transfer(address(stakedToken), redeemAmount);
+		IERC20(address(stakedToken)).safeTransfer(address(stakedToken), redeemAmount);
 		stakedToken.redeem(address(this));
 
 		// remove collateral
@@ -250,7 +250,7 @@ abstract contract IMXFarm is IIMXFarm {
 		// TODO add tests to make ensure cAmount < colBal
 
 		// return collateral token
-		IERC20(address(_collateralToken)).transfer(
+		IERC20(address(_collateralToken)).safeTransfer(
 			address(_collateralToken),
 			// colBal < cAmount ? colBal : cAmount
 			cAmount
