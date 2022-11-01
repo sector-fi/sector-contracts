@@ -147,7 +147,7 @@ contract SectorXVaultSetup is SectorTest {
 			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 
 			uint256 vaultShares = shares[i];
-			uint256 vaultBalance = vault.sharesToUnderlying(vaultShares);
+			uint256 vaultBalance = vault.convertToAssets(vaultShares);
 			uint256 value = (requests[i].amount * vaultBalance) / 1e18;
 			uint256 redeemShares = (requests[i].amount * vaultShares) / 1e18;
 

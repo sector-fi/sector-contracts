@@ -63,6 +63,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 			"SECT_X_VAULT",
 			"SECT_X_VAULT",
 			false,
+			3 days,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
 			1e14
@@ -81,6 +82,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 					"SECT_VAULT",
 					"SECT_VAULT",
 					false,
+					3 days,
 					AuthConfig(owner, guardian, manager),
 					FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
 					1e14
@@ -364,7 +366,10 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 
 		messageFee = xVault.estimateMessageFee(withdrawRequests, MessageType.WITHDRAW);
 
+		skip(xVault.maxHarvestInterval());
+
 		vm.prank(user1);
+
 		xVault.emergencyWithdraw{ value: messageFee }();
 
 		assertEq(xVault.balanceOf(user1), 0);
@@ -392,7 +397,9 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 			messageFee
 		);
 
+		skip(xVault.maxHarvestInterval());
 		vm.prank(user1);
+
 		xVault.emergencyWithdraw{ value: messageFee }();
 
 		assertEq(xVault.balanceOf(user1), 0);

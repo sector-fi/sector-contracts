@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Auth } from "../common/Auth.sol";
 import "../interfaces/MsgStructs.sol";
 import "../interfaces/xChain/IPostman.sol";
@@ -44,10 +44,10 @@ abstract contract XChainIntegrator is Auth {
 		uint256 amount,
 		uint256 destinationChainId,
 		bytes calldata data
-	) internal onlyRole(MANAGER) {
+	) internal {
 		XChainLib.verifySocketCalldata(data, destinationChainId, asset, destinationAddress);
 
-		ERC20(asset).approve(allowanceTarget, amount);
+		IERC20(asset).approve(allowanceTarget, amount);
 		(bool success, ) = socketRegistry.call(data);
 
 		if (!success) revert BridgeError();

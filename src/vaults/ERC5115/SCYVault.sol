@@ -152,16 +152,20 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		HarvestSwapParams[] calldata swap2
 	) external onlyRole(MANAGER) returns (uint256[] memory harvest1, uint256[] memory harvest2) {
 		/// TODO refactor this
-		uint256 startTvl = _stratGetAndUpdateTvl() + underlying.balanceOf(address(this));
+		uint256 _uBalance = underlying.balanceOf(address(this));
+		uint256 startTvl = _stratGetAndUpdateTvl() + _uBalance;
+
 		_checkSlippage(expectedTvl, startTvl, maxDelta);
 
 		(harvest1, harvest2) = _stratHarvest(swap1, swap2);
 
-		uint256 tvl = _stratGetAndUpdateTvl() + underlying.balanceOf(address(this));
+		uint256 tvl = _strategyTvl() + _uBalance;
 
 		uint256 prevTvl = vaultTvl;
 		uint256 timestamp = block.timestamp;
 		uint256 profit = tvl > prevTvl ? tvl - prevTvl : 0;
+		// TODO - only use harvest profits in lockedProfit?
+		// uint256 profit = tvl > startTvl ? tvl - startTvl : 0;
 
 		// PROCESS VAULT FEES
 		uint256 _performanceFee = profit == 0 ? 0 : (profit * performanceFee) / 1e18;

@@ -16,17 +16,14 @@ abstract contract SectorBase is BatchedWithdraw {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
 
-	event Harvest(
-		address indexed treasury,
-		uint256 underlyingProfit,
-		uint256 performanceFee,
-		uint256 managementFee,
-		uint256 sharesFees,
-		uint256 tvl
-	);
-
 	uint256 public totalChildHoldings;
 	uint256 public floatAmnt; // amount of underlying tracked in vault
+	uint256 public maxHarvestInterval; // emergency redeem is enabled after this time
+
+	function setMaxHarvestInterval(uint256 maxHarvestInterval_) public onlyOwner {
+		maxHarvestInterval = maxHarvestInterval_;
+		emit SetMaxHarvestInterval(maxHarvestInterval);
+	}
 
 	function _harvest(uint256 currentChildHoldings) internal {
 		// withdrawFromStrategies should be called prior to harvest to ensure this tx doesn't revert
@@ -119,6 +116,9 @@ abstract contract SectorBase is BatchedWithdraw {
 	/// OVERRIDES
 
 	function afterDeposit(uint256 assets, uint256) internal override {
+		if (block.timestamp - lastHarvestTimestamp > maxHarvestInterval)
+			revert EmergencyRedeemEnabled();
+
 		floatAmnt += assets;
 	}
 
@@ -133,7 +133,17 @@ abstract contract SectorBase is BatchedWithdraw {
 	event RegisterDeposit(uint256 total);
 	event EmergencyWithdraw(address vault, address client, uint256 shares);
 	event EmergencyAction(address target, bytes callData);
+	event Harvest(
+		address indexed treasury,
+		uint256 underlyingProfit,
+		uint256 performanceFee,
+		uint256 managementFee,
+		uint256 sharesFees,
+		uint256 tvl
+	);
+	event SetMaxHarvestInterval(uint256 maxHarvestInterval);
 
+	error RecentHarvest();
 	error MaxRedeemNotZero();
 	error NotEnoughtFloat();
 	error WrongUnderlying();
@@ -141,4 +151,5 @@ abstract contract SectorBase is BatchedWithdraw {
 	error StrategyExists();
 	error StrategyNotFound();
 	error MissingDepositValue();
+	error EmergencyRedeemEnabled();
 }
