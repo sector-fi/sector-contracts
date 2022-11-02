@@ -218,11 +218,13 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	// use the return of the function to estimate pending harvest via staticCall
 	function harvest(HarvestSwapParams[] calldata harvestParams)
 		external
-		onlyRole(MANAGER)
+		onlyVault
 		nonReentrant
 		returns (uint256[] memory farmHarvest)
 	{
 		(uint256 startTvl, , , , , ) = getTVL();
+
+		farmHarvest = new uint256[](1);
 		farmHarvest[0] = _harvestFarm(harvestParams[0]);
 
 		// compound our lp position

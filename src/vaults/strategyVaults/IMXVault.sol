@@ -8,6 +8,8 @@ import { AuthConfig, Auth } from "../../common/Auth.sol";
 import { FeeConfig, Fees } from "../../common/Fees.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 
+// import "hardhat/console.sol";
+
 contract IMXVault is SCYStrategy, SCYVault {
 	constructor(
 		AuthConfig memory authConfig,
@@ -60,9 +62,10 @@ contract IMXVault is SCYStrategy, SCYVault {
 	function _stratHarvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
 		internal
 		override
-		returns (uint256[] memory harvest1, uint256[] memory)
+		returns (uint256[] memory harvested, uint256[] memory)
 	{
-		harvest1 = IMX(strategy).harvest(params);
+		harvested = IMX(strategy).harvest(params);
+		return (harvested, new uint256[](0));
 	}
 
 	function _selfBalance(address token) internal view virtual override returns (uint256) {

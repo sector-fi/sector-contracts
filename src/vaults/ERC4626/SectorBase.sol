@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC4626, FixedPointMathLib, SafeERC20 } from "../ERC4626/ERC4626.sol";
+import { ERC4626, FixedPointMathLib, SafeERC20 } from "./ERC4626.sol";
 import { BatchedWithdraw } from "./BatchedWithdraw.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction } from "../../interfaces/Structs.sol";

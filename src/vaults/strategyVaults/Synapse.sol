@@ -105,9 +105,6 @@ contract Synapse is SCYStrategy, MiniChef2Farm, SCYVault {
 		if (amountOut > 0) _stratDeposit(amountOut);
 		harvested = new uint256[](1);
 		harvested[0] = tokenHarvest;
+		return (harvested, new uint256[](0));
 	}
-
-	// function pendingHarvest() public returns (uint256) {
-	// 	farm.pendingSynapse(farmId, address(this));
-	// }
 }

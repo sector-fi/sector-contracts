@@ -48,6 +48,7 @@ contract AggregatorVault is SectorBase {
 		string memory _symbol,
 		bool _useNativeAsset,
 		uint256 _maxHarvestInterval,
+		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
 	)
@@ -56,6 +57,9 @@ contract AggregatorVault is SectorBase {
 		Fees(feeConfig)
 		BatchedWithdraw()
 	{
+		maxTvl = _maxTvl;
+		emit MaxTvlUpdated(_maxTvl);
+
 		maxHarvestInterval = _maxHarvestInterval;
 		emit SetMaxHarvestInterval(_maxHarvestInterval);
 	}

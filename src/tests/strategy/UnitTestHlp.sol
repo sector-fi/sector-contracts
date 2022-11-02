@@ -4,7 +4,6 @@ pragma solidity 0.8.16;
 import { IUniswapV2Pair } from "interfaces/uniswap/IUniswapV2Pair.sol";
 import { HarvestSwapParams } from "strategies/mixins/IFarmable.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
-import { MockPair } from "../mocks/MockPair.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";

@@ -5,7 +5,7 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SectorBase, AggregatorVault, BatchedWithdraw, RedeemParams, DepositParams, IVaultStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
+import { ERC4626, SectorBase, AggregatorVault, BatchedWithdraw, RedeemParams, DepositParams, IVaultStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { EAction } from "interfaces/Structs.sol";
 import { VaultType } from "interfaces/Structs.sol";
@@ -33,6 +33,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 			"SECT_VAULT",
 			false,
 			3 days,
+			type(uint256).max,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
@@ -47,6 +48,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 			"SECT_VAULT",
 			false,
 			3 days,
+			type(uint256).max,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
@@ -339,6 +341,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 			"SECT_VAULT",
 			true,
 			3 days,
+			type(uint256).max,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
 		);
@@ -377,6 +380,20 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		sectHarvest(vault);
 		sectCompleteRedeem(vault, user1);
 		assertApproxEqAbs(underlying.balanceOf(user1), amnt - amnt / 10, mLp);
+	}
+
+	function testMaxTvl() public {
+		vault.setMaxTvl(1e6);
+		sectDeposit(vault, user1, 1e6 - mLp);
+
+		assertEq(vault.maxDeposit(user1), 0);
+
+		vm.startPrank(user1);
+		underlying.approve(address(vault), 1);
+		underlying.mint(user1, 1);
+		vm.expectRevert(ERC4626.OverMaxTvl.selector);
+		vault.deposit(1, user1);
+		vm.stopPrank();
 	}
 
 	/// UTILS

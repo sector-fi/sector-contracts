@@ -35,6 +35,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		string memory _symbol,
 		bool _useNativeAsset,
 		uint256 _maxHarvestInterval,
+		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig,
 		uint256 _maxBridgeFeeAllowed
@@ -45,6 +46,9 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		BatchedWithdraw()
 		XChainIntegrator(_maxBridgeFeeAllowed)
 	{
+		maxTvl = _maxTvl;
+		emit MaxTvlUpdated(_maxTvl);
+
 		maxHarvestInterval = _maxHarvestInterval;
 		emit SetMaxHarvestInterval(_maxHarvestInterval);
 	}

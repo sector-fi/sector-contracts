@@ -90,6 +90,7 @@ contract Stargate is SCYStrategy, SCYVault, StarChefFarm {
 		if (amountOut > 0) _stratDeposit(amountOut);
 		harvested = new uint256[](1);
 		harvested[0] = tokenHarvest;
+		return (harvested, new uint256[](0));
 	}
 
 	// EMERGENCY GUARDIAN METHODS

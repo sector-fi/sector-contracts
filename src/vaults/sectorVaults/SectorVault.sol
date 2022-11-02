@@ -3,7 +3,6 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
-import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 import { SectorBase } from "../ERC4626/SectorBase.sol";
 import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
 import { XChainIntegrator } from "../../xChain/XChainIntegrator.sol";
@@ -24,6 +23,7 @@ contract SectorVault is AggregatorVault, XChainIntegrator {
 		string memory _symbol,
 		bool _useNativeAsset,
 		uint256 _maxHarvestInterval,
+		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig,
 		uint256 _maxBridgeFeeAllowed
@@ -34,6 +34,7 @@ contract SectorVault is AggregatorVault, XChainIntegrator {
 			_symbol,
 			_useNativeAsset,
 			_maxHarvestInterval,
+			_maxTvl,
 			authConfig,
 			feeConfig
 		)

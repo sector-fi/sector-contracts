@@ -14,7 +14,7 @@ Error.stackTraceLimit = Infinity;
 subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(
   async (_, __, runSuper) => {
     const paths = await runSuper();
-    return paths.filter((p) => !p.includes('src/tests'));
+    return paths.filter((p) => !p.includes('src/test'));
   }
 );
 
