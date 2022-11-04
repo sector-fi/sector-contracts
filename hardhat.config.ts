@@ -14,7 +14,7 @@ Error.stackTraceLimit = Infinity;
 subtask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS).setAction(
   async (_, __, runSuper) => {
     const paths = await runSuper();
-    return paths.filter((p) => !p.includes('src/tests'));
+    return paths.filter((p) => !p.includes('src/test'));
   }
 );
 
@@ -45,12 +45,14 @@ const {
   INFURA_API_KEY,
   FTM_TESTNET_API_KEY,
   ETHERSCAN_API_KEY,
+  ARBITRUM_API_KEY,
+  OPTIMISM_API_KEY,
 
   // rpc keys
   GOERLI_ALCHEMY,
   ALCHEMY_OP,
   ALCHEMY_ARB,
-  ALCHEMY_KEY
+  ALCHEMY_KEY,
 } = process.env;
 
 const keys = [DEPLOYER_KEY].filter((k) => k != null);
@@ -58,7 +60,7 @@ const keys = [DEPLOYER_KEY].filter((k) => k != null);
 /**
  * @type import('hardhat/config').HardhatUserConfig
  */
-export default {
+const config = {
   namedAccounts: {
     deployer: {
       default: DEPLOYER,
@@ -79,29 +81,36 @@ export default {
       default: MANAGER2,
     },
     usdc: {
-      mainnet: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+      mainnet: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+      arbitrum: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
+      optimism: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607',
+      moonriver: '0xE3F5a90F9cb311505cd691a46596599aA1A0AD7D',
     },
     layerZeroEndpoint: {
-      goerli: "0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23",
-      fuji: "0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706",
-      mainnet: "0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675",
-      avalanche: "0x3c2269811836af69497E5F486A85D7316753cf62",
-      fantom: "0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7",
-      moonbean: "0x9740FF91F1985D8d2B71494aE1A2f723bb3Ed9E4",
-      optimism: "0x3c2269811836af69497E5F486A85D7316753cf62",
-      hardhat: "0x3c2269811836af69497E5F486A85D7316753cf62",
-      fantom_testnet: "0x7dcAD72640F835B0FA36EFD3D6d3ec902C7E5acf"
+      arbitrum: '0x3c2269811836af69497E5F486A85D7316753cf62',
+      goerli: '0xbfD2135BFfbb0B5378b56643c2Df8a87552Bfa23',
+      fuji: '0x93f54D755A063cE7bB9e6Ac47Eccc8e33411d706',
+      mainnet: '0x66A71Dcef29A0fFBDBE3c6a460a3B5BC225Cd675',
+      avalanche: '0x3c2269811836af69497E5F486A85D7316753cf62',
+      fantom: '0xb6319cC6c8c27A8F5dAF0dD3DF91EA35C4720dd7',
+      moonbean: '0x9740FF91F1985D8d2B71494aE1A2f723bb3Ed9E4',
+      optimism: '0x3c2269811836af69497E5F486A85D7316753cf62',
+      hardhat: '0x3c2269811836af69497E5F486A85D7316753cf62',
+      localhost: '0x3c2269811836af69497E5F486A85D7316753cf62',
+      fantom_testnet: '0x7dcAD72640F835B0FA36EFD3D6d3ec902C7E5acf',
     },
     multichainEndpoint: {
-      fantom_testnet: "0xD7c295E399CA928A3a14b01D760E794f1AdF8990",
-      default: "0xC10Ef9F491C9B59f936957026020C321651ac078"
-    }
+      fantom_testnet: '0xc629d02732EE932db1fa83E1fcF93aE34aBFc96B',
+      goerli: '0x3D4e1981f822e87A1A4C05F2e4b3bcAdE5406AE3',
+      default: '0xC10Ef9F491C9B59f936957026020C321651ac078',
+    },
   },
   networks: {
     hardhat: {
       chainId: 1337,
       tags: [FORK_CHAIN],
       allowUnlimitedContractSize: true,
+      supportMultichain: true,
       chains: {
         43114: {
           hardforkHistory: {
@@ -114,10 +123,21 @@ export default {
           },
         },
       },
+      companionNetworks: {
+        l1: 'arbitrum',
+        l2: FORK_CHAIN,
+        // l1: FORK_CHAIN,
+        // l2: 'optimism',
+      },
     },
     localhost: {
-      // accounts: keys.length ? keys : undefined,
+      chainId: 1337,
+      accounts: keys.length ? keys : undefined,
       tags: [FORK_CHAIN],
+      companionNetworks: {
+        l1: FORK_CHAIN,
+        l2: 'optimism',
+      },
     },
     fantom: {
       url: 'https://rpc.ftm.tools/',
@@ -188,7 +208,7 @@ export default {
       accounts: keys.length ? keys : undefined,
       chainId: 5,
       layerZeroId: 10121,
-      supportMultichain: false,
+      supportMultichain: true,
       verify: {
         etherscan: {
           apiKey: ETHERSCAN_API_KEY,
@@ -223,27 +243,43 @@ export default {
       },
     },
     arbitrum: {
+      accounts: keys.length ? keys : undefined,
       url: `https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_ARB}`,
+      // url: `https://arbitrum-mainnet.infura.io/v3/${INFURA_API_KEY}`,
       chainId: 42161,
       layerZeroId: 110,
       supportMultichain: true,
       gasPrice: 0.1e9,
       name: 'arbitrum',
       tags: ['arbitrum'],
+      verify: {
+        etherscan: {
+          apiKey: ARBITRUM_API_KEY,
+          apiUrl: `https://api.arbiscan.io/api?apikey=${ARBITRUM_API_KEY}`,
+        },
+      },
       // companionNetworks: {
       //   l1: 'arbitrum',
       // },
     },
     optimism: {
+      accounts: keys.length ? keys : undefined,
       url: `https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}`,
       chainId: 10,
       layerZeroId: 111,
       supportMultichain: true,
-      gasPrice: 0.001e9,
+      // gasPrice: 0.001e9,
       name: 'optimism',
       tags: ['optimism'],
       companionNetworks: {
         l1: 'arbitrum',
+      },
+      ovm: true,
+      verify: {
+        etherscan: {
+          apiKey: OPTIMISM_API_KEY,
+          apiUrl: `https://api-optimistic.etherscan.io/api?apikey=${OPTIMISM_API_KEY}`,
+        },
       },
     },
     mainnet: {
@@ -277,7 +313,7 @@ export default {
   gasReporter: {
     enabled: SHOW_GAS === 'true',
     currency: 'USD',
-    gasPrice: 30,
+    gasPrice: 1,
     coinmarketcap: COIN_MARKET_CAP_API,
   },
   paths: {
@@ -288,17 +324,30 @@ export default {
     outDir: 'typechain',
     target: 'ethers-v5',
   },
-  etherscan: {
-    apiKey: {
-      moonbeam: MOONBEAM_API_KEY,
-      goerli: ETHERSCAN_API_KEY,
-    },
-  },
+  // etherscan: {
+  //   apiKey: {
+  //     moonbeam: MOONBEAM_API_KEY,
+  //     goerli: ETHERSCAN_API_KEY,
+  //   },
+  // },
   external: {
     // this allows us to fork deployments (specify folders we can import deployments from)
     deployments: {
       localhost: FORK_CHAIN ? [`deployments/${FORK_CHAIN}`] : [],
       hardhat: FORK_CHAIN ? [`deployments/${FORK_CHAIN}`] : [],
+    },
+  },
+};
+
+export default {
+  ...config,
+  networks: {
+    ...config.networks,
+    hardhat: {
+      ...config.networks.hardhat,
+      chainId: FORK_CHAIN
+        ? config.networks[FORK_CHAIN].chainId
+        : config.networks.hardhat.chainId,
     },
   },
 };

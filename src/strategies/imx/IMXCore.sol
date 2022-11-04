@@ -1,33 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { SafeERC20Upgradeable as SafeERC20, IERC20Upgradeable as IERC20 } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-import { IBaseU, HarvestSwapParms } from "../mixins/upgradable/IBaseU.sol";
-import { IIMXFarmU } from "../mixins/upgradable/IIMXFarmU.sol";
+import { IBase, HarvestSwapParams } from "../mixins/IBase.sol";
+import { IIMXFarm } from "../mixins/IIMXFarm.sol";
 import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
-import { IMXAuthU } from "./IMXAuthU.sol";
+import { StratAuth } from "../../common/StratAuth.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract IMXCore is
-	Initializable,
-	ReentrancyGuardUpgradeable,
-	IMXAuthU,
-	IBaseU,
-	IIMXFarmU
-{
+abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	using FixedPointMathLib for uint256;
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
 
 	event Deposit(address sender, uint256 amount);
 	event Redeem(address sender, uint256 amount);
+
 	// event RebalanceLoan(address indexed sender, uint256 startLoanHealth, uint256 updatedLoanHealth);
 	event SetRebalanceThreshold(uint256 rebalanceThreshold);
 	event SetMaxTvl(uint256 maxTvl);
@@ -40,7 +35,6 @@ abstract contract IMXCore is
 
 	uint256 constant MINIMUM_LIQUIDITY = 1000;
 	uint256 constant BPS_ADJUST = 10000;
-	uint256 constant MIN_LOAN_HEALTH = 1.02e18;
 
 	IERC20 private _underlying;
 	IERC20 private _short;
@@ -71,12 +65,12 @@ abstract contract IMXCore is
 		_;
 	}
 
-	function __IMX_init_(
+	constructor(
 		address vault_,
 		address underlying_,
 		address short_,
 		uint256 maxTvl_
-	) internal onlyInitializing {
+	) {
 		vault = vault_;
 		_underlying = IERC20(underlying_);
 		_short = IERC20(short_);
@@ -116,6 +110,7 @@ abstract contract IMXCore is
 	// OWNER CONFIG
 
 	function setRebalanceThreshold(uint16 rebalanceThreshold_) public onlyOwner {
+		require(rebalanceThreshold_ >= 100, "HLP: BAD_INPUT");
 		rebalanceThreshold = rebalanceThreshold_;
 		emit SetRebalanceThreshold(rebalanceThreshold_);
 	}
@@ -143,8 +138,9 @@ abstract contract IMXCore is
 	// deposit underlying and recieve lp tokens
 	function deposit(uint256 underlyingAmnt) external onlyVault nonReentrant returns (uint256) {
 		if (underlyingAmnt == 0) return 0; // cannot deposit 0
+		// deposit is already included in tvl
 		uint256 tvl = getAndUpdateTVL();
-		require(underlyingAmnt + tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
+		require(tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
 		uint256 startBalance = collateralToken().balanceOf(address(this));
 		_increasePosition(underlyingAmnt);
 		uint256 endBalance = collateralToken().balanceOf(address(this));
@@ -170,13 +166,10 @@ abstract contract IMXCore is
 		emit Redeem(msg.sender, amountTokenOut);
 	}
 
-	// decreases position based to desired LP amount
-	// ** does not rebalance remaining portfolio
-	// ** make sure to update lending positions before calling this
+	/// @notice decreases position based to desired LP amount
+	/// @dev ** does not rebalance remaining portfolio
+	/// @param removeCollateral amount of callateral token to remove
 	function _decreasePosition(uint256 removeCollateral) internal {
-		// make sure we are not close to liquidation
-		if (loanHealth() < MIN_LOAN_HEALTH) revert LowLoanHealth();
-
 		(uint256 uBorrowBalance, uint256 sBorrowBalance) = _updateAndGetBorrowBalances();
 
 		uint256 balance = collateralToken().balanceOf(address(this));
@@ -223,39 +216,21 @@ abstract contract IMXCore is
 	}
 
 	// use the return of the function to estimate pending harvest via staticCall
-	function harvest(HarvestSwapParms calldata harvestParams)
+	function harvest(HarvestSwapParams[] calldata harvestParams)
 		external
-		onlyRole(MANAGER)
+		onlyVault
 		nonReentrant
-		returns (uint256 farmHarvest)
+		returns (uint256[] memory farmHarvest)
 	{
 		(uint256 startTvl, , , , , ) = getTVL();
-		farmHarvest = _harvestFarm(harvestParams);
+
+		farmHarvest = new uint256[](1);
+		farmHarvest[0] = _harvestFarm(harvestParams[0]);
 
 		// compound our lp position
 		_increasePosition(_underlying.balanceOf(address(this)));
 		emit Harvest(startTvl);
 	}
-
-	// There is not a situation where we would need this
-	// function rebalanceLoan() public {
-	// 	uint256 tvl = getOracleTvl();
-	// 	uint256 tvl1 = getTotalTVL();
-
-	// 	uint256 uBorrow = (tvl * _optimalUBorrow()) / 1e18;
-	// 	(uint256 uBorrowBalance, ) = _getBorrowBalances();
-
-	// 	if (uBorrowBalance <= uBorrow) return;
-	// 	uint256 uRepay = uBorrowBalance - uBorrow;
-	// 	(uint256 uLp, ) = _getLPBalances();
-
-	// 	uint256 lp = _getLiquidity();
-
-	// 	// remove lp & repay underlying loan
-	// 	uint256 removeLp = (lp * uRepay) / uLp;
-	// 	uint256 sRepay = type(uint256).max;
-	// 	_removeIMXLiquidity(removeLp, uRepay, sRepay);
-	// }
 
 	function rebalance(uint256 expectedPrice, uint256 maxDelta)
 		external
@@ -268,7 +243,9 @@ abstract contract IMXCore is
 		uint256 positionOffset = getPositionOffset();
 
 		// don't rebalance unless we exceeded the threshold
-		if (positionOffset <= rebalanceThreshold) revert RebalanceThreshold();
+		// GUARDIAN can execute rebalance any time
+		if (positionOffset <= rebalanceThreshold && !hasRole(GUARDIAN, msg.sender))
+			revert RebalanceThreshold();
 
 		if (tvl == 0) return;
 		uint256 targetUBorrow = (tvl * _optimalUBorrow()) / 1e18;
@@ -348,21 +325,6 @@ abstract contract IMXCore is
 		(tvl, , , , , ) = getTVL();
 	}
 
-	/// THere is no situation where we would need this
-	// function getOracleTvl() public returns (uint256 tvl) {
-	// 	(uint256 underlyingBorrow, uint256 borrowPosition) = _updateAndGetBorrowBalances();
-	// 	uint256 borrowBalance = _shortToUnderlyingOracle(borrowPosition) + underlyingBorrow;
-
-	// 	uint256 shortPosition = _short.balanceOf(address(this));
-	// 	uint256 shortBalance = shortPosition == 0 ? 0 : _shortToUnderlyingOracle(shortPosition);
-
-	// 	(uint256 underlyingLp, uint256 shortLp) = _getLPBalances();
-	// 	uint256 lpBalance = underlyingLp + _shortToUnderlyingOracle(shortLp);
-	// 	uint256 underlyingBalance = _underlying.balanceOf(address(this));
-
-	// 	tvl = lpBalance - borrowBalance + underlyingBalance + shortBalance;
-	// }
-
 	function getTVL()
 		public
 		view
@@ -408,6 +370,10 @@ abstract contract IMXCore is
 		return _shortToUnderlying(1e18);
 	}
 
+	function getLPBalances() public view returns (uint256 underlyingLp, uint256 shortLp) {
+		return _getLPBalances();
+	}
+
 	function getLiquidity() external view returns (uint256) {
 		return _getLiquidity();
 	}
@@ -417,7 +383,7 @@ abstract contract IMXCore is
 		(uint256 uR, uint256 sR, ) = pair().getReserves();
 		(uR, sR) = address(_underlying) == pair().token0() ? (uR, sR) : (sR, uR);
 		uint256 lp = pair().totalSupply();
-		// for deposit of 1 underlying we get 1+_optimalUBorrow worth or lp -> collateral token
+		// for deposit of 1 underlying we get 1+_optimalUBorrow worth of lp -> collateral token
 		return (1e18 * (uR * _getLiquidity(1e18))) / lp / (1e18 + _optimalUBorrow());
 	}
 

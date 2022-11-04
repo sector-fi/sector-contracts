@@ -9,10 +9,14 @@ import { Accounting } from "../../common/Accounting.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 import { Fees, FeeConfig } from "../../common/Fees.sol";
+import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+// import "hardhat/console.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
+abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20, ReentrancyGuard {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 
@@ -28,35 +32,49 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
     //////////////////////////////////////////////////////////////*/
 
 	ERC20 immutable asset;
+	// flag that allows the vault to consume native asset
+	bool public useNativeAsset;
+	uint256 public maxTvl;
 
 	constructor(
 		ERC20 _asset,
 		string memory _name,
-		string memory _symbol
+		string memory _symbol,
+		bool _useNativeAsset
 	) ERC20(_name, _symbol) {
+		useNativeAsset = _useNativeAsset;
 		asset = _asset;
 	}
+
+	receive() external payable {}
 
 	function decimals() public view override returns (uint8) {
 		return asset.decimals();
 	}
 
-	function totalAssets() public view virtual override returns (uint256) {
-		return asset.balanceOf(address(this));
-	}
+	function totalAssets() public view virtual override returns (uint256);
 
 	/*//////////////////////////////////////////////////////////////
                         DEPOSIT/WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
-	function deposit(uint256 assets, address receiver) public virtual returns (uint256 shares) {
+	function deposit(uint256 assets, address receiver)
+		public
+		payable
+		virtual
+		nonReentrant
+		returns (uint256 shares)
+	{
+		if (totalAssets() + assets > maxTvl) revert OverMaxTvl();
+
 		// This check is no longer necessary because we use MIN_LIQUIDITY
 		// Check for rounding error since we round down in previewDeposit.
 		// require((shares = previewDeposit(assets)) != 0, "ZERO_SHARES");
 		shares = previewDeposit(assets);
 
 		// Need to transfer before minting or ERC777s could reenter.
-		asset.safeTransferFrom(msg.sender, address(this), assets);
+		if (useNativeAsset && msg.value == assets) IWETH(address(asset)).deposit{ value: assets }();
+		else asset.safeTransferFrom(msg.sender, address(this), assets);
 
 		// lock minimum liquidity if totalSupply is 0
 		if (totalSupply() == 0) {
@@ -72,11 +90,19 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 		afterDeposit(assets, shares);
 	}
 
-	function mint(uint256 shares, address receiver) public virtual returns (uint256 assets) {
+	function mint(uint256 shares, address receiver)
+		public
+		payable
+		virtual
+		nonReentrant
+		returns (uint256 assets)
+	{
 		assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.
+		if (totalAssets() + assets > maxTvl) revert OverMaxTvl();
 
 		// Need to transfer before minting or ERC777s could reenter.
-		asset.safeTransferFrom(msg.sender, address(this), assets);
+		if (useNativeAsset && msg.value == assets) IWETH(address(asset)).deposit{ value: assets }();
+		else asset.safeTransferFrom(msg.sender, address(this), assets);
 
 		_mint(receiver, shares);
 
@@ -130,12 +156,18 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
                      DEPOSIT/WITHDRAWAL LIMIT LOGIC
     //////////////////////////////////////////////////////////////*/
 
-	function maxDeposit(address) public view virtual returns (uint256) {
-		return type(uint256).max;
+	function setMaxTvl(uint256 _maxTvl) public onlyRole(MANAGER) {
+		maxTvl = _maxTvl;
+		emit MaxTvlUpdated(_maxTvl);
 	}
 
-	function maxMint(address) public view virtual returns (uint256) {
-		return type(uint256).max;
+	function maxDeposit(address) public view override returns (uint256) {
+		uint256 _totalAssets = totalAssets();
+		return _totalAssets > maxTvl ? 0 : maxTvl - _totalAssets;
+	}
+
+	function maxMint(address) public view override returns (uint256) {
+		return convertToShares(maxDeposit(address(0)));
 	}
 
 	function maxWithdraw(address owner) public view virtual returns (uint256) {
@@ -159,5 +191,8 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20 {
 		return ERC20.totalSupply();
 	}
 
+	event MaxTvlUpdated(uint256 maxTvl);
+
+	error OverMaxTvl();
 	error MinLiquidity();
 }

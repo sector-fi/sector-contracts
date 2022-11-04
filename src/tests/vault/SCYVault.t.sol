@@ -9,7 +9,7 @@ import { WETH } from "../mocks/WETH.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract SCYVaultTest is SectorTest, SCYVaultSetup {
 	MockScyVault vault;
@@ -90,7 +90,7 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 		uint256 expectedTvl = vault.getTvl();
 		assertEq(expectedTvl, 110e18 + mLp + (mLp) / 10, "expected tvl");
 
-		vault.harvest(vault.getTvl(), 0);
+		scyHarvest(vault);
 
 		assertApproxEqAbs(vault.underlyingBalance(treasury), 1e18, mLp);
 		assertApproxEqAbs(vault.underlyingBalance(user1), 109e18, mLp);
@@ -102,7 +102,7 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 		vault.setManagementFee(.01e18);
 
 		skip(365 days);
-		vault.harvest(vault.getTvl(), 0);
+		scyHarvest(vault);
 
 		assertApproxEqAbs(vault.underlyingBalance(treasury), 1e18, mLp);
 		assertApproxEqAbs(vault.underlyingBalance(user1), 99e18, mLp);
@@ -111,10 +111,17 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 	function testLockedProfit() public {
 		uint256 amnt = 100e18;
 		scyDeposit(vault, user1, amnt);
-		underlying.mint(address(vault.strategy()), 10e18 + (mLp) / 10); // 10% profit
-		skip(7 days);
-		vault.harvest(vault.getTvl(), 0);
-		assertApproxEqRel(vault.underlyingBalance(user1), amnt, .001e18);
+
+		skip(7 days); // this determines locked profit duration
+
+		// scyHarvest(vault);
+		scyHarvest(vault, 10e18 + (mLp) / 10);
+		assertApproxEqRel(
+			vault.underlyingBalance(user1),
+			amnt,
+			.001e18,
+			"underlying balance should be the same"
+		);
 
 		skip(7 days);
 		assertEq(vault.underlyingBalance(user1), 109e18);
@@ -123,9 +130,9 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 	function testLockedProfitWithdraw() public {
 		uint256 amnt = 100e18;
 		scyDeposit(vault, user1, amnt);
-		underlying.mint(address(vault.strategy()), 10e18 + (mLp) / 10); // 10% profit
-		skip(7 days);
-		vault.harvest(vault.getTvl(), 0);
+		skip(7 days); // this determines locked profit duration
+
+		scyHarvest(vault, 10e18 + (mLp) / 10);
 		uint256 balance = vault.underlyingBalance(user1);
 		scyWithdraw(vault, user1, 1e18);
 		assertEq(underlying.balanceOf(user1), balance);

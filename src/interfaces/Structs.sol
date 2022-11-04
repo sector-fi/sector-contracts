@@ -1,10 +1,21 @@
-// SPDX-License-Identifier: AGPL-3.0-only
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
 enum CallType {
 	ADD_LIQUIDITY_AND_MINT,
 	BORROWB,
 	REMOVE_LIQ_AND_REPAY
+}
+
+enum VaultType {
+	Strategy,
+	Aggregator
+}
+
+enum NativeToken {
+	None,
+	Underlying,
+	Short
 }
 
 struct CalleeData {
@@ -27,10 +38,11 @@ struct RemoveLiqAndRepayCalldata {
 	// uint256 amountBMin;
 }
 
-struct HarvestSwapParms {
+struct HarvestSwapParams {
 	address[] path; //path that the token takes
 	uint256 min; // min price of in token * 1e18 (computed externally based on spot * slippage + fees)
 	uint256 deadline;
+	bytes pathData; // uniswap3 path data
 }
 
 struct IMXConfig {
@@ -42,12 +54,11 @@ struct IMXConfig {
 	address farmToken;
 	address farmRouter;
 	uint256 maxTvl;
-	address owner;
-	address manager;
-	address guardian;
 }
 
-struct Config {
+struct HLPConfig {
+	string symbol;
+	string name;
 	address underlying;
 	address short;
 	address cTokenLend;
@@ -61,7 +72,12 @@ struct Config {
 	address lendRewardRouter;
 	address lendRewardToken;
 	address vault;
-	string symbol;
-	string name;
 	uint256 maxTvl;
+	NativeToken nativeToken;
+}
+
+struct EAction {
+	address target;
+	uint256 value;
+	bytes data;
 }

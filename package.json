@@ -26,10 +26,11 @@
     "@types/mocha": "^9.0.0",
     "chai": "^4.3.4",
     "dotenv": "^16.0.2",
+    "ethereum-waffle": "^3.4.4",
     "ethers": "^5.7.1",
-    "hardhat": "^2.10.2",
+    "hardhat": "npm:@gzeoneth/hardhat@2.10.1-gzeon-c8fe47dd4",
     "hardhat-contract-sizer": "^2.6.1",
-    "hardhat-deploy": "^0.11.12",
+    "hardhat-deploy": "^0.11.18",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-typechain": "^0.3.5",
     "patch-package": "^6.4.7",
@@ -42,9 +43,15 @@
     "hardhat/**/@ethereumjs/tx": "3.5.0"
   },
   "devDependencies": {
+    "@eth-optimism/hardhat-ovm": "^0.2.4",
     "@perp/curie-contract": "^2.1.1",
     "@typechain/hardhat": "^6.1.2",
+    "@uniswap/sdk-core": "^3.1.0",
+    "@uniswap/smart-order-router": "^2.10.1",
     "@uniswap/v3-core": "^1.0.1",
-    "ts-node": "^10.9.1"
+    "@uniswap/v3-sdk": "^3.9.0",
+    "add": "^2.0.6",
+    "ts-node": "^10.9.1",
+    "yarn": "^1.22.19"
   }
 }

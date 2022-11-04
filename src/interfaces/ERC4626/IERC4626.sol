@@ -2,12 +2,7 @@
 pragma solidity 0.8.16;
 
 interface IERC4626 {
-	event Deposit(
-		address indexed sender,
-		address indexed owner,
-		uint256 assets,
-		uint256 shares
-	);
+	event Deposit(address indexed sender, address indexed owner, uint256 assets, uint256 shares);
 
 	event Withdraw(
 		address indexed sender,
@@ -21,9 +16,9 @@ interface IERC4626 {
                         DEPOSIT/WITHDRAWAL LOGIC
     //////////////////////////////////////////////////////////////*/
 
-	function deposit(uint256 assets, address receiver) external returns (uint256 shares);
+	function deposit(uint256 assets, address receiver) external payable returns (uint256 shares);
 
-	function mint(uint256 shares, address receiver) external returns (uint256 assets);
+	function mint(uint256 shares, address receiver) external payable returns (uint256 assets);
 
 	function withdraw(
 		uint256 assets,

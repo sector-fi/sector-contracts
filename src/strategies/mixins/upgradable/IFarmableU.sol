@@ -2,26 +2,16 @@
 pragma solidity 0.8.16;
 
 import { IUniswapV2Router01 } from "../../../interfaces/uniswap/IUniswapV2Router01.sol";
-import { IBaseU, HarvestSwapParms } from "./IBaseU.sol";
+import { IBaseU, HarvestSwapParams } from "./IBaseU.sol";
 
 abstract contract IFarmableU is IBaseU {
 	event HarvestedToken(address indexed token, uint256 amount);
 
 	function _swap(
 		IUniswapV2Router01 router,
-		HarvestSwapParms calldata swapParams,
+		HarvestSwapParams calldata swapParams,
 		address fromToken,
 		uint256 amount
-	) internal {
-		return _swapTo(router, swapParams, fromToken, amount, address(this));
-	}
-
-	function _swapTo(
-		IUniswapV2Router01 router,
-		HarvestSwapParms calldata swapParams,
-		address fromToken,
-		uint256 amount,
-		address to
 	) internal {
 		address out = swapParams.path[swapParams.path.length - 1];
 		// ensure malicious harvester is not trading with wrong tokens
@@ -35,7 +25,7 @@ abstract contract IFarmableU is IBaseU {
 			amount,
 			swapParams.min,
 			swapParams.path, // optimal route determined externally
-			to,
+			address(this),
 			swapParams.deadline
 		);
 	}

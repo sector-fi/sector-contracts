@@ -2,15 +2,15 @@
 pragma solidity 0.8.16;
 
 import { ICollateral, IPoolToken, IBorrowable, ImpermaxChef } from "../../interfaces/imx/IImpermax.sol";
-import { HarvestSwapParms, IIMXFarmU, IERC20, SafeERC20, IUniswapV2Pair, IUniswapV2Router01 } from "../mixins/upgradable/IIMXFarmU.sol";
+import { HarvestSwapParams, IIMXFarm, IERC20, SafeERC20, IUniswapV2Pair, IUniswapV2Router01 } from "../mixins/IIMXFarm.sol";
 import { UniUtils } from "../../libraries/UniUtils.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import { CallType, CalleeData, AddLiquidityAndMintCalldata, BorrowBCalldata, RemoveLiqAndRepayCalldata } from "../../interfaces/Structs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
-abstract contract IMXFarm is Initializable, IIMXFarmU {
+abstract contract IMXFarm is IIMXFarm {
 	using SafeERC20 for IERC20;
 	using UniUtils for IUniswapV2Pair;
 	// using FixedPointMathLib for uint256;
@@ -27,13 +27,13 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 
 	bool public flip;
 
-	function __IMXFarm_init_(
+	constructor(
 		address underlying_,
 		address pair_,
 		address collateralToken_,
 		address farmRouter_,
 		address farmToken_
-	) internal onlyInitializing {
+	) {
 		_pair = IUniswapV2Pair(pair_);
 		_collateralToken = ICollateral(collateralToken_);
 		_uBorrowable = IBorrowable(_collateralToken.borrowable0());
@@ -136,6 +136,7 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 			uint256 sBalance = short().balanceOf(address(this));
 			uint256 uBalance = underlying().balanceOf(address(this));
 
+			// TODO use swap fee to get exact amount out
 			// if we have extra short tokens, trade them for underlying
 			if (sBalance > sAmnt) {
 				// TODO edge case - not enough underlying?
@@ -151,11 +152,14 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 					address(short())
 				);
 			}
-			// we know that now our sBalance = sAmnt
+			// we know that now our short balance is exact sBalance = sAmnt
+			// if we don't have enough underlying, we need to decrase sAmnt slighlty
 			if (uBalance < uAmnt) {
 				uAmnt = uBalance;
 				sAmnt = _underlyingToShort(uAmnt);
 			} else if (uBalance > uAmnt) {
+				// if we have extra underlying return to borrowable
+				// TODO check that this gets accounted for
 				underlying().safeTransfer(address(_uBorrowable), uBalance - uAmnt);
 			}
 		}
@@ -196,16 +200,11 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 	) public {
 		require(msg.sender == address(_collateralToken), "IMXFarm: NOT_COLLATERAL");
 
-		// (uint256 , uint256 shortfall) = _collateralToken.accountLiquidity(address(this));
-
 		RemoveLiqAndRepayCalldata memory d = abi.decode(data, (RemoveLiqAndRepayCalldata));
 
 		// redeem withdrawn staked coins
-		IERC20(address(stakedToken)).transfer(address(stakedToken), redeemAmount);
+		IERC20(address(stakedToken)).safeTransfer(address(stakedToken), redeemAmount);
 		stakedToken.redeem(address(this));
-
-		// TODO this is not flash-swap safe!!!
-		// add slippage param check modifier
 
 		// remove collateral
 		(, uint256 shortAmnt) = _removeLiquidity(d.removeLpAmnt);
@@ -251,7 +250,7 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		// TODO add tests to make ensure cAmount < colBal
 
 		// return collateral token
-		IERC20(address(_collateralToken)).transfer(
+		IERC20(address(_collateralToken)).safeTransfer(
 			address(_collateralToken),
 			// colBal < cAmount ? colBal : cAmount
 			cAmount
@@ -269,7 +268,7 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		return address(_impermaxChef) != address(0);
 	}
 
-	function _harvestFarm(HarvestSwapParms calldata harvestParams)
+	function _harvestFarm(HarvestSwapParams calldata harvestParams)
 		internal
 		override
 		returns (uint256 harvested)
@@ -280,11 +279,9 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		borrowables[0] = address(_sBorrowable);
 		borrowables[1] = address(_uBorrowable);
 
-		console.log("chef", address(_impermaxChef));
 		_impermaxChef.massHarvest(borrowables, address(this));
 
 		harvested = _farmToken.balanceOf(address(this));
-		console.log("harvested", harvested);
 		if (harvested == 0) return harvested;
 
 		_swap(_farmRouter, harvestParams, address(_farmToken), harvested);
@@ -320,7 +317,8 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		return _getBorrowBalances();
 	}
 
-	// borrow amount of underlying for every 1e18 of deposit
+	/// @notice borrow amount of underlying for every 1e18 of deposit
+	/// @dev currently cannot go below ~2.02x lev
 	function _optimalUBorrow() internal view override returns (uint256 uBorrow) {
 		uint256 l = _collateralToken.liquidationIncentive();
 		// this is the adjusted safety margin - how far we stay from liquidation
@@ -340,22 +338,4 @@ abstract contract IMXFarm is Initializable, IIMXFarmU {
 		(uint256 price0, uint256 price1) = collateralToken().getPrices();
 		return flip ? (amount * price0) / price1 : (amount * price1) / price0;
 	}
-
-	// TODO RM - can do this in JS or in tests
-	// function getIMXLiquidity() external view returns (uint256 leverage) {
-	// 	uint256 collateral = (_collateralToken.exchangeRate() *
-	// 		_collateralToken.balanceOf(address(this))) / 1e18;
-
-	// 	uint256 amount0 = _uBorrowable.borrowBalance(address(this));
-	// 	uint256 amount1 = _sBorrowable.borrowBalance(address(this));
-
-	// 	(uint256 price0, uint256 price1) = _collateralToken.getPrices();
-
-	// 	uint256 value0 = (amount0 * price0) / 1e18;
-	// 	uint256 value1 = (amount1 * price1) / 1e18;
-	// 	if (flip) (value0, value1) = (value1, value0);
-
-	// 	leverage = (collateral * 1e18) / (collateral - value0 - value1 + 1);
-	// 	console.log("leverage", (collateral * 1e18) / (collateral - value0 - value1 + 1));
-	// }
 }
