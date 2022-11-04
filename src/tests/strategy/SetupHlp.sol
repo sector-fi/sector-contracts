@@ -159,6 +159,7 @@ contract SetupHlp is SectorTest, StratUtils {
 	function noRebalance() public override {
 		uint256 priceOffset = strategy.getPriceOffset();
 		vm.expectRevert(HLPCore.RebalanceThreshold.selector);
+		vm.prank(manager);
 		strategy.rebalance(priceOffset);
 	}
 

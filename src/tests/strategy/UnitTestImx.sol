@@ -56,4 +56,22 @@ contract UnitTestImx is SetupImx, UnitTestStrategy {
 		strategy.rebalance(expectedPrice, maxDelta);
 		assertGt(strategy.loanHealth(), 1.002e18);
 	}
+
+	function testLeverageUpdate() public {
+		deposit(user1, 100e6);
+
+		// this gets us to 2x leverage (instead of 5x)
+		uint256 lev1 = 1.449137675e18; // sqrt(210%)
+
+		strategy.setSafetyMarginSqrt(lev1);
+
+		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10);
+		strategy.rebalance(expectedPrice, maxDelta);
+
+		adjustPrice(1.1e18);
+
+		deposit(user2, 100e6);
+
+		assertApproxEqRel(vault.underlyingBalance(user1), vault.underlyingBalance(user2), .003e18);
+	}
 }

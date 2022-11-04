@@ -317,7 +317,8 @@ abstract contract IMXFarm is IIMXFarm {
 		return _getBorrowBalances();
 	}
 
-	// borrow amount of underlying for every 1e18 of deposit
+	/// @notice borrow amount of underlying for every 1e18 of deposit
+	/// @dev currently cannot go below ~2.02x lev
 	function _optimalUBorrow() internal view override returns (uint256 uBorrow) {
 		uint256 l = _collateralToken.liquidationIncentive();
 		// this is the adjusted safety margin - how far we stay from liquidation
@@ -337,22 +338,4 @@ abstract contract IMXFarm is IIMXFarm {
 		(uint256 price0, uint256 price1) = collateralToken().getPrices();
 		return flip ? (amount * price0) / price1 : (amount * price1) / price0;
 	}
-
-	// TODO RM - can do this in JS or in tests
-	// function getIMXLiquidity() external view returns (uint256 leverage) {
-	// 	uint256 collateral = (_collateralToken.exchangeRate() *
-	// 		_collateralToken.balanceOf(address(this))) / 1e18;
-
-	// 	uint256 amount0 = _uBorrowable.borrowBalance(address(this));
-	// 	uint256 amount1 = _sBorrowable.borrowBalance(address(this));
-
-	// 	(uint256 price0, uint256 price1) = _collateralToken.getPrices();
-
-	// 	uint256 value0 = (amount0 * price0) / 1e18;
-	// 	uint256 value1 = (amount1 * price1) / 1e18;
-	// 	if (flip) (value0, value1) = (value1, value0);
-
-	// 	leverage = (collateral * 1e18) / (collateral - value0 - value1 + 1);
-	// 	console.log("leverage", (collateral * 1e18) / (collateral - value0 - value1 + 1));
-	// }
 }

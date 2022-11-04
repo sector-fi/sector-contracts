@@ -180,7 +180,7 @@ abstract contract UnitTestStrategy is StratUtils {
 
 		// we have extra undrlying because of movePrice tx
 		withdrawAmnt(user1, withdrawAmt);
-		assertApproxEqRel(underlying.balanceOf(user1), withdrawAmt, .0003e18);
+		assertApproxEqRel(underlying.balanceOf(user1), withdrawAmt, .001e18);
 	}
 
 	/*///////////////////////////////////////////////////////////////

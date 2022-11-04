@@ -106,6 +106,7 @@ contract SetupImx is SectorTest, StratUtils {
 	function noRebalance() public override {
 		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
 		vm.expectRevert(IMXCore.RebalanceThreshold.selector);
+		vm.prank(manager);
 		strategy.rebalance(expectedPrice, maxDelta);
 	}
 

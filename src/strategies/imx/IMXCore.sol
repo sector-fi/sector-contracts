@@ -243,7 +243,9 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		uint256 positionOffset = getPositionOffset();
 
 		// don't rebalance unless we exceeded the threshold
-		if (positionOffset <= rebalanceThreshold) revert RebalanceThreshold();
+		// GUARDIAN can execute rebalance any time
+		if (positionOffset <= rebalanceThreshold && !hasRole(GUARDIAN, msg.sender))
+			revert RebalanceThreshold();
 
 		if (tvl == 0) return;
 		uint256 targetUBorrow = (tvl * _optimalUBorrow()) / 1e18;
