@@ -21,7 +21,7 @@ contract SetupImx is SectorTest, StratUtils {
 	using stdJson for string;
 
 	string TEST_STRATEGY = "USDCimxAVAX";
-	// string TEST_STRATEGY = "USDC-OP-tarot-velo";
+	// string TEST_STRATEGY = "USDC-OP-Tarot-Velo";
 
 	uint256 currentFork;
 
