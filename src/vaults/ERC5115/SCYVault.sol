@@ -39,6 +39,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	// immutables
 	address public immutable override yieldToken;
 	uint16 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
+	bool public acceptsNativeToken;
 	IERC20 public immutable underlying;
 
 	uint256 public maxTvl; // pack all params and balances
@@ -59,6 +60,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		strategy = payable(_strategy.addr);
 		strategyId = _strategy.strategyId;
 		underlying = _strategy.underlying;
+		acceptsNativeToken = _strategy.acceptsNativeToken;
 		maxTvl = _strategy.maxTvl;
 
 		lastHarvestTimestamp = block.timestamp;
@@ -407,11 +409,15 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	}
 
 	function getBaseTokens() external view virtual override returns (address[] memory res) {
+		if (acceptsNativeToken) {
+			res = new address[](2);
+			res[1] = NATIVE;
+		} else res = new address[](1);
 		res[0] = address(underlying);
 	}
 
 	function isValidBaseToken(address token) public view virtual override returns (bool) {
-		return token == address(underlying);
+		return token == address(underlying) || (acceptsNativeToken && token == NATIVE);
 	}
 
 	// send funds to strategy

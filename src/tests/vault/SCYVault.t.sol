@@ -137,4 +137,17 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 		scyWithdraw(vault, user1, 1e18);
 		assertEq(underlying.balanceOf(user1), balance);
 	}
+
+	function testGetBaseTokens() public {
+		address[] memory baseTokens = vault.getBaseTokens();
+		assertEq(baseTokens.length, 1, "base tokens length");
+		assertEq(baseTokens[0], address(underlying), "base token");
+
+		SCYVault nativeVault = setUpSCYVault(address(underlying), true);
+
+		address[] memory baseTokensNative = nativeVault.getBaseTokens();
+		assertEq(baseTokensNative.length, 2, "base tokens length");
+		assertEq(baseTokensNative[0], address(underlying), "base token");
+		assertEq(baseTokensNative[1], address(0), "native base token");
+	}
 }

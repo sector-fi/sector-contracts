@@ -9,6 +9,7 @@ struct Strategy {
 	string name;
 	address addr;
 	uint16 strategyId; // this is strategy specific token if 1155
+	bool acceptsNativeToken;
 	address yieldToken;
 	IERC20 underlying;
 	uint128 maxTvl; // pack all params and balances

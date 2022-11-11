@@ -14,10 +14,11 @@ import "hardhat/console.sol";
 // These test run for all strategies
 abstract contract IntegrationTest is SectorTest, StratUtils {
 	function testIntegrationFlow() public {
-		deposit(user1, 100e6);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 		noRebalance();
 		withdrawCheck(user1, .5e18);
-		deposit(user1, 100e6);
+		deposit(user1, amnt);
 		harvest();
 		adjustPrice(0.9e18);
 		// this updates strategy tvl
@@ -31,7 +32,7 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 	}
 
 	function testAccounting() public {
-		uint256 amnt = 100e6;
+		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
 		uint256 startBalance = vault.underlyingBalance(user1);
 		adjustPrice(1.2e18);
@@ -48,7 +49,7 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 	}
 
 	function testFlashSwap() public {
-		uint256 amnt = 100e6;
+		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
 		uint256 startBalance = vault.underlyingBalance(user1);
 
@@ -67,8 +68,8 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 	}
 
 	function testManagerWithdraw() public {
-		uint256 amnt = 1000e6;
-		deposit(user1, 1000e6);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 		uint256 shares = vault.totalSupply();
 		vm.prank(guardian);
 		vault.withdrawFromStrategy(shares, 0);
@@ -81,8 +82,8 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 	}
 
 	function testClosePosition() public {
-		uint256 amnt = 100e6;
-		deposit(user1, 100e6);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 		vm.prank(guardian);
 		vault.closePosition(0, 0);
 		uint256 floatBalance = vault.uBalance();

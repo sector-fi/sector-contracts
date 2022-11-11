@@ -19,6 +19,13 @@ contract SCYVaultSetup is SectorTest {
 	uint256 mLp = 1000; // MIN_LIQUIDITY constant
 
 	function setUpSCYVault(address underlying) public returns (MockScyVault) {
+		return setUpSCYVault(underlying, false);
+	}
+
+	function setUpSCYVault(address underlying, bool acceptsNativeToken)
+		public
+		returns (MockScyVault)
+	{
 		MockERC20 strategy = new MockERC20("Strat", "Strat", 18);
 
 		Strategy memory strategyConfig;
@@ -29,6 +36,7 @@ contract SCYVaultSetup is SectorTest {
 		strategyConfig.addr = address(strategy);
 		strategyConfig.underlying = IERC20(underlying);
 		strategyConfig.maxTvl = type(uint128).max;
+		strategyConfig.acceptsNativeToken = acceptsNativeToken;
 
 		MockScyVault vault = new MockScyVault(
 			AuthConfig(owner, guardian, manager),

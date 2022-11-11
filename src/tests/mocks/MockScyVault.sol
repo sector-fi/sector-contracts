@@ -96,11 +96,6 @@ contract MockScyVault is SCYStrategy, SCYVault {
 		return _selfBalance(token);
 	}
 
-	function getBaseTokens() external view override returns (address[] memory res) {
-		res[0] = address(underlying);
-		res[1] = NATIVE;
-	}
-
 	function isValidBaseToken(address token) public view override returns (bool) {
 		return token == address(underlying) || token == NATIVE;
 	}

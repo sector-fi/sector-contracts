@@ -1,10 +1,10 @@
 import fs from 'fs/promises';
-import { ethers, getNamedAccounts } from 'hardhat';
+import { ethers, getNamedAccounts, network } from 'hardhat';
 import { IIMXFactory, IVaultToken } from '../../typechain';
 import { imx } from './imxConfigs';
 
 const main = async () => {
-  imx.forEach(addIMXStrategy);
+  imx.filter((s) => s.chain === network.name).forEach(addIMXStrategy);
 };
 
 const addIMXStrategy = async (strategy) => {
@@ -26,9 +26,15 @@ const addIMXStrategy = async (strategy) => {
   // note tarot has no rewards
   const rewardToken = await poolToken.rewardsToken();
 
+  console.log(strategy.underlying, token1, token0);
+
   const config = {
-    a_underlying: strategy.underlying,
-    b_short: strategy.underlying == token0 ? token1 : token0,
+    a1_underlying: strategy.underlying,
+    a2_acceptsNativeToken: !!strategy.acceptsNativeToken,
+    b_short:
+      strategy.underlying.toLowerCase() == token0.toLowerCase()
+        ? token1
+        : token0,
     c_uniPair: await poolToken.underlying(),
     d_poolToken: collateral,
     e_farmToken: rewardToken,
