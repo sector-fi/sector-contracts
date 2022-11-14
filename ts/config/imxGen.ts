@@ -36,6 +36,7 @@ const addIMXStrategy = async (strategy) => {
         ? token1
         : token0,
     c_uniPair: await poolToken.underlying(),
+    c1_pairRouter: strategy.pairRouter,
     d_poolToken: collateral,
     e_farmToken: rewardToken,
     f_farmRouter: strategy.farmRouter,

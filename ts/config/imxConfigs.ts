@@ -10,7 +10,6 @@ const tokens = {
   USDC: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607',
 };
 
-// not uused
 const VELO_ROUTER = '0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9';
 
 export const imx = [
@@ -18,6 +17,7 @@ export const imx = [
     type: 'imx',
     name: 'USDC-OP-Tarot-Velo',
     pair: '0x2585d58367c9faccddecc7df05006cf7f0f3d18e', // address from interface - tarot vault or staked token
+    pairRouter: VELO_ROUTER,
     factory: factories.optimism.tarotVelours,
     underlying: tokens.USDC,
     farmRouter: VELO_ROUTER,
@@ -28,6 +28,7 @@ export const imx = [
     type: 'imx',
     name: 'USDC-ETH-Tarot-Velo',
     pair: '0x6CFE820EC919a4AcCd651aC336197CE8A19539c7', // address from interface - tarot vault or staked token
+    pairRouter: VELO_ROUTER,
     factory: factories.optimism.tarotVelours,
     underlying: tokens.USDC,
     farmRouter: VELO_ROUTER,
@@ -38,6 +39,7 @@ export const imx = [
     type: 'imx',
     name: 'ETH-USDC-Tarot-Velo',
     pair: '0x6CFE820EC919a4AcCd651aC336197CE8A19539c7', // address from interface - tarot vault or staked token
+    pairRouter: VELO_ROUTER,
     factory: factories.optimism.tarotVelours,
     underlying: tokens.ETH,
     farmRouter: VELO_ROUTER,

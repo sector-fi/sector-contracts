@@ -37,6 +37,7 @@ contract SetupImx is SectorTest, StratUtils {
 		bool a2_acceptsNativeToken;
 		address b_short;
 		address c_uniPair;
+		address c1_pairRouter;
 		address d_poolToken;
 		address e_farmToken;
 		address f_farmRouter;
