@@ -54,5 +54,5 @@ abstract contract IIMXFarm is IBase, IFarmable, IUniLp {
 		uint256 repayShort
 	) internal virtual;
 
-	function _shortToUnderlyingOracle(uint256 amount) internal view virtual returns (uint256);
+	function shortToUnderlyingOracle(uint256 amount) public view virtual returns (uint256);
 }

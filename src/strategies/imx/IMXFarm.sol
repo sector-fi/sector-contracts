@@ -334,7 +334,7 @@ abstract contract IMXFarm is IIMXFarm {
 		return shortfall == 0 ? (1e18 * (liq + available)) / liq : (1e18 * (liq - shortfall)) / liq;
 	}
 
-	function _shortToUnderlyingOracle(uint256 amount) internal view override returns (uint256) {
+	function shortToUnderlyingOracle(uint256 amount) public view override returns (uint256) {
 		(uint256 price0, uint256 price1) = collateralToken().getPrices();
 		return flip ? (amount * price0) / price1 : (amount * price1) / price0;
 	}

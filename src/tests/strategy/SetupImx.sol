@@ -36,7 +36,7 @@ contract SetupImx is SectorTest, StratUtils {
 		address a1_underlying;
 		bool a2_acceptsNativeToken;
 		address b_short;
-		address c_uniPair;
+		address c0_uniPair;
 		address c1_pairRouter;
 		address d_poolToken;
 		address e_farmToken;
@@ -59,7 +59,7 @@ contract SetupImx is SectorTest, StratUtils {
 		console.log("parsed");
 		_config.underlying = stratJson.a1_underlying;
 		_config.short = stratJson.b_short;
-		_config.uniPair = stratJson.c_uniPair;
+		_config.uniPair = stratJson.c0_uniPair;
 		_config.poolToken = stratJson.d_poolToken; // collateral token
 		_config.farmToken = stratJson.e_farmToken;
 		_config.farmRouter = stratJson.f_farmRouter;

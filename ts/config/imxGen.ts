@@ -35,7 +35,7 @@ const addIMXStrategy = async (strategy) => {
       strategy.underlying.toLowerCase() == token0.toLowerCase()
         ? token1
         : token0,
-    c_uniPair: await poolToken.underlying(),
+    c0_uniPair: await poolToken.underlying(),
     c1_pairRouter: strategy.pairRouter,
     d_poolToken: collateral,
     e_farmToken: rewardToken,
