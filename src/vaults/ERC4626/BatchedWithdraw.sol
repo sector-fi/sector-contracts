@@ -52,7 +52,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 		withdrawRecord.timestamp = block.timestamp;
 		withdrawRecord.shares += shares;
 		uint256 value = convertToAssets(shares);
-		withdrawRecord.value = value;
+		withdrawRecord.value += value;
 		pendingRedeem += shares;
 		emit RequestWithdraw(msg.sender, owner, shares);
 	}
@@ -121,13 +121,13 @@ abstract contract BatchedWithdraw is ERC4626 {
 		// actual amount out is the smaller of currentValue and redeemValue
 		amountOut = _getWithdrawAmount(shares, redeemValue);
 
-		// update total pending withdraw
-		// pendingWithdraw -= redeemValue;
+		// update total pending redeem
 		pendingRedeem -= shares;
 
 		// important pendingRedeem should update prior to beforeWithdraw call
 		beforeWithdraw(amountOut, shares);
 		withdrawRecord.value = 0;
+		withdrawRecord.shares = 0;
 		_burn(address(this), shares);
 	}
 
