@@ -163,7 +163,7 @@ abstract contract BatchedWithdraw is ERC4626 {
 
 		// update accounting
 		withdrawRecord.value = 0;
-		// pendingWithdraw -= redeemValue;
+		withdrawRecord.shares = 0;
 		pendingRedeem -= shares;
 
 		// if vault lost money, shares stay the same

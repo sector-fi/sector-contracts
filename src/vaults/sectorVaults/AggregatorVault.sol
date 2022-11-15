@@ -180,19 +180,19 @@ contract AggregatorVault is SectorBase {
 	/// @dev this method allows direct redemption of shares in exchange for
 	/// a portion of the float amount + a portion of all the strategy shares the vault holds
 	/// deposits are paused when we are in the emergency redeem state
-	function emergencyRedeem() public {
+	function emergencyRedeem() public nonReentrant {
 		if (block.timestamp - lastHarvestTimestamp < maxHarvestInterval) revert RecentHarvest();
 		uint256 _totalSupply = totalSupply();
 		uint256 shares = balanceOf(msg.sender);
 		if (shares == 0) return;
-		_burn(msg.sender, shares);
 
 		// redeem proportional share of vault's underlying float balance
 		// (minus pendingWithdraw)
 		uint256 pendingWithdraw = convertToAssets(pendingRedeem);
+
 		if (floatAmnt > pendingWithdraw) {
 			uint256 availableFloat = floatAmnt - pendingWithdraw;
-			uint256 underlyingShare = (availableFloat * shares) / _totalSupply;
+			uint256 underlyingShare = (availableFloat * shares) / (_totalSupply - pendingRedeem);
 			beforeWithdraw(underlyingShare, 0);
 			asset.safeTransfer(msg.sender, underlyingShare);
 		}
@@ -207,6 +207,8 @@ contract AggregatorVault is SectorBase {
 			if (userShares == 0) continue;
 			stratToken.safeTransfer(msg.sender, userShares);
 		}
+
+		_burn(msg.sender, shares);
 	}
 
 	/// gets accurate strategy holdings denominated in asset
