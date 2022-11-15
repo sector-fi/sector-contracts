@@ -49,7 +49,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		// parameter validation
 		// to prevent manipulation by manager
 		if (!hasRole(GUARDIAN, msg.sender)) {
-			uint256 oraclePrice = _shortToUnderlyingOracle(1e18);
+			uint256 oraclePrice = shortToUnderlyingOracle(1e18);
 			uint256 oracleDelta = oraclePrice > expectedPrice
 				? oraclePrice - expectedPrice
 				: expectedPrice - oraclePrice;
