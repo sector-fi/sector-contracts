@@ -396,6 +396,40 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		vm.stopPrank();
 	}
 
+	function testReedeemTwice() public {
+		uint256 amnt = 1000e18;
+		sectDeposit(vault, user1, amnt);
+
+		sectInitRedeem(vault, user1, .5e18);
+		sectHarvest(vault);
+		sectCompleteRedeem(vault, user1);
+
+		sectInitRedeem(vault, user1, 1e18);
+		sectHarvest(vault);
+		sectCompleteRedeem(vault, user1);
+
+		assertEq(underlying.balanceOf(user1), amnt);
+	}
+
+	function testRedeemReqBeforeCompletion() public {
+		uint256 amnt = 1000e18;
+		sectDeposit(vault, user1, amnt);
+
+		sectInitRedeem(vault, user1, .5e18);
+		sectHarvest(vault);
+
+		// TODO we can have this should fail?
+		sectInitRedeem(vault, user1, 1e18);
+
+		// deposit should work
+		sectDeposit(vault, user2, amnt);
+
+		sectHarvest(vault);
+		sectCompleteRedeem(vault, user1);
+
+		assertEq(underlying.balanceOf(user1), amnt);
+	}
+
 	/// UTILS
 
 	function depositToStrat(IVaultStrategy strategy, uint256 amount) public {
