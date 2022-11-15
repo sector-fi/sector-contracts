@@ -188,6 +188,10 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		vm.prank(user1);
 		vault.cancelRedeem();
 
+		(, uint256 shares, uint256 value) = vault.withdrawLedger(user1);
+		assertEq(shares, 0);
+		assertEq(value, 0);
+
 		uint256 profit = ((10e18 + (mLp) / 10) * 9) / 10;
 		uint256 profitFromBurn = (profit / 4) / 4;
 		assertApproxEqAbs(vault.underlyingBalance(user1), amnt / 4 + profitFromBurn, .1e18);
@@ -427,6 +431,36 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		sectHarvest(vault);
 		sectCompleteRedeem(vault, user1);
 
+		assertEq(underlying.balanceOf(user1), amnt);
+	}
+
+	function testEmergencyRedeemEdgeCase() public {
+		uint256 amnt = 100e18;
+		sectDeposit(vault, user1, amnt);
+
+		sectInitRedeem(vault, user1, .5e18);
+		sectHarvest(vault);
+
+		vm.prank(user1);
+		vault.cancelRedeem();
+
+		assertEq(vault.balanceOf(user1), amnt, "share balance full");
+
+		sectInitRedeem(vault, user1, .5e18);
+
+		assertEq(vault.balanceOf(user1), amnt / 2, "share balance half");
+
+		sectHarvest(vault);
+
+		skip(vault.maxHarvestInterval());
+
+		vm.prank(user1);
+		vault.emergencyRedeem();
+
+		assertEq(vault.balanceOf(user1), 0, "share balance 0");
+		assertEq(underlying.balanceOf(user1), amnt / 2);
+
+		sectCompleteRedeem(vault, user1);
 		assertEq(underlying.balanceOf(user1), amnt);
 	}
 
