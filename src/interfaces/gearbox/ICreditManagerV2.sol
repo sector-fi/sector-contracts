@@ -3,7 +3,7 @@
 // (c) Gearbox Holdings, 2022
 pragma solidity ^0.8.10;
 
-import { IPriceOracleV2 } from "./IPriceOracle.sol";
+import { IPriceOracleV2 } from "./IPriceOracleV2.sol";
 import { IVersion } from "./IVersion.sol";
 
 enum ClosureAction {
