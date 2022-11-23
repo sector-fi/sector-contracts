@@ -93,9 +93,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	}
 
 	function _depositNative() internal override {
-		uint256 balance = address(this).balance;
-		IWETH(address(underlying)).deposit{ value: balance }();
-		if (sendERC20ToStrategy) IERC20(underlying).safeTransfer(strategy, balance);
+		IWETH(address(underlying)).deposit{ value: msg.value }();
+		if (sendERC20ToStrategy) IERC20(underlying).safeTransfer(strategy, msg.value);
 	}
 
 	function _deposit(
@@ -105,6 +104,8 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	) internal override isInitialized returns (uint256 sharesOut) {
 		// if we have any float in the contract we cannot do deposit accounting
 		if (uBalance > 0) revert DepositsPaused();
+		// TODO should we handle this logic inside _stratDeposit?
+		// this may be useful when a given strategy only accepts NATIVE tokens
 		if (token == NATIVE) _depositNative();
 		uint256 yieldTokenAdded = _stratDeposit(amount);
 		sharesOut = toSharesAfterDeposit(yieldTokenAdded);

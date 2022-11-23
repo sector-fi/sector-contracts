@@ -26,9 +26,8 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 
 		vm.startPrank(user1);
 		vm.deal(user1, amnt);
-		SafeETH.safeTransferETH(address(vault), amnt);
 		uint256 minSharesOut = vault.underlyingToShares(amnt);
-		vault.deposit(user1, NATIVE, 0, (minSharesOut * 9930) / 10000);
+		vault.deposit{ value: amnt }(user1, NATIVE, 0, (minSharesOut * 9930) / 10000);
 
 		uint256 bal = vault.underlyingBalance(user1);
 		assertEq(bal, amnt, "deposit balance");
