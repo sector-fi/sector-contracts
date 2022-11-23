@@ -49,19 +49,22 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 
 	function testFlashSwap() public {
 		uint256 amnt = 100e6;
-		deposit(user1, amnt);
+		deposit(user1, 10 * amnt);
 		uint256 startBalance = vault.underlyingBalance(user1);
 
 		// trackCost();
-		moveUniPrice(1.5e18);
+		uint256 priceChange = 2e18;
+		moveUniPrice(priceChange);
 		deposit(user2, amnt);
-		assertApproxEqAbs(
+		assertApproxEqRel(
 			vault.underlyingBalance(user2),
 			amnt,
-			(amnt * 3) / 1000, // withthin .003% (slippage)
+			.005e18, // withthin .005% (slippage)
 			"second balance"
 		);
-		moveUniPrice(.666e18);
+
+		// move price back
+		moveUniPrice(1e36 / priceChange);
 		uint256 balance = vault.underlyingBalance(user1);
 		assertGe(balance, startBalance, "first balance should not decrease"); // within .1%
 	}
