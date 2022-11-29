@@ -136,4 +136,38 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 		scyWithdraw(vault, user1, 1e18);
 		assertEq(underlying.balanceOf(user1), balance);
 	}
+
+	function testNativeDepWith() public {
+		uint256 amnt = 100e18;
+
+		vm.startPrank(user1);
+		vm.deal(user1, amnt);
+		uint256 minSharesOut = vault.underlyingToShares(amnt);
+		vault.deposit{ value: amnt }(user1, NATIVE, 0, (minSharesOut * 9930) / 10000);
+		vm.stopPrank();
+
+		scyDeposit(vault, user2, amnt);
+
+		vm.startPrank(user2);
+		uint256 sharesToWithdraw2 = vault.balanceOf(user2);
+		uint256 minUnderlyingOut2 = vault.sharesToUnderlying(sharesToWithdraw2);
+		vault.redeem(user2, sharesToWithdraw2, NATIVE, (minUnderlyingOut2 * 9930) / 10000);
+		vm.stopPrank();
+
+		vm.startPrank(user1);
+
+		uint256 sharesToWithdraw = vault.balanceOf(user1);
+		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
+		vault.redeem(user1, sharesToWithdraw, NATIVE, (minUnderlyingOut * 9930) / 10000);
+
+		assertEq(vault.underlyingBalance(user1), 0, "deposit balance 0");
+		assertEq(user1.balance, amnt, "eth balance");
+
+		assertEq(vault.underlyingBalance(user2), 0, "deposit balance 0");
+		assertEq(user2.balance, amnt, "eth balance");
+
+		assertEq(address(vault).balance, 0, "vault eth balance");
+
+		vm.stopPrank();
+	}
 }

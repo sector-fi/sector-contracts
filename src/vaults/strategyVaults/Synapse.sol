@@ -68,6 +68,7 @@ contract Synapse is SCYStrategy, MiniChef2Farm, SCYVault {
 
 	function _strategyTvl() internal view override returns (uint256) {
 		(uint256 balance, ) = farm.userInfo(uint256(farmId), address(this));
+		if (balance == 0) return 0;
 		return ISynapseSwap(strategy).calculateRemoveLiquidityOneToken(balance, uint8(strategyId));
 	}
 
