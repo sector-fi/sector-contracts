@@ -12,12 +12,13 @@ import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/I
 import { ICurvePool } from "../../interfaces/curve/ICurvePool.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
-contract LevEth is StratAuth {
+contract stETH is StratAuth {
 	ICreditFacade public immutable creditFacade;
 	ICreditManagerV2 public immutable creditManager;
 	IPriceOracleV2 public immutable priceOracle;
 
-	ICurvePool public immutable curvePool = ICurvePool(0xDC24316b9AE028F1497c275EB9192a3Ea0f67022);
+	ICurvePool public constant stETHAdapter =
+		ICurvePool(0x0Ad2Fc10F677b2554553DaF80312A98ddb38f8Ef);
 
 	// IAddressProvider addressProvider = IAddressProvider(0xcF64698AFF7E5f27A11dff868AF228653ba53be0);
 
@@ -32,6 +33,7 @@ contract LevEth is StratAuth {
 	uint16 public leverageFactor;
 	uint256 immutable dec;
 	uint256 constant ethDec = 1e18;
+	address credAcc; // gearbox credit account // TODO can it expire?
 
 	event SetVault(address indexed vault);
 
@@ -63,7 +65,7 @@ contract LevEth is StratAuth {
 		// do we need granular approvals? or can we just approve once?
 		// i.e. what happens after credit account is dilivered to someone else?
 		underlying.approve(address(creditManager), amount);
-		if (!hasOpenAccount) openAccount(amount);
+		if (!hasOpenAccount) _openAccount(amount);
 		else {
 			/// TODO do we need to keep the account proportiona?
 			/// or should we auto-rebalance towards our target leverage?
@@ -77,35 +79,66 @@ contract LevEth is StratAuth {
 
 	/// @notice deposits underlying into the strategy
 	/// @param amount amount of stETH to withdraw
-	function withdraw(uint256 amount) public onlyVault {
-		uint256 ethAmnt = _decreasePosition(amount);
-		// uint currentLeverage =
+	function redeem(uint256 amount, address to) public onlyVault returns (uint256) {
+		/// there is no way to partially withdraw collateral
+		/// we have to close account and re-open it :\
+		uint256 fullStEthBal = _closePosition();
+		uint256 uBalance = underlying.balanceOf(address(this));
+		uint256 withdraw = (uBalance * amount) / fullStEthBal;
+		_openAccount(uBalance - withdraw);
+		// creditFacade.
+		return withdraw;
 	}
 
-	function _increasePosition() internal returns (uint256) {
+	function _increasePosition() internal returns (uint256 stETHAmnt) {
 		// TODO: pass in the amnt of short?
-		uint256 balance = short.balanceOf(address(this));
-		IWETH(address(short)).withdraw(balance);
+		uint256 balance = short.balanceOf(credAcc);
 
 		// slipage is check happens in the vault
 		// 0 is ETH, 1 is stETH
-		// returns amount of stETH
-		return curvePool.exchange(0, 1, balance, 0);
+		stETHAmnt = stETHAdapter.get_dy(0, 1, balance);
+		MultiCall[] memory calls = new MultiCall[](1);
+		calls[0] = MultiCall({
+			target: address(stETHAdapter),
+			callData: abi.encodeWithSelector(ICurvePool.exchange.selector, 0, 1, balance, 0)
+		});
+		creditFacade.multicall(calls);
 	}
 
-	/// amount of stETH to withdraw
-	function _decreasePosition(uint256 amount) internal returns (uint256) {
-		// TODO: pass in the amnt of short?
-
-		// slipage is check happens in the vault
-		// 0 is ETH, 1 is stETH
-		uint256 ethAmnt = curvePool.exchange(1, 0, amount, 0);
-		// return eth via payable
-		// IWETH(address(short)).deposit{ value: ethAmnt }();
-		return ethAmnt;
+	function closePosition() public onlyVault returns (uint256) {
+		_closePosition();
+		return underlying.balanceOf(address(this));
 	}
 
-	function openAccount(uint256 amount) public {
+	/// return original stETH balance
+	function _closePosition() internal returns (uint256) {
+		uint256 stEthBalance = stETH.balanceOf(credAcc);
+		uint256 ethAmnt = stETHAdapter.get_dy(0, 1, stEthBalance);
+		(, , uint256 borrowAmountWithInterestAndFees) = creditManager
+			.calcCreditAccountAccruedInterest(credAcc);
+
+		MultiCall[] memory calls;
+		if (borrowAmountWithInterestAndFees < ethAmnt) {
+			calls = new MultiCall[](1);
+			calls[0] = MultiCall({
+				target: address(stETHAdapter),
+				callData: abi.encodeWithSelector(
+					ICurvePool.exchange.selector,
+					1,
+					0,
+					stEthBalance,
+					0
+				)
+			});
+		} else {
+			/// TODO we may need to trade some of USDC for ETH as well
+			/// uniswap v3 swap
+		}
+		creditFacade.closeCreditAccount(address(this), 0, false, calls);
+		return stEthBalance;
+	}
+
+	function _openAccount(uint256 amount) internal {
 		underlying.approve(address(creditManager), amount);
 
 		// todo oracle conversion from underlying to ETH
@@ -123,21 +156,60 @@ contract LevEth is StratAuth {
 		});
 
 		creditFacade.openCreditAccountMulticall(borrowAmnt, vault, calls, 0);
+		credAcc = creditManager.getCreditAccountOrRevert(address(this));
 		hasOpenAccount = true;
 	}
 
-	function underlyingToShort(uint256 amount) public view returns (uint256) {
-		return
-			(amount * ethDec * priceOracle.getPrice(address(underlying))) /
-			priceOracle.getPrice(address(short)) /
-			dec;
+	function convert(
+		uint256 amount,
+		address from,
+		address to,
+		uint256 fromDecimals,
+		uint256 toDecimals
+	) public view returns (uint256) {
+		uint256 price = priceOracle.getPrice(from);
+		uint256 price2 = priceOracle.getPrice(to);
+		return (amount * price * 10**toDecimals) / (price2 * 10**fromDecimals);
 	}
 
-	function shortToUnderlying(uint256 amount) public view returns (uint256) {
-		return
-			(amount * dec * priceOracle.getPrice(address(short))) /
-			priceOracle.getPrice(address(underlying)) /
-			(ethDec);
+	function underlyingToShort(uint256 amount) public view returns (uint256) {
+		return convert(amount, address(underlying), address(short), dec, ethDec);
+	}
+
+	// function shortToUnderlying(uint256 amount) public view returns (uint256) {
+	// 	return
+	// 		(amount * dec * priceOracle.getPrice(address(short))) /
+	// 		priceOracle.getPrice(address(underlying)) /
+	// 		(ethDec);
+	// }
+
+	function getMaxTvl() public view returns (uint256) {
+		/// TODO compute actual max tvl
+		return type(uint256).max;
+	}
+
+	function collateralToUnderlying() public view returns (uint256) {
+		return convert(1e18, address(stETH), address(underlying), ethDec, dec);
+	}
+
+	function collateralBalance() public view returns (uint256) {
+		return stETH.balanceOf(credAcc);
+	}
+
+	function getPosition() public view returns (uint256 collateral, uint256 borrowed) {
+		collateral = underlying.balanceOf(credAcc);
+		borrowed = stETH.balanceOf(credAcc);
+	}
+
+	function getTotalTVL() public view returns (uint256) {
+		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
+		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
+		uint256 uPrice = priceOracle.getPrice(address(underlying));
+		return (((totalAssets - totalOwed) * 1e8) / uPrice) * dec;
+	}
+
+	function getAndUpdateTVL() public view returns (uint256) {
+		return getTotalTVL();
 	}
 
 	error WrongVaultUnderlying();
