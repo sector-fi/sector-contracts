@@ -51,6 +51,7 @@ contract GearboxTest is SectorTest {
 		accFactory = IAccountFactoryGetters(addressProvider.getAccountFactory());
 
 		priceOracle = IPriceOracleV2(addressProvider.getPriceOracle());
+		console.log("priceOracle", address(priceOracle));
 
 		// address configurator = IACL(addressProvider.getACL()).owner();
 		// vm.prank(configurator);

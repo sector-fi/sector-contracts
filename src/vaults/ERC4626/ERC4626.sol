@@ -104,6 +104,13 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20, Reentrancy
 		if (useNativeAsset && msg.value == assets) IWETH(address(asset)).deposit{ value: assets }();
 		else asset.safeTransferFrom(msg.sender, address(this), assets);
 
+		// lock minimum liquidity if totalSupply is 0
+		if (totalSupply() == 0) {
+			if (MIN_LIQUIDITY > shares) revert MinLiquidity();
+			shares -= MIN_LIQUIDITY;
+			_mint(address(1), MIN_LIQUIDITY);
+		}
+
 		_mint(receiver, shares);
 
 		emit Deposit(msg.sender, receiver, assets, shares);

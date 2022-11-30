@@ -11,21 +11,35 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ICurvePool } from "../../interfaces/curve/ICurvePool.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
+
+import "hardhat/console.sol";
 
 contract stETH is StratAuth {
-	ICreditFacade public immutable creditFacade;
-	ICreditManagerV2 public immutable creditManager;
-	IPriceOracleV2 public immutable priceOracle;
+	using SafeERC20 for IERC20;
+
+	ICreditFacade public constant creditFacade =
+		ICreditFacade(0xC59135f449bb623501145443c70A30eE648Fa304);
+
+	ICreditManagerV2 public immutable creditManager =
+		ICreditManagerV2(creditFacade.creditManager());
+
+	IPriceOracleV2 public immutable priceOracle =
+		IPriceOracleV2(0x6385892aCB085eaa24b745a712C9e682d80FF681);
 
 	ICurvePool public constant stETHAdapter =
 		ICurvePool(0x0Ad2Fc10F677b2554553DaF80312A98ddb38f8Ef);
 
+	ISwapRouter public constant uniswapV3Adapter =
+		ISwapRouter(0xed5B30F8604c0743F167a19F42fEC8d284963a7D);
+
 	// IAddressProvider addressProvider = IAddressProvider(0xcF64698AFF7E5f27A11dff868AF228653ba53be0);
 
 	IERC20 public immutable underlying;
-	IERC20 public immutable short;
+	IERC20 public immutable short = IERC20(creditFacade.underlying());
 
-	IERC20 public immutable stETH = IERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
+	IERC20 public constant stETH = IERC20(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
 
 	bool hasOpenAccount;
 	// leverage factor is how much we borrow in %
@@ -39,22 +53,16 @@ contract stETH is StratAuth {
 
 	constructor(
 		AuthConfig memory authConfig,
-		address _creditFacade,
 		address _underlying,
-		address _priceOracle,
 		uint16 _leverageFactor
 	) Auth(authConfig) {
-		creditFacade = ICreditFacade(_creditFacade);
-		creditManager = ICreditManagerV2(creditFacade.creditManager());
 		underlying = IERC20(_underlying);
 		dec = 10**uint256(IERC20Metadata(address(underlying)).decimals());
-		short = IERC20(creditFacade.underlying());
 		leverageFactor = _leverageFactor;
-		priceOracle = IPriceOracleV2(_priceOracle);
 	}
 
 	function setVault(address _vault) public onlyOwner {
-		if (ISCYStrategy(vault).underlying() != underlying) revert WrongVaultUnderlying();
+		if (ISCYStrategy(_vault).underlying() != underlying) revert WrongVaultUnderlying();
 		vault = _vault;
 		emit SetVault(vault);
 	}
@@ -70,11 +78,14 @@ contract stETH is StratAuth {
 			/// TODO do we need to keep the account proportiona?
 			/// or should we auto-rebalance towards our target leverage?
 			uint256 borrowAmnt = underlyingToShort((amount * leverageFactor) / 100);
-			creditFacade.addCollateral(vault, address(underlying), amount);
+			creditFacade.addCollateral(address(this), address(underlying), amount);
 			creditFacade.increaseDebt(borrowAmnt);
 		}
 		// returns added stETH
-		return _increasePosition();
+		uint256 startBalance = stETH.balanceOf(credAcc);
+		_increasePosition();
+		// our balance should allays increase on deposits
+		return stETH.balanceOf(credAcc) - startBalance;
 	}
 
 	/// @notice deposits underlying into the strategy
@@ -85,18 +96,20 @@ contract stETH is StratAuth {
 		uint256 fullStEthBal = _closePosition();
 		uint256 uBalance = underlying.balanceOf(address(this));
 		uint256 withdraw = (uBalance * amount) / fullStEthBal;
-		_openAccount(uBalance - withdraw);
+		console.log("re-open", uBalance, uBalance - withdraw);
+		// re-open account
+		if (uBalance > withdraw) _openAccount(uBalance - withdraw);
+		underlying.safeTransfer(to, withdraw);
 		// creditFacade.
 		return withdraw;
 	}
 
-	function _increasePosition() internal returns (uint256 stETHAmnt) {
+	function _increasePosition() internal {
 		// TODO: pass in the amnt of short?
 		uint256 balance = short.balanceOf(credAcc);
 
 		// slipage is check happens in the vault
 		// 0 is ETH, 1 is stETH
-		stETHAmnt = stETHAdapter.get_dy(0, 1, balance);
 		MultiCall[] memory calls = new MultiCall[](1);
 		calls[0] = MultiCall({
 			target: address(stETHAdapter),
@@ -107,17 +120,21 @@ contract stETH is StratAuth {
 
 	function closePosition() public onlyVault returns (uint256) {
 		_closePosition();
-		return underlying.balanceOf(address(this));
+		uint256 balance = underlying.balanceOf(address(this));
+		underlying.safeTransfer(vault, balance);
+		return balance;
 	}
 
 	/// return original stETH balance
 	function _closePosition() internal returns (uint256) {
 		uint256 stEthBalance = stETH.balanceOf(credAcc);
-		uint256 ethAmnt = stETHAdapter.get_dy(0, 1, stEthBalance);
+		// in practice exchange always returns this amount - 1 wei
+		uint256 ethAmnt = stETHAdapter.get_dy(1, 0, stEthBalance) - 1;
 		(, , uint256 borrowAmountWithInterestAndFees) = creditManager
 			.calcCreditAccountAccruedInterest(credAcc);
 
 		MultiCall[] memory calls;
+
 		if (borrowAmountWithInterestAndFees < ethAmnt) {
 			calls = new MultiCall[](1);
 			calls[0] = MultiCall({
@@ -130,9 +147,52 @@ contract stETH is StratAuth {
 					0
 				)
 			});
+
+			ISwapRouter.ExactInputSingleParams memory params = ISwapRouter.ExactInputSingleParams(
+				address(short),
+				address(underlying),
+				3000, // fee
+				address(this),
+				block.timestamp,
+				ethAmnt - borrowAmountWithInterestAndFees,
+				0, // minOut (check as total out on withdraw)
+				type(uint160).max // price limit
+			);
+
+			// convert extra eth to underlying
+			calls[1] = MultiCall({
+				target: address(uniswapV3Adapter),
+				callData: abi.encodeWithSelector(ISwapRouter.exactInputSingle.selector, params)
+			});
 		} else {
-			/// TODO we may need to trade some of USDC for ETH as well
-			/// uniswap v3 swap
+			calls = new MultiCall[](2);
+			calls[0] = MultiCall({
+				target: address(stETHAdapter),
+				callData: abi.encodeWithSelector(
+					ICurvePool.exchange.selector,
+					1,
+					0,
+					stEthBalance,
+					0
+				)
+			});
+
+			// convert underlying to eth using uniswap v3
+			ISwapRouter.ExactOutputSingleParams memory params = ISwapRouter.ExactOutputSingleParams(
+					address(underlying),
+					address(short),
+					3000, // fee
+					address(this),
+					block.timestamp,
+					borrowAmountWithInterestAndFees - ethAmnt,
+					type(uint256).max, // maxIn (check as total out on withdraw)
+					0 // price limit
+				);
+
+			calls[1] = MultiCall({
+				target: address(uniswapV3Adapter),
+				callData: abi.encodeWithSelector(ISwapRouter.exactOutputSingle.selector, params)
+			});
 		}
 		creditFacade.closeCreditAccount(address(this), 0, false, calls);
 		return stEthBalance;
@@ -149,13 +209,13 @@ contract stETH is StratAuth {
 			target: address(creditFacade),
 			callData: abi.encodeWithSelector(
 				ICreditFacade.addCollateral.selector,
-				vault,
+				address(this),
 				underlying,
 				amount
 			)
 		});
 
-		creditFacade.openCreditAccountMulticall(borrowAmnt, vault, calls, 0);
+		creditFacade.openCreditAccountMulticall(borrowAmnt, address(this), calls, 0);
 		credAcc = creditManager.getCreditAccountOrRevert(address(this));
 		hasOpenAccount = true;
 	}
@@ -169,19 +229,12 @@ contract stETH is StratAuth {
 	) public view returns (uint256) {
 		uint256 price = priceOracle.getPrice(from);
 		uint256 price2 = priceOracle.getPrice(to);
-		return (amount * price * 10**toDecimals) / (price2 * 10**fromDecimals);
+		return (amount * price * toDecimals) / (price2 * fromDecimals);
 	}
 
 	function underlyingToShort(uint256 amount) public view returns (uint256) {
 		return convert(amount, address(underlying), address(short), dec, ethDec);
 	}
-
-	// function shortToUnderlying(uint256 amount) public view returns (uint256) {
-	// 	return
-	// 		(amount * dec * priceOracle.getPrice(address(short))) /
-	// 		priceOracle.getPrice(address(underlying)) /
-	// 		(ethDec);
-	// }
 
 	function getMaxTvl() public view returns (uint256) {
 		/// TODO compute actual max tvl
@@ -202,10 +255,11 @@ contract stETH is StratAuth {
 	}
 
 	function getTotalTVL() public view returns (uint256) {
+		if (!hasOpenAccount) return 0;
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
 		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
-		uint256 uPrice = priceOracle.getPrice(address(underlying));
-		return (((totalAssets - totalOwed) * 1e8) / uPrice) * dec;
+		if (totalOwed > totalAssets) return 0;
+		return convert(totalAssets - totalOwed, address(stETH), address(underlying), ethDec, dec);
 	}
 
 	function getAndUpdateTVL() public view returns (uint256) {

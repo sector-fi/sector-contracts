@@ -79,7 +79,7 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 
 		uint256 tvl = vault.getAndUpdateTvl();
 		uint256 endAccBalance = vault.underlyingBalance(user);
-		assertApproxEqRel(tvl, startTvl + amount, .01e18, "tvl should update");
+		assertApproxEqRel(tvl, startTvl + amount, .015e18, "tvl should update");
 		assertApproxEqRel(
 			tvl - startTvl,
 			endAccBalance - startAccBalance,
@@ -87,6 +87,9 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 			"underlying balance"
 		);
 		assertEq(vault.getFloatingAmount(address(underlying)), 0);
+
+		// this is necessary for stETH strategy (so closing account doesn't happen in same block)
+		vm.roll(block.number + 1);
 	}
 
 	function withdrawAmnt(address user, uint256 amnt) public {
@@ -167,7 +170,7 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		return 0;
 	}
 
-	function getAmnt() public view returns (uint256) {
+	function getAmnt() public view virtual returns (uint256) {
 		if (vault.acceptsNativeToken()) return 1e18;
 		uint256 d = vault.underlyingDecimals();
 		if (d == 6) return 1000e6;

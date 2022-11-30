@@ -1,127 +1,109 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity 0.8.16;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.16;
 
-// import { ICollateral } from "../../interfaces/imx/IImpermax.sol";
-// import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOracle.sol";
-// import { PriceUtils, UniUtils, IUniswapV2Pair } from "../utils/PriceUtils.sol";
+import { ICollateral } from "../../interfaces/imx/IImpermax.sol";
+import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOracle.sol";
+import { PriceUtils, UniUtils, IUniswapV2Pair } from "../utils/PriceUtils.sol";
 
-// import { SectorTest } from "../utils/SectorTest.sol";
-// import { IMXConfig, HarvestSwapParams } from "../../interfaces/Structs.sol";
-// import { SCYVault, IMXVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/IMXVault.sol";
-// import { IMX, IMXCore } from "../../strategies/imx/IMX.sol";
-// import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-// import { StratUtils } from "./StratUtils.sol";
+import { SectorTest } from "../utils/SectorTest.sol";
+import { HarvestSwapParams } from "../../interfaces/Structs.sol";
+import { SCYVault, stETHVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/stETHVault.sol";
+import { stETH as stETHStrategy } from "../../strategies/gearbox/stETH.sol";
+import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { StratUtils } from "./StratUtils.sol";
+import { IDegenNFT } from "interfaces/gearbox/IDegenNFT.sol";
+import { ICreditFacade } from "interfaces/gearbox/ICreditFacade.sol";
 
-// import "forge-std/StdJson.sol";
+import "forge-std/StdJson.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
-// contract SetupStEth is SectorTest, StratUtils {
-// 	using UniUtils for IUniswapV2Pair;
-// 	using stdJson for string;
+contract SetupStEth is SectorTest, StratUtils {
+	using UniUtils for IUniswapV2Pair;
+	using stdJson for string;
 
-// 	uint256 currentFork;
+	string RPC_URL = vm.envString("ETH_RPC_URL");
+	uint256 BLOCK = vm.envUint("ETH_BLOCK");
 
-// 	IMX strategy;
+	stETHStrategy strategy;
 
-// 	Strategy strategyConfig;
+	Strategy strategyConfig;
 
-// 	function setUp() public {
-// 		// TODO use JSON
-// 		underlying = IERC20(config.underlying);
+	address stETH = 0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84;
+	address USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
 
-// 		/// todo should be able to do this via address and mixin
-// 		strategyConfig.symbol = "TST";
-// 		strategyConfig.name = "TEST";
-// 		strategyConfig.yieldToken = config.poolToken;
-// 		strategyConfig.underlying = IERC20(config.underlying);
-// 		strategyConfig.maxTvl = uint128(config.maxTvl);
+	function setUp() public {
+		uint256 fork = vm.createFork(RPC_URL, BLOCK);
+		vm.selectFork(fork);
 
-// 		AuthConfig memory authConfig = AuthConfig({
-// 			owner: owner,
-// 			manager: manager,
-// 			guardian: guardian
-// 		});
+		// TODO use JSON
+		underlying = IERC20(USDC);
 
-// 		vault = SCYVault(new IMXVault(authConfig, FeeConfig(treasury, .1e18, 0), strategyConfig));
+		/// todo should be able to do this via address and mixin
+		strategyConfig.symbol = "TST";
+		strategyConfig.name = "TEST";
+		strategyConfig.yieldToken = stETH;
+		strategyConfig.underlying = IERC20(USDC);
 
-// 		mLp = vault.MIN_LIQUIDITY();
-// 		config.vault = address(vault);
+		uint256 maxTvl = 20e6;
+		strategyConfig.maxTvl = uint128(maxTvl);
 
-// 		strategy = new IMX(authConfig, config);
+		AuthConfig memory authConfig = AuthConfig({
+			owner: owner,
+			manager: manager,
+			guardian: guardian
+		});
 
-// 		vault.initStrategy(address(strategy));
-// 		underlying.approve(address(vault), type(uint256).max);
+		vault = SCYVault(new stETHVault(authConfig, FeeConfig(treasury, .1e18, 0), strategyConfig));
 
-// 		configureUtils(config.underlying, config.short, config.uniPair, address(strategy));
+		mLp = vault.MIN_LIQUIDITY();
 
-// 		// deposit(mLp);
-// 	}
+		uint16 targetLeverage = 500;
+		strategy = new stETHStrategy(authConfig, USDC, targetLeverage);
 
-// 	function noRebalance() public override {
-// 		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
-// 		vm.expectRevert(IMXCore.RebalanceThreshold.selector);
-// 		vm.prank(manager);
-// 		strategy.rebalance(expectedPrice, maxDelta);
-// 	}
+		vault.initStrategy(address(strategy));
+		strategy.setVault(address(vault));
 
-// 	function adjustPrice(uint256 fraction) public override {
-// 		address oracle;
-// 		try ICollateral(config.poolToken).simpleUniswapOracle() returns (address _oracle) {
-// 			oracle = _oracle;
-// 		} catch {
-// 			oracle = ICollateral(config.poolToken).tarotPriceOracle();
-// 		}
-// 		address stakedToken = ICollateral(config.poolToken).underlying();
-// 		moveImxPrice(
-// 			config.uniPair,
-// 			stakedToken,
-// 			config.underlying,
-// 			config.short,
-// 			oracle,
-// 			fraction
-// 		);
-// 	}
+		underlying.approve(address(vault), type(uint256).max);
 
-// 	function harvest() public override {
-// 		if (!strategy.harvestIsEnabled()) return;
-// 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
+		configureUtils(USDC, address(0), address(0), address(strategy));
 
-// 		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
-// 		params1[0] = harvestParams;
-// 		params1[0].min = 0;
-// 		params1[0].deadline = block.timestamp + 1;
-// 		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+		/// mint dege nft to strategy
+		ICreditFacade creditFacade = strategy.creditFacade();
 
-// 		strategy.getAndUpdateTVL();
-// 		uint256 tvl = strategy.getTotalTVL();
-// 		(uint256[] memory harvestAmnts, ) = vault.harvest(vault.getTvl(), 0, params1, params2);
-// 		uint256 newTvl = strategy.getTotalTVL();
-// 		assertGt(harvestAmnts[0], 0);
-// 		assertGt(newTvl, tvl);
-// 	}
+		IDegenNFT degenNFT = IDegenNFT(creditFacade.degenNFT());
+		address minter = degenNFT.minter();
 
-// 	function rebalance() public override {
-// 		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
-// 		assertGt(strategy.getPositionOffset(), strategy.rebalanceThreshold());
-// 		strategy.rebalance(expectedPrice, maxDelta);
-// 		assertApproxEqAbs(strategy.getPositionOffset(), 0, 6, "position offset after rebalance");
-// 	}
+		vm.prank(minter);
+		degenNFT.mint(address(strategy), 100);
 
-// 	// slippage in basis points
-// 	function getSlippageParams(uint256 slippage)
-// 		public
-// 		view
-// 		returns (uint256 expectedPrice, uint256 maxDelta)
-// 	{
-// 		expectedPrice = strategy.getExpectedPrice();
-// 		maxDelta = (expectedPrice * slippage) / BASIS;
-// 	}
+		// so close account doesn't create issues
+		vm.roll(1);
+		// deposit(mLp);
+	}
 
-// 	function adjustOraclePrice(uint256 fraction) public {
-// 		// move both
-// 		adjustPrice(fraction);
-// 		// undo uniswap move
-// 		moveUniswapPrice(uniPair, config.underlying, config.short, (1e18 * 1e18) / fraction);
-// 	}
-// }
+	function noRebalance() public override {}
+
+	function adjustPrice(uint256 fraction) public override {}
+
+	function harvest() public override {}
+
+	function rebalance() public override {}
+
+	// slippage in basis points
+	function getSlippageParams(uint256 slippage)
+		public
+		view
+		returns (uint256 expectedPrice, uint256 maxDelta)
+	{
+		// expectedPrice = strategy.getExpectedPrice();
+		// maxDelta = (expectedPrice * slippage) / BASIS;
+	}
+
+	function adjustOraclePrice(uint256 fraction) public {}
+
+	function getAmnt() public view virtual override returns (uint256) {
+		/// needs to be over Gearbox deposit min
+		return 100000e6;
+	}
+}

@@ -8,6 +8,7 @@ import { SetupHlp } from "./SetupHlp.sol";
 import { SetupImxLend } from "./SetupImxLend.sol";
 import { SetupStargate } from "./SetupStargate.sol";
 import { SetupSynapse } from "./SetupSynapse.sol";
+import { SetupStEth } from "./SetupStEth.sol";
 
 import "hardhat/console.sol";
 
@@ -50,19 +51,23 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 
 	function testFlashSwap() public {
 		uint256 amnt = getAmnt();
-		deposit(user1, amnt);
+
+		deposit(user1, 10 * amnt);
 		uint256 startBalance = vault.underlyingBalance(user1);
 
 		// trackCost();
-		moveUniPrice(1.5e18);
+		uint256 priceChange = 2e18;
+		moveUniPrice(priceChange);
 		deposit(user2, amnt);
-		assertApproxEqAbs(
+		assertApproxEqRel(
 			vault.underlyingBalance(user2),
 			amnt,
-			(amnt * 3) / 1000, // withthin .003% (slippage)
+			.005e18, // withthin .005% (slippage)
 			"second balance"
 		);
-		moveUniPrice(.666e18);
+
+		// move price back
+		moveUniPrice(1e36 / priceChange);
 		uint256 balance = vault.underlyingBalance(user1);
 		assertGe(balance, startBalance, "first balance should not decrease"); // within .1%
 	}
@@ -87,7 +92,7 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 		vm.prank(guardian);
 		vault.closePosition(0, 0);
 		uint256 floatBalance = vault.uBalance();
-		assertApproxEqRel(floatBalance, amnt, .001e18);
+		assertApproxEqRel(floatBalance, amnt, .005e18);
 		assertEq(underlying.balanceOf(address(vault)), floatBalance);
 	}
 }
@@ -101,3 +106,9 @@ contract IntegrationHlp is SetupHlp, IntegrationTest {}
 contract IntegrationStargate is SetupStargate, IntegrationTest {}
 
 contract IntegrationSynapse is SetupSynapse, IntegrationTest {}
+
+contract IntegrationStEth is SetupStEth, IntegrationTest {
+	function getAmnt() public view override(StratUtils, SetupStEth) returns (uint256) {
+		return SetupStEth.getAmnt();
+	}
+}
