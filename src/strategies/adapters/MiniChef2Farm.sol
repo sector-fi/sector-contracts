@@ -6,7 +6,7 @@ import { IMiniChefV2 } from "../../interfaces/uniswap/IStakingRewards.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 struct FarmConfig {
 	address farm;
@@ -49,8 +49,6 @@ abstract contract MiniChef2Farm {
 		internal
 		returns (uint256 harvested, uint256 amountOut)
 	{
-		console.log("farm balance", farmToken.balanceOf(address(farm)));
-
 		farm.harvest(farmId, address(this));
 
 		harvested = farmToken.balanceOf(address(this));
