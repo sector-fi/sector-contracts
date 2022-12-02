@@ -303,7 +303,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 				_maxTvl,
 				// adjust the availableToBorrow to account for leverage
 				_shortToUnderlying(
-					sBorrow + (availableToBorrow * 1e18) / (_optimalUBorrow() + 1e18)
+					((sBorrow + availableToBorrow) * 1e18) / (_optimalUBorrow() + 1e18)
 				)
 			);
 	}

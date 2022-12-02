@@ -62,7 +62,19 @@ contract SetupImxLend is SectorTest, StratUtils {
 
 	function rebalance() public override {}
 
-	function harvest() public override {}
+	function harvest() public override {
+		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
+		params1[0] = harvestParams;
+		params1[0].min = 0;
+		params1[0].deadline = block.timestamp + 1;
+		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+
+		(uint256[] memory harvestAmnts, ) = vault.harvest(vault.getTvl(), 0, params1, params2);
+
+		// IMX Lend doesn't earn anything
+		// assertEq(harvestAmnts[0], 0);
+		// assertEq(harvestAmnts[1], 0);
+	}
 
 	function noRebalance() public override {}
 

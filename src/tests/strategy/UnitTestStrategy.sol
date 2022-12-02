@@ -63,14 +63,14 @@ abstract contract UnitTestStrategy is StratUtils {
 	}
 
 	function testSetMaxTvl() public {
-		strat.setMaxTvl(2 * dec);
-
-		assertEq(strat.getMaxTvl(), 2 * dec);
-		deposit(2 * dec);
-
 		strat.setMaxTvl(dec);
 
 		assertEq(strat.getMaxTvl(), dec);
+		deposit(dec);
+
+		strat.setMaxTvl(dec / 2);
+
+		assertEq(strat.getMaxTvl(), dec / 2);
 
 		vm.prank(user1);
 		vm.expectRevert(_accessErrorString(GUARDIAN, user1));
