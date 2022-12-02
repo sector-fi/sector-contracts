@@ -57,32 +57,6 @@ abstract contract BatchedWithdraw is ERC4626 {
 		emit RequestWithdraw(msg.sender, owner, shares);
 	}
 
-	function withdraw(
-		uint256,
-		address,
-		address
-	) public pure virtual override returns (uint256) {
-		revert NotImplemented();
-	}
-
-	function redeem(
-		uint256,
-		address receiver,
-		address
-	) public virtual override returns (uint256 amountOut) {
-		return redeem(receiver);
-	}
-
-	/// @dev safest UI method
-	function redeem() public virtual returns (uint256 amountOut) {
-		return redeem(msg.sender);
-	}
-
-	/// @dev safest UI method
-	function redeemNative() public virtual returns (uint256 amountOut) {
-		return redeemNative(msg.sender);
-	}
-
 	function redeemNative(address receiver) public virtual returns (uint256 amountOut) {
 		if (!useNativeAsset) revert NotNativeAsset();
 		uint256 shares;
@@ -99,13 +73,6 @@ abstract contract BatchedWithdraw is ERC4626 {
 		(amountOut, shares) = _redeem(msg.sender);
 		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
 		asset.safeTransfer(receiver, amountOut);
-	}
-
-	/// @dev should only be called by manager on behalf of xVaults
-	function _xRedeem(address xVault, address _vault) internal virtual returns (uint256 amountOut) {
-		uint256 shares;
-		(amountOut, shares) = _redeem(xVault);
-		emit Withdraw(_vault, _vault, _vault, amountOut, shares);
 	}
 
 	function _redeem(address account) internal returns (uint256 amountOut, uint256 shares) {
@@ -130,17 +97,6 @@ abstract contract BatchedWithdraw is ERC4626 {
 		withdrawRecord.shares = 0;
 		_burn(address(this), shares);
 	}
-
-	/// helper method to get xChain bridge amount
-	// function pendingRedeem(address account) public view returns (uint256 amountOut) {
-	// 	WithdrawRecord storage withdrawRecord = withdrawLedger[account];
-
-	// 	if (withdrawRecord.value == 0) revert ZeroAmount();
-	// 	if (withdrawRecord.timestamp >= lastHarvestTimestamp) revert NotReady();
-
-	// 	// value of shares at time of redemption request
-	// 	return _getWithdrawAmount(withdrawRecord.shares, withdrawRecord.value);
-	// }
 
 	function _getWithdrawAmount(uint256 shares, uint256 redeemValue)
 		internal

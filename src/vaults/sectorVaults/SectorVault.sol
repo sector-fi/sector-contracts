@@ -171,4 +171,11 @@ contract SectorVault is AggregatorVault, XChainIntegrator {
 			}
 		}
 	}
+
+	/// @dev should only be called by manager on behalf of xVaults
+	function _xRedeem(address xVault, address _vault) internal returns (uint256 amountOut) {
+		uint256 shares;
+		(amountOut, shares) = _redeem(xVault);
+		emit Withdraw(_vault, _vault, _vault, amountOut, shares);
+	}
 }

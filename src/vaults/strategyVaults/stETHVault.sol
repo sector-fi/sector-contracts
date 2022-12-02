@@ -64,7 +64,7 @@ contract stETHVault is SCYStrategy, SCYVault {
 		override
 		returns (uint256[] memory harvested, uint256[] memory)
 	{
-		revert NotImplemented();
+		return (new uint256[](0), new uint256[](0));
 	}
 
 	function _selfBalance(address token) internal view virtual override returns (uint256) {

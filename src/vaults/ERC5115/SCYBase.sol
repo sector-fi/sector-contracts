@@ -82,9 +82,6 @@ abstract contract SCYBase is
 	) external nonReentrant returns (uint256 amountTokenOut) {
 		require(isValidBaseToken(tokenOut), "SCY: invalid tokenOut");
 
-		// NOTE this is different from reference implementation in that
-		// we don't support sending shares to contracts
-
 		// this is to handle a case where the strategy sends funds directly to user
 		uint256 amountToTransfer;
 		(amountTokenOut, amountToTransfer) = _redeem(receiver, tokenOut, amountSharesToRedeem);

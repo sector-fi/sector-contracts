@@ -2,11 +2,12 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC4626, FixedPointMathLib, SafeERC20 } from "./ERC4626.sol";
+import { ERC4626, FixedPointMathLib, SafeERC20, IWETH } from "./ERC4626.sol";
 import { BatchedWithdraw } from "./BatchedWithdraw.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction } from "../../interfaces/Structs.sol";
 import { VaultType } from "../../interfaces/Structs.sol";
+import { SafeETH } from "../../libraries/SafeETH.sol";
 
 // import "hardhat/console.sol";
 
@@ -23,6 +24,32 @@ abstract contract SectorBase is BatchedWithdraw {
 	function setMaxHarvestInterval(uint256 maxHarvestInterval_) public onlyOwner {
 		maxHarvestInterval = maxHarvestInterval_;
 		emit SetMaxHarvestInterval(maxHarvestInterval);
+	}
+
+	function withdraw(
+		uint256,
+		address,
+		address
+	) public pure virtual override returns (uint256) {
+		revert NotImplemented();
+	}
+
+	function redeem(
+		uint256,
+		address receiver,
+		address
+	) public virtual override returns (uint256 amountOut) {
+		return redeem(receiver);
+	}
+
+	/// @dev safest UI method
+	function redeem() public virtual returns (uint256 amountOut) {
+		return redeem(msg.sender);
+	}
+
+	/// @dev safest UI method
+	function redeemNative() public virtual returns (uint256 amountOut) {
+		return redeemNative(msg.sender);
 	}
 
 	function _harvest(uint256 currentChildHoldings) internal {
