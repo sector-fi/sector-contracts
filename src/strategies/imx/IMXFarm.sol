@@ -8,7 +8,7 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 
 import { CallType, CalleeData, AddLiquidityAndMintCalldata, BorrowBCalldata, RemoveLiqAndRepayCalldata } from "../../interfaces/Structs.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract IMXFarm is IIMXFarm {
 	using SafeERC20 for IERC20;
@@ -136,8 +136,6 @@ abstract contract IMXFarm is IIMXFarm {
 			uint256 sBalance = short().balanceOf(address(this));
 			uint256 uBalance = underlying().balanceOf(address(this));
 
-			if (sAmnt != _shortToUnderlying(uAmnt)) console.log("bad lp balance");
-
 			// TODO use swap fee to get exact amount out
 			// if we have extra short tokens, trade them for underlying
 			if (sBalance > sAmnt) {
@@ -155,11 +153,6 @@ abstract contract IMXFarm is IIMXFarm {
 				);
 			}
 
-			if (sAmnt != _shortToUnderlying(uAmnt)) console.log("bad lp balance 2");
-
-			uint256 sBal = short().balanceOf(address(this));
-			if (sBal < sAmnt) console.log("this shouldn't happen", sAmnt, sBal);
-
 			// we know that now our short balance is now exact sBalance = sAmnt
 			// if we don't have enough underlying, we need to decrase sAmnt slighlty
 			if (uBalance < uAmnt) {
@@ -168,7 +161,6 @@ abstract contract IMXFarm is IIMXFarm {
 				// make sure we're not increaseing the amount
 				if (sAmnt > sAmntNew) sAmnt = sAmntNew;
 				else uAmnt = _shortToUnderlying(sAmnt);
-				// console.log("bad adjust", sAmnt, sBal);
 			}
 			if (uBalance > uAmnt) {
 				// if we have extra underlying return to borrowable

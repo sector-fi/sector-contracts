@@ -210,7 +210,7 @@ abstract contract UnitTestStrategy is StratUtils {
 	}
 
 	function testRebalanceFuzz(uint256 fuzz) public {
-		uint256 priceAdjust = bound(fuzz, uint256(.5e18), uint256(2e18));
+		uint256 priceAdjust = bound(fuzz, uint256(.6e18), uint256(2e18));
 		uint256 rebThresh = strat.rebalanceThreshold();
 
 		deposit(self, dec);
@@ -222,7 +222,7 @@ abstract contract UnitTestStrategy is StratUtils {
 		if (strat.getPositionOffset() <= rebThresh) return;
 		rebalance();
 
-		assertApproxEqAbs(strat.getPositionOffset(), 0, 10);
+		assertApproxEqAbs(strat.getPositionOffset(), 0, 11);
 
 		// put price back
 		adjustPrice(1e36 / priceAdjust);

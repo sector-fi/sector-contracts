@@ -195,24 +195,24 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 
 		uint256 uBorrow;
 		uint256 sBorrow;
-		uint256 aUddLp;
+		uint256 uAddLp;
 		uint256 sAddLp;
 
 		if (tvl == 0) {
 			uBorrow = (_optimalUBorrow() * amntUnderlying) / 1e18;
-			aUddLp = amntUnderlying + uBorrow;
-			sBorrow = _underlyingToShort(aUddLp);
+			uAddLp = amntUnderlying + uBorrow;
+			sBorrow = _underlyingToShort(uAddLp);
 			sAddLp = sBorrow;
 		} else {
 			// if tvl > 0 we need to keep the exact proportions of current position
 			// to ensure we have correct accounting independent of price moves
 			uBorrow = (uBorrowBalance * amntUnderlying) / tvl;
-			aUddLp = (uLp * amntUnderlying) / tvl;
+			uAddLp = (uLp * amntUnderlying) / tvl;
 			sBorrow = (sBorrowBalance * amntUnderlying) / tvl;
-			sAddLp = _underlyingToShort(aUddLp);
+			sAddLp = _underlyingToShort(uAddLp);
 		}
 
-		_addIMXLiquidity(aUddLp, sAddLp, uBorrow, sBorrow);
+		_addIMXLiquidity(uAddLp, sAddLp, uBorrow, sBorrow);
 	}
 
 	// use the return of the function to estimate pending harvest via staticCall
@@ -251,7 +251,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		uint256 targetUBorrow = (tvl * _optimalUBorrow()) / 1e18;
 		uint256 targetUnderlyingLP = tvl + targetUBorrow;
 
-		(uint256 underlyingLp, uint256 shortLP) = _getLPBalances();
+		(uint256 underlyingLp, ) = _getLPBalances();
 		uint256 targetShortLp = _underlyingToShort(targetUnderlyingLP);
 		(uint256 uBorrowBalance, uint256 sBorrowBalance) = _updateAndGetBorrowBalances();
 
@@ -259,12 +259,9 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		// uint256 uBalance = underlying().balanceOf(address(this));
 
 		if (underlyingLp > targetUnderlyingLP) {
-			// TODO: we may need to borrow underlying
-
 			uint256 uRepay = uBorrowBalance > targetUBorrow ? uBorrowBalance - targetUBorrow : 0;
 			uint256 sRepay = sBorrowBalance > targetShortLp ? sBorrowBalance - targetShortLp : 0;
 
-			// TODO check this
 			uint256 lp = _getLiquidity();
 			uint256 removeLp = lp - (lp * targetUnderlyingLP) / underlyingLp;
 			_removeIMXLiquidity(removeLp, uRepay, sRepay);
@@ -272,10 +269,12 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 			uint256 uBorrow = targetUBorrow > uBorrowBalance ? targetUBorrow - uBorrowBalance : 0;
 			uint256 sBorrow = targetShortLp > sBorrowBalance ? targetShortLp - sBorrowBalance : 0;
 
+			uint256 uAdd = targetUnderlyingLP - underlyingLp;
+
 			// extra underlying balance will get re-paid automatically
 			_addIMXLiquidity(
-				targetUnderlyingLP - underlyingLp,
-				targetShortLp - shortLP,
+				uAdd,
+				_underlyingToShort(uAdd), // this is more precise than targetShortLp - shortLP because of rounding
 				uBorrow,
 				sBorrow
 			);

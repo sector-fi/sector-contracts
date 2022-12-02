@@ -145,7 +145,13 @@ contract SetupImx is SectorTest, StratUtils {
 
 		strategy.getAndUpdateTVL();
 		uint256 tvl = strategy.getTotalTVL();
-		(uint256[] memory harvestAmnts, ) = vault.harvest(vault.getTvl(), 0, params1, params2);
+		uint256 vaultTvl = vault.getTvl();
+		(uint256[] memory harvestAmnts, ) = vault.harvest(
+			vaultTvl,
+			vaultTvl / 100,
+			params1,
+			params2
+		);
 		uint256 newTvl = strategy.getTotalTVL();
 
 		if (!strategy.harvestIsEnabled()) return;
@@ -157,7 +163,7 @@ contract SetupImx is SectorTest, StratUtils {
 		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
 		assertGt(strategy.getPositionOffset(), strategy.rebalanceThreshold());
 		strategy.rebalance(expectedPrice, maxDelta);
-		assertApproxEqAbs(strategy.getPositionOffset(), 0, 7, "position offset after rebalance");
+		assertApproxEqAbs(strategy.getPositionOffset(), 0, 11, "position offset after rebalance");
 	}
 
 	// slippage in basis points
