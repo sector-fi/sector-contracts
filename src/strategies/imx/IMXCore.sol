@@ -317,7 +317,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 			: _shortToUnderlying(_short.balanceOf(address(this)));
 		(uint256 underlyingLp, ) = _getLPBalances();
 		uint256 underlyingBalance = _underlying.balanceOf(address(this));
-		tvl = underlyingLp * 2 - borrowBalance + underlyingBalance + shortBalance;
+		tvl = underlyingLp * 2 + underlyingBalance + shortBalance - borrowBalance;
 	}
 
 	function getTotalTVL() public view returns (uint256 tvl) {
