@@ -20,8 +20,9 @@ contract SetupImx is SectorTest, StratUtils {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
-	string TEST_STRATEGY = "USDCimxAVAX";
+	// string TEST_STRATEGY = "USDCimxAVAX";
 	// string TEST_STRATEGY = "USDC-OP-tarot-velo";
+	string TEST_STRATEGY = "ETH-USDC-Tarot-Velo";
 
 	uint256 currentFork;
 
@@ -168,5 +169,10 @@ contract SetupImx is SectorTest, StratUtils {
 		adjustPrice(fraction);
 		// undo uniswap move
 		moveUniswapPrice(uniPair, config.underlying, config.short, (1e18 * 1e18) / fraction);
+	}
+
+	function testEdgeCases() public {
+		deposit(user1, .0001e18);
+		withdraw(user1, 1e18);
 	}
 }
