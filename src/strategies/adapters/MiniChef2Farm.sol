@@ -7,6 +7,7 @@ import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
 
 // import "hardhat/console.sol";
+
 struct FarmConfig {
 	address farm;
 	uint16 farmId;
@@ -49,6 +50,7 @@ abstract contract MiniChef2Farm {
 		returns (uint256 harvested, uint256 amountOut)
 	{
 		farm.harvest(farmId, address(this));
+
 		harvested = farmToken.balanceOf(address(this));
 		if (harvested == 0) return (0, 0);
 

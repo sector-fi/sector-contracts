@@ -171,6 +171,6 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		if (vault.acceptsNativeToken()) return 1e18;
 		uint256 d = vault.underlyingDecimals();
 		if (d == 6) return 1000e6;
-		if (d == 18) return 10e18;
+		if (d == 18) return 1e18;
 	}
 }

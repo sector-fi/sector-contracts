@@ -128,4 +128,22 @@ contract SetupSynapse is SectorTest, StratUtils {
 	function noRebalance() public override {}
 
 	function adjustPrice(uint256 fraction) public override {}
+
+	function testDust() public {
+		deposit(user1, 1000e6);
+		deposit(user2, 1000e6);
+		deposit(user3, 1000e6);
+		harvest();
+
+		// if we skip ahead in time, we will
+		// be able to withdraw full tvl
+		skip(7 * 60 * 60 * 24);
+
+		withdraw(user1, 1e18);
+		withdraw(user2, 1e18);
+		withdraw(user3, 1e18);
+
+		uint256 tvl = vault.getTvl();
+		assertEq(tvl, 0);
+	}
 }

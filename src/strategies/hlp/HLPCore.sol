@@ -278,8 +278,21 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		if (underlyingAmnt < MIN_LIQUIDITY) revert MinLiquidity(); // avoid imprecision
 		uint256 tvl = getAndUpdateTVL() - underlyingAmnt;
 
-		// if this is the first deposit, we use our desire ratio
-		if (tvl == 0) {
+		uint256 collateralBalance = _updateAndGetCollateralBalance();
+		uint256 shortPosition = _updateAndGetBorrowBalance();
+
+		// else we use whatever the current ratio is
+		(uint256 uLp, uint256 sLp) = _getLPBalances();
+
+		// if this is the first deposit, or amounts are too small to do accounting
+		// we use our desired ratio
+		if (
+			tvl < MIN_LIQUIDITY ||
+			uLp < MIN_LIQUIDITY ||
+			sLp < MIN_LIQUIDITY ||
+			shortPosition < MIN_LIQUIDITY ||
+			collateralBalance < MIN_LIQUIDITY
+		) {
 			uint256 addULp = _totalToLp(underlyingAmnt);
 			uint256 borrowAmnt = _underlyingToShort(addULp);
 			uint256 collateralAmnt = underlyingAmnt - addULp;
@@ -291,11 +304,6 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		}
 
 		{
-			uint256 collateralBalance = _updateAndGetCollateralBalance();
-			uint256 shortPosition = _updateAndGetBorrowBalance();
-
-			// else we use whatever the current ratio is
-			(, uint256 sLp) = _getLPBalances();
 			uint256 addSLp = (underlyingAmnt * sLp) / tvl;
 			uint256 collateralAmnt = (collateralBalance * underlyingAmnt) / tvl;
 			uint256 borrowAmnt = (shortPosition * underlyingAmnt) / tvl;

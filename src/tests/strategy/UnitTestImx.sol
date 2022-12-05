@@ -82,4 +82,34 @@ contract UnitTestImx is SetupImx, UnitTestStrategy {
 
 		assertApproxEqRel(vault.underlyingBalance(user1), vault.underlyingBalance(user2), .003e18);
 	}
+
+	function testEdgeCases() public {
+		uint256 amount = 1.5e18;
+		deposit(user1, amount);
+		uint256 exchangeRate = vault.sharesToUnderlying(1e18);
+		// harvest();
+		// vm.warp(block.timestamp + 1 * 60 * 60 * 24);
+
+		withdraw(user1, 1e18);
+		console.log(IERC20(vault.yieldToken()).balanceOf(vault.strategy())); // Saves an extra SLOAD if totalSupply is non-zero.
+
+		deal(address(underlying), user1, amount);
+		vm.startPrank(user1);
+		underlying.approve(address(vault), amount);
+		vault.deposit(user1, address(underlying), amount, 0);
+		vm.stopPrank();
+
+		uint256 exchangeRate2 = vault.sharesToUnderlying(1e18);
+		assertApproxEqRel(exchangeRate, exchangeRate2, .001e18, "exchange rate after deposit");
+	}
+
+	function testGetMaxTvlFail() public {
+		strategy.getAndUpdateTVL();
+		uint256 maxTvl = strategy.getMaxTvl();
+		deposit(user1, maxTvl - 1);
+		vm.warp(block.timestamp + 30 * 60 * 60 * 24);
+		strategy.getMaxTvl();
+		// uint256 tvl = strategy.getAndUpdateTVL();
+		// deposit(user1, strategy.getMaxTvl() - tvl - 1);
+	}
 }
