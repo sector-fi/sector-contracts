@@ -9,7 +9,7 @@ import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contr
 import { Accounting } from "../../common/Accounting.sol";
 import { ERC20Permit, EIP712 } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract SCYBase is
 	ISuperComposableYield,
@@ -88,9 +88,10 @@ abstract contract SCYBase is
 		// this is to handle a case where the strategy sends funds directly to user
 		uint256 amountToTransfer;
 		(amountTokenOut, amountToTransfer) = _redeem(receiver, tokenOut, amountSharesToRedeem);
-		require(amountTokenOut >= minTokenOut, "insufficient out");
+		if (amountTokenOut < minTokenOut) revert InsufficientOut(amountTokenOut, minTokenOut);
 
 		_burn(msg.sender, amountSharesToRedeem);
+
 		if (amountToTransfer > 0) _transferOut(tokenOut, receiver, amountToTransfer);
 
 		emit Redeem(msg.sender, receiver, tokenOut, amountSharesToRedeem, amountTokenOut);

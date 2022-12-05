@@ -188,7 +188,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	// ** does not rebalance remaining portfolio
 	function _increasePosition(uint256 amntUnderlying) internal {
 		if (amntUnderlying < MINIMUM_LIQUIDITY) return; // avoid imprecision
-		(uint256 uLp, ) = _getLPBalances();
+		(uint256 uLp, uint256 sLp) = _getLPBalances();
 		(uint256 uBorrowBalance, uint256 sBorrowBalance) = _getBorrowBalances();
 
 		uint256 tvl = getAndUpdateTVL() - amntUnderlying;
@@ -198,7 +198,14 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		uint256 uAddLp;
 		uint256 sAddLp;
 
-		if (tvl == 0) {
+		// on initial deposit or if amount are below threshold for accurate accounting
+		if (
+			tvl < MINIMUM_LIQUIDITY ||
+			uLp < MINIMUM_LIQUIDITY ||
+			sLp < MINIMUM_LIQUIDITY ||
+			uBorrowBalance < MINIMUM_LIQUIDITY ||
+			sBorrowBalance < MINIMUM_LIQUIDITY
+		) {
 			uBorrow = (_optimalUBorrow() * amntUnderlying) / 1e18;
 			uAddLp = amntUnderlying + uBorrow;
 			sBorrow = _underlyingToShort(uAddLp);
@@ -296,7 +303,9 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 
 	function getMaxTvl() public view returns (uint256) {
 		(, uint256 sBorrow) = _getBorrowBalances();
-		uint256 availableToBorrow = sBorrowable().totalSupply() - sBorrowable().totalBorrows();
+		uint256 supply = sBorrowable().totalSupply();
+		uint256 totalBorrows = sBorrowable().totalBorrows();
+		uint256 availableToBorrow = supply > totalBorrows ? supply - totalBorrows : 0;
 		return
 			min(
 				_maxTvl,

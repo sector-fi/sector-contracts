@@ -14,10 +14,11 @@ import "hardhat/console.sol";
 // These test run for all strategies
 abstract contract IntegrationTest is SectorTest, StratUtils {
 	function testIntegrationFlow() public {
-		deposit(user1, 100e6);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 		noRebalance();
 		withdrawCheck(user1, .5e18);
-		deposit(user1, 100e6);
+		deposit(user1, amnt);
 		harvest();
 		adjustPrice(0.9e18);
 		// this updates strategy tvl
@@ -31,7 +32,7 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 	}
 
 	function testAccounting() public {
-		uint256 amnt = 100e6;
+		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
 		uint256 startBalance = vault.underlyingBalance(user1);
 		adjustPrice(1.2e18);
@@ -48,30 +49,27 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 	}
 
 	function testFlashSwap() public {
-		uint256 amnt = 100e6;
-		deposit(user1, 10 * amnt);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 		uint256 startBalance = vault.underlyingBalance(user1);
 
 		// trackCost();
-		uint256 priceChange = 2e18;
-		moveUniPrice(priceChange);
+		moveUniPrice(1.5e18);
 		deposit(user2, amnt);
-		assertApproxEqRel(
+		assertApproxEqAbs(
 			vault.underlyingBalance(user2),
 			amnt,
-			.005e18, // withthin .005% (slippage)
+			(amnt * 3) / 1000, // withthin .003% (slippage)
 			"second balance"
 		);
-
-		// move price back
-		moveUniPrice(1e36 / priceChange);
+		moveUniPrice(.666e18);
 		uint256 balance = vault.underlyingBalance(user1);
 		assertGe(balance, startBalance, "first balance should not decrease"); // within .1%
 	}
 
 	function testManagerWithdraw() public {
-		uint256 amnt = 1000e6;
-		deposit(user1, 1000e6);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 		uint256 shares = vault.totalSupply();
 		vm.prank(guardian);
 		vault.withdrawFromStrategy(shares, 0);
@@ -84,8 +82,8 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 	}
 
 	function testClosePosition() public {
-		uint256 amnt = 100e6;
-		deposit(user1, 100e6);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 		vm.prank(guardian);
 		vault.closePosition(0, 0);
 		uint256 floatBalance = vault.uBalance();

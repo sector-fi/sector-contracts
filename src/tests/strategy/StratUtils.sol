@@ -112,8 +112,8 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		uint256 startTvl = vault.getAndUpdateTvl(); // us updates iterest
 		withdraw(user, fraction);
 		uint256 tvl = vault.getAndUpdateTvl();
-		assertApproxEqAbs(tvl, (startTvl * (1e18 - fraction)) / 1e18, mLp + 10, "tvl");
-		assertApproxEqAbs(vault.underlyingBalance(user), tvl, mLp + 10, "tvl balance");
+		assertApproxEqRel(tvl, (startTvl * (1e18 - fraction)) / 1e18, .00001e18, "tvl");
+		assertApproxEqRel(vault.underlyingBalance(user), tvl, .00001e18, "tvl balance");
 	}
 
 	function withdrawAll(address user) public {
@@ -165,5 +165,12 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 	// slippage in basis points only used by hlp strat
 	function priceSlippageParam() public view virtual returns (uint256) {
 		return 0;
+	}
+
+	function getAmnt() public view returns (uint256) {
+		// if (vault.acceptsNativeToken()) return 1e18;
+		uint256 d = vault.underlyingDecimals();
+		if (d == 6) return 1000e6;
+		if (d == 18) return 1e18;
 	}
 }

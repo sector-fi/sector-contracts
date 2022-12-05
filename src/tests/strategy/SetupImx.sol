@@ -20,9 +20,10 @@ contract SetupImx is SectorTest, StratUtils {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
-	// string TEST_STRATEGY = "USDCimxAVAX";
-	// string TEST_STRATEGY = "USDC-OP-tarot-velo";
+	// string TEST_STRATEGY = "USDC-IMX-AVAX";
+	// string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
 	string TEST_STRATEGY = "ETH-USDC-Tarot-Velo";
+	// string TEST_STRATEGY = "USDC-OP-Tarot-Velo";
 
 	uint256 currentFork;
 
@@ -32,9 +33,11 @@ contract SetupImx is SectorTest, StratUtils {
 	IMXConfig config;
 
 	struct IMXConfigJSON {
-		address a_underlying;
+		address a1_underlying;
+		bool a2_acceptsNativeToken;
 		address b_short;
-		address c_uniPair;
+		address c0_uniPair;
+		address c1_pairRouter;
 		address d_poolToken;
 		address e_farmToken;
 		address f_farmRouter;
@@ -53,15 +56,17 @@ contract SetupImx is SectorTest, StratUtils {
 		bytes memory strat = json.parseRaw(string.concat(".", symbol));
 		IMXConfigJSON memory stratJson = abi.decode(strat, (IMXConfigJSON));
 
-		_config.underlying = stratJson.a_underlying;
+		console.log("parsed");
+		_config.underlying = stratJson.a1_underlying;
 		_config.short = stratJson.b_short;
-		_config.uniPair = stratJson.c_uniPair;
+		_config.uniPair = stratJson.c0_uniPair;
 		_config.poolToken = stratJson.d_poolToken; // collateral token
 		_config.farmToken = stratJson.e_farmToken;
 		_config.farmRouter = stratJson.f_farmRouter;
 		_config.maxTvl = type(uint128).max;
 
 		harvestParams.path = stratJson.h_harvestPath;
+		// strategyConfig.acceptsNativeToken = stratJson.a2_acceptsNativeToken;
 
 		string memory RPC_URL = vm.envString(string.concat(stratJson.x_chain, "_RPC_URL"));
 		uint256 BLOCK = vm.envUint(string.concat(stratJson.x_chain, "_BLOCK"));
@@ -130,7 +135,6 @@ contract SetupImx is SectorTest, StratUtils {
 	}
 
 	function harvest() public override {
-		if (!strategy.harvestIsEnabled()) return;
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
 
 		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
@@ -141,8 +145,16 @@ contract SetupImx is SectorTest, StratUtils {
 
 		strategy.getAndUpdateTVL();
 		uint256 tvl = strategy.getTotalTVL();
-		(uint256[] memory harvestAmnts, ) = vault.harvest(vault.getTvl(), 0, params1, params2);
+		uint256 vaultTvl = vault.getTvl();
+		(uint256[] memory harvestAmnts, ) = vault.harvest(
+			vaultTvl,
+			vaultTvl / 100,
+			params1,
+			params2
+		);
 		uint256 newTvl = strategy.getTotalTVL();
+
+		if (!strategy.harvestIsEnabled()) return;
 		assertGt(harvestAmnts[0], 0);
 		assertGt(newTvl, tvl);
 	}
@@ -151,7 +163,7 @@ contract SetupImx is SectorTest, StratUtils {
 		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
 		assertGt(strategy.getPositionOffset(), strategy.rebalanceThreshold());
 		strategy.rebalance(expectedPrice, maxDelta);
-		assertApproxEqAbs(strategy.getPositionOffset(), 0, 2, "position offset after rebalance");
+		assertApproxEqAbs(strategy.getPositionOffset(), 0, 11, "position offset after rebalance");
 	}
 
 	// slippage in basis points
@@ -169,10 +181,5 @@ contract SetupImx is SectorTest, StratUtils {
 		adjustPrice(fraction);
 		// undo uniswap move
 		moveUniswapPrice(uniPair, config.underlying, config.short, (1e18 * 1e18) / fraction);
-	}
-
-	function testEdgeCases() public {
-		deposit(user1, .0001e18);
-		withdraw(user1, 1e18);
 	}
 }

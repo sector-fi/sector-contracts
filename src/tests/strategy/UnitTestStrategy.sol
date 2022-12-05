@@ -63,14 +63,14 @@ abstract contract UnitTestStrategy is StratUtils {
 	}
 
 	function testSetMaxTvl() public {
-		strat.setMaxTvl(2 * dec);
-
-		assertEq(strat.getMaxTvl(), 2 * dec);
-		deposit(2 * dec);
-
 		strat.setMaxTvl(dec);
 
 		assertEq(strat.getMaxTvl(), dec);
+		deposit(dec);
+
+		strat.setMaxTvl(dec / 2);
+
+		assertEq(strat.getMaxTvl(), dec / 2);
 
 		vm.prank(user1);
 		vm.expectRevert(_accessErrorString(GUARDIAN, user1));
@@ -101,14 +101,16 @@ abstract contract UnitTestStrategy is StratUtils {
     //////////////////////////////////////////////////////////////*/
 
 	function testDepositFuzz(uint256 fuzz) public {
-		fuzz = bound(fuzz, mLp * 10, vault.getMaxTvl());
+		uint256 min = getAmnt() / 100;
+		fuzz = bound(fuzz, min, vault.getMaxTvl() - mLp);
 		deposit(user1, fuzz);
 		assertApproxEqRel(vault.underlyingBalance(user1), fuzz, .001e18);
 	}
 
 	function testDepositWithdrawPartial(uint256 fuzz) public {
-		uint256 depAmnt = 100 * dec;
-		uint256 wAmnt = bound(fuzz, mLp * 10, depAmnt);
+		uint256 depAmnt = getAmnt();
+		uint256 min = depAmnt / 10000;
+		uint256 wAmnt = bound(fuzz, min, depAmnt);
 
 		deposit(user1, depAmnt);
 		withdrawAmnt(user1, wAmnt);
@@ -122,7 +124,7 @@ abstract contract UnitTestStrategy is StratUtils {
 
 	function testDepositWithdraw99Percent(uint256 fuzz) public {
 		// deposit fixed amount, withdraw between 99% and 100% of balance
-		uint256 depAmnt = 100 * dec;
+		uint256 depAmnt = getAmnt();
 		uint256 wAmnt = bound(fuzz, (depAmnt * 99) / 100, depAmnt);
 
 		deposit(user1, depAmnt);
@@ -208,7 +210,7 @@ abstract contract UnitTestStrategy is StratUtils {
 	}
 
 	function testRebalanceFuzz(uint256 fuzz) public {
-		uint256 priceAdjust = bound(fuzz, uint256(.5e18), uint256(2e18));
+		uint256 priceAdjust = bound(fuzz, uint256(.6e18), uint256(2e18));
 		uint256 rebThresh = strat.rebalanceThreshold();
 
 		deposit(self, dec);
@@ -220,7 +222,7 @@ abstract contract UnitTestStrategy is StratUtils {
 		if (strat.getPositionOffset() <= rebThresh) return;
 		rebalance();
 
-		assertApproxEqAbs(strat.getPositionOffset(), 0, 10);
+		assertApproxEqAbs(strat.getPositionOffset(), 0, 11);
 
 		// put price back
 		adjustPrice(1e36 / priceAdjust);
@@ -343,7 +345,8 @@ abstract contract UnitTestStrategy is StratUtils {
 
 	function testClosePositionFuzz(uint256 fuzz) public {
 		uint256 tvl = strat.getTotalTVL();
-		fuzz = bound(fuzz, mLp, strat.getMaxTvl() - tvl);
+		uint256 min = getAmnt() / 100;
+		fuzz = bound(fuzz, min, strat.getMaxTvl() - tvl);
 		deposit(self, fuzz);
 
 		vault.closePosition(0, priceSlippageParam());
