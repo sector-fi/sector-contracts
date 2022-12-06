@@ -110,7 +110,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	// OWNER CONFIG
 
 	function setRebalanceThreshold(uint16 rebalanceThreshold_) public onlyOwner {
-		require(rebalanceThreshold_ >= 100, "HLP: BAD_INPUT");
+		require(rebalanceThreshold_ >= 100, "STRAT: BAD_INPUT");
 		rebalanceThreshold = rebalanceThreshold_;
 		emit SetRebalanceThreshold(rebalanceThreshold_);
 	}
@@ -326,7 +326,8 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 			: _shortToUnderlying(_short.balanceOf(address(this)));
 		(uint256 underlyingLp, ) = _getLPBalances();
 		uint256 underlyingBalance = _underlying.balanceOf(address(this));
-		tvl = underlyingLp * 2 + underlyingBalance + shortBalance - borrowBalance;
+		uint256 assets = underlyingLp * 2 + underlyingBalance + shortBalance;
+		tvl = assets > borrowBalance ? assets - borrowBalance : 0;
 	}
 
 	function getTotalTVL() public view returns (uint256 tvl) {
@@ -355,8 +356,8 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		(uint256 underlyingLp, uint256 shortLp) = _getLPBalances();
 		lpBalance = underlyingLp + _shortToUnderlying(shortLp);
 		underlyingBalance = _underlying.balanceOf(address(this));
-
-		tvl = lpBalance - borrowBalance + underlyingBalance + shortBalance;
+		uint256 assets = lpBalance + underlyingBalance + shortBalance;
+		tvl = assets > borrowBalance ? assets - borrowBalance : 0;
 	}
 
 	function getPositionOffset() public view returns (uint256 positionOffset) {
