@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import { SCYBase, IERC20, IERC20Metadata, SafeERC20 } from "./SCYBase.sol";
+import { SCYBase, IERC20, ERC20, IERC20Metadata, SafeERC20 } from "./SCYBase.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { Auth } from "../../common/Auth.sol";
 import { Fees } from "../../common/Fees.sol";
@@ -16,7 +16,7 @@ import { BatchedWithdrawEpoch } from "../ERC4626/BatchedWithdrawEpoch.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
+abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 
@@ -32,8 +32,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 	);
 
 	uint256 public lastHarvestTimestamp;
-	uint256 public lastHarvestInterval; // time interval of last harvest
-	uint256 public maxLockedProfit;
 
 	address payable public strategy;
 
@@ -111,17 +109,20 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 		// this may be useful when a given strategy only accepts NATIVE tokens
 		if (token == NATIVE) _depositNative();
 		uint256 yieldTokenAdded = _stratDeposit(amount);
-		// don't include newly minted shares and processedRedeem in the calculation
-		sharesOut = toSharesAfterDeposit(yieldTokenAdded + processedRedeem);
+
+		// don't include newly minted shares and pendingRedeem in the calculation
+		sharesOut = toSharesAfterDeposit(yieldTokenAdded);
 		vaultTvl += amount;
 	}
 
 	function _redeem(
-		address receiver,
-		address token,
-		uint256 sharesToRedeem
+		address,
+		address,
+		uint256
 	) internal override returns (uint256 amountTokenOut, uint256 amountToTransfer) {
-		(amountTokenOut, ) = _redeem(msg.sender);
+		uint256 sharesToRedeem;
+		(amountTokenOut, sharesToRedeem) = _redeem(msg.sender);
+		_burn(address(this), sharesToRedeem);
 		return (amountTokenOut, amountTokenOut);
 	}
 
@@ -165,20 +166,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 
 		vaultTvl = tvl;
 
-		// only use harvest profits in lockedProfit?
-		uint256 lProfit = tvl > startTvl ? tvl - startTvl : 0;
-
-		// keep previous locked profits + add current profits
-		// locked profit is denominated in shares
-		uint256 newLockedProfit;
-		if (lProfit > totalFees) {
-			uint256 lockedValue = lProfit - totalFees;
-			newLockedProfit = (lockedValue).mulDivDown(totalSupply(), tvl - lockedValue);
-		}
-		maxLockedProfit = lockedProfit() + newLockedProfit;
-
-		// we use 3/4 of the interval for locked profits
-		lastHarvestInterval = ((timestamp - lastHarvestTimestamp) * 3) / 4;
 		lastHarvestTimestamp = timestamp;
 	}
 
@@ -186,58 +173,30 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 	function processRedeem(uint256 minAmountOut) public onlyRole(MANAGER) {
 		uint256 _totalSupply = totalSupply();
 
-		// adjust share amount for lockedProfit
-		// we still burn the full sharesToRedeem, but fewer assets are returned
-		// this is required in order to prevent harvest front-running
-		sharesToRedeem = (requestedRedeem * _totalSupply) / (_totalSupply + lockedProfit());
 		uint256 yeildTokenRedeem = convertToAssets(requestedRedeem);
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
 		// TODO why not use underlying.balanceOf?
 		uint256 reserves = uBalance;
-		uint256 shareOfReserves = (reserves * sharesToRedeem) / _totalSupply;
+		uint256 shareOfReserves = (reserves * requestedRedeem) / _totalSupply;
 
 		// Update strategy underlying reserves balance
 		if (shareOfReserves > 0) uBalance -= shareOfReserves;
 
-		receiver = token == NATIVE ? address(this) : receiver;
-
-		(amountTokenOut, amountToTransfer) = _stratRedeem(address(this), yeildTokenRedeem);
-		emit WithdrawFromStrategy(msg.sender, underlyingWithdrawn);
+		(uint256 amountTokenOut, ) = _stratRedeem(address(this), yeildTokenRedeem);
+		emit WithdrawFromStrategy(msg.sender, amountTokenOut);
 
 		amountTokenOut += shareOfReserves;
 
-		vaultTvl -= amountTokenOut;
-		if (amountTokenOut < minTokenOut) revert SlippageExceeded();
+		// its possible that cached vault tvl is lower than actual tvl
+		uint256 _vaultTvl = vaultTvl;
+		vaultTvl = _vaultTvl > amountTokenOut ? _vaultTvl - amountTokenOut : 0;
 
-		// ensure we have the funds to cover withdrawals
-		uBalance - pendingWithdraw;
-		_processRedeem();
-	}
+		if (amountTokenOut < minAmountOut) revert SlippageExceeded();
 
-	/// @notice Calculates the current amount of locked profit.
-	/// lockedProfit is denominated in shares and is used to inflate total supplly	on withdrawal
-	/// @return The current amount of locked profit.
-	function lockedProfit() public view returns (uint256) {
-		// Get the last harvest and harvest delay.
-		uint256 previousHarvest = lastHarvestTimestamp;
-		uint256 harvestInterval = lastHarvestInterval;
-
-		unchecked {
-			// If the harvest delay has passed, there is no locked profit.
-			// Cannot overflow on human timescales since harvestInterval is capped.
-			if (block.timestamp >= previousHarvest + harvestInterval) return 0;
-
-			// Get the maximum amount we could return.
-			uint256 maximumLockedProfit = maxLockedProfit;
-
-			// Compute how much profit remains locked based on the last harvest and harvest delay.
-			// It's impossible for the previous harvest to be in the future, so this will never underflow.
-			return
-				maximumLockedProfit -
-				(maximumLockedProfit * (block.timestamp - previousHarvest)) /
-				harvestInterval;
-		}
+		// we add amountTokenOut and subtract amountTokenOut from Ubalance, which cancels out
+		uBalance -= shareOfReserves;
+		_processRedeem(sharesToUnderlying(1e18));
 	}
 
 	function _checkSlippage(
@@ -254,7 +213,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 	/// @notice slippage is computed in shares
 	function depositIntoStrategy(uint256 underlyingAmount, uint256 minAmountOut)
 		public
-		onlyRole(MANGER)
+		onlyRole(MANAGER)
 	{
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
 		uBalance -= underlyingAmount;
@@ -266,7 +225,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 	}
 
 	/// @notice slippage is computed in underlying
-	function withdrawFromStrategy(uint256 shares, uint256 minAmountOut) public onlyRole(MANGER) {
+	function withdrawFromStrategy(uint256 shares, uint256 minAmountOut) public onlyRole(MANAGER) {
 		uint256 yieldTokenAmnt = convertToAssets(shares);
 		(uint256 underlyingWithdrawn, ) = _stratRedeem(address(this), yieldTokenAmnt);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
@@ -274,7 +233,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 		emit WithdrawFromStrategy(msg.sender, underlyingWithdrawn);
 	}
 
-	function closePosition(uint256 minAmountOut, uint256 slippageParam) public onlyRole(MANGER) {
+	function closePosition(uint256 minAmountOut, uint256 slippageParam) public onlyRole(MANAGER) {
 		uint256 underlyingWithdrawn = _stratClosePosition(slippageParam);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
 		uBalance += underlyingWithdrawn;
@@ -342,8 +301,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0 || userBalance == 0) return 0;
 		uint256 tvl = underlying.balanceOf(address(this)) + _strategyTvl();
-		uint256 adjustedShares = (userBalance * _totalSupply) / (_totalSupply + lockedProfit());
-		return (tvl * adjustedShares) / _totalSupply;
+		return (tvl * userBalance) / _totalSupply;
 	}
 
 	function underlyingToShares(uint256 uAmnt) public view returns (uint256) {
@@ -355,8 +313,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 	function sharesToUnderlying(uint256 shares) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0) return (shares * _stratCollateralToUnderlying()) / ONE;
-		uint256 adjustedShares = (shares * _totalSupply) / (_totalSupply + lockedProfit());
-		return adjustedShares.mulDivDown(getTvl(), _totalSupply);
+		return shares.mulDivDown(getTvl(), _totalSupply);
 	}
 
 	///
@@ -455,6 +412,10 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
 	// todo handle internal float balances
 	function _selfBalance(address token) internal view virtual override returns (uint256) {
 		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
+	}
+
+	function totalSupply() public view override(SCYBase, ERC20) returns (uint256) {
+		return ERC20.totalSupply();
 	}
 
 	/**

@@ -1,22 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICollateral } from "../../interfaces/imx/IImpermax.sol";
-import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOracle.sol";
-import { PriceUtils, UniUtils, IUniswapV2Pair } from "../utils/PriceUtils.sol";
+import { ICollateral } from "interfaces/imx/IImpermax.sol";
+import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
+import { PriceUtils, UniUtils, IUniswapV2Pair } from "../../utils/PriceUtils.sol";
 
-import { SectorTest } from "../utils/SectorTest.sol";
-import { IMXConfig, HarvestSwapParams } from "../../interfaces/Structs.sol";
+import { SectorTest } from "../../utils/SectorTest.sol";
+import { IMXConfig, HarvestSwapParams } from "interfaces/Structs.sol";
 import { SCYVault, IMXVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/IMXVault.sol";
-import { IMX, IMXCore } from "../../strategies/imx/IMX.sol";
+import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { StratUtils } from "./StratUtils.sol";
+import { SCYStratUtils } from "../common/SCYStratUtils.sol";
+import { UniswapMixin } from "../common/UniswapMixin.sol";
 
 import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
 
-contract SetupImx is SectorTest, StratUtils {
+contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
@@ -104,7 +105,8 @@ contract SetupImx is SectorTest, StratUtils {
 		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);
 
-		configureUtils(config.underlying, config.short, config.uniPair, address(strategy));
+		configureUtils(config.underlying, address(strategy));
+		configureUniswapMixin(config.uniPair, config.short);
 
 		// deposit(mLp);
 	}
@@ -135,7 +137,6 @@ contract SetupImx is SectorTest, StratUtils {
 	}
 
 	function harvest() public override {
-		if (!strategy.harvestIsEnabled()) return;
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
 
 		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
@@ -146,8 +147,16 @@ contract SetupImx is SectorTest, StratUtils {
 
 		strategy.getAndUpdateTVL();
 		uint256 tvl = strategy.getTotalTVL();
-		(uint256[] memory harvestAmnts, ) = vault.harvest(vault.getTvl(), 0, params1, params2);
+		uint256 vaultTvl = vault.getTvl();
+		(uint256[] memory harvestAmnts, ) = vault.harvest(
+			vaultTvl,
+			vaultTvl / 100,
+			params1,
+			params2
+		);
 		uint256 newTvl = strategy.getTotalTVL();
+
+		if (!strategy.harvestIsEnabled()) return;
 		assertGt(harvestAmnts[0], 0);
 		assertGt(newTvl, tvl);
 	}
@@ -156,7 +165,7 @@ contract SetupImx is SectorTest, StratUtils {
 		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
 		assertGt(strategy.getPositionOffset(), strategy.rebalanceThreshold());
 		strategy.rebalance(expectedPrice, maxDelta);
-		assertApproxEqAbs(strategy.getPositionOffset(), 0, 6, "position offset after rebalance");
+		assertApproxEqAbs(strategy.getPositionOffset(), 0, 11, "position offset after rebalance");
 	}
 
 	// slippage in basis points

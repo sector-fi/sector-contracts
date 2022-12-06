@@ -4,16 +4,17 @@ pragma solidity 0.8.16;
 import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
-import { SectorTest } from "../utils/SectorTest.sol";
 import { IMXConfig, HarvestSwapParams } from "interfaces/Structs.sol";
 import { SCYVault, IMXLend, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/IMXLend.sol";
 import { IMX } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { StratUtils } from "./StratUtils.sol";
+
+import { IntegrationTest } from "../common/IntegrationTest.sol";
+import { UnitTestVault } from "../common/UnitTestVault.sol";
 
 import "hardhat/console.sol";
 
-contract SetupImxLend is SectorTest, StratUtils {
+contract ImxLendTest is IntegrationTest, UnitTestVault {
 	string AVAX_RPC_URL = vm.envString("AVAX_RPC_URL");
 	uint256 AVAX_BLOCK = vm.envUint("AVAX_BLOCK");
 	uint256 avaxFork;
@@ -50,19 +51,27 @@ contract SetupImxLend is SectorTest, StratUtils {
 
 		usdc.approve(address(vault), type(uint256).max);
 
-		configureUtils(
-			address(strategyConfig.underlying),
-			address(0),
-			address(0),
-			address(strategy)
-		);
+		configureUtils(address(strategyConfig.underlying), address(strategy));
+
 		mLp = vault.MIN_LIQUIDITY();
 		mLp = vault.sharesToUnderlying(mLp);
 	}
 
 	function rebalance() public override {}
 
-	function harvest() public override {}
+	function harvest() public override {
+		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
+		params1[0] = harvestParams;
+		params1[0].min = 0;
+		params1[0].deadline = block.timestamp + 1;
+		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+
+		(uint256[] memory harvestAmnts, ) = vault.harvest(vault.getTvl(), 0, params1, params2);
+
+		// IMX Lend doesn't earn anything
+		// assertEq(harvestAmnts[0], 0);
+		// assertEq(harvestAmnts[1], 0);
+	}
 
 	function noRebalance() public override {}
 

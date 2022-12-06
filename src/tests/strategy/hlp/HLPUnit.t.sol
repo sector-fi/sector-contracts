@@ -3,16 +3,17 @@ pragma solidity 0.8.16;
 
 import { IUniswapV2Pair } from "interfaces/uniswap/IUniswapV2Pair.sol";
 import { HarvestSwapParams } from "strategies/mixins/IFarmable.sol";
-import { MockERC20 } from "../mocks/MockERC20.sol";
+import { MockERC20 } from "../../mocks/MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
-import { SetupHlp } from "./SetupHlp.sol";
-import { UnitTestStrategy } from "./UnitTestStrategy.sol";
+import { HLPSetup } from "./HLPSetup.sol";
+import { UnitTestVault } from "../common/UnitTestVault.sol";
+import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 
 import "hardhat/console.sol";
 
-contract UnitTestHlp is SetupHlp, UnitTestStrategy {
+contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 	/// INIT
 
 	function testShouldInit() public override {

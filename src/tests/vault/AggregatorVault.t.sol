@@ -9,6 +9,7 @@ import { ERC4626, SectorBase, AggregatorVault, BatchedWithdraw, RedeemParams, De
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { EAction } from "interfaces/Structs.sol";
 import { VaultType } from "interfaces/Structs.sol";
+import { Accounting } from "../../common/Accounting.sol";
 
 import "hardhat/console.sol";
 
@@ -112,7 +113,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		assertEq(underlying.balanceOf(user1), amnt / 4);
 
 		// amount should reset
-		vm.expectRevert(BatchedWithdraw.ZeroAmount.selector);
+		vm.expectRevert(Accounting.ZeroAmount.selector);
 		vm.prank(user1);
 		vault.redeem();
 	}
@@ -198,7 +199,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		assertEq(underlying.balanceOf(user1), 0);
 
 		// amount should reset
-		vm.expectRevert(BatchedWithdraw.ZeroAmount.selector);
+		vm.expectRevert(Accounting.ZeroAmount.selector);
 		vm.prank(user1);
 		vault.redeem();
 	}

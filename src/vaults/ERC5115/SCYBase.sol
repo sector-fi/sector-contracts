@@ -14,8 +14,8 @@ import { ERC20Permit, EIP712 } from "@openzeppelin/contracts/token/ERC20/extensi
 abstract contract SCYBase is
 	ISuperComposableYield,
 	ReentrancyGuard,
-	Accounting,
 	ERC20,
+	Accounting,
 	ERC20Permit
 {
 	using SafeERC20 for IERC20;
@@ -85,9 +85,8 @@ abstract contract SCYBase is
 		// this is to handle a case where the strategy sends funds directly to user
 		uint256 amountToTransfer;
 		(amountTokenOut, amountToTransfer) = _redeem(receiver, tokenOut, amountSharesToRedeem);
-		require(amountTokenOut >= minTokenOut, "insufficient out");
+		if (amountTokenOut < minTokenOut) revert InsufficientOut(amountTokenOut, minTokenOut);
 
-		_burn(msg.sender, amountSharesToRedeem);
 		if (amountToTransfer > 0) _transferOut(tokenOut, receiver, amountToTransfer);
 
 		emit Redeem(msg.sender, receiver, tokenOut, amountSharesToRedeem, amountTokenOut);
@@ -161,12 +160,11 @@ abstract contract SCYBase is
 	function _depositNative() internal virtual;
 
 	// OVERRIDES
-	function totalSupply() public view override(Accounting, ERC20, IERC20) returns (uint256) {
+	function totalSupply() public view virtual override(ERC20, IERC20) returns (uint256) {
 		return ERC20.totalSupply();
 	}
 
 	error CantPullEth();
 	error MinLiquidity();
-	error ZeroAmount();
 	error InsufficientOut(uint256 amountOut, uint256 minOut);
 }

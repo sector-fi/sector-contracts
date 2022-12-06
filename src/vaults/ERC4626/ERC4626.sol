@@ -48,7 +48,7 @@ abstract contract ERC4626 is ERC20, Auth, Accounting, Fees, IERC4626, Reentrancy
 
 	receive() external payable {}
 
-	function decimals() public view override returns (uint8) {
+	function decimals() public view virtual override returns (uint8) {
 		return asset.decimals();
 	}
 

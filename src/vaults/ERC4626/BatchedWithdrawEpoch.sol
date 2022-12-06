@@ -6,15 +6,16 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { ERC4626, IWETH } from "./ERC4626.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { Accounting } from "../../common/Accounting.sol";
+import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 struct WithdrawRecord {
 	uint256 epoch;
 	uint256 shares;
 }
 
-abstract contract BatchedWithdrawEpoch is ERC20, Accounting {
+abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
 	using SafeERC20 for ERC20;
 
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
@@ -78,9 +79,9 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting {
 	/// @notice this methods updates lastEpochTimestamp and alows all pending withdrawals to be completed
 	/// @dev ensure that we we have enought funds to process withdrawals
 	/// before calling this method
-	function _processRedeem() internal {
+	function _processRedeem(uint256 sharesToUnderlying) internal {
 		// store current epoch exchange rate
-		epochExchangeRate[epoch] = convertToAssets(1e18);
+		epochExchangeRate[epoch] = sharesToUnderlying;
 		pendingRedeem = requestedRedeem;
 		requestedRedeem = 0;
 		// advance epoch
@@ -114,8 +115,5 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting {
 	error RedeemRequestExists();
 	error CannotCancelProccesedRedeem();
 	error NotNativeAsset();
-	error Expired();
-	error NotImplemented();
 	error NotReady();
-	error ZeroAmount();
 }

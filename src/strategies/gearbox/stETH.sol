@@ -96,9 +96,17 @@ contract stETH is StratAuth {
 		uint256 fullStEthBal = _closePosition();
 		uint256 uBalance = underlying.balanceOf(address(this));
 		uint256 withdraw = (uBalance * amount) / fullStEthBal;
-		console.log("re-open", uBalance, uBalance - withdraw);
-		// re-open account
-		if (uBalance > withdraw) _openAccount(uBalance - withdraw);
+
+		(uint256 minBorrowed, ) = creditFacade.limits();
+		uint256 minUnderlying = shortToUnderlying(minBorrowed) / leverageFactor;
+		uint256 redeposit = uBalance > withdraw ? uBalance - withdraw : 0;
+
+		// TODO handle how to deal with leftover underlying
+		// return to SCY vault, but allow deposits?
+		if (redeposit > minUnderlying) {
+			console.log("re open", redeposit);
+			_openAccount(uBalance - withdraw);
+		}
 		underlying.safeTransfer(to, withdraw);
 		// creditFacade.
 		return withdraw;
@@ -108,7 +116,7 @@ contract stETH is StratAuth {
 		// TODO: pass in the amnt of short?
 		uint256 balance = short.balanceOf(credAcc);
 
-		// slipage is check happens in the vault
+		// slippage is check happens in the vault
 		// 0 is ETH, 1 is stETH
 		MultiCall[] memory calls = new MultiCall[](1);
 		calls[0] = MultiCall({
@@ -234,6 +242,10 @@ contract stETH is StratAuth {
 
 	function underlyingToShort(uint256 amount) public view returns (uint256) {
 		return convert(amount, address(underlying), address(short), dec, ethDec);
+	}
+
+	function shortToUnderlying(uint256 amount) public view returns (uint256) {
+		return convert(amount, address(short), address(underlying), ethDec, dec);
 	}
 
 	function getMaxTvl() public view returns (uint256) {

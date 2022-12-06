@@ -5,6 +5,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC4626, IWETH } from "./ERC4626.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
+import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
 
@@ -14,7 +15,7 @@ struct WithdrawRecord {
 	uint256 value; // this the current value (also max withdraw value)
 }
 
-abstract contract BatchedWithdraw is ERC4626 {
+abstract contract BatchedWithdraw is ERC4626, SectorErrors {
 	using SafeERC20 for ERC20;
 
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
@@ -155,9 +156,6 @@ abstract contract BatchedWithdraw is ERC4626 {
 		return withdrawLedger[user];
 	}
 
-	error NotNativeAsset();
-	error Expired();
-	error NotImplemented();
 	error NotReady();
-	error ZeroAmount();
+	error NotNativeAsset();
 }

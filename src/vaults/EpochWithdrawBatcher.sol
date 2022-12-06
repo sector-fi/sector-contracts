@@ -131,7 +131,6 @@ contract EpochWithdrawBatcher is Ownable {
 	error RedeemRequestExists();
 	error CannotCancelProccesedRedeem();
 	error NotNativeAsset();
-	error Expired();
 	error NotImplemented();
 	error NotReady();
 	error ZeroAmount();

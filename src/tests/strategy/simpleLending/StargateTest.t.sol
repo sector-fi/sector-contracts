@@ -4,18 +4,19 @@ pragma solidity 0.8.16;
 import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
-import { SectorTest } from "../utils/SectorTest.sol";
 import { HarvestSwapParams } from "interfaces/Structs.sol";
 import { SCYVault, Stargate, FarmConfig, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/Stargate.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { StratUtils } from "./StratUtils.sol";
 import { IStarchef } from "interfaces/stargate/IStarchef.sol";
+
+import { IntegrationTest } from "../common/IntegrationTest.sol";
+import { UnitTestVault } from "../common/UnitTestVault.sol";
 
 import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
 
-contract SetupStargate is SectorTest, StratUtils {
+contract StargateTest is IntegrationTest, UnitTestVault {
 	using stdJson for string;
 
 	string TEST_STRATEGY = "USDC-Arbitrum-Stargate";
@@ -93,12 +94,7 @@ contract SetupStargate is SectorTest, StratUtils {
 
 		underlying.approve(address(vault), type(uint256).max);
 
-		configureUtils(
-			address(strategyConfig.underlying),
-			address(0),
-			address(0),
-			address(strategy)
-		);
+		configureUtils(address(strategyConfig.underlying), address(strategy));
 		mLp = vault.MIN_LIQUIDITY();
 		mLp = vault.sharesToUnderlying(mLp);
 	}

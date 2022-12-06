@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICollateral } from "../../interfaces/imx/IImpermax.sol";
-import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOracle.sol";
-import { PriceUtils, UniUtils, IUniswapV2Pair } from "../utils/PriceUtils.sol";
+import { ICollateral } from "interfaces/imx/IImpermax.sol";
+import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
+import { PriceUtils, UniUtils, IUniswapV2Pair } from "../../utils/PriceUtils.sol";
 
-import { SectorTest } from "../utils/SectorTest.sol";
-import { HarvestSwapParams } from "../../interfaces/Structs.sol";
-import { SCYVault, stETHVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/stETHVault.sol";
-import { stETH as stETHStrategy } from "../../strategies/gearbox/stETH.sol";
+import { HarvestSwapParams } from "interfaces/Structs.sol";
+import { SCYWEpochVault, stETHVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/stETHVault.sol";
+import { stETH as stETHStrategy } from "strategies/gearbox/stETH.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { StratUtils } from "./StratUtils.sol";
+import { SCYStratUtils } from "../common/SCYStratUtils.sol";
 import { IDegenNFT } from "interfaces/gearbox/IDegenNFT.sol";
 import { ICreditFacade } from "interfaces/gearbox/ICreditFacade.sol";
 
@@ -18,7 +17,7 @@ import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
 
-contract SetupStEth is SectorTest, StratUtils {
+contract stETHSetup is SCYStratUtils {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
@@ -54,7 +53,9 @@ contract SetupStEth is SectorTest, StratUtils {
 			guardian: guardian
 		});
 
-		vault = SCYVault(new stETHVault(authConfig, FeeConfig(treasury, .1e18, 0), strategyConfig));
+		vault = SCYWEpochVault(
+			new stETHVault(authConfig, FeeConfig(treasury, .1e18, 0), strategyConfig)
+		);
 
 		mLp = vault.MIN_LIQUIDITY();
 
@@ -66,7 +67,7 @@ contract SetupStEth is SectorTest, StratUtils {
 
 		underlying.approve(address(vault), type(uint256).max);
 
-		configureUtils(USDC, address(0), address(0), address(strategy));
+		configureUtils(USDC, address(strategy));
 
 		/// mint dege nft to strategy
 		ICreditFacade creditFacade = strategy.creditFacade();
@@ -104,6 +105,34 @@ contract SetupStEth is SectorTest, StratUtils {
 
 	function getAmnt() public view virtual override returns (uint256) {
 		/// needs to be over Gearbox deposit min
-		return 100000e6;
+		return 50000e6;
+	}
+
+	function deposit(address user, uint256 amount) public virtual override {
+		uint256 startTvl = vault.getAndUpdateTvl();
+		uint256 startAccBalance = vault.underlyingBalance(user);
+		deal(address(underlying), user, amount);
+		uint256 minSharesOut = vault.underlyingToShares(amount);
+
+		vm.startPrank(user);
+		underlying.approve(address(vault), amount);
+		vault.deposit(user, address(underlying), amount, (minSharesOut * 9930) / 10000);
+		vm.stopPrank();
+
+		uint256 tvl = vault.getAndUpdateTvl();
+		uint256 endAccBalance = vault.underlyingBalance(user);
+
+		// TODO this implies a 1.4% slippage / deposit fee
+		assertApproxEqRel(tvl, startTvl + amount, .015e18, "tvl should update");
+		assertApproxEqRel(
+			tvl - startTvl,
+			endAccBalance - startAccBalance,
+			.01e18,
+			"underlying balance"
+		);
+		assertEq(vault.getFloatingAmount(address(underlying)), 0);
+
+		// this is necessary for stETH strategy (so closing account doesn't happen in same block)
+		vm.roll(block.number + 1);
 	}
 }

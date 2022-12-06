@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { IUniswapV2Pair } from "interfaces/uniswap/IUniswapV2Pair.sol";
-import { HarvestSwapParams } from "strategies/mixins/IFarmable.sol";
-import { MockERC20 } from "../mocks/MockERC20.sol";
+import { MockERC20 } from "../../mocks/MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
-import { StratUtils } from "./StratUtils.sol";
+import { SCYStratUtils } from "./SCYStratUtils.sol";
 
 import "hardhat/console.sol";
 
-abstract contract UnitTestStrategy is StratUtils {
+abstract contract UnitTestStrategy is SCYStratUtils {
 	IERC20[] tokens;
 
 	/// INIT
@@ -63,14 +61,14 @@ abstract contract UnitTestStrategy is StratUtils {
 	}
 
 	function testSetMaxTvl() public {
-		strat.setMaxTvl(2 * dec);
-
-		assertEq(strat.getMaxTvl(), 2 * dec);
-		deposit(2 * dec);
-
 		strat.setMaxTvl(dec);
 
 		assertEq(strat.getMaxTvl(), dec);
+		deposit(dec);
+
+		strat.setMaxTvl(dec / 2);
+
+		assertEq(strat.getMaxTvl(), dec / 2);
 
 		vm.prank(user1);
 		vm.expectRevert(_accessErrorString(GUARDIAN, user1));
@@ -95,57 +93,6 @@ abstract contract UnitTestStrategy is StratUtils {
 	// 	vm.expectRevert(_accessErrorString(GUARDIAN, manager));
 	// 	strat.setMaxDefaultPriceMismatch(120);
 	// }
-
-	/*///////////////////////////////////////////////////////////////
-                        DEPOSIT/WITHDRAWAL TESTS
-    //////////////////////////////////////////////////////////////*/
-
-	function testDepositFuzz(uint256 fuzz) public {
-		uint256 min = getAmnt() / 100;
-		fuzz = bound(fuzz, min, vault.getMaxTvl() - mLp);
-		deposit(user1, fuzz);
-		assertApproxEqRel(vault.underlyingBalance(user1), fuzz, .001e18);
-	}
-
-	function testDepositWithdrawPartial(uint256 fuzz) public {
-		uint256 depAmnt = getAmnt();
-		uint256 min = depAmnt / 10000;
-		uint256 wAmnt = bound(fuzz, min, depAmnt);
-
-		deposit(user1, depAmnt);
-		withdrawAmnt(user1, wAmnt);
-
-		assertApproxEqRel(underlying.balanceOf(user1), wAmnt, .001e18);
-		withdrawAmnt(user1, depAmnt - wAmnt);
-
-		// price should not be off by more than 1%
-		assertApproxEqRel(underlying.balanceOf(user1), depAmnt, .001e18);
-	}
-
-	function testDepositWithdraw99Percent(uint256 fuzz) public {
-		// deposit fixed amount, withdraw between 99% and 100% of balance
-		uint256 depAmnt = getAmnt();
-		uint256 wAmnt = bound(fuzz, (depAmnt * 99) / 100, depAmnt);
-
-		deposit(user1, depAmnt);
-		withdrawAmnt(user1, wAmnt);
-
-		assertApproxEqRel(underlying.balanceOf(user1), wAmnt, .001e18);
-		withdrawAmnt(user1, depAmnt - wAmnt);
-
-		assertApproxEqRel(underlying.balanceOf(user1), depAmnt, .001e18);
-	}
-
-	function testWithdrawWithNoBalance() public {
-		withdrawAmnt(user1, 1e18);
-		assertEq(underlying.balanceOf(user1), 0);
-	}
-
-	function testWithdrawMoreThanBalance() public {
-		deposit(user1, dec);
-		withdrawAmnt(user1, 2 * dec);
-		assertApproxEqRel(underlying.balanceOf(user1), dec, .001e18);
-	}
 
 	/*///////////////////////////////////////////////////////////////
 	                    DEPOSIT/WITHDRAW FAIL TESTS
@@ -210,7 +157,7 @@ abstract contract UnitTestStrategy is StratUtils {
 	}
 
 	function testRebalanceFuzz(uint256 fuzz) public {
-		uint256 priceAdjust = bound(fuzz, uint256(.5e18), uint256(2e18));
+		uint256 priceAdjust = bound(fuzz, uint256(.6e18), uint256(2e18));
 		uint256 rebThresh = strat.rebalanceThreshold();
 
 		deposit(self, dec);
@@ -222,7 +169,7 @@ abstract contract UnitTestStrategy is StratUtils {
 		if (strat.getPositionOffset() <= rebThresh) return;
 		rebalance();
 
-		assertApproxEqAbs(strat.getPositionOffset(), 0, 10);
+		assertApproxEqAbs(strat.getPositionOffset(), 0, 11);
 
 		// put price back
 		adjustPrice(1e36 / priceAdjust);
@@ -296,39 +243,27 @@ abstract contract UnitTestStrategy is StratUtils {
 	// 	assertLt(positionOffset, 10);
 	// }
 
-	/*///////////////////////////////////////////////////////////////
-	                    HEDGEDLP TESTS
-	//////////////////////////////////////////////////////////////*/
-
-	function testDepositOverMaxTvl() public {
-		strat.setMaxTvl(dec);
-		depositRevert(self, 2 * dec, "STRAT: OVER_MAX_TVL");
-	}
+	/////////////
+	///// Close Position Tests
 
 	function testClosePosition() public {
-		deposit(self, dec);
+		uint256 amnt = getAmnt();
+		deposit(self, amnt);
 
 		vault.closePosition(0, priceSlippageParam());
 		assertApproxEqAbs(underlying.balanceOf(address(strat)), 0, 10);
-		assertApproxEqRel(underlying.balanceOf(address(vault)), dec, .001e18);
+		assertApproxEqRel(underlying.balanceOf(address(vault)), amnt, .001e18);
 
 		assertZeroPosition();
+
+		uint256 floatBalance = vault.uBalance();
+		assertApproxEqRel(floatBalance, amnt, .005e18);
+		assertEq(underlying.balanceOf(address(vault)), floatBalance);
 
 		uint256 priceOffset = priceSlippageParam();
 		vm.expectRevert(_accessErrorString(GUARDIAN, user1));
 		vm.prank(user1);
 		vault.closePosition(0, priceOffset);
-	}
-
-	// included in fuzz below, but used for coverage
-	function testClosePositionWithOffset() public {
-		deposit(self, dec);
-
-		adjustPrice(0.5e18);
-
-		uint256 priceOffset = priceSlippageParam();
-		vault.closePosition(0, priceOffset);
-		assertZeroPosition();
 	}
 
 	function testClosePositionWithOffsetFuzz(uint256 fuzz) public {
@@ -350,6 +285,26 @@ abstract contract UnitTestStrategy is StratUtils {
 		deposit(self, fuzz);
 
 		vault.closePosition(0, priceSlippageParam());
+		assertZeroPosition();
+	}
+
+	/*///////////////////////////////////////////////////////////////
+	                    HEDGEDLP TESTS
+	//////////////////////////////////////////////////////////////*/
+
+	function testDepositOverMaxTvl() public {
+		strat.setMaxTvl(dec);
+		depositRevert(self, 2 * dec, "STRAT: OVER_MAX_TVL");
+	}
+
+	// included in fuzz below, but used for coverage
+	function testClosePositionWithOffset() public {
+		deposit(self, dec);
+
+		adjustPrice(0.5e18);
+
+		uint256 priceOffset = priceSlippageParam();
+		vault.closePosition(0, priceOffset);
 		assertZeroPosition();
 	}
 

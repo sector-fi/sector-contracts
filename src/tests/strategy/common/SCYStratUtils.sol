@@ -3,50 +3,39 @@ pragma solidity 0.8.16;
 
 import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
-import { PriceUtils, UniUtils, IUniswapV2Pair } from "../utils/PriceUtils.sol";
 
-import { SectorTest } from "../utils/SectorTest.sol";
+import { SectorTest } from "../../utils/SectorTest.sol";
 import { HLPConfig, HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYVault } from "vaults/ERC5115/SCYVault.sol";
+import { SCYBase } from "vaults/ERC5115/SCYBase.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
+import { Auth } from "../../../common/Auth.sol";
+import { SCYWEpochVault } from "vaults/ERC5115/SCYWEpochVault.sol";
 
 import "hardhat/console.sol";
 
-abstract contract StratUtils is SectorTest, PriceUtils {
-	using UniUtils for IUniswapV2Pair;
-
+abstract contract SCYStratUtils is SectorTest {
 	uint256 BASIS = 10000;
 	uint256 mLp;
-
-	SCYVault vault;
 
 	HarvestSwapParams harvestParams;
 	HarvestSwapParams harvestLendParams;
 
 	IERC20 underlying;
-	IUniswapV2Pair uniPair;
-	address short;
 	IStrategy strat;
+	SCYBase vault;
 
 	uint256 dec;
 	bytes32 GUARDIAN;
 	bytes32 MANAGER;
 
-	function configureUtils(
-		address _underlying,
-		address _short,
-		address _uniPair,
-		address _strategy
-	) public {
+	function configureUtils(address _underlying, address _strategy) public {
 		underlying = IERC20(_underlying);
-		short = _short;
-		uniPair = IUniswapV2Pair(_uniPair);
 		strat = IStrategy(_strategy);
 		dec = 10**underlying.decimals();
-		GUARDIAN = vault.GUARDIAN();
-		MANAGER = vault.MANAGER();
+		GUARDIAN = Auth(payable(vault)).GUARDIAN();
+		MANAGER = Auth(payable(vault)).MANAGER();
 	}
 
 	function deposit(uint256 amount) public {
@@ -66,7 +55,7 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		vm.stopPrank();
 	}
 
-	function deposit(address user, uint256 amount) public {
+	function deposit(address user, uint256 amount) public virtual {
 		uint256 startTvl = vault.getAndUpdateTvl();
 		uint256 startAccBalance = vault.underlyingBalance(user);
 		deal(address(underlying), user, amount);
@@ -79,7 +68,8 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 
 		uint256 tvl = vault.getAndUpdateTvl();
 		uint256 endAccBalance = vault.underlyingBalance(user);
-		assertApproxEqRel(tvl, startTvl + amount, .015e18, "tvl should update");
+
+		assertApproxEqRel(tvl, startTvl + amount, .001e18, "tvl should update");
 		assertApproxEqRel(
 			tvl - startTvl,
 			endAccBalance - startAccBalance,
@@ -111,20 +101,59 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		);
 	}
 
+	function withdrawEpoch(address user, uint256 fraction) public {
+		requestRedeem(user, fraction);
+		uint256 shares = SCYWEpochVault(payable(vault)).requestedRedeem();
+		uint256 minAmountOut = vault.sharesToUnderlying(shares);
+		SCYWEpochVault(payable(vault)).processRedeem(minAmountOut);
+		redeemShares(user, shares);
+		console.log("total supply", vault.totalSupply());
+	}
+
+	function requestRedeem(address user, uint256 fraction) public {
+		uint256 sharesToWithdraw = (vault.balanceOf(user) * fraction) / 1e18;
+		vm.prank(user);
+		SCYWEpochVault(payable(vault)).requestRedeem(sharesToWithdraw);
+	}
+
 	function withdrawCheck(address user, uint256 fraction) public {
 		uint256 startTvl = vault.getAndUpdateTvl(); // us updates iterest
 		withdraw(user, fraction);
 		uint256 tvl = vault.getAndUpdateTvl();
 		assertApproxEqRel(tvl, (startTvl * (1e18 - fraction)) / 1e18, .00001e18, "tvl");
 		assertApproxEqRel(vault.underlyingBalance(user), tvl, .00001e18, "tvl balance");
+		assertApproxEqRel(
+			underlying.balanceOf(user),
+			startTvl - tvl,
+			.001e18,
+			"user should get underlying"
+		);
+	}
+
+	function redeemShares(address user, uint256 shares) public {
+		uint256 startTvl = vault.getAndUpdateTvl(); // us updates iterest
+		uint256 minUnderlyingOut = vault.sharesToUnderlying(shares);
+		vm.prank(user);
+		vault.redeem(user, shares, address(underlying), (minUnderlyingOut * 9990) / 10000);
+		uint256 tvl = vault.getAndUpdateTvl();
+		assertApproxEqRel(tvl, startTvl - minUnderlyingOut, .00001e18, "tvl");
+		assertApproxEqRel(vault.underlyingBalance(user), tvl, .00001e18, "tvl balance");
+		assertApproxEqRel(
+			underlying.balanceOf(user),
+			startTvl - tvl,
+			.001e18,
+			"user should get underlying"
+		);
 	}
 
 	function withdrawAll(address user) public {
+		skip(7 days);
+
 		uint256 balance = vault.balanceOf(user);
+
 		vm.prank(user);
 		vault.redeem(user, balance, address(underlying), 0);
 
-		skip(7 days);
 		uint256 fees = vault.underlyingBalance(treasury);
 
 		uint256 tvl = vault.getStrategyTvl();
@@ -152,11 +181,6 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		console.log("underlyingBalance", underlyingBalance);
 	}
 
-	function moveUniPrice(uint256 fraction) public virtual {
-		if (address(uniPair) == address(0)) return;
-		moveUniswapPrice(uniPair, address(underlying), short, fraction);
-	}
-
 	function rebalance() public virtual;
 
 	function harvest() public virtual;
@@ -174,6 +198,6 @@ abstract contract StratUtils is SectorTest, PriceUtils {
 		if (vault.acceptsNativeToken()) return 1e18;
 		uint256 d = vault.underlyingDecimals();
 		if (d == 6) return 1000e6;
-		if (d == 18) return 10e18;
+		if (d == 18) return 1e18;
 	}
 }

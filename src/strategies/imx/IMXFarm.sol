@@ -152,12 +152,17 @@ abstract contract IMXFarm is IIMXFarm {
 					address(short())
 				);
 			}
-			// we know that now our short balance is exact sBalance = sAmnt
+
+			// we know that now our short balance is now exact sBalance = sAmnt
 			// if we don't have enough underlying, we need to decrase sAmnt slighlty
 			if (uBalance < uAmnt) {
 				uAmnt = uBalance;
-				sAmnt = _underlyingToShort(uAmnt);
-			} else if (uBalance > uAmnt) {
+				uint256 sAmntNew = _underlyingToShort(uAmnt);
+				// make sure we're not increaseing the amount
+				if (sAmnt > sAmntNew) sAmnt = sAmntNew;
+				else uAmnt = _shortToUnderlying(sAmnt);
+			}
+			if (uBalance > uAmnt) {
 				// if we have extra underlying return to borrowable
 				// TODO check that this gets accounted for
 				underlying().safeTransfer(address(_uBorrowable), uBalance - uAmnt);

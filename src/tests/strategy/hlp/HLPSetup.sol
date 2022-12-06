@@ -3,22 +3,22 @@ pragma solidity 0.8.16;
 
 import { ICompound } from "strategies/mixins/ICompound.sol";
 import { ICompPriceOracle } from "interfaces/compound/ICompPriceOracle.sol";
-
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
-import { SectorTest } from "../utils/SectorTest.sol";
 import { HLPConfig, HarvestSwapParams, NativeToken } from "interfaces/Structs.sol";
 import { SCYVault, HLPVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/HLPVault.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
-import { StratUtils } from "./StratUtils.sol";
+
+import { SCYStratUtils } from "../common/SCYStratUtils.sol";
+import { UniswapMixin } from "../common/UniswapMixin.sol";
 
 import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
 
-contract SetupHlp is SectorTest, StratUtils {
+contract HLPSetup is SCYStratUtils, UniswapMixin {
 	using stdJson for string;
 
 	string TEST_STRATEGY = "USDC-MOVR-SOLAR-WELL";
@@ -115,8 +115,8 @@ contract SetupHlp is SectorTest, StratUtils {
 		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);
 
-		configureUtils(config.underlying, config.short, config.uniPair, address(strategy));
-
+		configureUtils(config.underlying, address(strategy));
+		configureUniswapMixin(config.uniPair, config.short);
 		// deposit(mLp);
 	}
 

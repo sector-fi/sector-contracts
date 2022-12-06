@@ -3,19 +3,19 @@ pragma solidity 0.8.16;
 
 import { SCYStrategy, Strategy } from "../ERC5115/SCYStrategy.sol";
 import { stETH } from "../../strategies/gearbox/stETH.sol";
-import { SCYVault, IERC20 } from "../ERC5115/SCYVault.sol";
+import { SCYWEpochVault, IERC20 } from "../ERC5115/SCYWEpochVault.sol";
 import { AuthConfig, Auth } from "../../common/Auth.sol";
 import { FeeConfig, Fees } from "../../common/Fees.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 
 // import "hardhat/console.sol";
 
-contract stETHVault is SCYStrategy, SCYVault {
+contract stETHVault is SCYStrategy, SCYWEpochVault {
 	constructor(
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig,
 		Strategy memory _strategy
-	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) {}
+	) Auth(authConfig) Fees(feeConfig) SCYWEpochVault(_strategy) {}
 
 	function _stratValidate() internal view override {
 		if (

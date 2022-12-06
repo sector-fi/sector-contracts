@@ -23,7 +23,6 @@ abstract contract SectorBaseEpoch is BatchedWithdrawEpoch, ERC4626 {
 	uint256 public lastHarvestTimestamp;
 
 	constructor() {
-		lastEpochTimestamp = block.timestamp;
 		lastHarvestTimestamp = block.timestamp;
 	}
 
@@ -82,7 +81,7 @@ abstract contract SectorBaseEpoch is BatchedWithdrawEpoch, ERC4626 {
 		uint256 pendingWithdraw = convertToAssets(requestedRedeem);
 		if (floatAmnt < pendingWithdraw) revert NotEnoughtFloat();
 		floatAmnt - pendingWithdraw;
-		_processRedeem();
+		_processRedeem(convertToAssets(1e18));
 	}
 
 	function _harvest(uint256 currentChildHoldings) internal {

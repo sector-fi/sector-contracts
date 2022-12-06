@@ -13,7 +13,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction, HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { VaultType } from "../../interfaces/Structs.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	using SafeERC20 for IERC20;
@@ -124,13 +124,13 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		// adjust share amount for lockedProfit
 		// we still burn the full sharesToRedeem, but fewer assets are returned
 		// this is required in order to prevent harvest front-running
-		sharesToRedeem = (sharesToRedeem * _totalSupply) / (_totalSupply + lockedProfit());
-		uint256 yeildTokenRedeem = convertToAssets(sharesToRedeem);
+		uint256 adjustedShares = (sharesToRedeem * _totalSupply) / (_totalSupply + lockedProfit());
+		uint256 yeildTokenRedeem = convertToAssets(adjustedShares);
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
 		// TODO why not use underlying.balanceOf?
 		uint256 reserves = uBalance;
-		uint256 shareOfReserves = (reserves * sharesToRedeem) / _totalSupply;
+		uint256 shareOfReserves = (reserves * adjustedShares) / _totalSupply;
 
 		// Update strategy underlying reserves balance
 		if (shareOfReserves > 0) uBalance -= shareOfReserves;
@@ -144,10 +144,15 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 			amountTokenOut += shareOfReserves;
 			amountToTransfer += shareOfReserves;
 		} else (amountTokenOut, amountToTransfer) = _stratRedeem(receiver, yeildTokenRedeem);
-		vaultTvl -= amountTokenOut;
+
+		// its possible that cached vault tvl is lower than actual tvl
+		uint256 _vaultTvl = vaultTvl;
+		vaultTvl = _vaultTvl > amountTokenOut ? _vaultTvl - amountTokenOut : 0;
 
 		// it requested token is native, convert to native
 		if (token == NATIVE) IWETH(address(underlying)).withdraw(amountToTransfer);
+
+		_burn(msg.sender, sharesToRedeem);
 	}
 
 	/// @notice harvest strategy
