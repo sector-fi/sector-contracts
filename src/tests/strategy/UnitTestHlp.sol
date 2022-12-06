@@ -46,10 +46,10 @@ contract UnitTestHlp is SetupHlp, UnitTestStrategy {
 	// CONFIG
 
 	function testSafeCollateralRatio() public {
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strategy.setSafeCollateralRatio(900);
 
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strategy.setSafeCollateralRatio(9000);
 
 		strategy.setSafeCollateralRatio(7700);
@@ -65,7 +65,7 @@ contract UnitTestHlp is SetupHlp, UnitTestStrategy {
 	}
 
 	function testMinLoanHealth() public {
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strategy.setMinLoanHeath(0.9e18);
 
 		strategy.setMinLoanHeath(1.29e18);
@@ -85,12 +85,12 @@ contract UnitTestHlp is SetupHlp, UnitTestStrategy {
 	}
 
 	function testMaxDefaultPriceMismatch() public {
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strategy.setMaxDefaultPriceMismatch(24);
 
 		uint256 bigMismatch = 2 + strategy.maxAllowedMismatch();
 		vm.prank(guardian);
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strategy.setMaxDefaultPriceMismatch(bigMismatch);
 
 		vm.prank(guardian);

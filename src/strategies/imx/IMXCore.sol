@@ -110,7 +110,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	// OWNER CONFIG
 
 	function setRebalanceThreshold(uint16 rebalanceThreshold_) public onlyOwner {
-		require(rebalanceThreshold_ >= 100, "HLP: BAD_INPUT");
+		require(rebalanceThreshold_ >= 100, "STRAT: BAD_INPUT");
 		rebalanceThreshold = rebalanceThreshold_;
 		emit SetRebalanceThreshold(rebalanceThreshold_);
 	}

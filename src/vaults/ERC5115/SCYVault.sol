@@ -142,7 +142,10 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 			amountTokenOut += shareOfReserves;
 			amountToTransfer += shareOfReserves;
 		} else (amountTokenOut, amountToTransfer) = _stratRedeem(receiver, yeildTokenRedeem);
-		vaultTvl -= amountTokenOut;
+
+		// its possible that cached vault tvl is lower than actual tvl
+		uint256 _vaultTvl = vaultTvl;
+		vaultTvl = _vaultTvl > amountTokenOut ? _vaultTvl - amountTokenOut : 0;
 
 		// it requested token is native, convert to native
 		if (token == NATIVE) IWETH(address(underlying)).withdraw(amountToTransfer);

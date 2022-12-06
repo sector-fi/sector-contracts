@@ -111,7 +111,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	}
 
 	function setSafeCollateralRatio(uint256 safeCollateralRatio_) public onlyOwner {
-		require(safeCollateralRatio_ >= 1000 && safeCollateralRatio_ <= 8500, "HLP: BAD_INPUT");
+		require(safeCollateralRatio_ >= 1000 && safeCollateralRatio_ <= 8500, "STRAT: BAD_INPUT");
 		_safeCollateralRatio = safeCollateralRatio_;
 		emit SetSafeCollateralRaio(safeCollateralRatio_);
 	}
@@ -122,7 +122,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 
 	// OWNER CONFIG
 	function setMinLoanHeath(uint256 minLoanHealth_) public onlyOwner {
-		require(minLoanHealth_ > 1e18, "HLP: BAD_INPUT");
+		require(minLoanHealth_ > 1e18, "STRAT: BAD_INPUT");
 		minLoanHealth = minLoanHealth_;
 		emit setMinLoanHealth(minLoanHealth_);
 	}
@@ -132,10 +132,10 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		public
 		onlyRole(GUARDIAN)
 	{
-		require(maxDefaultPriceMismatch_ >= 25, "HLP: BAD_INPUT"); // no less than .25%
+		require(maxDefaultPriceMismatch_ >= 25, "STRAT: BAD_INPUT"); // no less than .25%
 		require(
 			msg.sender == owner || maxAllowedMismatch >= maxDefaultPriceMismatch_,
-			"HLP: BAD_INPUT"
+			"STRAT: BAD_INPUT"
 		);
 		maxDefaultPriceMismatch = maxDefaultPriceMismatch_;
 		emit SetMaxDefaultPriceMismatch(maxDefaultPriceMismatch_);
@@ -143,7 +143,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 
 	function setRebalanceThreshold(uint16 rebalanceThreshold_) public onlyOwner {
 		// rebalance threshold should not be lower than 1% (2% price move)
-		require(rebalanceThreshold_ >= 100, "HLP: BAD_INPUT");
+		require(rebalanceThreshold_ >= 100, "STRAT: BAD_INPUT");
 		rebalanceThreshold = rebalanceThreshold_;
 		emit SetRebalanceThreshold(rebalanceThreshold_);
 	}
