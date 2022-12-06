@@ -543,13 +543,8 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		uint256 shortBalance = shortP == 0 ? 0 : _shortToUnderlying(shortP);
 		(uint256 underlyingLp, ) = _getLPBalances();
 		uint256 underlyingBalance = _underlying.balanceOf(address(this));
-		tvl =
-			collateralBalance +
-			underlyingLp *
-			2 -
-			borrowBalance +
-			underlyingBalance +
-			shortBalance;
+		uint256 assets = collateralBalance + underlyingLp * 2 + underlyingBalance + shortBalance;
+		tvl = assets > borrowBalance ? assets - borrowBalance : 0;
 	}
 
 	// We can include a checkPrice(0) here for extra security
@@ -586,7 +581,8 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 
 		underlyingBalance = _underlying.balanceOf(address(this));
 
-		tvl = collateralBalance + lpBalance - borrowBalance + underlyingBalance + shortBalance;
+		uint256 assets = collateralBalance + lpBalance + underlyingBalance + shortBalance;
+		tvl = assets > borrowBalance ? assets - borrowBalance : 0;
 	}
 
 	function getLPBalances() public view returns (uint256 underlyingLp, uint256 shortLp) {
