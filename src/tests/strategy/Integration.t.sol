@@ -25,7 +25,7 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 		vault.getAndUpdateTvl();
 		rebalance();
 		assertEq(vault.getFloatingAmount(address(underlying)), 0);
-		adjustPrice(1.2e18);
+		adjustPrice(1.19e18);
 		rebalance();
 		assertEq(vault.getFloatingAmount(address(underlying)), 0);
 		withdrawAll(user1);
@@ -43,9 +43,9 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 			(amnt * 3) / 1000, // withthin .003% (slippage)
 			"second balance"
 		);
-		adjustPrice(.834e18);
+		adjustPrice(.833e18);
 		uint256 balance = vault.underlyingBalance(user1);
-		assertGe(balance, startBalance, "first balance should not decrease");
+		assertApproxEqRel(balance, startBalance, .0003e18, "first balance should not decrease");
 	}
 
 	function testFlashSwap() public {

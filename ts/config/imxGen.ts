@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import { ethers, getNamedAccounts, network } from 'hardhat';
 import { IIMXFactory, IVaultToken } from '../../typechain';
 import { imx } from './imxConfigs';
+import { chainTOEnv } from './utils';
 
 const main = async () => {
   imx.filter((s) => s.chain === network.name).forEach(addIMXStrategy);
@@ -41,7 +42,7 @@ const addIMXStrategy = async (strategy) => {
     e_farmToken: rewardToken,
     f_farmRouter: strategy.farmRouter,
     h_harvestPath: [rewardToken, ...strategy.harvestPath],
-    x_chain: 'OP',
+    x_chain: chainTOEnv[strategy.chain],
   };
   await addToConfig(strategy.name, config, strategy);
 };

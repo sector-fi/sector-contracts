@@ -116,6 +116,7 @@ abstract contract PriceUtils is Test {
 		uint256 fraction
 	) public {
 		IUniswapV2Pair pair = IUniswapV2Pair(_pair);
+		(uint112 r0, uint112 r1, ) = IUniswapV2Pair(stakedToken).getReserves();
 		moveUniswapPrice(pair, underlying, short, fraction);
 		(uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(stakedToken).getReserves();
 		uint224 price = uint112(reserve1).encode().uqdiv(uint112(reserve0));

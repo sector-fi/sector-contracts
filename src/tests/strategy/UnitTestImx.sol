@@ -7,22 +7,30 @@ import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/ex
 
 import { SetupImx, IUniswapV2Pair } from "./SetupImx.sol";
 import { UnitTestStrategy } from "./UnitTestStrategy.sol";
+import { IStrategy } from "interfaces/IStrategy.sol";
 
 import "hardhat/console.sol";
 
 contract UnitTestImx is SetupImx, UnitTestStrategy {
 	function testLoanHealth() public {
-		console.log("max tvl", vault.getMaxTvl());
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
+
+		// ICollateral collateral = ICollateral(strategy.collateralToken());
+		// IUniswapV2Pair p = IUniswapV2Pair(collateral.underlying());
+		// console.log("c u", collateral.underlying(), address(uniPair));
+		// (uint256 p1, uint256 p2) = collateral.getPrices();
+		// uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / collateral.liquidationIncentive();
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
+
 		adjustPrice(maxAdjust);
-		assertApproxEqAbs(strategy.loanHealth(), 1e18, 5e14);
+		strategy.getAndUpdateTVL();
+
+		assertApproxEqRel(strategy.loanHealth(), 1e18, .001e18);
 	}
 
 	function testLoanHealthRebalance() public {
-		uint256 amnt = getAmnt();
-		deposit(user1, amnt);
+		deposit(user1, dec);
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
 		adjustPrice((maxAdjust * 3) / 2);
 		rebalance();
@@ -32,7 +40,7 @@ contract UnitTestImx is SetupImx, UnitTestStrategy {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
-		adjustPrice(maxAdjust);
+		adjustPrice((maxAdjust * 9) / 10);
 		uint256 balance = vault.balanceOf(user1);
 		vm.prank(user1);
 		vault.redeem(user1, (balance * .2e18) / 1e18, address(underlying), 0);
@@ -66,9 +74,9 @@ contract UnitTestImx is SetupImx, UnitTestStrategy {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
 
-		// this gets us to 2x leverage (instead of 5x)
 		ICollateral collateral = ICollateral(strategy.collateralToken());
 
+		// this gets us to 2x leverage (instead of 5x)
 		uint256 lev1 = 2e54 / collateral.liquidationIncentive() / collateral.safetyMarginSqrt();
 
 		strategy.setSafetyMarginSqrt(lev1);
@@ -76,22 +84,17 @@ contract UnitTestImx is SetupImx, UnitTestStrategy {
 		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10);
 		strategy.rebalance(expectedPrice, maxDelta);
 
-		adjustPrice(1.1e18);
-
 		deposit(user2, amnt);
 
 		assertApproxEqRel(vault.underlyingBalance(user1), vault.underlyingBalance(user2), .003e18);
 	}
 
 	function testEdgeCases() public {
-		uint256 amount = 1.5e18;
+		uint256 amount = getAmnt();
 		deposit(user1, amount);
 		uint256 exchangeRate = vault.sharesToUnderlying(1e18);
-		// harvest();
-		// vm.warp(block.timestamp + 1 * 60 * 60 * 24);
 
 		withdraw(user1, 1e18);
-		console.log(IERC20(vault.yieldToken()).balanceOf(vault.strategy())); // Saves an extra SLOAD if totalSupply is non-zero.
 
 		deal(address(underlying), user1, amount);
 		vm.startPrank(user1);
@@ -100,7 +103,7 @@ contract UnitTestImx is SetupImx, UnitTestStrategy {
 		vm.stopPrank();
 
 		uint256 exchangeRate2 = vault.sharesToUnderlying(1e18);
-		assertApproxEqRel(exchangeRate, exchangeRate2, .001e18, "exchange rate after deposit");
+		assertApproxEqRel(exchangeRate, exchangeRate2, .0011e18, "exchange rate after deposit");
 	}
 
 	function testGetMaxTvlFail() public {
