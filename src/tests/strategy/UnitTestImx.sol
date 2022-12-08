@@ -91,16 +91,16 @@ contract UnitTestImx is SetupImx, UnitTestStrategy {
 
 	function testEdgeCases() public {
 		uint256 amount = getAmnt();
+
 		deposit(user1, amount);
 		uint256 exchangeRate = vault.sharesToUnderlying(1e18);
 
 		withdraw(user1, 1e18);
 
-		deal(address(underlying), user1, amount);
-		vm.startPrank(user1);
-		underlying.approve(address(vault), amount);
-		vault.deposit(user1, address(underlying), amount, 0);
-		vm.stopPrank();
+		uint256 tvl = strategy.getAndUpdateTVL();
+		assertEq(tvl, 0);
+
+		deposit(user1, amount);
 
 		uint256 exchangeRate2 = vault.sharesToUnderlying(1e18);
 		assertApproxEqRel(exchangeRate, exchangeRate2, .0011e18, "exchange rate after deposit");

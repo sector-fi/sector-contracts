@@ -343,8 +343,10 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 	function underlyingToShares(uint256 uAmnt) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
-		if (_totalSupply == 0) return uAmnt.mulDivDown(ONE, _stratCollateralToUnderlying());
-		return uAmnt.mulDivDown(_totalSupply, getTvl());
+		uint256 tvl = getTvl();
+		if (_totalSupply == 0 || tvl == 0)
+			return uAmnt.mulDivDown(ONE, _stratCollateralToUnderlying());
+		return uAmnt.mulDivDown(_totalSupply, tvl);
 	}
 
 	function sharesToUnderlying(uint256 shares) public view returns (uint256) {
