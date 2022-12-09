@@ -274,4 +274,20 @@ contract UnitTestHlp is SetupHlp, UnitTestStrategy {
 	function priceSlippageParam() public view override returns (uint256 priceOffset) {
 		return strategy.getPriceOffset();
 	}
+
+	function testClosePositionEdge() public {
+		address short = address(0x98878B06940aE243284CA214f92Bb71a2b032B8A);
+		uint256 amount = 1000e6;
+
+		deal(address(underlying), user2, amount);
+		vm.startPrank(user2);
+		underlying.approve(address(vault), amount);
+		vault.deposit(user2, address(underlying), amount, amount);
+		vm.stopPrank();
+
+		harvest();
+
+		deal(short, address(strategy), 14368479712190599);
+		vault.closePosition(0, strategy.getPriceOffset());
+	}
 }

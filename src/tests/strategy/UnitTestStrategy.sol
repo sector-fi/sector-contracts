@@ -320,15 +320,6 @@ abstract contract UnitTestStrategy is StratUtils {
 		vault.closePosition(0, priceOffset);
 	}
 
-	function testClosePositionEdge() public {
-		deposit(self, dec);
-
-		deal(address(short), vault.strategy(), .001e18);
-		vault.closePosition(0, priceSlippageParam());
-
-		assertZeroPosition();
-	}
-
 	// included in fuzz below, but used for coverage
 	function testClosePositionWithOffset() public {
 		deposit(self, dec);

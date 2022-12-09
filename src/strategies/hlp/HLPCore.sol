@@ -416,7 +416,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 				address(_underlying)
 			);
 		}
-		_repay(_short.balanceOf(address(this)));
+		_repay(shortPosition);
 		uint256 collateralBalance = _updateAndGetCollateralBalance();
 		_redeem(collateralBalance);
 	}
