@@ -1,6 +1,7 @@
 {
-  "stargateStrats": ["USDC-Arbitrum-Stargate", "USDC-Arbitrum-Synapse"],
+  "stargateStrats": ["USDC-Arbitrum-Stargate"],
   "hlpStrats": ["USDC-OP-Tarot-Velo"],
+  "synapseStrats": ["USDC-Arbitrum-Synapse"]
   "imxStrats": [
     "USDC-IMX-AVAX",
     "USDC-OP-Tarot-Velo",
@@ -159,5 +160,5 @@
     "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
     "h_harvestPath": ["0xd2568acCD10A4C98e87c44E9920360031ad89fCB"],
     "x_chain": "ARBITRUM"
-  }
+  },
 }

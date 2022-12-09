@@ -14,7 +14,7 @@ const uniswapRouter = {
 
 export const strategies = [
   {
-    type: 'stargate',
+    type: 'synapse',
     name: 'USDC-Arbitrum-Synapse',
     underlying: tokens.USDC,
     strategy: '0x9Dd329F5411466d9e0C488fF72519CA9fEf0cb40',
