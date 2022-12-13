@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.16;
 
 import { SCYBase, IERC20, IERC20Metadata, SafeERC20 } from "./SCYBase.sol";
