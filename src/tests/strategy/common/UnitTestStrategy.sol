@@ -45,7 +45,7 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 	// CONFIG
 
 	function testRebalanceThreshold() public {
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strat.setRebalanceThreshold(90);
 
 		strat.setRebalanceThreshold(500);
@@ -77,12 +77,12 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 
 	// TODO use setMaxPriceOffset?
 	// function testMaxDefaultPriceMismatch() public {
-	// 	vm.expectRevert("HLP: BAD_INPUT");
+	// 	vm.expectRevert("STRAT: BAD_INPUT");
 	// 	strat.setMaxDefaultPriceMismatch(24);
 
 	// 	uint256 bigMismatch = 2 + strat.maxAllowedMismatch();
 	// 	vm.prank(guardian);
-	// 	vm.expectRevert("HLP: BAD_INPUT");
+	// 	vm.expectRevert("STRAT: BAD_INPUT");
 	// 	strat.setMaxDefaultPriceMismatch(bigMismatch);
 
 	// 	vm.prank(guardian);

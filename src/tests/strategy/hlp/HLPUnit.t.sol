@@ -47,10 +47,10 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 	// CONFIG
 
 	function testSafeCollateralRatio() public {
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strategy.setSafeCollateralRatio(900);
 
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strategy.setSafeCollateralRatio(9000);
 
 		strategy.setSafeCollateralRatio(7700);
@@ -66,7 +66,7 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 	}
 
 	function testMinLoanHealth() public {
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strategy.setMinLoanHeath(0.9e18);
 
 		strategy.setMinLoanHeath(1.29e18);
@@ -86,12 +86,12 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 	}
 
 	function testMaxDefaultPriceMismatch() public {
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strategy.setMaxDefaultPriceMismatch(24);
 
 		uint256 bigMismatch = 2 + strategy.maxAllowedMismatch();
 		vm.prank(guardian);
-		vm.expectRevert("HLP: BAD_INPUT");
+		vm.expectRevert("STRAT: BAD_INPUT");
 		strategy.setMaxDefaultPriceMismatch(bigMismatch);
 
 		vm.prank(guardian);
@@ -274,5 +274,21 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 	// slippage in basis points
 	function priceSlippageParam() public view override returns (uint256 priceOffset) {
 		return strategy.getPriceOffset();
+	}
+
+	function testClosePositionEdge() public {
+		address short = address(0x98878B06940aE243284CA214f92Bb71a2b032B8A);
+		uint256 amount = 1000e6;
+
+		deal(address(underlying), user2, amount);
+		vm.startPrank(user2);
+		underlying.approve(address(vault), amount);
+		vault.deposit(user2, address(underlying), amount, amount);
+		vm.stopPrank();
+
+		harvest();
+
+		deal(short, address(strategy), 14368479712190599);
+		vault.closePosition(0, strategy.getPriceOffset());
 	}
 }

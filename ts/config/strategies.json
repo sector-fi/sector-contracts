@@ -1,21 +1,26 @@
 {
   "stargateStrats": [
-    "USDC-Arbitrum-Stargate",
-    "USDC-Arbitrum-Synapse"
+    "USDC-Arbitrum-Stargate"
   ],
-  "hlpStrats": [
-    "USDC-OP-Tarot-Velo"
+  "hlpStrats": [],
+  "synapseStrats": [
+    "USDC-Arbitrum-Synapse"
   ],
   "imxStrats": [
     "USDC-IMX-AVAX",
     "USDC-OP-Tarot-Velo",
     "USDC-ETH-Tarot-Velo",
-    "ETH-USDC-Tarot-Velo"
+    "ETH-USDC-Tarot-Velo",
+    "USDC-VELO-Tarot-Velo",
+    "USDC-TAROT-Tarot-Velo",
+    "USDC-ETH-Tarot-Xcal",
+    "USDC-XCAL-Tarot-Xcal"
   ],
   "USDC-IMX-AVAX": {
     "a_underlying": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664",
     "b_short": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
     "c_uniPair": "0xA389f9430876455C36478DeEa9769B7Ca4E3DDB1",
+    "c1_pairRouter": "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106",
     "d_poolToken": "0xEE2A27B7c3165A5E2a3FEB113A77B26b46dB0baE",
     "e_farmToken": "0xeA6887e4a9CdA1B77E70129E5Fba830CdB5cdDef",
     "f_farmRouter": "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106",
@@ -30,7 +35,7 @@
     "a1_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
     "a2_acceptsNativeToken": false,
     "b_short": "0x4200000000000000000000000000000000000042",
-    "c_uniPair": "0x47029bc8f5CBe3b464004E87eF9c9419a48018cd",
+    "c0_uniPair": "0x47029bc8f5CBe3b464004E87eF9c9419a48018cd",
     "c1_pairRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
     "d_poolToken": "0x2F707cfB7b6C1EF2fE01b13f13379Ab0D6961189",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
@@ -117,5 +122,61 @@
       "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
     ],
     "x_chain": "OP"
+  },
+  "USDC-VELO-Tarot-Velo": {
+    "a1_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+    "c0_uniPair": "0xe8537b6FF1039CB9eD0B71713f697DDbaDBb717d",
+    "c1_pairRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "d_poolToken": "0x1b7B202d44193f6Af293Bad8EF773791cFd24Ee1",
+    "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+    "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
+    "x_chain": "OP"
+  },
+  "USDC-TAROT-Tarot-Velo": {
+    "a1_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0x375488F097176507e39B9653b88FDc52cDE736Bf",
+    "c0_uniPair": "0x3bBDE95B1ed19F8d76252D0B48854d9EAaEc3ceF",
+    "c1_pairRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "d_poolToken": "0xB5639e9EfA70b6D70a5F1Fed3c850B14d3Cc66d3",
+    "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+    "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
+    "x_chain": "OP"
+  },
+  "USDC-ETH-Tarot-Xcal": {
+    "a1_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+    "c0_uniPair": "0x3C94d5ABcF49a2980d55721c35093210699c1493",
+    "c1_pairRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
+    "d_poolToken": "0x7Af58BB8038D7cf978E27c2479FCfB024f146BAa",
+    "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
+    "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
+    "h_harvestPath": [
+      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
+    ],
+    "x_chain": "ARBITRUM"
+  },
+  "USDC-XCAL-Tarot-Xcal": {
+    "a1_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
+    "c0_uniPair": "0x2Cc6AC1454490AfA83333Fabc84345FaD751285B",
+    "c1_pairRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
+    "d_poolToken": "0x68a80FC6d73d80C75B78C627DC5c12c1C7D0F6A1",
+    "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
+    "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
+    "h_harvestPath": [
+      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
+    ],
+    "x_chain": "ARBITRUM"
   }
 }

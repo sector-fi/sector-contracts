@@ -3,6 +3,12 @@ import { AlphaRouter } from '@uniswap/smart-order-router';
 import { Token, CurrencyAmount, TradeType } from '@uniswap/sdk-core';
 import { encodeRouteToPath } from '@uniswap/v3-sdk';
 
+export const chainTOEnv = {
+  optimism: 'OP',
+  arbitrum: 'ARBITRUM',
+  ethereum: 'ETH',
+};
+
 export const getUniswapV3Path = async (token0: string, token1: string) => {
   const chainId = network.config.chainId!;
   const alphaRouter = new AlphaRouter({

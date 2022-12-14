@@ -332,10 +332,12 @@ abstract contract IMXFarm is IIMXFarm {
 	}
 
 	function loanHealth() public view override returns (uint256) {
+		// this updates the oracle
 		uint256 balance = IERC20(address(_collateralToken)).balanceOf(address(this));
 		if (balance == 0) return 100e18;
 		uint256 liq = (balance * _collateralToken.exchangeRate()) / 1e18;
 		(uint256 available, uint256 shortfall) = _collateralToken.accountLiquidity(address(this));
+		if (liq < shortfall) return 0; // we are way past liquidation
 		return shortfall == 0 ? (1e18 * (liq + available)) / liq : (1e18 * (liq - shortfall)) / liq;
 	}
 

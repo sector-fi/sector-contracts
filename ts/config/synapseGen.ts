@@ -64,7 +64,8 @@ const addToConfig = async (key: string, data, stratConfig) => {
   const config = JSON.parse(jsonString);
   config[key] = data;
   const typeKey = stratConfig.type + 'Strats';
-  config[typeKey] = [...new Set([...config[typeKey], key])];
+  const stratArray = config[typeKey] || [];
+  config[typeKey] = [...new Set([...stratArray, key])];
   await fs.writeFile(filePath, JSON.stringify(config, null, 2), {
     encoding: 'utf8',
   });

@@ -197,7 +197,7 @@ abstract contract SCYStratUtils is SectorTest {
 	function getAmnt() public view virtual returns (uint256) {
 		if (vault.acceptsNativeToken()) return 1e18;
 		uint256 d = vault.underlyingDecimals();
-		if (d == 6) return 1000e6;
+		if (d == 6) return 700e6;
 		if (d == 18) return 1e18;
 	}
 }
