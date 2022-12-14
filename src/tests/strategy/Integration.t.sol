@@ -43,7 +43,7 @@ abstract contract IntegrationTest is SectorTest, StratUtils {
 			(amnt * 3) / 1000, // withthin .003% (slippage)
 			"second balance"
 		);
-		adjustPrice(.833e18);
+		adjustPrice(.834e18);
 		uint256 balance = vault.underlyingBalance(user1);
 		assertApproxEqRel(balance, startBalance, .0003e18, "first balance should not decrease");
 	}

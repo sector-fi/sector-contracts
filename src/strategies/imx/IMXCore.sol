@@ -10,6 +10,7 @@ import { IBase, HarvestSwapParams } from "../mixins/IBase.sol";
 import { IIMXFarm } from "../mixins/IIMXFarm.sol";
 import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
+import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import { StratAuth } from "../../common/StratAuth.sol";
 
@@ -49,6 +50,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		// parameter validation
 		// to prevent manipulation by manager
 		if (!hasRole(GUARDIAN, msg.sender)) {
+			tryUpdateTarotOracle(); // TODO optimize gas?
 			uint256 oraclePrice = shortToUnderlyingOracle(1e18);
 			uint256 oracleDelta = oraclePrice > expectedPrice
 				? oraclePrice - expectedPrice
@@ -394,6 +396,15 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		uint256 lp = pair().totalSupply();
 		// for deposit of 1 underlying we get 1+_optimalUBorrow worth of lp -> collateral token
 		return (1e18 * (uR * _getLiquidity(1e18))) / lp / (1e18 + _optimalUBorrow());
+	}
+
+	// in some cases the oracle needs to be updated externally
+	// to be accessible by read methods
+	function tryUpdateTarotOracle() public {
+		try collateralToken().tarotPriceOracle() returns (address _oracle) {
+			ISimpleUniswapOracle oracle = ISimpleUniswapOracle(_oracle);
+			oracle.getResult(collateralToken().underlying());
+		} catch {}
 	}
 
 	/**

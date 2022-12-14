@@ -8,6 +8,7 @@ import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/ex
 import { SetupImx, IUniswapV2Pair } from "./SetupImx.sol";
 import { UnitTestStrategy } from "./UnitTestStrategy.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
+import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import "hardhat/console.sol";
 
@@ -114,5 +115,11 @@ contract UnitTestImx is SetupImx, UnitTestStrategy {
 		strategy.getMaxTvl();
 		// uint256 tvl = strategy.getAndUpdateTVL();
 		// deposit(user1, strategy.getMaxTvl() - tvl - 1);
+	}
+
+	function oracleedgeCase() public {
+		vm.warp(block.timestamp + 30 * 60 * 60 * 24);
+		strategy.tryUpdateTarotOracle();
+		strategy.shortToUnderlyingOracle(1e18);
 	}
 }

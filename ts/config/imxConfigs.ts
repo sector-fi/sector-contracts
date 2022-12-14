@@ -57,13 +57,13 @@ export const imx = [
     underlying: tokens.optimism.USDC,
     ...veloDexConfig,
   },
-  // {
-  //   type: 'imx',
-  //   name: 'USDC-OP-Tarot-Velo',
-  //   pair: '0x2585d58367c9faccddecc7df05006cf7f0f3d18e', // address from interface - tarot vault or staked token
-  //   underlying: tokens.USDC,
-  //   ...veloDexConfig,
-  // },
+  {
+    type: 'imx',
+    name: 'USDC-OP-Tarot-Velo',
+    pair: '0x2585d58367c9faccddecc7df05006cf7f0f3d18e', // address from interface - tarot vault or staked token
+    underlying: tokens.optimism.USDC,
+    ...veloDexConfig,
+  },
   {
     type: 'imx',
     name: 'USDC-ETH-Tarot-Velo',

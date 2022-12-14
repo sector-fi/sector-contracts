@@ -20,13 +20,17 @@ contract SetupImx is SectorTest, StratUtils {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
+	// avalanche
 	// string TEST_STRATEGY = "USDC-IMX-AVAX";
-	string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
+
+	// optimism
+	// string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
 	// string TEST_STRATEGY = "USDC-TAROT-Tarot-Velo";
 	// string TEST_STRATEGY = "ETH-USDC-Tarot-Velo";
 	// string TEST_STRATEGY = "USDC-OP-Tarot-Velo";
 
-	// string TEST_STRATEGY = "USDC-ETH-Tarot-Xcal";
+	// arbitrum
+	string TEST_STRATEGY = "USDC-ETH-Tarot-Xcal";
 	// string TEST_STRATEGY = "USDC-XCAL-Tarot-Xcal";
 
 	uint256 currentFork;
@@ -166,6 +170,7 @@ contract SetupImx is SectorTest, StratUtils {
 	function rebalance() public override {
 		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
 		assertGt(strategy.getPositionOffset(), strategy.rebalanceThreshold());
+		vm.prank(manager);
 		strategy.rebalance(expectedPrice, maxDelta);
 		assertApproxEqAbs(strategy.getPositionOffset(), 0, 11, "position offset after rebalance");
 	}
