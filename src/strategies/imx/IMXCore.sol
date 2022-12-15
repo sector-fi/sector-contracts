@@ -14,7 +14,7 @@ import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOra
 
 import { StratAuth } from "../../common/StratAuth.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	using FixedPointMathLib for uint256;
@@ -301,18 +301,26 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	}
 
 	// TVL
-
 	function getMaxTvl() public view returns (uint256) {
 		(, uint256 sBorrow) = _getBorrowBalances();
-		uint256 availableToBorrow = sBorrowable().totalBalance();
+		uint256 maxBorrow = availableToBorrow();
 		return
 			min(
 				_maxTvl,
 				// adjust the availableToBorrow to account for leverage
-				_shortToUnderlying(
-					((sBorrow + availableToBorrow) * 1e18) / (_optimalUBorrow() + 1e18)
-				)
+				_shortToUnderlying(((sBorrow + maxBorrow) * 1e18) / (_optimalUBorrow() + 1e18))
 			);
+	}
+
+	function availableToBorrow() public view returns (uint256) {
+		uint256 totalBorrows = sBorrowable().totalBorrows();
+		uint256 totalBalance = sBorrowable().totalBalance();
+		uint256 buffer = ((totalBorrows + totalBalance) * 3) / 100; // stay within 97%
+		return totalBalance > buffer ? totalBalance - buffer : 0;
+	}
+
+	function maxDeposit() public view returns (uint256) {
+		return _shortToUnderlying(((availableToBorrow()) * 1e18) / (_optimalUBorrow() + 1e18));
 	}
 
 	// TODO should we compute pending farm & lending rewards here?
