@@ -120,8 +120,13 @@ abstract contract SCYStratUtils is SectorTest {
 		uint256 startTvl = vault.getAndUpdateTvl(); // us updates iterest
 		withdraw(user, fraction);
 		uint256 tvl = vault.getAndUpdateTvl();
-		assertApproxEqRel(tvl, (startTvl * (1e18 - fraction)) / 1e18, .00001e18, "tvl");
-		assertApproxEqRel(vault.underlyingBalance(user), tvl, .00001e18, "tvl balance");
+		uint256 lockedTvl = vault.sharesToUnderlying(mLp);
+		assertApproxEqRel(
+			tvl,
+			lockedTvl + (startTvl * (1e18 - fraction)) / 1e18,
+			.00001e18,
+			"vault tvl should update"
+		);
 		assertApproxEqRel(
 			underlying.balanceOf(user),
 			startTvl - tvl,
@@ -136,8 +141,13 @@ abstract contract SCYStratUtils is SectorTest {
 		vm.prank(user);
 		vault.redeem(user, shares, address(underlying), (minUnderlyingOut * 9990) / 10000);
 		uint256 tvl = vault.getAndUpdateTvl();
-		assertApproxEqRel(tvl, startTvl - minUnderlyingOut, .00001e18, "tvl");
-		assertApproxEqRel(vault.underlyingBalance(user), tvl, .00001e18, "tvl balance");
+		uint256 lockedTvl = vault.sharesToUnderlying(mLp);
+		assertApproxEqRel(
+			tvl,
+			lockedTvl + startTvl - minUnderlyingOut,
+			.0001e18,
+			"tvl should update"
+		);
 		assertApproxEqRel(
 			underlying.balanceOf(user),
 			startTvl - tvl,
