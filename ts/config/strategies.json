@@ -1,7 +1,11 @@
 {
-  "stargateStrats": ["USDC-Arbitrum-Stargate"],
+  "stargateStrats": [
+    "USDC-Arbitrum-Stargate"
+  ],
   "hlpStrats": [],
-  "synapseStrats": ["USDC-Arbitrum-Synapse"],
+  "synapseStrats": [
+    "USDC-Arbitrum-Synapse"
+  ],
   "imxStrats": [
     "USDC-IMX-AVAX",
     "USDC-OP-Tarot-Velo",
@@ -37,7 +41,9 @@
     "d_poolToken": "0x2F707cfB7b6C1EF2fE01b13f13379Ab0D6961189",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "USDC-MOVR-SOLAR-WELL": {
@@ -99,7 +105,9 @@
     "d_poolToken": "0x28fA49da55A54F02Bc4ff103adbd843B50B556F4",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "ETH-USDC-Tarot-Velo": {
@@ -111,7 +119,9 @@
     "d_poolToken": "0x28fA49da55A54F02Bc4ff103adbd843B50B556F4",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "USDC-VELO-Tarot-Velo": {
@@ -123,7 +133,9 @@
     "d_poolToken": "0x1b7B202d44193f6Af293Bad8EF773791cFd24Ee1",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "USDC-TAROT-Tarot-Velo": {
@@ -135,7 +147,9 @@
     "d_poolToken": "0xB5639e9EfA70b6D70a5F1Fed3c850B14d3Cc66d3",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "USDC-ETH-Tarot-Xcal": {
@@ -147,7 +161,9 @@
     "d_poolToken": "0x7Af58BB8038D7cf978E27c2479FCfB024f146BAa",
     "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
     "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
-    "h_harvestPath": ["0xd2568acCD10A4C98e87c44E9920360031ad89fCB"],
+    "h_harvestPath": [
+      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
+    ],
     "x_chain": "ARBITRUM"
   },
   "USDC-XCAL-Tarot-Xcal": {
@@ -159,7 +175,9 @@
     "d_poolToken": "0x68a80FC6d73d80C75B78C627DC5c12c1C7D0F6A1",
     "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
     "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
-    "h_harvestPath": ["0xd2568acCD10A4C98e87c44E9920360031ad89fCB"],
+    "h_harvestPath": [
+      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
+    ],
     "x_chain": "ARBITRUM"
   }
 }

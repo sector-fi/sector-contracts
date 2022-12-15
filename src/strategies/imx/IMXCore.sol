@@ -14,7 +14,7 @@ import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOra
 
 import { StratAuth } from "../../common/StratAuth.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	using FixedPointMathLib for uint256;
@@ -304,9 +304,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 
 	function getMaxTvl() public view returns (uint256) {
 		(, uint256 sBorrow) = _getBorrowBalances();
-		uint256 supply = sBorrowable().totalSupply();
-		uint256 totalBorrows = sBorrowable().totalBorrows();
-		uint256 availableToBorrow = supply > totalBorrows ? supply - totalBorrows : 0;
+		uint256 availableToBorrow = sBorrowable().totalBalance();
 		return
 			min(
 				_maxTvl,

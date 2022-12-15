@@ -21,13 +21,14 @@ contract SetupImx is SectorTest, StratUtils {
 	using stdJson for string;
 
 	// avalanche
-	string TEST_STRATEGY = "USDC-IMX-AVAX";
+	// string TEST_STRATEGY = "USDC-IMX-AVAX";
 
 	// optimism
 	// string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
 	// string TEST_STRATEGY = "USDC-TAROT-Tarot-Velo";
 	// string TEST_STRATEGY = "ETH-USDC-Tarot-Velo";
 	// string TEST_STRATEGY = "USDC-OP-Tarot-Velo";
+	string TEST_STRATEGY = "USDC-VELO-Tarot-Velo";
 
 	// arbitrum
 	// string TEST_STRATEGY = "USDC-ETH-Tarot-Xcal";
@@ -64,7 +65,6 @@ contract SetupImx is SectorTest, StratUtils {
 		bytes memory strat = json.parseRaw(string.concat(".", symbol));
 		IMXConfigJSON memory stratJson = abi.decode(strat, (IMXConfigJSON));
 
-		console.log("parsed");
 		_config.underlying = stratJson.a1_underlying;
 		_config.short = stratJson.b_short;
 		_config.uniPair = stratJson.c0_uniPair;
