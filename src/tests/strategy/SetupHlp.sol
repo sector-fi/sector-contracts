@@ -72,7 +72,6 @@ contract SetupHlp is SectorTest, StratUtils {
 		_config.comptroller = stratJson.l1_comptroller;
 		_config.lendRewardToken = stratJson.l2_lendRewardToken;
 		_config.lendRewardRouter = stratJson.l4_lendRewardRouter;
-		_config.maxTvl = type(uint128).max;
 		_config.nativeToken = NativeToken(stratJson.n_nativeToken);
 
 		harvestParams.path = stratJson.h_harvestPath;
@@ -96,7 +95,7 @@ contract SetupHlp is SectorTest, StratUtils {
 		strategyConfig.name = "TEST";
 		strategyConfig.yieldToken = config.uniPair;
 		strategyConfig.underlying = IERC20(config.underlying);
-		strategyConfig.maxTvl = uint128(config.maxTvl);
+		strategyConfig.maxTvl = type(uint128).max;
 
 		vault = SCYVault(
 			new HLPVault(

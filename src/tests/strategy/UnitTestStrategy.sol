@@ -62,21 +62,6 @@ abstract contract UnitTestStrategy is StratUtils {
 		strat.setRebalanceThreshold(500);
 	}
 
-	function testSetMaxTvl() public {
-		strat.setMaxTvl(dec);
-
-		assertEq(strat.getMaxTvl(), dec);
-		deposit(dec);
-
-		strat.setMaxTvl(dec / 2);
-
-		assertEq(strat.getMaxTvl(), dec / 2);
-
-		vm.prank(user1);
-		vm.expectRevert(_accessErrorString(GUARDIAN, user1));
-		strat.setMaxTvl(2 * dec);
-	}
-
 	// TODO use setMaxPriceOffset?
 	// function testMaxDefaultPriceMismatch() public {
 	// 	vm.expectRevert("STRAT: BAD_INPUT");
@@ -301,8 +286,8 @@ abstract contract UnitTestStrategy is StratUtils {
 	//////////////////////////////////////////////////////////////*/
 
 	function testDepositOverMaxTvl() public {
-		strat.setMaxTvl(dec);
-		depositRevert(self, 2 * dec, "STRAT: OVER_MAX_TVL");
+		uint256 amount = strat.getMaxDeposit() + 1;
+		depositRevert(self, amount, "STRAT: OVER_MAX_TVL");
 	}
 
 	function testClosePosition() public {

@@ -18,7 +18,7 @@ contract IMX is IMXCore, IMXFarm {
 			config.farmRouter,
 			config.farmToken
 		)
-		IMXCore(config.vault, config.underlying, config.short, config.maxTvl)
+		IMXCore(config.vault, config.underlying, config.short)
 	{
 		isInitialized = true;
 	}

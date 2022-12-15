@@ -40,4 +40,6 @@ interface ISCYStrategy is IERC20 {
 	function sharesToUnderlying(uint256 shares) external view returns (uint256);
 
 	function getUpdatedUnderlyingBalance(address) external returns (uint256);
+
+	function getMaxTvl() external view returns (uint256);
 }
