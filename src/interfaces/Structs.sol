@@ -53,7 +53,6 @@ struct IMXConfig {
 	address poolToken;
 	address farmToken;
 	address farmRouter;
-	uint256 maxTvl;
 }
 
 struct HLPConfig {
@@ -72,7 +71,6 @@ struct HLPConfig {
 	address lendRewardRouter;
 	address lendRewardToken;
 	address vault;
-	uint256 maxTvl;
 	NativeToken nativeToken;
 }
 
