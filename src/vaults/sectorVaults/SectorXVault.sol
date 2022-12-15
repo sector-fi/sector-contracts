@@ -60,7 +60,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 	function depositIntoXVaults(Request[] calldata vaults) public payable onlyRole(MANAGER) {
 		uint256 totalAmount = 0;
 
-		for (uint256 i = 0; i < vaults.length; ) {
+		for (uint256 i; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
@@ -94,7 +94,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 			emit BridgeAsset(chainId, vaultChainId, amount);
 
 			unchecked {
-				i++;
+				++i;
 			}
 		}
 
@@ -108,7 +108,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		// this will mess up accounting
 		if (harvestLedger.pendingAnswers != 0) revert OnGoingHarvest();
 
-		for (uint256 i = 0; i < vaults.length; ) {
+		for (uint256 i; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
@@ -126,7 +126,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 			);
 
 			unchecked {
-				i++;
+				++i;
 			}
 		}
 	}
@@ -139,7 +139,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		uint256 vaultsLength = vaultList.length;
 		uint256 xvaultsCount = 0;
 
-		for (uint256 i = 0; i < vaultsLength; ) {
+		for (uint256 i; i < vaultsLength; ) {
 			VaultAddr memory v = vaultList[i];
 
 			if (v.chainId == chainId) {
@@ -161,7 +161,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 			}
 
 			unchecked {
-				i++;
+				++i;
 			}
 		}
 
@@ -194,7 +194,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		uint256 userPerc = userShares.divWadDown(totalSupply());
 
 		uint256 vaultsLength = vaultList.length;
-		for (uint256 i = 0; i < vaultsLength; ) {
+		for (uint256 i; i < vaultsLength; ) {
 			VaultAddr memory v = vaultList[i];
 			Vault memory vault = checkVault(v.addr, v.chainId);
 
@@ -213,7 +213,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 			}
 
 			unchecked {
-				i++;
+				++i;
 			}
 		}
 	}
@@ -223,7 +223,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		addrBook[getXAddr(_vault, _chainId)].allowed = false;
 
 		uint256 length = vaultList.length;
-		for (uint256 i = 0; i < length; ) {
+		for (uint256 i; i < length; ) {
 			VaultAddr memory v = vaultList[i];
 
 			if (v.addr == _vault && v.chainId == _chainId) {
@@ -234,7 +234,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 				return;
 			}
 			unchecked {
-				i++;
+				++i;
 			}
 		}
 	}

@@ -215,7 +215,7 @@ abstract contract XChainIntegrator is Auth {
 		returns (uint256)
 	{
 		uint256 totalFees = 0;
-		for (uint256 i = 0; i < vaults.length; ) {
+		for (uint256 i; i < vaults.length; ) {
 			address vaultAddr = vaults[i].vaultAddr;
 			uint16 vaultChainId = vaults[i].vaultChainId;
 			uint256 amount = vaults[i].amount;
@@ -232,7 +232,7 @@ abstract contract XChainIntegrator is Auth {
 			);
 
 			unchecked {
-				i++;
+				++i;
 			}
 		}
 

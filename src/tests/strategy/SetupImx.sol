@@ -21,7 +21,7 @@ contract SetupImx is SectorTest, StratUtils {
 	using stdJson for string;
 
 	// avalanche
-	// string TEST_STRATEGY = "USDC-IMX-AVAX";
+	string TEST_STRATEGY = "USDC-IMX-AVAX";
 
 	// optimism
 	// string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
@@ -30,7 +30,7 @@ contract SetupImx is SectorTest, StratUtils {
 	// string TEST_STRATEGY = "USDC-OP-Tarot-Velo";
 
 	// arbitrum
-	string TEST_STRATEGY = "USDC-ETH-Tarot-Xcal";
+	// string TEST_STRATEGY = "USDC-ETH-Tarot-Xcal";
 	// string TEST_STRATEGY = "USDC-XCAL-Tarot-Xcal";
 
 	uint256 currentFork;

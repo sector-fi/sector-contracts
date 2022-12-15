@@ -17,9 +17,9 @@ abstract contract StratAuth is Auth {
 	event EmergencyAction(address indexed target, bytes data);
 
 	/// @notice calls arbitrary function on target contract in case of emergency
-	function emergencyAction(EAction[] calldata actions) public onlyOwner {
+	function emergencyAction(EAction[] calldata actions) public payable onlyOwner {
 		uint256 l = actions.length;
-		for (uint256 i = 0; i < l; i++) {
+		for (uint256 i; i < l; ++i) {
 			address target = actions[i].target;
 			bytes memory data = actions[i].data;
 			(bool success, ) = target.call{ value: actions[i].value }(data);

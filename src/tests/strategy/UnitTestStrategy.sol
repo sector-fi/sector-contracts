@@ -371,4 +371,20 @@ abstract contract UnitTestStrategy is StratUtils {
 		assertEq(sLp, 0);
 		assertApproxEqAbs(underlying.balanceOf(address(strat)), 0, 10);
 	}
+
+	function testEmptyHarvest() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+
+		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](0);
+		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+		(uint256[] memory h1, uint256[] memory h2) = vault.harvest(
+			vault.getTvl(),
+			0,
+			params1,
+			params2
+		);
+		assertEq(h1.length, 0, "harvest 1 length");
+		assertEq(h2.length, 0, "harvest 1 length");
+	}
 }

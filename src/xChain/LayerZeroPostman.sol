@@ -37,12 +37,12 @@ contract LayerZeroPostman is
 		refundTo = _refundTo;
 
 		uint256 length = chainPairArr.length;
-		for (uint256 i = 0; i < length; ) {
+		for (uint256 i; i < length; ) {
 			chainPair memory pair = chainPairArr[i];
 			chains[pair.from] = pair.to;
 
 			unchecked {
-				i++;
+				++i;
 			}
 		}
 	}

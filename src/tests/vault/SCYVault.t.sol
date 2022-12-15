@@ -8,8 +8,9 @@ import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/ex
 import { WETH } from "../mocks/WETH.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { SCYVaultSetup } from "./SCYVaultSetup.sol";
+import { HarvestSwapParams } from "interfaces/Structs.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract SCYVaultTest is SectorTest, SCYVaultSetup {
 	MockScyVault vault;
@@ -181,6 +182,49 @@ contract SCYVaultTest is SectorTest, SCYVaultSetup {
 
 		assertEq(address(vault).balance, 0, "vault eth balance");
 
+		vm.stopPrank();
+	}
+
+	function testEmptyHarvest() public {
+		uint256 amnt = 100e18;
+		scyDeposit(vault, user1, amnt);
+
+		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](0);
+		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+		(uint256[] memory h1, uint256[] memory h2) = vault.harvest(
+			vault.getTvl(),
+			0,
+			params1,
+			params2
+		);
+		assertEq(h1.length, 0, "harvest 1 length");
+		assertEq(h2.length, 0, "harvest 1 length");
+	}
+
+	function testMisconfiguration() public {
+		// NATIVE deposits and withdrawals will fail with an ERC20 token as underlying
+		MockERC20 testToken = new MockERC20("TEST", "TEST", 18);
+		// WETH testToken = new WETH();
+
+		vault = setUpSCYVault(address(testToken));
+		scyDeposit(vault, address(this), vault.MIN_LIQUIDITY());
+
+		uint256 amount = 10e18;
+
+		// deposit native tokens
+		vm.startPrank(user1);
+		vm.deal(user1, amount);
+		uint256 minSharesOut = vault.underlyingToShares(amount);
+		vm.expectRevert();
+		vault.deposit{ value: amount }(user1, NATIVE, 0, (minSharesOut * 9930) / 10000);
+		vm.stopPrank();
+
+		// user2 deposits underlying tokens
+		scyDeposit(vault, user2, amount);
+
+		vm.startPrank(user2);
+		vm.expectRevert();
+		vault.redeem(user2, amount, NATIVE, 0);
 		vm.stopPrank();
 	}
 }

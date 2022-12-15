@@ -50,8 +50,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		// parameter validation
 		// to prevent manipulation by manager
 		if (!hasRole(GUARDIAN, msg.sender)) {
-			tryUpdateTarotOracle(); // TODO optimize gas?
-			uint256 oraclePrice = shortToUnderlyingOracle(1e18);
+			uint256 oraclePrice = shortToUnderlyingOracleUpdate(1e18);
 			uint256 oracleDelta = oraclePrice > expectedPrice
 				? oraclePrice - expectedPrice
 				: expectedPrice - oraclePrice;
@@ -399,12 +398,17 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	}
 
 	// in some cases the oracle needs to be updated externally
-	// to be accessible by read methods
-	function tryUpdateTarotOracle() public {
+	// to be accessible by read methods like loanHealth();
+	function updateOracle() public {
 		try collateralToken().tarotPriceOracle() returns (address _oracle) {
 			ISimpleUniswapOracle oracle = ISimpleUniswapOracle(_oracle);
 			oracle.getResult(collateralToken().underlying());
-		} catch {}
+		} catch {
+			ISimpleUniswapOracle oracle = ISimpleUniswapOracle(
+				collateralToken().simpleUniswapOracle()
+			);
+			oracle.getResult(collateralToken().underlying());
+		}
 	}
 
 	/**

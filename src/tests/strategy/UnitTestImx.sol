@@ -113,13 +113,20 @@ contract UnitTestImx is SetupImx, UnitTestStrategy {
 		deposit(user1, maxTvl - 1);
 		vm.warp(block.timestamp + 30 * 60 * 60 * 24);
 		strategy.getMaxTvl();
-		// uint256 tvl = strategy.getAndUpdateTVL();
-		// deposit(user1, strategy.getMaxTvl() - tvl - 1);
 	}
 
-	function oracleedgeCase() public {
+	function testStaleOracle() public {
 		vm.warp(block.timestamp + 30 * 60 * 60 * 24);
-		strategy.tryUpdateTarotOracle();
+		strategy.updateOracle();
+		// this works also
+		// strategy.shortToUnderlyingOracleUpdate(1e18);
 		strategy.shortToUnderlyingOracle(1e18);
+	}
+
+	function testStaleOracleRebalance() public {
+		deposit(user1, dec);
+		// advance 60m this will make the orace stale
+		vm.warp(block.timestamp + 60 * 60 * 60);
+		noRebalance();
 	}
 }

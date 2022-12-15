@@ -38,8 +38,8 @@ contract IMXLend is SCYStrategy, SCYVault {
 		returns (uint256 amountOut, uint256 amntToTransfer)
 	{
 		IERC20(yieldToken).safeTransfer(strategy, amount);
-		amntToTransfer = 0;
 		amountOut = IPoolToken(strategy).redeem(to);
+		return (amountOut, amntToTransfer);
 	}
 
 	function _stratGetAndUpdateTvl() internal override returns (uint256) {
