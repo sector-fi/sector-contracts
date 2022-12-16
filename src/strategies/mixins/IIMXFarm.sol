@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.6;
 
-import { IBorrowable, ICollateral, ImpermaxChef } from "../../interfaces/imx/IImpermax.sol";
-
+import { IBorrowable, ICollateral, IImpermaxChef } from "../../interfaces/imx/IImpermax.sol";
+import { FarmConfig } from "../../interfaces/Structs.sol";
 import { IBase, HarvestSwapParams } from "./IBase.sol";
 import { IUniLp, IUniswapV2Pair, SafeERC20, IERC20 } from "./IUniLp.sol";
 import { IFarmable, IUniswapV2Router01 } from "./IFarmable.sol";
@@ -16,11 +16,13 @@ abstract contract IIMXFarm is IBase, IFarmable, IUniLp {
 
 	function collateralToken() public view virtual returns (ICollateral);
 
-	function impermaxChef() public view virtual returns (ImpermaxChef);
-
 	function pendingHarvest() external view virtual returns (uint256 harvested);
 
-	function farmRouter() public view virtual returns (IUniswapV2Router01);
+	function farm() external view virtual returns (IImpermaxChef);
+
+	function farmToken() external view virtual returns (IERC20);
+
+	function farmRouter() external view virtual returns (IUniswapV2Router01);
 
 	function _getBorrowBalances()
 		internal
@@ -57,4 +59,6 @@ abstract contract IIMXFarm is IBase, IFarmable, IUniLp {
 	function shortToUnderlyingOracleUpdate(uint256 amount) public virtual returns (uint256);
 
 	function shortToUnderlyingOracle(uint256 amount) public view virtual returns (uint256);
+
+	function _configureFarm(FarmConfig memory farmConfig) internal virtual;
 }

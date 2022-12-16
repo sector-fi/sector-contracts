@@ -104,7 +104,7 @@ interface ICollateral {
 	function tarotPriceOracle() external view returns (address);
 }
 
-interface ImpermaxChef {
+interface IImpermaxChef {
 	function pendingReward(address borrowable, address _user) external view returns (uint256);
 
 	function harvest(address borrowable, address to) external;

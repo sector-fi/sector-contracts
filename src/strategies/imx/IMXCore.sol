@@ -5,7 +5,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
+import { FarmConfig } from "../../interfaces/Structs.sol";
 import { IBase, HarvestSwapParams } from "../mixins/IBase.sol";
 import { IIMXFarm } from "../mixins/IIMXFarm.sol";
 import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
@@ -108,7 +108,11 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		return IERC20Metadata(address(_underlying)).decimals();
 	}
 
-	// OWNER CONFIG
+	// OWNER
+
+	function configureFarm(FarmConfig memory farmConfig) public onlyOwner {
+		_configureFarm(farmConfig);
+	}
 
 	function setRebalanceThreshold(uint16 rebalanceThreshold_) public onlyOwner {
 		require(rebalanceThreshold_ >= 100, "STRAT: BAD_INPUT");

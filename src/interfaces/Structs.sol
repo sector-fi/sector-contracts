@@ -81,3 +81,10 @@ struct EAction {
 	uint256 value;
 	bytes data;
 }
+
+struct FarmConfig {
+	address farm;
+	uint16 farmId;
+	address router;
+	address farmToken;
+}

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICollateral, IPoolToken, IBorrowable, ImpermaxChef } from "../../interfaces/imx/IImpermax.sol";
+import { ICollateral, IPoolToken, IBorrowable, IImpermaxChef } from "../../interfaces/imx/IImpermax.sol";
 import { HarvestSwapParams, IIMXFarm, IERC20, SafeERC20, IUniswapV2Pair, IUniswapV2Router01 } from "../mixins/IIMXFarm.sol";
+import { FarmConfig } from "../../interfaces/Structs.sol";
 import { UniUtils } from "../../libraries/UniUtils.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
@@ -20,10 +21,10 @@ abstract contract IMXFarm is IIMXFarm {
 	IBorrowable private _uBorrowable;
 	IBorrowable private _sBorrowable;
 	IPoolToken private stakedToken;
-	ImpermaxChef private _impermaxChef;
 
-	IERC20 private _farmToken;
-	IUniswapV2Router01 private _farmRouter;
+	IImpermaxChef public override farm;
+	IERC20 public override farmToken;
+	IUniswapV2Router01 public override farmRouter;
 
 	bool public flip;
 
@@ -44,16 +45,21 @@ abstract contract IMXFarm is IIMXFarm {
 			(_uBorrowable, _sBorrowable) = (_sBorrowable, _uBorrowable);
 		}
 		stakedToken = IPoolToken(_collateralToken.underlying());
-		_impermaxChef = ImpermaxChef(_uBorrowable.borrowTracker());
-		_farmToken = IERC20(farmToken_);
-		_farmRouter = IUniswapV2Router01(farmRouter_);
-
-		// necessary farm approvals
-		_farmToken.safeApprove(address(farmRouter_), type(uint256).max);
+		_configureFarm(
+			FarmConfig({
+				farm: _uBorrowable.borrowTracker(),
+				router: farmRouter_,
+				farmToken: farmToken_,
+				farmId: 0
+			})
+		);
 	}
 
-	function impermaxChef() public view override returns (ImpermaxChef) {
-		return _impermaxChef;
+	function _configureFarm(FarmConfig memory farmConfig) internal override {
+		farm = IImpermaxChef(farmConfig.farm);
+		farmRouter = IUniswapV2Router01(farmConfig.router);
+		farmToken = IERC20(farmConfig.farmToken);
+		farmToken.safeApprove(address(farmRouter), type(uint256).max);
 	}
 
 	function collateralToken() public view override returns (ICollateral) {
@@ -66,10 +72,6 @@ abstract contract IMXFarm is IIMXFarm {
 
 	function uBorrowable() public view override returns (IBorrowable) {
 		return _uBorrowable;
-	}
-
-	function farmRouter() public view override returns (IUniswapV2Router01) {
-		return _farmRouter;
 	}
 
 	function pair() public view override returns (IUniswapV2Pair) {
@@ -263,34 +265,14 @@ abstract contract IMXFarm is IIMXFarm {
 	}
 
 	function pendingHarvest() external view override returns (uint256 harvested) {
-		if (address(_impermaxChef) == address(0)) return 0;
+		if (address(farm) == address(0)) return 0;
 		harvested =
-			_impermaxChef.pendingReward(address(_sBorrowable), address(this)) +
-			_impermaxChef.pendingReward(address(_uBorrowable), address(this));
+			farm.pendingReward(address(_sBorrowable), address(this)) +
+			farm.pendingReward(address(_uBorrowable), address(this));
 	}
 
 	function harvestIsEnabled() public view returns (bool) {
-		return address(_impermaxChef) != address(0);
-	}
-
-	function _harvestFarm(HarvestSwapParams calldata harvestParams)
-		internal
-		override
-		returns (uint256 harvested)
-	{
-		// rewards are not enabled
-		if (address(_impermaxChef) == address(0)) return 0;
-		address[] memory borrowables = new address[](2);
-		borrowables[0] = address(_sBorrowable);
-		borrowables[1] = address(_uBorrowable);
-
-		_impermaxChef.massHarvest(borrowables, address(this));
-
-		harvested = _farmToken.balanceOf(address(this));
-		if (harvested == 0) return harvested;
-
-		_swap(_farmRouter, harvestParams, address(_farmToken), harvested);
-		emit HarvestedToken(address(_farmToken), harvested);
+		return address(farm) != address(0);
 	}
 
 	function _getLiquidity() internal view override returns (uint256) {
@@ -315,6 +297,26 @@ abstract contract IMXFarm is IIMXFarm {
 	function accrueInterest() public override {
 		_sBorrowable.accrueInterest();
 		_uBorrowable.accrueInterest();
+	}
+
+	function _harvestFarm(HarvestSwapParams calldata harvestParams)
+		internal
+		override
+		returns (uint256 harvested)
+	{
+		// rewards are not enabled
+		if (address(farm) == address(0)) return 0;
+		address[] memory borrowables = new address[](2);
+		borrowables[0] = address(_sBorrowable);
+		borrowables[1] = address(_uBorrowable);
+
+		farm.massHarvest(borrowables, address(this));
+
+		harvested = farmToken.balanceOf(address(this));
+		if (harvested == 0) return harvested;
+
+		_swap(farmRouter, harvestParams, address(farmToken), harvested);
+		emit HarvestedToken(address(farmToken), harvested);
 	}
 
 	function _updateAndGetBorrowBalances() internal override returns (uint256, uint256) {

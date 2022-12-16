@@ -3,20 +3,14 @@ pragma solidity 0.8.16;
 
 import { IStarchef } from "../../interfaces/stargate/IStarchef.sol";
 import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
-import { HarvestSwapParams } from "../../interfaces/Structs.sol";
+import { HarvestSwapParams, FarmConfig } from "../../interfaces/Structs.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Auth } from "../../common/Auth.sol";
 
 // import "hardhat/console.sol";
 
-struct FarmConfig {
-	address farm;
-	uint16 farmId;
-	address router;
-	address farmToken;
-}
-
-abstract contract StarChefFarm {
+abstract contract StarChefFarm is Auth {
 	using SafeERC20 for IERC20;
 
 	IStarchef public farm;
@@ -27,6 +21,14 @@ abstract contract StarChefFarm {
 	event HarvestedToken(address token, uint256 amount, uint256 amountUnderlying);
 
 	constructor(FarmConfig memory farmConfig) {
+		_configureFarm(farmConfig);
+	}
+
+	function configureFarm(FarmConfig memory farmConfig) external onlyOwner {
+		_configureFarm(farmConfig);
+	}
+
+	function _configureFarm(FarmConfig memory farmConfig) internal {
 		farm = IStarchef(farmConfig.farm);
 		farmId = farmConfig.farmId;
 		farmRouter = ISwapRouter(farmConfig.router);
@@ -58,6 +60,7 @@ abstract contract StarChefFarm {
 			revert InvalidPathData();
 		}
 
+		// TODO validate pathData
 		ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
 			path: swapParams.pathData,
 			recipient: address(this),
