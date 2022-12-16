@@ -71,7 +71,6 @@ contract SetupImx is SectorTest, StratUtils {
 		_config.poolToken = stratJson.d_poolToken; // collateral token
 		_config.farmToken = stratJson.e_farmToken;
 		_config.farmRouter = stratJson.f_farmRouter;
-		_config.maxTvl = type(uint128).max;
 
 		harvestParams.path = stratJson.h_harvestPath;
 		strategyConfig.acceptsNativeToken = stratJson.a2_acceptsNativeToken;
@@ -94,7 +93,7 @@ contract SetupImx is SectorTest, StratUtils {
 		strategyConfig.name = "TEST";
 		strategyConfig.yieldToken = config.poolToken;
 		strategyConfig.underlying = IERC20(config.underlying);
-		strategyConfig.maxTvl = uint128(config.maxTvl);
+		strategyConfig.maxTvl = type(uint128).max;
 
 		AuthConfig memory authConfig = AuthConfig({
 			owner: owner,

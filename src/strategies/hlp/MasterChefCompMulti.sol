@@ -27,7 +27,7 @@ contract MasterChefCompMulti is HLPCore, Compound, CompMultiFarm, MasterChefFarm
 
 		__CompoundFarm_init_(config.lendRewardRouter, config.lendRewardToken);
 
-		__HedgedLP_init_(config.underlying, config.short, config.maxTvl, config.vault);
+		__HedgedLP_init_(config.underlying, config.short, config.vault);
 
 		nativeToken = config.nativeToken;
 	}
