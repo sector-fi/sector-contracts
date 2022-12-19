@@ -15,7 +15,7 @@ abstract contract IFarmable is IBase {
 		HarvestSwapParams calldata swapParams,
 		address from,
 		uint256 amount
-	) internal {
+	) internal returns (uint256[] memory) {
 		address out = swapParams.path[swapParams.path.length - 1];
 		// ensure malicious harvester is not trading with wrong tokens
 		// TODO should we add more validation to prevent malicious path?
@@ -24,12 +24,13 @@ abstract contract IFarmable is IBase {
 				out == address(underlying())),
 			"IFarmable: WRONG_PATH"
 		);
-		router.swapExactTokensForTokens(
-			amount,
-			swapParams.min,
-			swapParams.path, // optimal route determined externally
-			address(this),
-			swapParams.deadline
-		);
+		return
+			router.swapExactTokensForTokens(
+				amount,
+				swapParams.min,
+				swapParams.path, // optimal route determined externally
+				address(this),
+				swapParams.deadline
+			);
 	}
 }

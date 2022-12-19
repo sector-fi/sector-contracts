@@ -144,12 +144,15 @@ contract SetupHlp is SectorTest, StratUtils {
 		HarvestSwapParams[] memory lendParams = new HarvestSwapParams[](1);
 		lendParams[0] = harvestLendParams;
 
+		uint256 vaultTvl = vault.getTvl();
+
 		(uint256[] memory harvestAmnts, uint256[] memory harvestLendAmnts) = vault.harvest(
-			vault.getTvl(),
-			vault.getTvl() / 10,
+			vaultTvl,
+			vaultTvl / 10,
 			farmParams,
 			lendParams
 		);
+
 		uint256 newTvl = strategy.getTotalTVL();
 		assertGt(harvestAmnts[0], 0);
 		assertGt(harvestLendAmnts[0], 0);

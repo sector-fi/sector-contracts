@@ -233,7 +233,8 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		(uint256 startTvl, , , , , ) = getTVL();
 
 		farmHarvest = new uint256[](1);
-		farmHarvest[0] = _harvestFarm(harvestParams[0]);
+		// return amount of underlying tokens harvested
+		(, farmHarvest[0]) = _harvestFarm(harvestParams[0]);
 
 		// compound our lp position
 		_increasePosition(_underlying.balanceOf(address(this)));
