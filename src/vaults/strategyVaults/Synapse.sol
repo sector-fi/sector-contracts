@@ -102,10 +102,10 @@ contract Synapse is SCYStrategy, MiniChef2Farm, SCYVault {
 		override
 		returns (uint256[] memory harvested, uint256[] memory)
 	{
-		(uint256 tokenHarvest, uint256 amountOut) = _harvestFarm(farm1Params[0]);
+		uint256 amountOut = _harvestFarm(farm1Params[0]);
 		if (amountOut > 0) _stratDeposit(amountOut);
 		harvested = new uint256[](1);
-		harvested[0] = tokenHarvest;
+		harvested[0] = amountOut;
 		return (harvested, new uint256[](0));
 	}
 }

@@ -16,18 +16,23 @@ const addIMXStrategy = async (strategy) => {
     deployer
   );
   const { collateral } = await factory.getLendingPool(strategy.pair);
+  if (collateral === ethers.constants.AddressZero)
+    throw new Error('BAD Factory');
+
   const poolToken: IVaultToken = await ethers.getContractAt(
     'IVaultToken',
     strategy.pair,
     deployer
   );
+
   const token0 = await poolToken.token0();
   const token1 = await poolToken.token1();
   // this is incorrect
   // note tarot has no rewards
   const rewardToken = await poolToken.rewardsToken();
 
-  console.log(strategy.underlying, token1, token0);
+  console.log(strategy.name, factory.address);
+  // console.log(strategy.underlying, token1, token0);
 
   const config = {
     a1_underlying: strategy.underlying,

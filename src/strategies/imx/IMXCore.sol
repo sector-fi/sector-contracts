@@ -26,7 +26,6 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 
 	// event RebalanceLoan(address indexed sender, uint256 startLoanHealth, uint256 updatedLoanHealth);
 	event SetRebalanceThreshold(uint256 rebalanceThreshold);
-	event SetMaxTvl(uint256 maxTvl);
 	// this determines our default leverage position
 	event SetSafetyMarginSqrt(uint256 safetyMarginSqrt);
 
@@ -40,7 +39,6 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	IERC20 private _underlying;
 	IERC20 private _short;
 
-	uint256 private _maxTvl;
 	uint16 public rebalanceThreshold = 400; // 4% of lp
 	// price move before liquidation
 	uint256 private _safetyMarginSqrt = 1.140175425e18; // sqrt of 130%
@@ -50,8 +48,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		// parameter validation
 		// to prevent manipulation by manager
 		if (!hasRole(GUARDIAN, msg.sender)) {
-			tryUpdateTarotOracle(); // TODO optimize gas?
-			uint256 oraclePrice = shortToUnderlyingOracle(1e18);
+			uint256 oraclePrice = shortToUnderlyingOracleUpdate(1e18);
 			uint256 oracleDelta = oraclePrice > expectedPrice
 				? oraclePrice - expectedPrice
 				: expectedPrice - oraclePrice;
@@ -70,8 +67,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	constructor(
 		address vault_,
 		address underlying_,
-		address short_,
-		uint256 maxTvl_
+		address short_
 	) {
 		vault = vault_;
 		_underlying = IERC20(underlying_);
@@ -81,8 +77,6 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 
 		// init default params
 		// deployer is not owner so we set these manually
-		_maxTvl = maxTvl_;
-		emit SetMaxTvl(maxTvl_);
 
 		// TODO param?
 		rebalanceThreshold = 400;
@@ -122,11 +116,6 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		emit SetSafetyMarginSqrt(_safetyMarginSqrt);
 	}
 
-	function setMaxTvl(uint256 maxTvl_) public onlyRole(GUARDIAN) {
-		_maxTvl = maxTvl_;
-		emit SetMaxTvl(maxTvl_);
-	}
-
 	// PUBLIC METHODS
 
 	function short() public view override returns (IERC20) {
@@ -141,8 +130,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	function deposit(uint256 underlyingAmnt) external onlyVault nonReentrant returns (uint256) {
 		if (underlyingAmnt == 0) return 0; // cannot deposit 0
 		// deposit is already included in tvl
-		uint256 tvl = getAndUpdateTVL();
-		require(tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
+		require(underlyingAmnt <= getMaxDeposit(), "STRAT: OVER_MAX_TVL");
 		uint256 startBalance = collateralToken().balanceOf(address(this));
 		_increasePosition(underlyingAmnt);
 		uint256 endBalance = collateralToken().balanceOf(address(this));
@@ -234,7 +222,8 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		(uint256 startTvl, , , , , ) = getTVL();
 
 		farmHarvest = new uint256[](1);
-		farmHarvest[0] = _harvestFarm(harvestParams[0]);
+		// return amount of underlying tokens harvested
+		(, farmHarvest[0]) = _harvestFarm(harvestParams[0]);
 
 		// compound our lp position
 		_increasePosition(_underlying.balanceOf(address(this)));
@@ -302,20 +291,23 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	}
 
 	// TVL
-
 	function getMaxTvl() public view returns (uint256) {
 		(, uint256 sBorrow) = _getBorrowBalances();
-		uint256 supply = sBorrowable().totalSupply();
-		uint256 totalBorrows = sBorrowable().totalBorrows();
-		uint256 availableToBorrow = supply > totalBorrows ? supply - totalBorrows : 0;
+		uint256 maxBorrow = availableToBorrow();
 		return
-			min(
-				_maxTvl,
-				// adjust the availableToBorrow to account for leverage
-				_shortToUnderlying(
-					((sBorrow + availableToBorrow) * 1e18) / (_optimalUBorrow() + 1e18)
-				)
-			);
+			// adjust the availableToBorrow to account for leverage
+			_shortToUnderlying(((sBorrow + maxBorrow) * 1e18) / (_optimalUBorrow() + 1e18));
+	}
+
+	function availableToBorrow() public view returns (uint256) {
+		uint256 totalBorrows = sBorrowable().totalBorrows();
+		uint256 totalBalance = sBorrowable().totalBalance();
+		uint256 buffer = ((totalBorrows + totalBalance) * 3) / 100; // stay within 97%
+		return totalBalance > buffer ? totalBalance - buffer : 0;
+	}
+
+	function getMaxDeposit() public view returns (uint256) {
+		return _shortToUnderlying(((availableToBorrow()) * 1e18) / (_optimalUBorrow() + 1e18));
 	}
 
 	// TODO should we compute pending farm & lending rewards here?
@@ -399,12 +391,17 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	}
 
 	// in some cases the oracle needs to be updated externally
-	// to be accessible by read methods
-	function tryUpdateTarotOracle() public {
+	// to be accessible by read methods like loanHealth();
+	function updateOracle() public {
 		try collateralToken().tarotPriceOracle() returns (address _oracle) {
 			ISimpleUniswapOracle oracle = ISimpleUniswapOracle(_oracle);
 			oracle.getResult(collateralToken().underlying());
-		} catch {}
+		} catch {
+			ISimpleUniswapOracle oracle = ISimpleUniswapOracle(
+				collateralToken().simpleUniswapOracle()
+			);
+			oracle.getResult(collateralToken().underlying());
+		}
 	}
 
 	/**

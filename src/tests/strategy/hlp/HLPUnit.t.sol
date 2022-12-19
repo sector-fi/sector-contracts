@@ -242,7 +242,7 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 		assertEq(uniPair.balanceOf(address(strategy)), 0);
 		vm.expectRevert(IStrategy.NotPaused.selector);
 		strategy.withdrawFromFarm();
-		strategy.setMaxTvl(0);
+		vault.setMaxTvl(0);
 		strategy.withdrawFromFarm();
 		assertGt(uniPair.balanceOf(address(strategy)), 0);
 	}
@@ -251,7 +251,7 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 		deposit(dec);
 		vm.expectRevert(IStrategy.NotPaused.selector);
 		strategy.removeLiquidity(0, 0);
-		strategy.setMaxTvl(0);
+		vault.setMaxTvl(0);
 		strategy.withdrawFromFarm();
 		uint256 lp = uniPair.balanceOf(address(strategy));
 		strategy.removeLiquidity(lp, 0);
@@ -264,7 +264,7 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 		deal(short, address(strategy), shortPosition / 10);
 		vm.expectRevert(IStrategy.NotPaused.selector);
 		strategy.redeemCollateral(shortPosition / 10, collateralBalance / 10);
-		strategy.setMaxTvl(0);
+		vault.setMaxTvl(0);
 		strategy.redeemCollateral(shortPosition / 10, collateralBalance / 10);
 		(, uint256 newCollateralBalance, uint256 newShortPosition, , , ) = strategy.getTVL();
 		assertApproxEqAbs(newCollateralBalance, collateralBalance - collateralBalance / 10, 1);

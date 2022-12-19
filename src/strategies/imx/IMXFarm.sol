@@ -276,10 +276,10 @@ abstract contract IMXFarm is IIMXFarm {
 	function _harvestFarm(HarvestSwapParams calldata harvestParams)
 		internal
 		override
-		returns (uint256 harvested)
+		returns (uint256 harvested, uint256 amountOut)
 	{
 		// rewards are not enabled
-		if (address(_impermaxChef) == address(0)) return 0;
+		if (address(_impermaxChef) == address(0)) return (harvested, amountOut);
 		address[] memory borrowables = new address[](2);
 		borrowables[0] = address(_sBorrowable);
 		borrowables[1] = address(_uBorrowable);
@@ -287,9 +287,15 @@ abstract contract IMXFarm is IIMXFarm {
 		_impermaxChef.massHarvest(borrowables, address(this));
 
 		harvested = _farmToken.balanceOf(address(this));
-		if (harvested == 0) return harvested;
+		if (harvested == 0) return (harvested, amountOut);
 
-		_swap(_farmRouter, harvestParams, address(_farmToken), harvested);
+		uint256[] memory amounts = _swap(
+			_farmRouter,
+			harvestParams,
+			address(_farmToken),
+			harvested
+		);
+		amountOut = amounts[amounts.length - 1];
 		emit HarvestedToken(address(_farmToken), harvested);
 	}
 
@@ -341,8 +347,22 @@ abstract contract IMXFarm is IIMXFarm {
 		return shortfall == 0 ? (1e18 * (liq + available)) / liq : (1e18 * (liq - shortfall)) / liq;
 	}
 
-	function shortToUnderlyingOracle(uint256 amount) public view override returns (uint256) {
-		(uint256 price0, uint256 price1) = collateralToken().getPrices();
+	function shortToUnderlyingOracleUpdate(uint256 amount) public override returns (uint256) {
+		(bool success, bytes memory data) = address(collateralToken()).call(
+			abi.encodeWithSignature("getPrices()")
+		);
+		if (!success) revert OracleUpdate();
+		(uint256 price0, uint256 price1) = abi.decode(data, (uint256, uint256));
 		return flip ? (amount * price0) / price1 : (amount * price1) / price0;
 	}
+
+	function shortToUnderlyingOracle(uint256 amount) public view override returns (uint256) {
+		try collateralToken().getPrices() returns (uint256 price0, uint256 price1) {
+			return flip ? (amount * price0) / price1 : (amount * price1) / price0;
+		} catch {
+			revert OracleUpdate();
+		}
+	}
+
+	error OracleUpdate();
 }

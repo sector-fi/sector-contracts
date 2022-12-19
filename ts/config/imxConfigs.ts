@@ -1,6 +1,8 @@
 const factories = {
   optimism: {
     tarotVelours: '0xD7cABeF2c1fD77a31c5ba97C724B82d3e25fC83C',
+    Jupiter: '0x49df1fe24caf1a7dcbb2e2b1793b93b04edb62bf',
+    Opaline: '0x1d90fdac4dd30c3ba38d53f52a884f6e75d0989e',
   },
   arbitrum: {
     tarotGalahad: '0x2217AEC3440E8FD6d49A118B1502e539f88Dba55',

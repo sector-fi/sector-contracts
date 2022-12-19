@@ -35,7 +35,10 @@ abstract contract IIMXFarm is IBase, IFarmable, IUniLp {
 
 	function _optimalUBorrow() internal view virtual returns (uint256 uBorrow);
 
-	function _harvestFarm(HarvestSwapParams calldata swapParams) internal virtual returns (uint256);
+	function _harvestFarm(HarvestSwapParams calldata swapParams)
+		internal
+		virtual
+		returns (uint256, uint256);
 
 	function safetyMarginSqrt() public view virtual returns (uint256);
 
@@ -53,6 +56,8 @@ abstract contract IIMXFarm is IBase, IFarmable, IUniLp {
 		uint256 repayUnderlying,
 		uint256 repayShort
 	) internal virtual;
+
+	function shortToUnderlyingOracleUpdate(uint256 amount) public virtual returns (uint256);
 
 	function shortToUnderlyingOracle(uint256 amount) public view virtual returns (uint256);
 }

@@ -32,7 +32,7 @@ contract HLPVault is SCYStrategy, SCYVault {
 		// strategy doesn't transfer tokens to user
 		// TODO it should?
 		amountOut = HLPCore(strategy).redeem(yeildTokenAmnt, recipient);
-		amntToTransfer = 0;
+		return (amountOut, amntToTransfer);
 	}
 
 	function _stratGetAndUpdateTvl() internal override returns (uint256) {

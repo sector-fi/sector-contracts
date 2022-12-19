@@ -107,6 +107,8 @@ interface IStrategy {
 
 	function setMaxTvl(uint256 maxTvl_) external;
 
+	function getMaxDeposit() external returns (uint256);
+
 	function setRebalanceThreshold(uint16 rebalanceThreshold_) external;
 
 	function short() external view returns (address);

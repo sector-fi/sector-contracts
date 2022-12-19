@@ -29,9 +29,10 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 	// string TEST_STRATEGY = "USDC-TAROT-Tarot-Velo";
 	// string TEST_STRATEGY = "ETH-USDC-Tarot-Velo";
 	// string TEST_STRATEGY = "USDC-OP-Tarot-Velo";
+	string TEST_STRATEGY = "USDC-VELO-Tarot-Velo";
 
 	// arbitrum
-	string TEST_STRATEGY = "USDC-ETH-Tarot-Xcal";
+	// string TEST_STRATEGY = "USDC-ETH-Tarot-Xcal";
 	// string TEST_STRATEGY = "USDC-XCAL-Tarot-Xcal";
 
 	uint256 currentFork;
@@ -65,14 +66,12 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 		bytes memory strat = json.parseRaw(string.concat(".", symbol));
 		IMXConfigJSON memory stratJson = abi.decode(strat, (IMXConfigJSON));
 
-		console.log("parsed");
 		_config.underlying = stratJson.a1_underlying;
 		_config.short = stratJson.b_short;
 		_config.uniPair = stratJson.c0_uniPair;
 		_config.poolToken = stratJson.d_poolToken; // collateral token
 		_config.farmToken = stratJson.e_farmToken;
 		_config.farmRouter = stratJson.f_farmRouter;
-		_config.maxTvl = type(uint128).max;
 
 		harvestParams.path = stratJson.h_harvestPath;
 		strategyConfig.acceptsNativeToken = stratJson.a2_acceptsNativeToken;
@@ -95,7 +94,7 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 		strategyConfig.name = "TEST";
 		strategyConfig.yieldToken = config.poolToken;
 		strategyConfig.underlying = IERC20(config.underlying);
-		strategyConfig.maxTvl = uint128(config.maxTvl);
+		strategyConfig.maxTvl = type(uint128).max;
 
 		AuthConfig memory authConfig = AuthConfig({
 			owner: owner,

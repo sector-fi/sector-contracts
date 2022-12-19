@@ -60,21 +60,6 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 		strat.setRebalanceThreshold(500);
 	}
 
-	function testSetMaxTvl() public {
-		strat.setMaxTvl(dec);
-
-		assertEq(strat.getMaxTvl(), dec);
-		deposit(dec);
-
-		strat.setMaxTvl(dec / 2);
-
-		assertEq(strat.getMaxTvl(), dec / 2);
-
-		vm.prank(user1);
-		vm.expectRevert(_accessErrorString(GUARDIAN, user1));
-		strat.setMaxTvl(2 * dec);
-	}
-
 	// TODO use setMaxPriceOffset?
 	// function testMaxDefaultPriceMismatch() public {
 	// 	vm.expectRevert("STRAT: BAD_INPUT");
@@ -243,8 +228,14 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 	// 	assertLt(positionOffset, 10);
 	// }
 
-	/////////////
-	///// Close Position Tests
+	/*///////////////////////////////////////////////////////////////
+	                    HEDGEDLP TESTS
+	//////////////////////////////////////////////////////////////*/
+
+	function testDepositOverMaxTvl() public {
+		uint256 amount = strat.getMaxDeposit() + 1;
+		depositRevert(self, amount, "STRAT: OVER_MAX_TVL");
+	}
 
 	function testClosePosition() public {
 		uint256 amnt = getAmnt();
@@ -325,5 +316,21 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 		assertEq(uLp, 0);
 		assertEq(sLp, 0);
 		assertApproxEqAbs(underlying.balanceOf(address(strat)), 0, 10);
+	}
+
+	function testEmptyHarvest() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+
+		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](0);
+		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+		(uint256[] memory h1, uint256[] memory h2) = vault.harvest(
+			vault.getTvl(),
+			0,
+			params1,
+			params2
+		);
+		assertEq(h1.length, 0, "harvest 1 length");
+		assertEq(h2.length, 0, "harvest 1 length");
 	}
 }

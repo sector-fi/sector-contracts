@@ -78,7 +78,7 @@ contract SectorXVaultSetup is SectorTest {
 
 		Vm.Log[] memory entries = vm.getRecordedLogs();
 
-		for (uint256 i = 0; i < requests.length; i++) {
+		for (uint256 i; i < requests.length; i++) {
 			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 			mockReceiveFunds(
 				vault,
@@ -120,7 +120,7 @@ contract SectorXVaultSetup is SectorTest {
 		uint256[] memory shares = new uint256[](requests.length);
 		address xAddr = xVault.getXAddr(address(xVault), chainId);
 
-		for (uint256 i = 0; i < requests.length; i++) {
+		for (uint256 i; i < requests.length; i++) {
 			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 			shares[i] = vault.balanceOf(xAddr);
 			receiveMessage(
@@ -143,7 +143,7 @@ contract SectorXVaultSetup is SectorTest {
 		vm.roll(block.number + 100);
 		vm.warp(block.timestamp + 100);
 
-		for (uint256 i = 0; i < requests.length; i++) {
+		for (uint256 i; i < requests.length; i++) {
 			SectorVault vault = SectorVault(payable(requests[i].vaultAddr));
 
 			uint256 vaultShares = shares[i];
@@ -258,7 +258,7 @@ contract SectorXVaultSetup is SectorTest {
 
 		depositXVault(user1, amount);
 
-		for (uint256 i = 0; i < _vaults.length; i++) {
+		for (uint256 i; i < _vaults.length; i++) {
 			SectorVault v = SectorVault(_vaults[i]);
 
 			receiveMessage(
@@ -274,7 +274,7 @@ contract SectorXVaultSetup is SectorTest {
 
 		if (!assertOn) return;
 
-		for (uint256 i = 0; i < _vaults.length; i++) {
+		for (uint256 i; i < _vaults.length; i++) {
 			SectorVault v = SectorVault(_vaults[i]);
 
 			(uint256 _value, address _sender, address _client, uint16 _chainId) = v.incomingQueue(
@@ -299,7 +299,7 @@ contract SectorXVaultSetup is SectorTest {
 		uint256 count
 	) public {
 		uint256 foundEvents = 0;
-		for (uint256 i = 0; i < entries.length; i++) {
+		for (uint256 i; i < entries.length; i++) {
 			if (entries[i].topics[0] == keccak256(bytes(eventEncoder))) foundEvents++;
 		}
 		assertEq(foundEvents, count, string.concat("Events don't match for ", eventEncoder));

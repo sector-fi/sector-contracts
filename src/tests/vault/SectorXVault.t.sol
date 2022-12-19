@@ -53,7 +53,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		uint16[9] memory srcId = [250, 43114, 1284, 5, 43113, 4002, 42161, 10, 1];
 		uint16[9] memory dstId = [122, 106, 126, 10121, 10106, 10112, 110, 111, 101];
 		chainPair[] memory inptChainPair = new chainPair[](9);
-		for (uint256 i = 0; i < srcId.length; i++) inptChainPair[i] = chainPair(srcId[i], dstId[i]);
+		for (uint256 i; i < srcId.length; ++i) inptChainPair[i] = chainPair(srcId[i], dstId[i]);
 
 		// Must be address of layerZero service provider
 		postmanLz = new LayerZeroPostman(avaxLzAddr, inptChainPair, manager);
@@ -76,7 +76,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 
 		uint256 childVaultsNumber = 10;
 		// Deploy a bunch of child vaults
-		for (uint256 i = 0; i < childVaultsNumber; i++) {
+		for (uint256 i; i < childVaultsNumber; ++i) {
 			vaults.push(
 				new SectorVault(
 					underlying,
@@ -116,7 +116,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 			guardian,
 			address(postmanLz)
 		];
-		for (uint256 i = 0; i < gaveMoneyAccs.length; i++)
+		for (uint256 i; i < gaveMoneyAccs.length; ++i)
 			vm.deal(gaveMoneyAccs[i], 10000000000000 ether);
 
 		// Add min liquidity to xVault
@@ -144,7 +144,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		depositXVault(user1, amount * vaults.length);
 
 		Request[] memory requests = new Request[](vaults.length);
-		for (uint256 i; i < vaults.length; i++) {
+		for (uint256 i; i < vaults.length; ++i) {
 			requests[i] = getBasicRequest(address(vaults[i]), uint256(anotherChainId), amount);
 		}
 
@@ -190,7 +190,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
 		// uint256 total = amount1 + amount2 + amount3;
 		address[3] memory users = [user1, user2, user3];
 
-		for (uint256 i; i < 3; i++) depositXVault(users[i], amounts[i]);
+		for (uint256 i; i < 3; ++i) depositXVault(users[i], amounts[i]);
 
 		uint256 total = 0;
 		Request[] memory requests = new Request[](3);

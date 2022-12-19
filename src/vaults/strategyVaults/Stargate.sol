@@ -49,8 +49,8 @@ contract Stargate is SCYStrategy, SCYVault, StarChefFarm {
 		returns (uint256 amountOut, uint256 amntToTransfer)
 	{
 		_withdrawFromFarm(amount);
-		amntToTransfer = 0;
 		amountOut = IStargateRouter(strategy).instantRedeemLocal(strategyId, amount, to);
+		return (amountOut, amntToTransfer);
 	}
 
 	function _stratGetAndUpdateTvl() internal view override returns (uint256) {
@@ -86,10 +86,10 @@ contract Stargate is SCYStrategy, SCYVault, StarChefFarm {
 		override
 		returns (uint256[] memory harvested, uint256[] memory)
 	{
-		(uint256 tokenHarvest, uint256 amountOut) = _harvestFarm(farm1Params[0]);
+		uint256 amountOut = _harvestFarm(farm1Params[0]);
 		if (amountOut > 0) _stratDeposit(amountOut);
 		harvested = new uint256[](1);
-		harvested[0] = tokenHarvest;
+		harvested[0] = amountOut;
 		return (harvested, new uint256[](0));
 	}
 

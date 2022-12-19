@@ -81,12 +81,12 @@ contract SectorTimelock is AccessControl {
 		_setupRole(TIMELOCK_ADMIN_ROLE, address(this));
 
 		// register proposers
-		for (uint256 i = 0; i < proposers.length; ++i) {
+		for (uint256 i; i < proposers.length; ++i) {
 			_setupRole(PROPOSER_ROLE, proposers[i]);
 		}
 
 		// register executors
-		for (uint256 i = 0; i < executors.length; ++i) {
+		for (uint256 i; i < executors.length; ++i) {
 			_setupRole(EXECUTOR_ROLE, executors[i]);
 		}
 
@@ -231,7 +231,7 @@ contract SectorTimelock is AccessControl {
 
 		bytes32 id = hashOperationBatch(targets, values, datas, predecessor, salt);
 		_schedule(id, delay);
-		for (uint256 i = 0; i < targets.length; ++i) {
+		for (uint256 i; i < targets.length; ++i) {
 			emit CallScheduled(id, i, targets[i], values[i], datas[i], predecessor, salt, delay);
 		}
 	}
@@ -305,7 +305,7 @@ contract SectorTimelock is AccessControl {
 
 		bytes32 id = hashOperationBatch(targets, values, datas, predecessor, salt);
 		_beforeCall(id, predecessor);
-		for (uint256 i = 0; i < targets.length; ++i) {
+		for (uint256 i; i < targets.length; ++i) {
 			_call(id, i, targets[i], values[i], datas[i]);
 		}
 		_afterCall(id);

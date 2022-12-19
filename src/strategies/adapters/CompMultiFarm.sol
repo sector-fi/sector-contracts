@@ -17,21 +17,27 @@ abstract contract CompMultiFarm is CompoundFarm {
 	{
 		// farm token on id 0
 		IClaimReward(address(comptroller())).claimReward(0, payable(address(this)));
-		harvested = new uint256[](1);
-		harvested[0] = _farmToken.balanceOf(address(this));
+		uint256 farmHarvest = _farmToken.balanceOf(address(this));
 
-		if (harvested[0] > 0) {
-			_swap(lendFarmRouter(), swapParams[0], address(_farmToken), harvested[0]);
+		if (farmHarvest > 0) {
+			uint256[] memory amounts = _swap(
+				lendFarmRouter(),
+				swapParams[0],
+				address(_farmToken),
+				farmHarvest
+			);
+			harvested = new uint256[](1);
+			harvested[0] = amounts[amounts.length - 1];
 			emit HarvestedToken(address(_farmToken), harvested[0]);
 		}
 
 		// base token rewards on id 1
 		IClaimReward(address(comptroller())).claimReward(1, payable(address(this)));
 
-		uint256 avaxBalance = address(this).balance;
-		if (avaxBalance > 0) {
-			IWETH(address(short())).deposit{ value: avaxBalance }();
-			emit HarvestedToken(address(short()), avaxBalance);
+		uint256 nativeBalance = address(this).balance;
+		if (nativeBalance > 0) {
+			IWETH(address(short())).deposit{ value: nativeBalance }();
+			emit HarvestedToken(address(short()), nativeBalance);
 		}
 	}
 }

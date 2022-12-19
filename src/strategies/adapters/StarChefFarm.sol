@@ -48,15 +48,13 @@ abstract contract StarChefFarm {
 
 	function _harvestFarm(HarvestSwapParams calldata swapParams)
 		internal
-		returns (uint256 harvested, uint256 amountOut)
+		returns (uint256 amountOut)
 	{
 		farm.deposit(farmId, 0);
-		harvested = farmToken.balanceOf(address(this));
-		if (harvested == 0) return (0, 0);
+		uint256 harvested = farmToken.balanceOf(address(this));
+		if (harvested == 0) return 0;
 
-		if (bytes20(swapParams.pathData) != bytes20(address(farmToken))) {
-			revert InvalidPathData();
-		}
+		if (bytes20(swapParams.pathData) != bytes20(address(farmToken))) revert InvalidPathData();
 
 		ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
 			path: swapParams.pathData,
