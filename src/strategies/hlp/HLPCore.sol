@@ -13,6 +13,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 import { Auth } from "../../common/Auth.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { StratAuth } from "../../common/StratAuth.sol";
+import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 
 // import "hardhat/console.sol";
 
@@ -51,15 +52,15 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 
 	uint16 public rebalanceThreshold = 400; // 4% of lp
 
-	uint256 private _maxTvl;
 	uint256 private _safeCollateralRatio = 8000; // 80%
 
 	uint256 public constant version = 1;
 
 	bool public harvestIsEnabled = true;
 
+	// checks if deposits are paused on the parent SCYVault
 	modifier isPaused() {
-		if (_maxTvl != 0) revert NotPaused();
+		if (ISCYStrategy(vault).getMaxTvl() != 0) revert NotPaused();
 		_;
 	}
 
@@ -81,7 +82,6 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	function __HedgedLP_init_(
 		address underlying_,
 		address short_,
-		uint256 maxTvl_,
 		address _vault
 	) internal initializer {
 		_underlying = IERC20(underlying_);
@@ -90,9 +90,6 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		vault = _vault;
 
 		_underlying.safeApprove(address(this), type(uint256).max);
-
-		// init params
-		setMaxTvl(maxTvl_);
 
 		// emit default settings events
 		emit setMinLoanHealth(minLoanHealth);
@@ -148,11 +145,6 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		emit SetRebalanceThreshold(rebalanceThreshold_);
 	}
 
-	function setMaxTvl(uint256 maxTvl_) public onlyRole(GUARDIAN) {
-		_maxTvl = maxTvl_;
-		emit SetMaxTvl(maxTvl_);
-	}
-
 	// PUBLIC METHODS
 
 	function short() public view override returns (IERC20) {
@@ -206,8 +198,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		if (underlyingAmnt < _underlying.balanceOf(address(this))) revert NonZeroFloat();
 
 		// deposit is already included in tvl
-		uint256 tvl = getAndUpdateTVL();
-		require(tvl <= getMaxTvl(), "STRAT: OVER_MAX_TVL");
+		require(underlyingAmnt <= getMaxDeposit(), "STRAT: OVER_MAX_TVL");
 
 		uint256 startBalance = _getLiquidity();
 		// this method should not change % allocation to lp vs collateral
@@ -362,9 +353,6 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		onlyVault
 		returns (uint256 balance)
 	{
-		// lock deposits
-		_maxTvl = 0;
-		emit SetMaxTvl(0);
 		_closePosition();
 		balance = _underlying.balanceOf(address(this));
 		_underlying.safeTransfer(vault, balance);
@@ -372,6 +360,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	}
 
 	// in case of emergency - remove LP
+	// deposits should be paused because contracty may have underlying balance
 	function removeLiquidity(uint256 removeLp, uint256 maxSlippage)
 		public
 		checkPrice(maxSlippage)
@@ -383,12 +372,14 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	}
 
 	// in case of emergency - withdraw lp tokens from farm
+	// deposits should be paused because contracty may have underlying balance
 	function withdrawFromFarm() public isPaused onlyRole(GUARDIAN) {
 		_withdrawFromFarm(_getFarmLp());
 		emit UpdatePosition();
 	}
 
 	// in case of emergency - withdraw stuck collateral
+	// deposits should be paused because contracty may have underlying balance
 	function redeemCollateral(uint256 repayAmnt, uint256 withdrawAmnt)
 		public
 		isPaused
@@ -532,7 +523,13 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	function getMaxTvl() public view returns (uint256) {
 		// we don't want to get precise max borrow amaount available,
 		// we want to stay at least a getCollateralRatio away from max borrow
-		return min(_maxTvl, _oraclePriceOfShort(_maxBorrow() + _getBorrowBalance()));
+		return _oraclePriceOfShort(_maxBorrow() + _getBorrowBalance());
+	}
+
+	function getMaxDeposit() public view returns (uint256) {
+		// we don't want to get precise max borrow amaount available,
+		// we want to stay at least a getCollateralRatio away from max borrow
+		return _oraclePriceOfShort(_maxBorrow());
 	}
 
 	function getAndUpdateTVL() public returns (uint256 tvl) {
