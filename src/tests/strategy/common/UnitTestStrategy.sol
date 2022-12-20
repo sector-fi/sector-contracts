@@ -6,6 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
 import { SCYStratUtils } from "./SCYStratUtils.sol";
+import { HarvestSwapParams } from "interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
@@ -277,15 +278,6 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 
 		vault.closePosition(0, priceSlippageParam());
 		assertZeroPosition();
-	}
-
-	/*///////////////////////////////////////////////////////////////
-	                    HEDGEDLP TESTS
-	//////////////////////////////////////////////////////////////*/
-
-	function testDepositOverMaxTvl() public {
-		strat.setMaxTvl(dec);
-		depositRevert(self, 2 * dec, "STRAT: OVER_MAX_TVL");
 	}
 
 	// included in fuzz below, but used for coverage

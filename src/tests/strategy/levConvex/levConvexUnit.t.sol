@@ -10,7 +10,7 @@ import { UnitTestVault } from "../common/UnitTestVault.sol";
 
 import "hardhat/console.sol";
 
-contract stETHUnit is levConvexSetup, UnitTestVault {
+contract levConvexUnit is levConvexSetup, UnitTestVault {
 	function getAmnt() public view override(levConvexSetup, SCYStratUtils) returns (uint256) {
 		return levConvexSetup.getAmnt();
 	}
@@ -20,12 +20,44 @@ contract stETHUnit is levConvexSetup, UnitTestVault {
 	}
 
 	function testDepositDev() public {
-		uint256 amnt = 200000e6;
+		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
+		console.log("leverage", strategy.getLeverage());
 		console.log("loanHelath", strategy.loanHealth());
 		withdrawEpoch(user1, 1e18);
 		uint256 loss = amnt - underlying.balanceOf(user1);
 		console.log("year loss", (12 * (10000 * loss)) / amnt);
 		console.log("maxTvl", strategy.getMaxTvl());
+	}
+
+	function testAdjustLeverage() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		console.log("leverage", strategy.getLeverage());
+		uint16 targetLev = 500;
+		strategy.adjustLeverage(targetLev);
+		console.log("leverage", strategy.getLeverage());
+		assertApproxEqAbs(strategy.getLeverage(), targetLev, 1);
+		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
+
+		assertEq(underlying.balanceOf(strategy.credAcc()), 0);
+
+		deposit(user1, amnt);
+		targetLev = 500;
+		strategy.adjustLeverage(targetLev);
+		console.log("lh", strategy.loanHealth());
+		assertApproxEqAbs(strategy.getLeverage(), targetLev, 3);
+		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
+	}
+
+	function testAdjustLeverageUp() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		uint16 targetLev = 800;
+		strategy.adjustLeverage(targetLev);
+		console.log("lh", strategy.loanHealth());
+		assertApproxEqAbs(strategy.getLeverage(), targetLev, 3);
+		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
+		assertEq(underlying.balanceOf(strategy.credAcc()), 0);
 	}
 }

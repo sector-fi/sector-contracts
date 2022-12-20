@@ -30,6 +30,7 @@ contract levConvexSetup is SCYStratUtils {
 	Strategy strategyConfig;
 
 	address USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+	uint16 LEV_FACTOR = 500;
 
 	function setUp() public {
 		uint256 fork = vm.createFork(RPC_URL, BLOCK);
@@ -44,7 +45,7 @@ contract levConvexSetup is SCYStratUtils {
 			creditFacade: 0x61fbb350e39cc7bF22C01A469cf03085774184aa,
 			coinId: 1, // curve token index
 			underlying: USDC,
-			leverageFactor: 500,
+			leverageFactor: LEV_FACTOR,
 			convexBooster: 0xB548DaCb7e5d61BF47A026903904680564855B4E
 		});
 

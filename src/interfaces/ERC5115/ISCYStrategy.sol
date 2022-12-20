@@ -68,4 +68,6 @@ interface ISCYStrategy is IERC20 {
 	function depositIntoStrategy(uint256 amount, uint256 minSharesOut) external;
 
 	function uBalance() external view returns (uint256);
+
+	function setMaxTvl(uint256) external;
 }

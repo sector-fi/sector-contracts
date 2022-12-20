@@ -52,7 +52,7 @@ contract levConvex is StratAuth {
 	uint16 public leverageFactor;
 	uint256 immutable dec;
 	uint256 constant shortDec = 1e18;
-	address credAcc; // gearbox credit account // TODO can it expire?
+	address public credAcc; // gearbox credit account // TODO can it expire?
 	uint16 coinId;
 
 	event SetVault(address indexed vault);
@@ -83,14 +83,15 @@ contract levConvex is StratAuth {
 	/// @notice deposits underlying into the strategy
 	/// @param amount amount of underlying to deposit
 	function deposit(uint256 amount) public onlyVault returns (uint256) {
+		uint256 startBalance = collateralBalance();
 		if (!hasOpenAccount) _openAccount(amount);
 		else {
-			uint256 borrowAmnt = (amount * leverageFactor) / 100;
+			// we must scale position proportionally in order to maintain proper SCYVault accounting
+			uint256 correntLeverageFactor = getLeverage() - 100;
+			uint256 borrowAmnt = (amount * correntLeverageFactor) / 100;
 			creditFacade.addCollateral(address(this), address(underlying), amount);
-			creditFacade.increaseDebt(borrowAmnt);
+			_increasePosition(borrowAmnt, borrowAmnt + amount);
 		}
-		uint256 startBalance = collateralBalance();
-		_increasePosition();
 		// our balance should allays increase on deposits
 		return collateralBalance() - startBalance;
 	}
@@ -100,7 +101,8 @@ contract levConvex is StratAuth {
 	function redeem(uint256 amount, address to) public onlyVault returns (uint256) {
 		/// there is no way to partially withdraw collateral
 		/// we have to close account and re-open it :\
-		uint256 startLp = _closePosition();
+		uint256 startLp = collateralBalance();
+		_closePosition();
 		uint256 uBalance = underlying.balanceOf(address(this));
 		uint256 withdraw = (uBalance * amount) / startLp;
 
@@ -118,23 +120,55 @@ contract levConvex is StratAuth {
 		return withdraw;
 	}
 
-	function _increasePosition() internal {
-		uint256 balance = underlying.balanceOf(credAcc);
-
-		MultiCall[] memory calls = new MultiCall[](2);
+	function _increasePosition(uint256 borrowAmnt, uint256 totalAmount) internal {
+		MultiCall[] memory calls = new MultiCall[](3);
 		calls[0] = MultiCall({
+			target: address(creditFacade),
+			callData: abi.encodeWithSelector(ICreditFacade.increaseDebt.selector, borrowAmnt)
+		});
+		calls[1] = MultiCall({
 			target: address(curveAdapter),
 			callData: abi.encodeWithSelector(
 				ICurveV1Adapter.add_liquidity_one_coin.selector,
-				balance,
+				totalAmount,
 				coinId,
 				0 // slippage parameter is checked in the vault
 			)
 		});
-		calls[1] = MultiCall({
+		calls[2] = MultiCall({
 			target: address(convexBooster),
 			callData: abi.encodeWithSelector(IBooster.depositAll.selector, convexPid, true)
 		});
+		creditFacade.multicall(calls);
+	}
+
+	function _decreasePosition(uint256 lpAmount) internal {
+		uint256 repayAmnt = curveAdapter.calc_withdraw_one_coin(lpAmount, int128(uint128(coinId)));
+		MultiCall[] memory calls = new MultiCall[](3);
+		calls[0] = MultiCall({
+			target: address(convexRewardPool),
+			callData: abi.encodeWithSelector(
+				IBaseRewardPool.withdrawAndUnwrap.selector,
+				lpAmount,
+				false
+			)
+		});
+
+		// convert extra eth to underlying
+		calls[1] = MultiCall({
+			target: address(curveAdapter),
+			callData: abi.encodeWithSelector(
+				ICurveV1Adapter.remove_all_liquidity_one_coin.selector,
+				coinId,
+				0 // slippage is checked in the vault
+			)
+		});
+
+		calls[2] = MultiCall({
+			target: address(creditFacade),
+			callData: abi.encodeWithSelector(ICreditFacade.decreaseDebt.selector, repayAmnt)
+		});
+
 		creditFacade.multicall(calls);
 	}
 
@@ -145,10 +179,7 @@ contract levConvex is StratAuth {
 		return balance;
 	}
 
-	/// return original stETH balance
-	function _closePosition() internal returns (uint256) {
-		uint256 startBalance = collateralBalance();
-
+	function _closePosition() internal {
 		MultiCall[] memory calls;
 		calls = new MultiCall[](2);
 		calls[0] = MultiCall({
@@ -167,16 +198,13 @@ contract levConvex is StratAuth {
 		});
 
 		creditFacade.closeCreditAccount(address(this), 0, false, calls);
-		return startBalance;
 	}
 
 	function _openAccount(uint256 amount) internal {
-		underlying.approve(address(creditManager), amount);
-
 		// todo oracle conversion from underlying to ETH
 		uint256 borrowAmnt = (amount * leverageFactor) / 100;
 
-		MultiCall[] memory calls = new MultiCall[](1);
+		MultiCall[] memory calls = new MultiCall[](3);
 		calls[0] = MultiCall({
 			target: address(creditFacade),
 			callData: abi.encodeWithSelector(
@@ -186,15 +214,59 @@ contract levConvex is StratAuth {
 				amount
 			)
 		});
+		calls[1] = MultiCall({
+			target: address(curveAdapter),
+			callData: abi.encodeWithSelector(
+				ICurveV1Adapter.add_liquidity_one_coin.selector,
+				borrowAmnt + amount,
+				coinId,
+				0 // slippage parameter is checked in the vault
+			)
+		});
+		calls[2] = MultiCall({
+			target: address(convexBooster),
+			callData: abi.encodeWithSelector(IBooster.depositAll.selector, convexPid, true)
+		});
 
 		creditFacade.openCreditAccountMulticall(borrowAmnt, address(this), calls, 0);
 		credAcc = creditManager.getCreditAccountOrRevert(address(this));
 		hasOpenAccount = true;
 	}
 
+	function adjustLeverage(uint16 newLeverageFactor) public onlyRole(MANAGER) {
+		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
+		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
+		// if (totalOwed > totalAssets) return 0;
+		uint256 currentLeverageFactor = ((100 * totalAssets) / (totalAssets - totalOwed));
+
+		if (currentLeverageFactor > newLeverageFactor) {
+			uint256 lp = convexRewardPool.balanceOf(credAcc);
+			uint256 repay = (lp * (currentLeverageFactor - newLeverageFactor)) /
+				currentLeverageFactor;
+			_decreasePosition(repay);
+			// uint256 balance = underlying.balanceOf(credAcc);
+			// creditFacade.decreaseDebt(balance);
+		} else if (currentLeverageFactor < newLeverageFactor) {
+			// we need to increase leverage
+			// we need to borrow more
+			uint256 borrowAmnt = (getAndUpdateTVL() * (newLeverageFactor - currentLeverageFactor)) /
+				100;
+			_increasePosition(borrowAmnt, borrowAmnt);
+		}
+		/// leverageFactor used for opening & closing accounts
+		leverageFactor = uint16(getLeverage()) - 100;
+	}
+
 	function loanHealth() public view returns (uint256) {
-		console.log("lt", creditManager.liquidationThresholds(address(curveAdapter.lp_token())));
+		// console.log("lt", creditManager.liquidationThresholds(address(curveAdapter.lp_token())));
 		return creditFacade.calcCreditAccountHealthFactor(credAcc);
+	}
+
+	function getLeverage() public view returns (uint256) {
+		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
+		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
+		if (totalOwed > totalAssets) return 0;
+		return ((100 * totalAssets) / (totalAssets - totalOwed));
 	}
 
 	function getMaxTvl() public view returns (uint256) {
@@ -204,15 +276,21 @@ contract levConvex is StratAuth {
 
 	function collateralToUnderlying() public view returns (uint256) {
 		uint256 amountOut = curveAdapter.calc_withdraw_one_coin(1e18, int128(uint128(coinId)));
+		// uint256 virutalPrice = curveAdapter.get_virtual_price();
+		// console.log(amountOut, virutalPrice);
 		return amountOut;
 	}
 
 	function collateralBalance() public view returns (uint256) {
+		if (credAcc == address(0)) return 0;
 		return convexRewardPool.balanceOf(credAcc);
 	}
 
 	function getTotalTVL() public view returns (uint256) {
 		if (!hasOpenAccount) return 0;
+		// (uint256 total, ) = creditFacade.calcTotalValue(credAcc);
+		// return total;
+
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
 		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
 		if (totalOwed > totalAssets) return 0;
