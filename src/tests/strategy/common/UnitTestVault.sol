@@ -85,7 +85,7 @@ abstract contract UnitTestVault is SCYStratUtils {
 		);
 		adjustPrice(.834e18);
 		uint256 balance = vault.underlyingBalance(user1);
-		assertGe(balance, startBalance, "first balance should not decrease");
+		assertApproxEqRel(balance, startBalance, .001e18, "first balance should not decrease");
 	}
 
 	function testManagerWithdraw() public {

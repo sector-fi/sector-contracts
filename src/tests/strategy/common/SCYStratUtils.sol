@@ -45,7 +45,7 @@ abstract contract SCYStratUtils is SectorTest {
 	function depositRevert(
 		address user,
 		uint256 amnt,
-		bytes memory err
+		bytes4 err
 	) public {
 		deal(address(underlying), user, amnt);
 		vm.startPrank(user);
@@ -69,7 +69,7 @@ abstract contract SCYStratUtils is SectorTest {
 		uint256 tvl = vault.getAndUpdateTvl();
 		uint256 endAccBalance = vault.underlyingBalance(user);
 
-		assertApproxEqRel(tvl, startTvl + amount, .001e18, "tvl should update");
+		assertApproxEqRel(tvl, startTvl + amount, .0011e18, "tvl should update");
 		assertApproxEqRel(
 			tvl - startTvl,
 			endAccBalance - startAccBalance,
@@ -107,7 +107,6 @@ abstract contract SCYStratUtils is SectorTest {
 		uint256 minAmountOut = vault.sharesToUnderlying(shares);
 		SCYWEpochVault(payable(vault)).processRedeem(minAmountOut);
 		redeemShares(user, shares);
-		console.log("total supply", vault.totalSupply());
 	}
 
 	function requestRedeem(address user, uint256 fraction) public {
@@ -116,8 +115,13 @@ abstract contract SCYStratUtils is SectorTest {
 		SCYWEpochVault(payable(vault)).requestRedeem(sharesToWithdraw);
 	}
 
+	function getEpochVault(SCYBase _vault) public pure returns (SCYWEpochVault) {
+		return SCYWEpochVault(payable(_vault));
+	}
+
 	function withdrawCheck(address user, uint256 fraction) public {
 		uint256 startTvl = vault.getAndUpdateTvl(); // us updates iterest
+		uint256 startBal = underlying.balanceOf(user);
 		withdraw(user, fraction);
 		uint256 tvl = vault.getAndUpdateTvl();
 		uint256 lockedTvl = vault.sharesToUnderlying(mLp);
@@ -128,7 +132,7 @@ abstract contract SCYStratUtils is SectorTest {
 			"vault tvl should update"
 		);
 		assertApproxEqRel(
-			underlying.balanceOf(user),
+			underlying.balanceOf(user) - startBal,
 			startTvl - tvl,
 			.001e18,
 			"user should get underlying"
@@ -136,20 +140,22 @@ abstract contract SCYStratUtils is SectorTest {
 	}
 
 	function redeemShares(address user, uint256 shares) public {
-		uint256 startTvl = vault.getAndUpdateTvl(); // us updates iterest
+		uint256 startTvl = vault.getAndUpdateTvl(); // this updates iterest
 		uint256 minUnderlyingOut = vault.sharesToUnderlying(shares);
+		uint256 userStartBal = underlying.balanceOf(user);
+
 		vm.prank(user);
 		vault.redeem(user, shares, address(underlying), (minUnderlyingOut * 9990) / 10000);
 		uint256 tvl = vault.getAndUpdateTvl();
 		uint256 lockedTvl = vault.sharesToUnderlying(mLp);
 		assertApproxEqRel(
-			tvl,
-			lockedTvl + startTvl - minUnderlyingOut,
+			tvl + 10000,
+			lockedTvl + startTvl - minUnderlyingOut + 10000,
 			.0001e18,
 			"tvl should update"
 		);
 		assertApproxEqRel(
-			underlying.balanceOf(user),
+			underlying.balanceOf(user) - userStartBal,
 			startTvl - tvl,
 			.001e18,
 			"user should get underlying"

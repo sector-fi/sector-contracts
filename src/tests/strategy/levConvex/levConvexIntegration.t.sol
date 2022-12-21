@@ -5,7 +5,7 @@ import { IntegrationTestWEpoch, SCYStratUtils } from "../common/IntegrationTestW
 import { FlashSwapTest } from "../common/FlashSwapTest.sol";
 import { levConvexSetup } from "./levConvexSetup.sol";
 
-contract levConvexSetupIntegration is IntegrationTestWEpoch, levConvexSetup {
+contract levConvexIntegration is IntegrationTestWEpoch, levConvexSetup {
 	function getAmnt() public view override(levConvexSetup, SCYStratUtils) returns (uint256) {
 		return levConvexSetup.getAmnt();
 	}

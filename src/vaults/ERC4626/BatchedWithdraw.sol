@@ -5,6 +5,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC4626, IWETH } from "./ERC4626.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
+import { Accounting } from "../../common/Accounting.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
@@ -15,7 +16,7 @@ struct WithdrawRecord {
 	uint256 value; // this the current value (also max withdraw value)
 }
 
-abstract contract BatchedWithdraw is ERC4626, SectorErrors {
+abstract contract BatchedWithdraw is ERC20, Accounting, SectorErrors {
 	using SafeERC20 for ERC20;
 
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
@@ -58,24 +59,6 @@ abstract contract BatchedWithdraw is ERC4626, SectorErrors {
 		emit RequestWithdraw(msg.sender, owner, shares);
 	}
 
-	function redeemNative(address receiver) public virtual returns (uint256 amountOut) {
-		if (!useNativeAsset) revert NotNativeAsset();
-		uint256 shares;
-		(amountOut, shares) = _redeem(msg.sender);
-
-		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
-
-		IWETH(address(asset)).withdraw(amountOut);
-		SafeETH.safeTransferETH(receiver, amountOut);
-	}
-
-	function redeem(address receiver) public virtual returns (uint256 amountOut) {
-		uint256 shares;
-		(amountOut, shares) = _redeem(msg.sender);
-		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
-		asset.safeTransfer(receiver, amountOut);
-	}
-
 	function _redeem(address account) internal returns (uint256 amountOut, uint256 shares) {
 		WithdrawRecord storage withdrawRecord = withdrawLedger[account];
 
@@ -93,10 +76,8 @@ abstract contract BatchedWithdraw is ERC4626, SectorErrors {
 		pendingRedeem -= shares;
 
 		// important pendingRedeem should update prior to beforeWithdraw call
-		beforeWithdraw(amountOut, shares);
 		withdrawRecord.value = 0;
 		withdrawRecord.shares = 0;
-		_burn(address(this), shares);
 	}
 
 	function _getWithdrawAmount(uint256 shares, uint256 redeemValue)

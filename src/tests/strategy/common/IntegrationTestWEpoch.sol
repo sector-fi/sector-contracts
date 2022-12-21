@@ -16,7 +16,7 @@ abstract contract IntegrationTestWEpoch is SCYStratUtils {
 		console.log("DEPOSIT 2");
 		deposit(user1, amnt);
 		console.log("HARVEST");
-		// harvest();
+		harvest();
 		console.log("ADJUST PRICE");
 		adjustPrice(0.9e18);
 		// this updates strategy tvl

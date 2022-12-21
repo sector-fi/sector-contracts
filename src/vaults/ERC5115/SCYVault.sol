@@ -12,8 +12,9 @@ import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction, HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { VaultType } from "../../interfaces/Structs.sol";
+import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	using SafeERC20 for IERC20;
@@ -96,7 +97,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 
 	function _depositNative() internal override {
 		IWETH(address(underlying)).deposit{ value: msg.value }();
-		if (sendERC20ToStrategy) IERC20(underlying).safeTransfer(strategy, msg.value);
+		if (sendERC20ToStrategy()) IERC20(underlying).safeTransfer(strategy, msg.value);
 	}
 
 	function _deposit(
@@ -104,6 +105,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		address token,
 		uint256 amount
 	) internal override isInitialized returns (uint256 sharesOut) {
+		if (vaultTvl + amount > getMaxTvl()) revert MaxTvlReached();
 		// if we have any float in the contract we cannot do deposit accounting
 		if (uBalance > 0) revert DepositsPaused();
 		// TODO should we handle this logic inside _stratDeposit?
@@ -257,7 +259,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	{
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
 		uBalance -= underlyingAmount;
-		if (sendERC20ToStrategy) underlying.safeTransfer(strategy, underlyingAmount);
+		if (sendERC20ToStrategy()) underlying.safeTransfer(strategy, underlyingAmount);
 		uint256 yAdded = _stratDeposit(underlyingAmount);
 		uint256 virtualSharesOut = toSharesAfterDeposit(yAdded);
 		if (virtualSharesOut < minAmountOut) revert SlippageExceeded();
@@ -391,7 +393,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 	{
 		if (token == address(underlying))
 			return
-				sendERC20ToStrategy
+				sendERC20ToStrategy()
 					? underlying.balanceOf(strategy)
 					: underlying.balanceOf(address(this)) - uBalance;
 		if (token == NATIVE) return address(this).balance;
@@ -436,7 +438,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		address from,
 		uint256 amount
 	) internal virtual override {
-		address to = sendERC20ToStrategy ? strategy : address(this);
+		address to = sendERC20ToStrategy() ? strategy : address(this);
 		IERC20(token).safeTransferFrom(from, to, amount);
 	}
 

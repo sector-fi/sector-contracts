@@ -26,8 +26,12 @@ contract Stargate is SCYStrategy, SCYVault, StarChefFarm {
 	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) StarChefFarm(_farmConfig) {
 		underlying.safeApprove(strategy, type(uint256).max);
 		IERC20(yieldToken).safeApprove(address(farm), type(uint256).max);
-		sendERC20ToStrategy = false;
 	}
+
+	// Falce by default
+	// function sendERC20ToStrategy() public pure override returns (bool) {
+	// 	return false;
+	// }
 
 	function _stratValidate() internal view override {
 		if (

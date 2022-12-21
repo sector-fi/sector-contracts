@@ -3,4 +3,5 @@ pragma solidity 0.8.16;
 
 interface SectorErrors {
 	error NotImplemented();
+	error MaxTvlReached();
 }

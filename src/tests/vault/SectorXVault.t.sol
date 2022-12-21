@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
-import { SCYVaultSetup } from "./SCYVaultSetup.sol";
+import { SCYVaultUtils } from "./SCYVaultUtils.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, BatchedWithdraw, RedeemParams, DepositParams, AuthConfig, FeeConfig } from "../../vaults/sectorVaults/SectorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
@@ -19,7 +19,7 @@ import "../../interfaces/MsgStructs.sol";
 import "forge-std/console.sol";
 import "forge-std/Vm.sol";
 
-contract SectorXVaultTest is SectorXVaultSetup, SCYVaultSetup {
+contract SectorXVaultTest is SectorXVaultSetup, SCYVaultUtils {
 	uint256 mainnetFork;
 	uint256 avaxFork;
 	string FUJI_RPC_URL = vm.envString("FUJI_RPC_URL");

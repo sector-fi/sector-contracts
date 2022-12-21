@@ -29,9 +29,13 @@ contract Synapse is SCYStrategy, MiniChef2Farm, SCYVault {
 		underlying.safeApprove(strategy, type(uint256).max);
 		IERC20(yieldToken).safeApprove(address(farm), type(uint256).max);
 		IERC20(yieldToken).safeApprove(strategy, type(uint256).max);
-		sendERC20ToStrategy = false;
 		_nTokens = ISynapseSwap(strategy).calculateRemoveLiquidity(1).length;
 	}
+
+	// Falce by default
+	// function sendERC20ToStrategy() public pure override returns (bool) {
+	// 	return false;
+	// }
 
 	function _stratValidate() internal view override {
 		if (underlying != ISynapseSwap(strategy).getToken(uint8(strategyId)))

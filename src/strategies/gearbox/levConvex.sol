@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICreditFacade, ICreditManagerV2, MultiCall } from "interfaces/gearbox/ICreditFacade.sol";
+import { ICreditFacade, ICreditManagerV2, MultiCall } from "../../interfaces/gearbox/ICreditFacade.sol";
 import { IPriceOracleV2 } from "../../interfaces/gearbox/IPriceOracleV2.sol";
 import { StratAuth } from "../../common/StratAuth.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
@@ -15,6 +15,9 @@ import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
 import { ICurveV1Adapter } from "../../interfaces/gearbox/adapters/ICurveV1Adapter.sol";
 import { IBaseRewardPool } from "../../interfaces/gearbox/adapters/IBaseRewardPool.sol";
 import { IBooster } from "../../interfaces/gearbox/adapters/IBooster.sol";
+import { EAction, HarvestSwapParams } from "../../interfaces/Structs.sol";
+import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
+import { BytesLib } from "../../libraries/BytesLib.sol";
 
 import "hardhat/console.sol";
 
@@ -26,6 +29,7 @@ struct LevConvexConfig {
 	address underlying;
 	uint16 leverageFactor;
 	address convexBooster;
+	address farmRouter;
 }
 
 contract levConvex is StratAuth {
@@ -33,20 +37,22 @@ contract levConvex is StratAuth {
 
 	// USDC
 	ICreditFacade public creditFacade;
-	//  = ICreditFacade(0x61fbb350e39cc7bF22C01A469cf03085774184aa);
 
-	ICreditManagerV2 public creditManager; // = ICreditManagerV2(creditFacade.creditManager());
+	ICreditManagerV2 public creditManager;
 
 	IPriceOracleV2 public priceOracle = IPriceOracleV2(0x6385892aCB085eaa24b745a712C9e682d80FF681);
+
+	ISwapRouter public uniswapV3Adapter;
 
 	ICurveV1Adapter public curveAdapter;
 	IBaseRewardPool public convexRewardPool;
 	IBooster public convexBooster;
+	ISwapRouter public farmRouter;
 
+	IERC20 public farmToken;
 	IERC20 public immutable underlying;
 
 	uint16 convexPid;
-	bool hasOpenAccount;
 	// leverage factor is how much we borrow in %
 	// ex 2x leverage = 100, 3x leverage = 200
 	uint16 public leverageFactor;
@@ -68,7 +74,9 @@ contract levConvex is StratAuth {
 		convexBooster = IBooster(config.convexBooster);
 		convexPid = uint16(convexRewardPool.pid());
 		coinId = config.coinId;
-
+		farmToken = IERC20(convexRewardPool.rewardToken());
+		farmRouter = ISwapRouter(config.farmRouter);
+		uniswapV3Adapter = ISwapRouter(creditManager.contractToAdapter(address(farmRouter)));
 		// do we need granular approvals? or can we just approve once?
 		// i.e. what happens after credit account is dilivered to someone else?
 		underlying.approve(address(creditManager), type(uint256).max);
@@ -83,17 +91,21 @@ contract levConvex is StratAuth {
 	/// @notice deposits underlying into the strategy
 	/// @param amount amount of underlying to deposit
 	function deposit(uint256 amount) public onlyVault returns (uint256) {
+		// TODO maxTvl check?
 		uint256 startBalance = collateralBalance();
-		if (!hasOpenAccount) _openAccount(amount);
+		if (credAcc == address(0)) _openAccount(amount);
 		else {
 			// we must scale position proportionally in order to maintain proper SCYVault accounting
-			uint256 correntLeverageFactor = getLeverage() - 100;
-			uint256 borrowAmnt = (amount * correntLeverageFactor) / 100;
+			uint256 correntLeverageFactor = getLeverage();
+			uint256 borrowAmnt = (amount * (correntLeverageFactor - 100)) / 100;
+			// uint256 borrowAmnt = (amount * (leverageFactor)) / 100;
 			creditFacade.addCollateral(address(this), address(underlying), amount);
 			_increasePosition(borrowAmnt, borrowAmnt + amount);
 		}
+		emit Deposit(msg.sender, amount);
 		// our balance should allays increase on deposits
-		return collateralBalance() - startBalance;
+		// adjust the collateralBalance by leverage amount
+		return (collateralBalance() - startBalance);
 	}
 
 	/// @notice deposits underlying into the strategy
@@ -110,15 +122,84 @@ contract levConvex is StratAuth {
 		uint256 minUnderlying = minBorrowed / leverageFactor;
 		uint256 redeposit = uBalance > withdraw ? uBalance - withdraw : 0;
 
-		// TODO handle how to deal with leftover underlying
-		// return to SCY vault, but allow deposits?
-		if (redeposit > minUnderlying) {
-			console.log("re open", redeposit);
-			_openAccount(uBalance - withdraw);
-		}
+		if (redeposit > minUnderlying) _openAccount(uBalance - withdraw);
+		else credAcc = address(0);
+
 		underlying.safeTransfer(to, withdraw);
+
+		emit Redeem(msg.sender, amount);
 		return withdraw;
 	}
+
+	function adjustLeverage(uint16 newLeverageFactor) public onlyRole(MANAGER) {
+		if (credAcc == address(0)) {
+			leverageFactor = newLeverageFactor - 100;
+			emit AdjustLeverage(newLeverageFactor);
+			return;
+		}
+
+		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
+		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
+
+		// if (totalOwed > totalAssets) return 0;
+		uint256 currentLeverageFactor = ((100 * totalAssets) / (totalAssets - totalOwed));
+
+		if (currentLeverageFactor > newLeverageFactor) {
+			uint256 lp = convexRewardPool.balanceOf(credAcc);
+			uint256 repay = (lp * (currentLeverageFactor - newLeverageFactor)) /
+				currentLeverageFactor;
+			_decreasePosition(repay);
+			// uint256 balance = underlying.balanceOf(credAcc);
+			// creditFacade.decreaseDebt(balance);
+		} else if (currentLeverageFactor < newLeverageFactor) {
+			// we need to increase leverage
+			// we need to borrow more
+			uint256 borrowAmnt = (getAndUpdateTVL() * (newLeverageFactor - currentLeverageFactor)) /
+				100;
+			_increasePosition(borrowAmnt, borrowAmnt);
+		}
+		/// leverageFactor used for opening & closing accounts
+		leverageFactor = uint16(getLeverage()) - 100;
+		emit AdjustLeverage(newLeverageFactor);
+	}
+
+	function harvest(HarvestSwapParams[] memory swapParams)
+		public
+		onlyVault
+		returns (uint256[] memory amountsOut)
+	{
+		convexRewardPool.getReward();
+		amountsOut = new uint256[](swapParams.length);
+		for (uint256 i; i < swapParams.length; ++i) {
+			IERC20 token = IERC20(BytesLib.toAddress(swapParams[i].pathData, 0));
+			uint256 harvested = token.balanceOf(credAcc);
+			if (harvested == 0) continue;
+			ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
+				path: swapParams[i].pathData,
+				recipient: address(this),
+				deadline: block.timestamp,
+				amountIn: harvested,
+				amountOutMinimum: swapParams[i].min
+			});
+			amountsOut[i] = uniswapV3Adapter.exactInput(params);
+			emit HarvestedToken(address(farmToken), harvested, amountsOut[i]);
+		}
+
+		uint256 balance = underlying.balanceOf(credAcc);
+		uint256 correntLeverageFactor = getLeverage() - 100;
+		uint256 borrowAmnt = (balance * correntLeverageFactor) / 100;
+		_increasePosition(borrowAmnt, borrowAmnt + balance);
+	}
+
+	function closePosition() public onlyVault returns (uint256) {
+		_closePosition();
+		credAcc = address(0);
+		uint256 balance = underlying.balanceOf(address(this));
+		underlying.safeTransfer(vault, balance);
+		return balance;
+	}
+
+	//// INTERNAL METHODS
 
 	function _increasePosition(uint256 borrowAmnt, uint256 totalAmount) internal {
 		MultiCall[] memory calls = new MultiCall[](3);
@@ -172,13 +253,6 @@ contract levConvex is StratAuth {
 		creditFacade.multicall(calls);
 	}
 
-	function closePosition() public onlyVault returns (uint256) {
-		_closePosition();
-		uint256 balance = underlying.balanceOf(address(this));
-		underlying.safeTransfer(vault, balance);
-		return balance;
-	}
-
 	function _closePosition() internal {
 		MultiCall[] memory calls;
 		calls = new MultiCall[](2);
@@ -230,32 +304,9 @@ contract levConvex is StratAuth {
 
 		creditFacade.openCreditAccountMulticall(borrowAmnt, address(this), calls, 0);
 		credAcc = creditManager.getCreditAccountOrRevert(address(this));
-		hasOpenAccount = true;
 	}
 
-	function adjustLeverage(uint16 newLeverageFactor) public onlyRole(MANAGER) {
-		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
-		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
-		// if (totalOwed > totalAssets) return 0;
-		uint256 currentLeverageFactor = ((100 * totalAssets) / (totalAssets - totalOwed));
-
-		if (currentLeverageFactor > newLeverageFactor) {
-			uint256 lp = convexRewardPool.balanceOf(credAcc);
-			uint256 repay = (lp * (currentLeverageFactor - newLeverageFactor)) /
-				currentLeverageFactor;
-			_decreasePosition(repay);
-			// uint256 balance = underlying.balanceOf(credAcc);
-			// creditFacade.decreaseDebt(balance);
-		} else if (currentLeverageFactor < newLeverageFactor) {
-			// we need to increase leverage
-			// we need to borrow more
-			uint256 borrowAmnt = (getAndUpdateTVL() * (newLeverageFactor - currentLeverageFactor)) /
-				100;
-			_increasePosition(borrowAmnt, borrowAmnt);
-		}
-		/// leverageFactor used for opening & closing accounts
-		leverageFactor = uint16(getLeverage()) - 100;
-	}
+	/// VIEW METHODS
 
 	function loanHealth() public view returns (uint256) {
 		// console.log("lt", creditManager.liquidationThresholds(address(curveAdapter.lp_token())));
@@ -276,9 +327,7 @@ contract levConvex is StratAuth {
 
 	function collateralToUnderlying() public view returns (uint256) {
 		uint256 amountOut = curveAdapter.calc_withdraw_one_coin(1e18, int128(uint128(coinId)));
-		// uint256 virutalPrice = curveAdapter.get_virtual_price();
-		// console.log(amountOut, virutalPrice);
-		return amountOut;
+		return (100 * amountOut) / (leverageFactor + 100);
 	}
 
 	function collateralBalance() public view returns (uint256) {
@@ -287,10 +336,7 @@ contract levConvex is StratAuth {
 	}
 
 	function getTotalTVL() public view returns (uint256) {
-		if (!hasOpenAccount) return 0;
-		// (uint256 total, ) = creditFacade.calcTotalValue(credAcc);
-		// return total;
-
+		if (credAcc == address(0)) return 0;
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
 		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
 		if (totalOwed > totalAssets) return 0;
@@ -300,6 +346,11 @@ contract levConvex is StratAuth {
 	function getAndUpdateTVL() public view returns (uint256) {
 		return getTotalTVL();
 	}
+
+	event AdjustLeverage(uint256 newLeverage);
+	event HarvestedToken(address token, uint256 amount, uint256 amountUnderlying);
+	event Deposit(address sender, uint256 amount);
+	event Redeem(address sender, uint256 amount);
 
 	error WrongVaultUnderlying();
 }

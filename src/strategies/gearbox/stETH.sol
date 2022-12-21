@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICreditFacade, ICreditManagerV2, MultiCall } from "interfaces/gearbox/ICreditFacade.sol";
+import { ICreditFacade, ICreditManagerV2, MultiCall } from "../../interfaces/gearbox/ICreditFacade.sol";
 import { IPriceOracleV2 } from "../../interfaces/gearbox/IPriceOracleV2.sol";
 import { IAddressProvider } from "../../interfaces/gearbox/IAddressProvider.sol";
 import { StratAuth } from "../../common/StratAuth.sol";

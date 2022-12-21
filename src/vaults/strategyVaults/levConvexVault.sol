@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import { SCYStrategy, Strategy } from "../ERC5115/SCYStrategy.sol";
 import { levConvex } from "../../strategies/gearbox/levConvex.sol";
-import { SCYWEpochVault, IERC20 } from "../ERC5115/SCYWEpochVault.sol";
+import { SCYWEpochVault, IERC20, SafeERC20 } from "../ERC5115/SCYWEpochVault.sol";
 import { AuthConfig, Auth } from "../../common/Auth.sol";
 import { FeeConfig, Fees } from "../../common/Fees.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";
@@ -11,6 +11,8 @@ import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 // import "hardhat/console.sol";
 
 contract levConvexVault is SCYStrategy, SCYWEpochVault {
+	using SafeERC20 for IERC20;
+
 	constructor(
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig,
@@ -25,6 +27,7 @@ contract levConvexVault is SCYStrategy, SCYWEpochVault {
 	}
 
 	function _stratDeposit(uint256 amount) internal override returns (uint256) {
+		underlying.safeTransfer(strategy, amount);
 		return levConvex(strategy).deposit(amount);
 	}
 
@@ -64,7 +67,8 @@ contract levConvexVault is SCYStrategy, SCYWEpochVault {
 		override
 		returns (uint256[] memory harvested, uint256[] memory)
 	{
-		return (new uint256[](0), new uint256[](0));
+		harvested = levConvex(strategy).harvest(params);
+		return (harvested, new uint256[](0));
 	}
 
 	function _selfBalance(address token) internal view virtual override returns (uint256) {

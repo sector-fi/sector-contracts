@@ -12,7 +12,7 @@ import { HarvestSwapParams } from "interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
-contract SCYVaultSetup is SectorTest {
+contract SCYVaultUtils is SectorTest {
 	address NATIVE = address(0); // SCY vault constant;
 	uint256 DEFAULT_PERFORMANCE_FEE = .1e18;
 	uint256 DEAFAULT_MANAGEMENT_FEE = 0;

@@ -17,6 +17,10 @@ contract IMXVault is SCYStrategy, SCYVault {
 		Strategy memory _strategy
 	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) {}
 
+	function sendERC20ToStrategy() public pure override returns (bool) {
+		return true;
+	}
+
 	function _stratValidate() internal view override {
 		if (
 			address(underlying) != address(IMX(strategy).underlying()) ||

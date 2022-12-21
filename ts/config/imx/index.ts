@@ -1,8 +1,7 @@
-import fs from 'fs/promises';
 import { ethers, getNamedAccounts, network } from 'hardhat';
-import { IIMXFactory, IVaultToken } from '../../typechain';
-import { imx } from './imxConfigs';
-import { chainTOEnv } from './utils';
+import { IIMXFactory, IVaultToken } from '../../../typechain';
+import { imx } from './config';
+import { chainToEnv, addStratToConfig } from '../utils';
 
 const main = async () => {
   imx.filter((s) => s.chain === network.name).forEach(addIMXStrategy);
@@ -15,6 +14,7 @@ const addIMXStrategy = async (strategy) => {
     strategy.factory,
     deployer
   );
+
   const { collateral } = await factory.getLendingPool(strategy.pair);
   if (collateral === ethers.constants.AddressZero)
     throw new Error('BAD Factory');
@@ -47,23 +47,9 @@ const addIMXStrategy = async (strategy) => {
     e_farmToken: rewardToken,
     f_farmRouter: strategy.farmRouter,
     h_harvestPath: [rewardToken, ...strategy.harvestPath],
-    x_chain: chainTOEnv[strategy.chain],
+    x_chain: chainToEnv[strategy.chain],
   };
-  await addToConfig(strategy.name, config, strategy);
-};
-
-const addToConfig = async (key: string, data, stratConfig) => {
-  const filePath = './ts/config/strategies.json';
-  const jsonString: any = await fs.readFile(filePath, {
-    encoding: 'utf8',
-  });
-  const config = JSON.parse(jsonString);
-  config[key] = data;
-  const typeKey = stratConfig.type + 'Strats';
-  config[typeKey] = [...new Set([...config[typeKey], key])];
-  await fs.writeFile(filePath, JSON.stringify(config, null, 2), {
-    encoding: 'utf8',
-  });
+  await addStratToConfig(strategy.name, config, strategy);
 };
 
 main().catch((error) => {

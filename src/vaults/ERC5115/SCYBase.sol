@@ -23,8 +23,6 @@ abstract contract SCYBase is
 	address internal constant NATIVE = address(0);
 	uint256 internal constant ONE = 1e18;
 	uint256 public constant MIN_LIQUIDITY = 1e3;
-	// override if false
-	bool public sendERC20ToStrategy = true;
 
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
@@ -162,6 +160,10 @@ abstract contract SCYBase is
 	// OVERRIDES
 	function totalSupply() public view virtual override(ERC20, IERC20) returns (uint256) {
 		return ERC20.totalSupply();
+	}
+
+	function sendERC20ToStrategy() public view virtual returns (bool) {
+		return false;
 	}
 
 	error CantPullEth();

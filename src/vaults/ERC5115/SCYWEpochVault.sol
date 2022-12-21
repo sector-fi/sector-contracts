@@ -13,6 +13,7 @@ import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction, HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { VaultType } from "../../interfaces/Structs.sol";
 import { BatchedWithdrawEpoch } from "../ERC4626/BatchedWithdrawEpoch.sol";
+import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
 
@@ -63,6 +64,12 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		maxTvl = _strategy.maxTvl;
 
 		lastHarvestTimestamp = block.timestamp;
+		if (sendERC20ToStrategy() == true) revert DontSendERCToStrat();
+	}
+
+	// we should never send tokens directly to strategy for Epoch-based vaults
+	function sendERC20ToStrategy() public pure override returns (bool) {
+		return false;
 	}
 
 	/*///////////////////////////////////////////////////////////////
@@ -95,7 +102,6 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 
 	function _depositNative() internal override {
 		IWETH(address(underlying)).deposit{ value: msg.value }();
-		if (sendERC20ToStrategy) IERC20(underlying).safeTransfer(strategy, msg.value);
 	}
 
 	function _deposit(
@@ -103,26 +109,40 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		address token,
 		uint256 amount
 	) internal override isInitialized returns (uint256 sharesOut) {
+		if (vaultTvl + amount > getMaxTvl()) revert MaxTvlReached();
+
 		// if we have any float in the contract we cannot do deposit accounting
-		if (uBalance > 0) revert DepositsPaused();
+		uint256 _totalAssets = totalAssets();
+		if (uBalance > 0 && _totalAssets > 0) revert DepositsPaused();
+
 		// TODO should we handle this logic inside _stratDeposit?
 		// this may be useful when a given strategy only accepts NATIVE tokens
 		if (token == NATIVE) _depositNative();
-		uint256 yieldTokenAdded = _stratDeposit(amount);
 
-		// don't include newly minted shares and pendingRedeem in the calculation
-		sharesOut = toSharesAfterDeposit(yieldTokenAdded);
+		// if the strategy is active, we can deposit dirictly into strategy
+		// if not, we deposit into the vault for a future strategy deposit
+		if (_totalAssets > 0) {
+			uint256 yieldTokenAdded = _stratDeposit(amount);
+			// don't include newly minted shares and pendingRedeem in the calculation
+			sharesOut = toSharesAfterDeposit(yieldTokenAdded);
+		} else {
+			sharesOut = underlyingToShares(amount);
+			uBalance += amount;
+		}
+
 		vaultTvl += amount;
 	}
 
 	function _redeem(
 		address,
-		address,
+		address token,
 		uint256
 	) internal override returns (uint256 amountTokenOut, uint256 amountToTransfer) {
 		uint256 sharesToRedeem;
 		(amountTokenOut, sharesToRedeem) = _redeem(msg.sender);
 		_burn(address(this), sharesToRedeem);
+
+		if (token == NATIVE) IWETH(address(underlying)).withdraw(amountTokenOut);
 		return (amountTokenOut, amountTokenOut);
 	}
 
@@ -192,10 +212,8 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		uint256 _vaultTvl = vaultTvl;
 		vaultTvl = _vaultTvl > amountTokenOut ? _vaultTvl - amountTokenOut : 0;
 
-		if (amountTokenOut < minAmountOut) revert SlippageExceeded();
+		if (amountTokenOut < minAmountOut) revert InsufficientOut(amountTokenOut, minAmountOut);
 
-		// we add amountTokenOut and subtract amountTokenOut from Ubalance, which cancels out
-		uBalance -= shareOfReserves;
 		_processRedeem(sharesToUnderlying(1e18));
 	}
 
@@ -217,7 +235,6 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 	{
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
 		uBalance -= underlyingAmount;
-		if (sendERC20ToStrategy) underlying.safeTransfer(strategy, underlyingAmount);
 		uint256 yAdded = _stratDeposit(underlyingAmount);
 		uint256 virtualSharesOut = toSharesAfterDeposit(yAdded);
 		if (virtualSharesOut < minAmountOut) revert SlippageExceeded();
@@ -345,11 +362,7 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		override
 		returns (uint256 fltAmnt)
 	{
-		if (token == address(underlying))
-			return
-				sendERC20ToStrategy
-					? underlying.balanceOf(strategy)
-					: underlying.balanceOf(address(this)) - uBalance;
+		if (token == address(underlying)) return underlying.balanceOf(address(this)) - uBalance;
 		if (token == NATIVE) return address(this).balance;
 	}
 
@@ -392,7 +405,7 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		address from,
 		uint256 amount
 	) internal virtual override {
-		address to = sendERC20ToStrategy ? strategy : address(this);
+		address to = address(this);
 		IERC20(token).safeTransferFrom(from, to, amount);
 	}
 
@@ -440,4 +453,5 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 	error NotEnoughUnderlying();
 	error SlippageExceeded();
 	error BadStaticCall();
+	error DontSendERCToStrat();
 }

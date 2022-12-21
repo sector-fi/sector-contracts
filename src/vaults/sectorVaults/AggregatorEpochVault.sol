@@ -173,6 +173,38 @@ contract AggregatorEpochVault is SectorBaseEpoch {
 		}
 	}
 
+	/// @dev this method allows direct redemption of shares in exchange for
+	/// a portion of the float amount + a portion of all the strategy shares the vault holds
+	function emergencyRedeem() public nonReentrant {
+		uint256 _totalSupply = totalSupply();
+		uint256 shares = balanceOf(msg.sender);
+		if (shares == 0) return;
+
+		// redeem proportional share of vault's underlying float balance
+		// (minus pendingWithdraw)
+		uint256 pendingWithdraw = convertToAssets(pendingRedeem);
+
+		if (floatAmnt > pendingWithdraw) {
+			uint256 availableFloat = floatAmnt - pendingWithdraw;
+			uint256 underlyingShare = (availableFloat * shares) / (_totalSupply - pendingRedeem);
+			beforeWithdraw(underlyingShare, 0);
+			asset.safeTransfer(msg.sender, underlyingShare);
+		}
+
+		uint256 l = strategyIndex.length;
+
+		// redeem proportional share of each strategy
+		for (uint256 i; i < l; ++i) {
+			ERC20 stratToken = ERC20(strategyIndex[i]);
+			uint256 balance = stratToken.balanceOf(address(this));
+			uint256 userShares = (shares * balance) / _totalSupply;
+			if (userShares == 0) continue;
+			stratToken.safeTransfer(msg.sender, userShares);
+		}
+
+		_burn(msg.sender, shares);
+	}
+
 	/// gets accurate strategy holdings denominated in asset
 	function _getStrategyHoldings() internal returns (uint256 tvl) {
 		uint256 l = strategyIndex.length;

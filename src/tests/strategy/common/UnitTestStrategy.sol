@@ -7,6 +7,7 @@ import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
 import { SCYStratUtils } from "./SCYStratUtils.sol";
 import { HarvestSwapParams } from "interfaces/Structs.sol";
+import { SectorErrors } from "interfaces/SectorErrors.sol";
 
 import "hardhat/console.sol";
 
@@ -235,7 +236,7 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 
 	function testDepositOverMaxTvl() public {
 		uint256 amount = strat.getMaxDeposit() + 1;
-		depositRevert(self, amount, "STRAT: OVER_MAX_TVL");
+		depositRevert(self, amount, SectorErrors.MaxTvlReached.selector);
 	}
 
 	function testClosePosition() public {

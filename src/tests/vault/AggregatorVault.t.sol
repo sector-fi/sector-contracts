@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
-import { SCYVaultSetup } from "./SCYVaultSetup.sol";
+import { SCYVaultUtils } from "./SCYVaultUtils.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { ERC4626, SectorBase, AggregatorVault, BatchedWithdraw, RedeemParams, DepositParams, IVaultStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
@@ -13,7 +13,7 @@ import { Accounting } from "../../common/Accounting.sol";
 
 import "hardhat/console.sol";
 
-contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
+contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 	IVaultStrategy strategy1;
 	IVaultStrategy strategy2;
 	IVaultStrategy strategy3;

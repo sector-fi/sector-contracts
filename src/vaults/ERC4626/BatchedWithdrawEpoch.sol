@@ -8,7 +8,7 @@ import { SafeETH } from "../../libraries/SafeETH.sol";
 import { Accounting } from "../../common/Accounting.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 struct WithdrawRecord {
 	uint256 epoch;
@@ -110,6 +110,10 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
 
 	function getWithdrawStatus(address user) external view returns (WithdrawRecord memory) {
 		return withdrawLedger[user];
+	}
+
+	function getRequestedShares(address user) external view returns (uint256) {
+		return withdrawLedger[user].shares;
 	}
 
 	error RedeemRequestExists();

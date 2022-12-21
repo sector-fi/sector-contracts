@@ -1,8 +1,7 @@
-import fs from 'fs/promises';
 import { ethers, getNamedAccounts, network } from 'hardhat';
-import { ISynapseSwap, ISynapseMiniChef2 } from '../../typechain';
+import { ISynapseSwap, ISynapseMiniChef2 } from '../../../typechain';
 import { strategies } from './synapseConfigs';
-import { getUniswapV3Path } from './utils';
+import { getUniswapV3Path, addStratToConfig } from '../utils';
 
 const main = async () => {
   strategies.filter((s) => s.chain == network.name).forEach(addStrategy);
@@ -53,22 +52,7 @@ const addStrategy = async (strategy) => {
     h_harvestPath: path,
     x_chain: 'ARBITRUM',
   };
-  await addToConfig(strategy.name, config, strategy);
-};
-
-const addToConfig = async (key: string, data, stratConfig) => {
-  const filePath = './ts/config/strategies.json';
-  const jsonString: any = await fs.readFile(filePath, {
-    encoding: 'utf8',
-  });
-  const config = JSON.parse(jsonString);
-  config[key] = data;
-  const typeKey = stratConfig.type + 'Strats';
-  const stratArray = config[typeKey] || [];
-  config[typeKey] = [...new Set([...stratArray, key])];
-  await fs.writeFile(filePath, JSON.stringify(config, null, 2), {
-    encoding: 'utf8',
-  });
+  await addStratToConfig(strategy.name, config, strategy);
 };
 
 main().catch((error) => {
