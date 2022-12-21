@@ -157,11 +157,10 @@ contract levConvexSetup is SCYStratUtils {
 		uint256 newTvl = strategy.getTotalTVL();
 
 		assert(harvestAmnts.length == l);
-		for (uint256 i; i < l; ++i) {
-			assertGt(harvestAmnts[i], 0);
-		}
-
+		for (uint256 i; i < l; ++i) assertGt(harvestAmnts[i], 0);
 		assertGt(newTvl, tvl);
+
+		assertEq(underlying.balanceOf(strategy.credAcc()), 0);
 	}
 
 	function rebalance() public override {}
