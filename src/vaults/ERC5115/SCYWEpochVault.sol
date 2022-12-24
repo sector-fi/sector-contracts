@@ -11,8 +11,8 @@ import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction, HarvestSwapParams } from "../../interfaces/Structs.sol";
-import { VaultType } from "../../interfaces/Structs.sol";
-import { BatchedWithdrawEpoch } from "../ERC4626/BatchedWithdrawEpoch.sol";
+import { VaultType, EpochType } from "../../interfaces/Structs.sol";
+import { BatchedWithdrawEpoch } from "../../common/BatchedWithdrawEpoch.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
@@ -22,6 +22,8 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 	using FixedPointMathLib for uint256;
 
 	VaultType public constant vaultType = VaultType.Strategy;
+	// inherits epochType from BatchedWithdrawEpoch
+	// EpochType public constant epochType = EpochType.Withdraw;
 
 	event Harvest(
 		address indexed treasury,
@@ -190,10 +192,17 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 	}
 
 	// minAmountOut is a slippage parameter for withdrawing requestedRedeem shares
-	function processRedeem(uint256 minAmountOut) public onlyRole(MANAGER) {
+	function processRedeem(uint256 minAmountOut) public override onlyRole(MANAGER) {
 		uint256 _totalSupply = totalSupply();
 
 		uint256 yeildTokenRedeem = convertToAssets(requestedRedeem);
+
+		// account for any extra underlying balance to avoide DOS attacks
+		uint256 balance = underlying.balanceOf(address(this));
+		if (balance > (pendingWithdrawU + uBalance)) {
+			uint256 extraFloat = balance - (pendingWithdrawU + uBalance);
+			uBalance += extraFloat;
+		}
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
 		// TODO why not use underlying.balanceOf?

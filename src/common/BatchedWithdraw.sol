@@ -3,10 +3,11 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ERC4626, IWETH } from "./ERC4626.sol";
-import { SafeETH } from "../../libraries/SafeETH.sol";
-import { Accounting } from "../../common/Accounting.sol";
-import { SectorErrors } from "../../interfaces/SectorErrors.sol";
+import { IWETH } from "../interfaces/uniswap/IWETH.sol";
+import { SafeETH } from "../libraries/SafeETH.sol";
+import { Accounting } from "./Accounting.sol";
+import { SectorErrors } from "../interfaces/SectorErrors.sol";
+import { EpochType } from "../interfaces/Structs.sol";
 
 // import "hardhat/console.sol";
 
@@ -24,11 +25,9 @@ abstract contract BatchedWithdraw is ERC20, Accounting, SectorErrors {
 	uint256 public lastHarvestTimestamp;
 	uint256 public pendingRedeem;
 
-	mapping(address => WithdrawRecord) public withdrawLedger;
+	EpochType public constant epochType = EpochType.None;
 
-	constructor() {
-		lastHarvestTimestamp = block.timestamp;
-	}
+	mapping(address => WithdrawRecord) public withdrawLedger;
 
 	function requestRedeem(uint256 shares) public {
 		return requestRedeem(shares, msg.sender);

@@ -4,9 +4,8 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
 import { IVaultStrategy } from "../../interfaces/IVaultStrategy.sol";
-import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
-import { SectorBaseEpoch } from "../ERC4626/SectorBaseEpoch.sol";
-import { VaultType } from "../../interfaces/Structs.sol";
+import { SectorBaseWEpoch } from "../ERC4626/SectorBaseEpoch.sol";
+import { VaultType, EpochType } from "../../interfaces/Structs.sol";
 
 // import "hardhat/console.sol";
 // TODO native asset deposit + flow
@@ -26,7 +25,7 @@ struct DepositParams {
 }
 
 // Sector Aggregator Vault
-contract AggregatorEpochVault is SectorBaseEpoch {
+contract AggregatorWEpochVault is SectorBaseWEpoch {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
 
@@ -54,7 +53,7 @@ contract AggregatorEpochVault is SectorBaseEpoch {
 		ERC4626(asset_, _name, _symbol, _useNativeAsset)
 		Auth(authConfig)
 		Fees(feeConfig)
-		SectorBaseEpoch()
+		SectorBaseWEpoch()
 	{
 		maxTvl = _maxTvl;
 		emit MaxTvlUpdated(_maxTvl);
@@ -136,7 +135,7 @@ contract AggregatorEpochVault is SectorBaseEpoch {
 	function requestRedeemFromStrategies(RedeemParams[] calldata params) public onlyRole(MANAGER) {
 		uint256 l = params.length;
 		for (uint256 i; i < l; ++i) {
-			if (params[i].vaultType != VaultType.Aggregator) continue;
+			// appropriate vault check should happen on front end
 			params[i].strategy.requestRedeem(params[i].shares);
 		}
 	}

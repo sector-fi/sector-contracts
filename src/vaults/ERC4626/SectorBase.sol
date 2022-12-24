@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20, IWETH, Accounting } from "./ERC4626.sol";
-import { BatchedWithdraw } from "./BatchedWithdraw.sol";
+import { BatchedWithdraw } from "../../common/BatchedWithdraw.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction } from "../../interfaces/Structs.sol";
 import { VaultType } from "../../interfaces/Structs.sol";
@@ -20,6 +20,10 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 	uint256 public totalChildHoldings;
 	uint256 public floatAmnt; // amount of underlying tracked in vault
 	uint256 public maxHarvestInterval; // emergency redeem is enabled after this time
+
+	constructor() {
+		lastHarvestTimestamp = block.timestamp;
+	}
 
 	function setMaxHarvestInterval(uint256 maxHarvestInterval_) public onlyOwner {
 		maxHarvestInterval = maxHarvestInterval_;

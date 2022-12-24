@@ -12,6 +12,12 @@ enum VaultType {
 	Aggregator
 }
 
+enum EpochType {
+	None,
+	Withdraw,
+	Full
+}
+
 enum NativeToken {
 	None,
 	Underlying,

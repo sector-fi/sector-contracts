@@ -3,12 +3,13 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ERC4626, IWETH } from "./ERC4626.sol";
-import { SafeETH } from "../../libraries/SafeETH.sol";
-import { Accounting } from "../../common/Accounting.sol";
-import { SectorErrors } from "../../interfaces/SectorErrors.sol";
+import { IWETH } from "../interfaces/uniswap/IWETH.sol";
+import { SafeETH } from "../libraries/SafeETH.sol";
+import { Accounting } from "./Accounting.sol";
+import { SectorErrors } from "../interfaces/SectorErrors.sol";
+import { EpochType } from "../interfaces/Structs.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 struct WithdrawRecord {
 	uint256 epoch;
@@ -21,8 +22,11 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
 
 	uint256 public epoch;
-	uint256 public pendingRedeem;
-	uint256 public requestedRedeem;
+	uint256 public pendingRedeem; // pending shares
+	uint256 public requestedRedeem; // requested shares
+	uint256 public pendingWithdrawU; // pending underlying
+
+	EpochType public constant epochType = EpochType.Withdraw;
 
 	mapping(address => WithdrawRecord) public withdrawLedger;
 	mapping(uint256 => uint256) public epochExchangeRate;
@@ -61,6 +65,7 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
 		WithdrawRecord storage withdrawRecord = withdrawLedger[account];
 
 		if (withdrawRecord.shares == 0) revert ZeroAmount();
+
 		/// withdrawRecord.epoch can never be greater than current epoch
 		if (withdrawRecord.epoch == epoch) revert NotReady();
 
@@ -71,18 +76,24 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
 
 		// update total pending redeem
 		pendingRedeem -= shares;
+		pendingWithdrawU -= amountOut;
 
 		// important pendingRedeem should update prior to beforeWithdraw call
 		withdrawRecord.shares = 0;
 	}
+
+	function processRedeem(uint256 slippageParam) public virtual;
 
 	/// @notice this methods updates lastEpochTimestamp and alows all pending withdrawals to be completed
 	/// @dev ensure that we we have enought funds to process withdrawals
 	/// before calling this method
 	function _processRedeem(uint256 sharesToUnderlying) internal {
 		// store current epoch exchange rate
+
 		epochExchangeRate[epoch] = sharesToUnderlying;
+
 		pendingRedeem = requestedRedeem;
+		pendingWithdrawU += (sharesToUnderlying * requestedRedeem) / 1e18;
 		requestedRedeem = 0;
 		// advance epoch
 		++epoch;
@@ -97,7 +108,7 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
 
 		// update accounting
 		withdrawRecord.shares = 0;
-		pendingRedeem -= shares;
+		requestedRedeem -= shares;
 
 		_transfer(address(this), msg.sender, shares);
 	}

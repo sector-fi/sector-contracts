@@ -3,16 +3,16 @@ pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20, IWETH, Accounting } from "./ERC4626.sol";
-import { BatchedWithdrawEpoch } from "./BatchedWithdrawEpoch.sol";
+import { BatchedWithdrawEpoch } from "../../common/BatchedWithdrawEpoch.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction } from "../../interfaces/Structs.sol";
 import { VaultType } from "../../interfaces/Structs.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { ERC4626 } from "./ERC4626.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
-abstract contract SectorBaseEpoch is BatchedWithdrawEpoch, ERC4626 {
+abstract contract SectorBaseWEpoch is BatchedWithdrawEpoch, ERC4626 {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
 
@@ -76,11 +76,11 @@ abstract contract SectorBaseEpoch is BatchedWithdrawEpoch, ERC4626 {
 		asset.safeTransfer(receiver, amountOut);
 	}
 
-	function processRedeem() public onlyRole(MANAGER) {
+	/// @dev slippage parameter to make interface consistent with SCYVault
+	function processRedeem(uint256) public override onlyRole(MANAGER) {
 		// ensure we have the funds to cover withdrawals
 		uint256 pendingWithdraw = convertToAssets(requestedRedeem);
 		if (floatAmnt < pendingWithdraw) revert NotEnoughtFloat();
-		floatAmnt - pendingWithdraw;
 		_processRedeem(convertToAssets(1e18));
 	}
 
@@ -177,7 +177,7 @@ abstract contract SectorBaseEpoch is BatchedWithdrawEpoch, ERC4626 {
 	}
 
 	function beforeWithdraw(uint256 assets, uint256) internal override {
-		if (floatAmnt < assets) revert NotEnoughtFloat();
+		if (floatAmnt < assets + pendingWithdrawU) revert NotEnoughtFloat();
 		floatAmnt -= assets;
 	}
 
