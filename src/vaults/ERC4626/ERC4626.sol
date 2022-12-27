@@ -16,7 +16,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20, ReentrancyGuard {
+abstract contract ERC4626 is ERC20, Auth, Accounting, Fees, IERC4626, ReentrancyGuard {
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 
@@ -48,7 +48,7 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20, Reentrancy
 
 	receive() external payable {}
 
-	function decimals() public view override returns (uint8) {
+	function decimals() public view virtual override returns (uint8) {
 		return asset.decimals();
 	}
 
@@ -192,11 +192,6 @@ abstract contract ERC4626 is Auth, Accounting, Fees, IERC4626, ERC20, Reentrancy
 	function beforeWithdraw(uint256 assets, uint256 shares) internal virtual {}
 
 	function afterDeposit(uint256 assets, uint256 shares) internal virtual {}
-
-	// OVERRIDES
-	function totalSupply() public view override(Accounting, ERC20) returns (uint256) {
-		return ERC20.totalSupply();
-	}
 
 	event MaxTvlUpdated(uint256 maxTvl);
 

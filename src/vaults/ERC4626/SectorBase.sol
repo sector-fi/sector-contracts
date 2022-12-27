@@ -2,15 +2,16 @@
 pragma solidity 0.8.16;
 
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC4626, FixedPointMathLib, SafeERC20 } from "./ERC4626.sol";
-import { BatchedWithdraw } from "./BatchedWithdraw.sol";
+import { ERC4626, FixedPointMathLib, SafeERC20, IWETH, Accounting } from "./ERC4626.sol";
+import { BatchedWithdraw } from "../../common/BatchedWithdraw.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction } from "../../interfaces/Structs.sol";
 import { VaultType } from "../../interfaces/Structs.sol";
+import { SafeETH } from "../../libraries/SafeETH.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SectorBase is BatchedWithdraw {
+abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
 
@@ -20,9 +21,61 @@ abstract contract SectorBase is BatchedWithdraw {
 	uint256 public floatAmnt; // amount of underlying tracked in vault
 	uint256 public maxHarvestInterval; // emergency redeem is enabled after this time
 
+	constructor() {
+		lastHarvestTimestamp = block.timestamp;
+	}
+
 	function setMaxHarvestInterval(uint256 maxHarvestInterval_) public onlyOwner {
 		maxHarvestInterval = maxHarvestInterval_;
 		emit SetMaxHarvestInterval(maxHarvestInterval);
+	}
+
+	function withdraw(
+		uint256,
+		address,
+		address
+	) public pure virtual override returns (uint256) {
+		revert NotImplemented();
+	}
+
+	function redeem(
+		uint256,
+		address receiver,
+		address
+	) public virtual override returns (uint256 amountOut) {
+		return redeem(receiver);
+	}
+
+	function redeemNative(address receiver) public virtual returns (uint256 amountOut) {
+		if (!useNativeAsset) revert NotNativeAsset();
+		uint256 shares;
+		(amountOut, shares) = _redeem(msg.sender);
+
+		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
+
+		IWETH(address(asset)).withdraw(amountOut);
+		SafeETH.safeTransferETH(receiver, amountOut);
+	}
+
+	function redeem(address receiver) public virtual returns (uint256 amountOut) {
+		uint256 shares;
+		(amountOut, shares) = _redeem(msg.sender);
+
+		beforeWithdraw(amountOut, shares);
+		_burn(address(this), shares);
+
+		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
+		asset.safeTransfer(receiver, amountOut);
+	}
+
+	/// @dev safest UI method
+	function redeem() public virtual returns (uint256 amountOut) {
+		return redeem(msg.sender);
+	}
+
+	/// @dev safest UI method
+	function redeemNative() public virtual returns (uint256 amountOut) {
+		return redeemNative(msg.sender);
 	}
 
 	function _harvest(uint256 currentChildHoldings) internal {
@@ -93,7 +146,7 @@ abstract contract SectorBase is BatchedWithdraw {
 		if (delta > maxDelta) revert SlippageExceeded();
 	}
 
-	function totalAssets() public view virtual override returns (uint256) {
+	function totalAssets() public view virtual override(Accounting, ERC4626) returns (uint256) {
 		return floatAmnt + totalChildHoldings;
 	}
 
@@ -119,6 +172,9 @@ abstract contract SectorBase is BatchedWithdraw {
 	}
 
 	/// OVERRIDES
+	function decimals() public view override(ERC20, ERC4626) returns (uint8) {
+		return asset.decimals();
+	}
 
 	function afterDeposit(uint256 assets, uint256) internal override {
 		if (block.timestamp - lastHarvestTimestamp > maxHarvestInterval)

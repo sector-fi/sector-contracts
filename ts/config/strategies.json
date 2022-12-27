@@ -179,5 +179,30 @@
       "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
     ],
     "x_chain": "ARBITRUM"
-  }
+  },
+  "USDC-levConvex-sUSD": {
+    "a1_curveAdapter": "0xbfB212e5D9F880bf93c47F3C32f6203fa4845222",
+    "a2_acceptsNativeToken": false,
+    "b_convexRewardPool": "0xbEf6108D1F6B85c4c9AA3975e15904Bb3DFcA980",
+    "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
+    "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
+    "e_coinId": 1,
+    "f_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "g_leverageFactor": 500,
+    "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "i_farmTokens": [
+      "0xD533a949740bb3306d119CC777fa900bA034cd52",
+      "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+      "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F"
+    ],
+    "j_harvestPaths": [
+      "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    ],
+    "x_chain": "ETH"
+  },
+  "levConvexStrats": [
+    "USDC-levConvex-sUSD"
+  ]
 }

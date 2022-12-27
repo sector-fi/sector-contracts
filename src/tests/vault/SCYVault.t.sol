@@ -6,13 +6,13 @@ import { MockScyVault, SCYVault, Strategy } from "../mocks/MockScyVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { SafeETH } from "../../libraries/SafeETH.sol";
-import { SCYVaultSetup } from "./SCYVaultSetup.sol";
+import { SafeETH } from "libraries/SafeETH.sol";
+import { SCYVaultUtils } from "./SCYVaultUtils.sol";
 import { HarvestSwapParams } from "interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
-contract SCYVaultTest is SectorTest, SCYVaultSetup {
+contract SCYVaultTest is SectorTest, SCYVaultUtils {
 	MockScyVault vault;
 	WETH underlying;
 
