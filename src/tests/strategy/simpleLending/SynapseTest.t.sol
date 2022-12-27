@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 import { HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYVault, Synapse, FarmConfig, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/Synapse.sol";
+import { SCYVault, Synapse, FarmConfig, Strategy, AuthConfig, FeeConfig } from "strategies/lending/Synapse.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IStarchef } from "interfaces/stargate/IStarchef.sol";
 

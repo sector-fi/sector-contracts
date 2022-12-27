@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import { SCYStrategy, Strategy } from "../ERC5115/SCYStrategy.sol";
-import { levConvex } from "../../strategies/gearbox/levConvex.sol";
-import { SCYWEpochVault, IERC20, SafeERC20 } from "../ERC5115/SCYWEpochVault.sol";
+import { SCYStrategy, Strategy } from "../../vaults/ERC5115/SCYStrategy.sol";
+import { levConvex } from "./levConvex.sol";
+import { SCYWEpochVault, IERC20, SafeERC20 } from "../../vaults/ERC5115/SCYWEpochVault.sol";
 import { AuthConfig, Auth } from "../../common/Auth.sol";
 import { FeeConfig, Fees } from "../../common/Fees.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";

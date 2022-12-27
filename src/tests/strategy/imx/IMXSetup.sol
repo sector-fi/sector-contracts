@@ -7,7 +7,7 @@ import { PriceUtils, UniUtils, IUniswapV2Pair } from "../../utils/PriceUtils.sol
 
 import { SectorTest } from "../../utils/SectorTest.sol";
 import { IMXConfig, HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYVault, IMXVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/IMXVault.sol";
+import { SCYVault, IMXVault, Strategy, AuthConfig, FeeConfig } from "strategies/imx/IMXVault.sol";
 import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SCYStratUtils } from "../common/SCYStratUtils.sol";

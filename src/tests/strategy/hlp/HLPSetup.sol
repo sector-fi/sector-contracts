@@ -6,7 +6,7 @@ import { ICompPriceOracle } from "interfaces/compound/ICompPriceOracle.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import { HLPConfig, HarvestSwapParams, NativeToken } from "interfaces/Structs.sol";
-import { SCYVault, HLPVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/HLPVault.sol";
+import { SCYVault, HLPVault, Strategy, AuthConfig, FeeConfig } from "strategies/hlp/HLPVault.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";

@@ -5,7 +5,7 @@ import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import { IMXConfig, HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYVault, IMXLend, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/IMXLend.sol";
+import { SCYVault, IMXLend, Strategy, AuthConfig, FeeConfig } from "strategies/lending/IMXLend.sol";
 import { IMX } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 

@@ -6,7 +6,7 @@ import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.so
 import { PriceUtils, UniUtils, IUniswapV2Pair } from "../../utils/PriceUtils.sol";
 
 import { HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYWEpochVault, levConvexVault, Strategy, AuthConfig, FeeConfig } from "vaults/strategyVaults/levConvexVault.sol";
+import { SCYWEpochVault, levConvexVault, Strategy, AuthConfig, FeeConfig } from "strategies/gearbox/levConvexVault.sol";
 import { levConvex } from "strategies/gearbox/levConvex.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SCYStratUtils } from "../common/SCYStratUtils.sol";
