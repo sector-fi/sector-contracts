@@ -95,10 +95,7 @@ contract levConvex is StratAuth {
 		uint256 startBalance = collateralBalance();
 		if (credAcc == address(0)) _openAccount(amount);
 		else {
-			// we must scale position proportionally in order to maintain proper SCYVault accounting
-			uint256 correntLeverageFactor = getLeverage();
-			uint256 borrowAmnt = (amount * (correntLeverageFactor - 100)) / 100;
-			// uint256 borrowAmnt = (amount * (leverageFactor)) / 100;
+			uint256 borrowAmnt = (amount * (leverageFactor)) / 100;
 			creditFacade.addCollateral(address(this), address(underlying), amount);
 			_increasePosition(borrowAmnt, borrowAmnt + amount);
 		}
@@ -122,10 +119,15 @@ contract levConvex is StratAuth {
 		uint256 minUnderlying = minBorrowed / leverageFactor;
 		uint256 redeposit = uBalance > withdraw ? uBalance - withdraw : 0;
 
-		if (redeposit > minUnderlying) _openAccount(uBalance - withdraw);
-		else credAcc = address(0);
-
-		underlying.safeTransfer(to, withdraw);
+		if (redeposit > minUnderlying) {
+			underlying.safeTransfer(to, withdraw);
+			_openAccount(uBalance - withdraw);
+		} else {
+			// do not re-open account
+			credAcc = address(0);
+			// send full balance to vault
+			underlying.safeTransfer(to, uBalance);
+		}
 
 		emit Redeem(msg.sender, amount);
 		return withdraw;
@@ -138,7 +140,10 @@ contract levConvex is StratAuth {
 			return;
 		}
 
-		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
+		uint256 totalAssets = curveAdapter.calc_withdraw_one_coin(
+			convexRewardPool.balanceOf(credAcc),
+			int128(uint128(coinId))
+		);
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
 
 		// if (totalOwed > totalAssets) return 0;
@@ -314,8 +319,12 @@ contract levConvex is StratAuth {
 	}
 
 	function getLeverage() public view returns (uint256) {
+		if (credAcc == address(0)) return 0;
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
-		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
+		uint256 totalAssets = curveAdapter.calc_withdraw_one_coin(
+			convexRewardPool.balanceOf(credAcc),
+			int128(uint128(coinId))
+		);
 		if (totalOwed > totalAssets) return 0;
 		return ((100 * totalAssets) / (totalAssets - totalOwed));
 	}
@@ -325,9 +334,12 @@ contract levConvex is StratAuth {
 		return (100 * maxBorrowed) / leverageFactor;
 	}
 
+	// this is actually not totally accurate
 	function collateralToUnderlying() public view returns (uint256) {
 		uint256 amountOut = curveAdapter.calc_withdraw_one_coin(1e18, int128(uint128(coinId)));
-		return (100 * amountOut) / (leverageFactor + 100);
+		uint256 currentLeverage = getLeverage();
+		if (currentLeverage == 0) return (100 * amountOut) / (leverageFactor + 100);
+		return (100 * amountOut) / currentLeverage;
 	}
 
 	function collateralBalance() public view returns (uint256) {
@@ -335,11 +347,16 @@ contract levConvex is StratAuth {
 		return convexRewardPool.balanceOf(credAcc);
 	}
 
+	/// @dev gearbox accounting is overly concervative so we use calc_withdraw_one_coin
+	/// to compute totalAsssets
 	function getTotalTVL() public view returns (uint256) {
 		if (credAcc == address(0)) return 0;
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
-		(uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
-		if (totalOwed > totalAssets) return 0;
+		// (uint256 totalAssets, ) = creditFacade.calcTotalValue(credAcc);
+		uint256 totalAssets = curveAdapter.calc_withdraw_one_coin(
+			convexRewardPool.balanceOf(credAcc),
+			int128(uint128(coinId))
+		);
 		return totalAssets - totalOwed;
 	}
 

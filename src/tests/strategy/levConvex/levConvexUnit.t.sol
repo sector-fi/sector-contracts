@@ -44,7 +44,7 @@ contract levConvexUnit is levConvexSetup {
 		targetLev = 500;
 		strategy.adjustLeverage(targetLev);
 		console.log("lh", strategy.loanHealth());
-		assertApproxEqAbs(strategy.getLeverage(), targetLev, 3);
+		assertApproxEqAbs(strategy.getLeverage(), targetLev, 1);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
 	}
 
@@ -54,7 +54,7 @@ contract levConvexUnit is levConvexSetup {
 		uint16 targetLev = 800;
 		strategy.adjustLeverage(targetLev);
 		console.log("lh", strategy.loanHealth());
-		assertApproxEqAbs(strategy.getLeverage(), targetLev, 3);
+		assertApproxEqAbs(strategy.getLeverage(), targetLev, 1);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
 		assertEq(underlying.balanceOf(strategy.credAcc()), 0);
 	}
@@ -119,22 +119,30 @@ contract levConvexUnit is levConvexSetup {
 
 	function testAccounting() public {
 		uint256 amnt = getAmnt();
-		strategy.adjustLeverage(400);
+		// strategy.adjustLeverage(400);
 
 		deposit(user1, amnt);
 		// TODO curve price changes?
-		strategy.adjustLeverage(700);
+		// strategy.adjustLeverage(700);
 		uint256 startBalance = vault.underlyingBalance(user1);
+		assertApproxEqRel(vault.underlyingBalance(user1), amnt, .011e18, "first balance");
 
-		uint256 amnt2 = 2 * amnt;
-		deposit(user2, 2 * amnt);
-		assertApproxEqRel(vault.underlyingBalance(user2), amnt2, .01e18, "second balance");
-		// deposit(user3, amnt);
-		// withdrawEpoch(user2, amnt);
+		uint256 amnt2 = (1e18 * amnt) / 1e18;
+		deposit(user2, amnt2);
+		assertApproxEqRel(vault.underlyingBalance(user2), amnt2, .011e18, "second balance");
 
 		// TODO curve price changes?
 		uint256 balance = vault.underlyingBalance(user1);
+
 		assertApproxEqRel(balance, startBalance, .001e18, "first balance should not decrease");
+		// vault.closePosition(0, 0);
+		withdrawEpoch(user1, 1e18);
+		assertApproxEqRel(underlying.balanceOf(user1), amnt, .0026e18, "final user1 bal");
+
+		vm.roll(block.number + 1);
+
+		withdrawEpoch(user2, 1e18);
+		assertApproxEqRel(underlying.balanceOf(user2), amnt, .005e18, "final user2 bal");
 	}
 
 	function testManagerWithdraw() public {

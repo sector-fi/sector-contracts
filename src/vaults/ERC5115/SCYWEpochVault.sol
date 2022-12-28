@@ -212,7 +212,10 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		// Update strategy underlying reserves balance
 		if (shareOfReserves > 0) uBalance -= shareOfReserves;
 
-		(uint256 amountTokenOut, ) = _stratRedeem(address(this), yeildTokenRedeem);
+		uint256 stratTvl = _stratGetAndUpdateTvl();
+		(uint256 amountTokenOut, ) = stratTvl == 0
+			? (0, 0)
+			: _stratRedeem(address(this), yeildTokenRedeem);
 		emit WithdrawFromStrategy(msg.sender, amountTokenOut);
 
 		amountTokenOut += shareOfReserves;
@@ -223,7 +226,8 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 
 		if (amountTokenOut < minAmountOut) revert InsufficientOut(amountTokenOut, minAmountOut);
 
-		_processRedeem(sharesToUnderlying(1e18));
+		// manually compute redeem shares here
+		_processRedeem((1e18 * amountTokenOut) / requestedRedeem);
 	}
 
 	function _checkSlippage(

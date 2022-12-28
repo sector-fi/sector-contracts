@@ -18,6 +18,7 @@ import "hardhat/console.sol";
 abstract contract SCYStratUtils is SectorTest {
 	uint256 BASIS = 10000;
 	uint256 mLp;
+	uint256 redeemSlippage;
 
 	HarvestSwapParams harvestParams;
 	HarvestSwapParams harvestLendParams;
@@ -105,7 +106,7 @@ abstract contract SCYStratUtils is SectorTest {
 		requestRedeem(user, fraction);
 		uint256 shares = SCYWEpochVault(payable(vault)).requestedRedeem();
 		uint256 minAmountOut = vault.sharesToUnderlying(shares);
-		SCYWEpochVault(payable(vault)).processRedeem(minAmountOut);
+		SCYWEpochVault(payable(vault)).processRedeem((minAmountOut * 9990) / 10000);
 		redeemShares(user, shares);
 	}
 
@@ -149,9 +150,9 @@ abstract contract SCYStratUtils is SectorTest {
 		uint256 tvl = vault.getAndUpdateTvl();
 		uint256 lockedTvl = vault.sharesToUnderlying(mLp);
 		assertApproxEqRel(
-			tvl + 10000,
-			lockedTvl + startTvl - minUnderlyingOut + 10000,
-			.0001e18,
+			(tvl * (1e18 + redeemSlippage)) / 1e18 + 10000,
+			lockedTvl + startTvl + 10000 - minUnderlyingOut,
+			.001e18,
 			"tvl should update"
 		);
 		assertApproxEqRel(

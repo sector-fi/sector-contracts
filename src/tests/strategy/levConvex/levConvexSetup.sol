@@ -124,6 +124,7 @@ contract levConvexSetup is SCYStratUtils {
 
 		// so close account doesn't create issues
 		vm.roll(1);
+		redeemSlippage = .001e18;
 		// deposit(mLp);
 	}
 
@@ -186,7 +187,7 @@ contract levConvexSetup is SCYStratUtils {
 		uint256 startTvl = vault.getAndUpdateTvl();
 		uint256 startAccBalance = vault.underlyingBalance(user);
 		deal(address(underlying), user, amount);
-		uint256 minSharesOut = (vault.underlyingToShares(amount) * 9930) / 10000;
+		uint256 minSharesOut = (vault.underlyingToShares(amount) * 9890) / 10000;
 
 		vm.startPrank(user);
 		underlying.approve(address(vault), amount);
