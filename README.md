@@ -96,7 +96,7 @@ For native token deposits (i.e. ETH) both EOA accounts and Contracts should call
 
 During harvests, all reward tokens are swapped to underlying and re-deposited into the respective strategy.
 
-## AggregatorVaults
+## AggregatorVaults (ERC4626)
 
 Aggregator vaults aggregate ScyVault strategies.
 
