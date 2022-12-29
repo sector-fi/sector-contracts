@@ -129,9 +129,9 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		noRebalance();
 	}
 
-	function testDeployments() public {
-		IMXCore dstrat = IMXCore(0xB3E829d2aE0944a147549330a65614CD095F34c9);
-		console.log(address(dstrat.sBorrowable()), address(dstrat.uBorrowable()));
-		console.log("max", dstrat.getMaxTvl());
-	}
+	// function testDeployments() public {
+	// 	IMXCore dstrat = IMXCore(0xB3E829d2aE0944a147549330a65614CD095F34c9);
+	// 	console.log(address(dstrat.sBorrowable()), address(dstrat.uBorrowable()));
+	// 	console.log("max", dstrat.getMaxTvl());
+	// }
 }

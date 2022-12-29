@@ -604,9 +604,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 	function processRedeem(IVaultStrategy _vault) public {
 		uint256 shares = _vault.requestedRedeem();
-		uint256 minAmountOut = _vault.sharesToUnderlying(shares);
-		// console.log((1e18 * _vault.exchangeRateUnderlying()) / shares);
-		// console.log("minAmountOut", minAmountOut);
+		uint256 minAmountOut = (_vault.sharesToUnderlying(shares) * 9990) / 10000;
 		vm.prank(manager);
 		_vault.processRedeem(minAmountOut);
 	}

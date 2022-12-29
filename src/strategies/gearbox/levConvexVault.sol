@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { SCYStrategy, Strategy } from "../../vaults/ERC5115/SCYStrategy.sol";
-import { levConvex } from "./levConvex.sol";
+import { ILevConvex } from "./ILevConvex.sol";
 import { SCYWEpochVault, IERC20, SafeERC20 } from "../../vaults/ERC5115/SCYWEpochVault.sol";
 import { AuthConfig, Auth } from "../../common/Auth.sol";
 import { FeeConfig, Fees } from "../../common/Fees.sol";
@@ -21,14 +21,14 @@ contract levConvexVault is SCYStrategy, SCYWEpochVault {
 
 	function _stratValidate() internal view override {
 		if (
-			address(underlying) != address(levConvex(strategy).underlying()) ||
-			yieldToken != address(levConvex(strategy).convexRewardPool())
+			address(underlying) != address(ILevConvex(strategy).underlying()) ||
+			yieldToken != address(ILevConvex(strategy).convexRewardPool())
 		) revert InvalidStrategy();
 	}
 
 	function _stratDeposit(uint256 amount) internal override returns (uint256) {
 		underlying.safeTransfer(strategy, amount);
-		return levConvex(strategy).deposit(amount);
+		return ILevConvex(strategy).deposit(amount);
 	}
 
 	function _stratRedeem(address recipient, uint256 yeildTokenAmnt)
@@ -38,28 +38,28 @@ contract levConvexVault is SCYStrategy, SCYWEpochVault {
 	{
 		// strategy doesn't transfer tokens to user
 		// TODO it should?
-		amountOut = levConvex(strategy).redeem(yeildTokenAmnt, recipient);
+		amountOut = ILevConvex(strategy).redeem(yeildTokenAmnt, recipient);
 		amntToTransfer = 0;
 	}
 
 	function _stratGetAndUpdateTvl() internal override returns (uint256) {
-		return levConvex(strategy).getAndUpdateTVL();
+		return ILevConvex(strategy).getAndUpdateTVL();
 	}
 
 	function _strategyTvl() internal view override returns (uint256) {
-		return levConvex(strategy).getTotalTVL();
+		return ILevConvex(strategy).getTotalTVL();
 	}
 
 	function _stratClosePosition(uint256) internal override returns (uint256) {
-		return levConvex(strategy).closePosition();
+		return ILevConvex(strategy).closePosition();
 	}
 
 	function _stratMaxTvl() internal view override returns (uint256) {
-		return levConvex(strategy).getMaxTvl();
+		return ILevConvex(strategy).getMaxTvl();
 	}
 
 	function _stratCollateralToUnderlying() internal view override returns (uint256) {
-		return levConvex(strategy).collateralToUnderlying();
+		return ILevConvex(strategy).collateralToUnderlying();
 	}
 
 	function _stratHarvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
@@ -67,12 +67,12 @@ contract levConvexVault is SCYStrategy, SCYWEpochVault {
 		override
 		returns (uint256[] memory harvested, uint256[] memory)
 	{
-		harvested = levConvex(strategy).harvest(params);
+		harvested = ILevConvex(strategy).harvest(params);
 		return (harvested, new uint256[](0));
 	}
 
 	function _selfBalance(address token) internal view virtual override returns (uint256) {
-		if (token == yieldToken) return levConvex(strategy).collateralBalance();
+		if (token == yieldToken) return ILevConvex(strategy).collateralBalance();
 		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
 	}
 }

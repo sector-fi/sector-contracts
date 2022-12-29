@@ -2,6 +2,7 @@ import { ethers, getNamedAccounts, network } from 'hardhat';
 import { ICurveV1Adapter } from '../../../typechain';
 import { levConvex } from './config';
 import { chainToEnv, getUniswapV3Path, addStratToConfig } from '../utils';
+import { constants } from 'ethers';
 
 const main = async () => {
   levConvex.filter((s) => s.chain === network.name).forEach(addStrategy);
@@ -14,17 +15,55 @@ const addStrategy = async (strategy) => {
     strategy.curveAdapter,
     deployer
   );
-  const nCoins = await curveAdapter.nCoins();
+  const metapoolAddr = await curveAdapter.metapoolBase();
+
+  let metapool: ICurveV1Adapter | undefined;
+  if (metapoolAddr != constants.AddressZero) {
+    metapool = (await ethers.getContractAt(
+      'ICurveV1Adapter',
+      metapoolAddr,
+      deployer
+    )) as ICurveV1Adapter;
+  }
+
+  // metaPool mean 3crv
+  const nCoins = 4;
 
   let coinId;
-  for (let i = 0; i < nCoins.toNumber(); i++) {
-    const [coin] = await curveAdapter.functions['coins(uint256)'](i);
+  for (let i = 0; i < nCoins; i++) {
+    const [coin] = await (metapool || curveAdapter).functions['coins(uint256)'](
+      i
+    );
+    console.log(strategy.name, nCoins, coin, strategy.underlying);
     if (coin === strategy.underlying) {
       coinId = i;
       break;
     }
   }
-  if (coinId == null) throw new Error('coin not found in curve pool');
+  if (coinId == null)
+    throw new Error(`${strategy.name} coin not found in curve pool`);
+
+  const convexRewardPool = await ethers.getContractAt(
+    'IBaseRewardPool',
+    strategy.convexRewardPool,
+    deployer
+  );
+  const nRewards = await convexRewardPool.extraRewardsLength();
+  console.log(strategy.name, 'nRewards', nRewards.toNumber());
+
+  for (let i = 0; i < nRewards.toNumber(); i++) {
+    const [extraRewardsAddr] = await convexRewardPool.functions[
+      'extraRewards(uint256)'
+    ](i);
+    const rewardsPool = await ethers.getContractAt(
+      'IBaseRewardPool',
+      extraRewardsAddr,
+      deployer
+    );
+    const rewardToken = await rewardsPool.rewardToken();
+    console.log('found reward token: ', rewardToken);
+    strategy.farmTokens.push(rewardToken);
+  }
 
   strategy.harvestPaths = [];
   for (let j = 0; j < strategy.farmTokens.length; j++) {
@@ -48,6 +87,7 @@ const addStrategy = async (strategy) => {
     h_farmRouter: strategy.farmRouter,
     i_farmTokens: strategy.farmTokens,
     j_harvestPaths: strategy.harvestPaths,
+    k_is3crv: !!strategy.is3crv,
     x_chain: chainToEnv[strategy.chain],
   };
   await addStratToConfig(strategy.name, config, strategy);

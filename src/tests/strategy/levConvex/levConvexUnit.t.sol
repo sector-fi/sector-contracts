@@ -17,11 +17,9 @@ contract levConvexUnit is levConvexSetup {
 	// 	levConvexSetup.deposit(user, amnt);
 	// }
 
-	function testDepositDev() public {
+	function testDepositLevConvex() public {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
-		console.log("leverage", strategy.getLeverage());
-		console.log("loanHelath", strategy.loanHealth());
 		withdrawEpoch(user1, 1e18);
 		uint256 loss = amnt - underlying.balanceOf(user1);
 		console.log("year loss", (12 * (10000 * loss)) / amnt);
@@ -31,10 +29,8 @@ contract levConvexUnit is levConvexSetup {
 	function testAdjustLeverage() public {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
-		console.log("leverage", strategy.getLeverage());
 		uint16 targetLev = 500;
 		strategy.adjustLeverage(targetLev);
-		console.log("leverage", strategy.getLeverage());
 		assertApproxEqAbs(strategy.getLeverage(), targetLev, 1);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
 
@@ -43,7 +39,7 @@ contract levConvexUnit is levConvexSetup {
 		deposit(user1, amnt);
 		targetLev = 500;
 		strategy.adjustLeverage(targetLev);
-		console.log("lh", strategy.loanHealth());
+		assertGt(strategy.loanHealth(), 1e18);
 		assertApproxEqAbs(strategy.getLeverage(), targetLev, 1);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
 	}
@@ -53,8 +49,8 @@ contract levConvexUnit is levConvexSetup {
 		deposit(user1, amnt);
 		uint16 targetLev = 800;
 		strategy.adjustLeverage(targetLev);
-		console.log("lh", strategy.loanHealth());
-		assertApproxEqAbs(strategy.getLeverage(), targetLev, 1);
+		assertGt(strategy.loanHealth(), 1e18);
+		assertApproxEqAbs(strategy.getLeverage(), targetLev, 2);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
 		assertEq(underlying.balanceOf(strategy.credAcc()), 0);
 	}
@@ -67,7 +63,6 @@ contract levConvexUnit is levConvexSetup {
 
 	function testDepositFuzz(uint256 fuzz) public {
 		uint256 min = getAmnt() / 2;
-		console.log(vault.getMaxTvl());
 		fuzz = bound(fuzz, min, vault.getMaxTvl() - mLp);
 		deposit(user1, fuzz);
 		assertApproxEqRel(vault.underlyingBalance(user1), fuzz, .02e18);
@@ -137,12 +132,12 @@ contract levConvexUnit is levConvexSetup {
 		assertApproxEqRel(balance, startBalance, .001e18, "first balance should not decrease");
 		// vault.closePosition(0, 0);
 		withdrawEpoch(user1, 1e18);
-		assertApproxEqRel(underlying.balanceOf(user1), amnt, .0026e18, "final user1 bal");
+		assertApproxEqRel(underlying.balanceOf(user1), amnt, .0034e18, "final user1 bal");
 
 		vm.roll(block.number + 1);
 
 		withdrawEpoch(user2, 1e18);
-		assertApproxEqRel(underlying.balanceOf(user2), amnt, .005e18, "final user2 bal");
+		assertApproxEqRel(underlying.balanceOf(user2), amnt, .00681e18, "final user2 bal");
 	}
 
 	function testManagerWithdraw() public {
@@ -154,7 +149,7 @@ contract levConvexUnit is levConvexSetup {
 		vault.withdrawFromStrategy(shares, 0);
 
 		uint256 floatBalance = vault.uBalance();
-		assertApproxEqRel(floatBalance, amnt, .003e18);
+		assertApproxEqRel(floatBalance, amnt, .0035e18);
 		assertEq(underlying.balanceOf(address(vault)), floatBalance);
 		vm.roll(block.number + 1);
 		skip(1000);
