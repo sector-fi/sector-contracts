@@ -93,7 +93,7 @@
     "f1_farm": "0x73186f2Cf2493f20836b17b21ae79fc12934E207",
     "f2_farmToken": "0x080F6AEd32Fc474DD5717105Dba5ea57268F46eb",
     "g_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-    "h_harvestPath": "0x080f6aed32fc474dd5717105dba5ea57268f46eb000bb8ff970a61a04b1ca14834a43f5de4533ebddb5cc8",
+    "h_harvestPath": "0x080f6aed32fc474dd5717105dba5ea57268f46eb00271082af49447d8a07e3bd95bd0d56f35241523fbab10001f4ff970a61a04b1ca14834a43f5de4533ebddb5cc8",
     "x_chain": "ARBITRUM"
   },
   "USDC-ETH-Tarot-Velo": {
