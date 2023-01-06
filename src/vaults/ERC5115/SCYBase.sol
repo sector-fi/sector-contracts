@@ -9,13 +9,13 @@ import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contr
 import { Accounting } from "../../common/Accounting.sol";
 import { ERC20Permit, EIP712 } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract SCYBase is
 	ISuperComposableYield,
 	ReentrancyGuard,
-	Accounting,
 	ERC20,
+	Accounting,
 	ERC20Permit
 {
 	using SafeERC20 for IERC20;
@@ -23,8 +23,6 @@ abstract contract SCYBase is
 	address internal constant NATIVE = address(0);
 	uint256 internal constant ONE = 1e18;
 	uint256 public constant MIN_LIQUIDITY = 1e3;
-	// override if false
-	bool public sendERC20ToStrategy = true;
 
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
@@ -82,15 +80,10 @@ abstract contract SCYBase is
 	) external nonReentrant returns (uint256 amountTokenOut) {
 		require(isValidBaseToken(tokenOut), "SCY: invalid tokenOut");
 
-		// NOTE this is different from reference implementation in that
-		// we don't support sending shares to contracts
-
 		// this is to handle a case where the strategy sends funds directly to user
 		uint256 amountToTransfer;
 		(amountTokenOut, amountToTransfer) = _redeem(receiver, tokenOut, amountSharesToRedeem);
 		if (amountTokenOut < minTokenOut) revert InsufficientOut(amountTokenOut, minTokenOut);
-
-		_burn(msg.sender, amountSharesToRedeem);
 
 		if (amountToTransfer > 0) _transferOut(tokenOut, receiver, amountToTransfer);
 
@@ -165,12 +158,15 @@ abstract contract SCYBase is
 	function _depositNative() internal virtual;
 
 	// OVERRIDES
-	function totalSupply() public view override(Accounting, ERC20, IERC20) returns (uint256) {
+	function totalSupply() public view virtual override(ERC20, IERC20) returns (uint256) {
 		return ERC20.totalSupply();
+	}
+
+	function sendERC20ToStrategy() public view virtual returns (bool) {
+		return false;
 	}
 
 	error CantPullEth();
 	error MinLiquidity();
-	error ZeroAmount();
 	error InsufficientOut(uint256 amountOut, uint256 minOut);
 }

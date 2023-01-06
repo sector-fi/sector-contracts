@@ -47,12 +47,12 @@ abstract contract MiniChef2Farm {
 
 	function _harvestFarm(HarvestSwapParams calldata swapParams)
 		internal
-		returns (uint256 harvested, uint256 amountOut)
+		returns (uint256 amountOut)
 	{
 		farm.harvest(farmId, address(this));
 
-		harvested = farmToken.balanceOf(address(this));
-		if (harvested == 0) return (0, 0);
+		uint256 harvested = farmToken.balanceOf(address(this));
+		if (harvested == 0) return 0;
 
 		ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
 			path: swapParams.pathData,

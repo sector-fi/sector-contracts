@@ -50,4 +50,10 @@ interface IVaultStrategy is IERC20 {
 	function sharesToUnderlying(uint256 shares) external view returns (uint256);
 
 	function getUpdatedUnderlyingBalance(address) external returns (uint256);
+
+	// only for withdraw batch vaults
+	function requestedRedeem() external view returns (uint256);
+
+	/// @dev slippage param is optional
+	function processRedeem(uint256 slippageParam) external;
 }

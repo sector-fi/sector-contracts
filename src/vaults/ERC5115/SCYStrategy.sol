@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import { IERC20 } from "./SCYBase.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";
+import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 struct Strategy {
 	string symbol;
@@ -18,7 +19,7 @@ struct Strategy {
 	uint128 yBalance; // yield token balance
 }
 
-abstract contract SCYStrategy {
+abstract contract SCYStrategy is SectorErrors {
 	function _stratDeposit(uint256 amount) internal virtual returns (uint256);
 
 	function _stratRedeem(address to, uint256 amount)
@@ -42,6 +43,4 @@ abstract contract SCYStrategy {
 		HarvestSwapParams[] calldata farm1Params,
 		HarvestSwapParams[] calldata farm2Parms
 	) internal virtual returns (uint256[] memory harvest1, uint256[] memory harvest2);
-
-	error NotImplemented();
 }

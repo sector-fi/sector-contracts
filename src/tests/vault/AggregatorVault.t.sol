@@ -3,16 +3,18 @@ pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVault } from "../mocks/MockScyVault.sol";
-import { SCYVaultSetup } from "./SCYVaultSetup.sol";
+import { SCYVaultUtils } from "./SCYVaultUtils.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { ERC4626, SectorBase, AggregatorVault, BatchedWithdraw, RedeemParams, DepositParams, IVaultStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
+import { ERC4626, SectorBase, AggregatorVault, RedeemParams, DepositParams, IVaultStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
+import { BatchedWithdraw } from "../../common/BatchedWithdraw.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { EAction } from "interfaces/Structs.sol";
 import { VaultType } from "interfaces/Structs.sol";
+import { Accounting } from "../../common/Accounting.sol";
 
 import "hardhat/console.sol";
 
-contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
+contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 	IVaultStrategy strategy1;
 	IVaultStrategy strategy2;
 	IVaultStrategy strategy3;
@@ -112,7 +114,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		assertEq(underlying.balanceOf(user1), amnt / 4);
 
 		// amount should reset
-		vm.expectRevert(BatchedWithdraw.ZeroAmount.selector);
+		vm.expectRevert(Accounting.ZeroAmount.selector);
 		vm.prank(user1);
 		vault.redeem();
 	}
@@ -193,12 +195,13 @@ contract AggregatorVaultTest is SectorTest, SCYVaultSetup {
 		assertEq(value, 0);
 
 		uint256 profit = ((10e18 + (mLp) / 10) * 9) / 10;
+		// TODO look into this why are we dividing by 4 twice?
 		uint256 profitFromBurn = (profit / 4) / 4;
-		assertApproxEqAbs(vault.underlyingBalance(user1), amnt / 4 + profitFromBurn, .1e18);
+		assertApproxEqRel(vault.underlyingBalance(user1), amnt / 4 + profitFromBurn, .002e18);
 		assertEq(underlying.balanceOf(user1), 0);
 
 		// amount should reset
-		vm.expectRevert(BatchedWithdraw.ZeroAmount.selector);
+		vm.expectRevert(Accounting.ZeroAmount.selector);
 		vm.prank(user1);
 		vault.redeem();
 	}

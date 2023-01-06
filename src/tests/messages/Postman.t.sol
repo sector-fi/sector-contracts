@@ -8,14 +8,14 @@ import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/ex
 import { SectorXVaultSetup } from "../vault/SectorXVaultSetup.t.sol";
 import { SectorXVault } from "vaults/sectorVaults/SectorXVault.sol";
 import { SectorVault, AuthConfig, FeeConfig } from "vaults/sectorVaults/SectorVault.sol";
-import { SCYVaultSetup } from "../vault/SCYVaultSetup.sol";
+import { SCYVaultUtils } from "../vault/SCYVaultUtils.sol";
 import { WETH } from "../mocks/WETH.sol";
 import "interfaces/MsgStructs.sol";
 import "forge-std/Vm.sol";
 
 import "hardhat/console.sol";
 
-contract PostmanTest is SectorXVaultSetup, SCYVaultSetup {
+contract PostmanTest is SectorXVaultSetup, SCYVaultUtils {
 	LayerZeroPostman EthLZpostman;
 	LayerZeroPostman AvaxLZpostman;
 	MultichainPostman AvaxMCpostman;

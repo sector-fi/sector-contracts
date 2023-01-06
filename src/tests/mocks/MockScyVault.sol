@@ -22,8 +22,10 @@ contract MockScyVault is SCYStrategy, SCYVault {
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig,
 		Strategy memory _strategy
-	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) {
-		sendERC20ToStrategy = true;
+	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) {}
+
+	function sendERC20ToStrategy() public pure override returns (bool) {
+		return true;
 	}
 
 	function _stratDeposit(uint256 amount) internal override returns (uint256) {

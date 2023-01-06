@@ -63,18 +63,19 @@ abstract contract MasterChefFarm is IUniFarm {
 		returns (uint256[] memory harvested)
 	{
 		_farm.deposit(_farmId, 0);
-		harvested = new uint256[](1);
-		harvested[0] = _farmToken.balanceOf(address(this));
-		if (harvested[0] == 0) return harvested;
+		uint256 farmHarvest = _farmToken.balanceOf(address(this));
+		if (farmHarvest == 0) return harvested;
 
-		_swap(_router, swapParams[0], address(_farmToken), harvested[0]);
+		uint256[] memory amounts = _swap(_router, swapParams[0], address(_farmToken), farmHarvest);
+		harvested = new uint256[](1);
+		harvested[0] = amounts[amounts.length - 1];
 		emit HarvestedToken(address(_farmToken), harvested[0]);
 
 		// additional chain token rewards
-		uint256 ethBalance = address(this).balance;
-		if (ethBalance > 0) {
-			IWETH(address(short())).deposit{ value: ethBalance }();
-			emit HarvestedToken(address(short()), ethBalance);
+		uint256 nativeBalance = address(this).balance;
+		if (nativeBalance > 0) {
+			IWETH(address(short())).deposit{ value: nativeBalance }();
+			emit HarvestedToken(address(short()), nativeBalance);
 		}
 	}
 

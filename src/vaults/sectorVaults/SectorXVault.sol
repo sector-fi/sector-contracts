@@ -6,7 +6,6 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { SectorVault } from "./SectorVault.sol";
 import { ERC4626, FixedPointMathLib, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
 import { SectorBase } from "../ERC4626/SectorBase.sol";
-import { BatchedWithdraw } from "../ERC4626/BatchedWithdraw.sol";
 import { XChainIntegrator } from "../../xChain/XChainIntegrator.sol";
 import { Message, VaultAddr, MessageType, Request, Vault } from "../../interfaces/MsgStructs.sol";
 import { VaultType } from "../../interfaces/Structs.sol";
@@ -43,7 +42,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		ERC4626(_asset, _name, _symbol, _useNativeAsset)
 		Auth(authConfig)
 		Fees(feeConfig)
-		BatchedWithdraw()
+		SectorBase()
 		XChainIntegrator(_maxBridgeFeeAllowed)
 	{
 		maxTvl = _maxTvl;
@@ -199,7 +198,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 			Vault memory vault = checkVault(v.addr, v.chainId);
 
 			if (v.chainId == chainId) {
-				BatchedWithdraw _vault = BatchedWithdraw(payable(v.addr));
+				SectorBase _vault = SectorBase(payable(v.addr));
 				uint256 transferShares = userPerc.mulWadDown(_vault.balanceOf(address(this)));
 				_vault.transfer(msg.sender, transferShares);
 			} else {

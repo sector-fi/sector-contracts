@@ -13,7 +13,9 @@
     "coverage": "forge coverage",
     "coverage:lcov": "forge coverage --report lcov",
     "typechain": "hardhat typechain",
-    "slither": "slither ./src --solc-remaps '@openzeppelin=node_modules/@openzeppelin' --exclude ./packages/contracts/src/test"
+    "slither": "slither ./src --solc-remaps '@openzeppelin=node_modules/@openzeppelin' --exclude ./packages/contracts/src/test",
+    "lending": "hardhat run ts/config/lending/index.ts",
+    "levConvex": "hardhat run ts/config/levConvex/index.ts"
   },
   "dependencies": {
     "@anders-t/ethers-ledger": "^1.0.2",
