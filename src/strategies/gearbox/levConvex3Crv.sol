@@ -20,9 +20,9 @@ import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
 import { BytesLib } from "../../libraries/BytesLib.sol";
 import { LevConvexConfig } from "./ILevConvex.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
-contract levConvex is StratAuth {
+contract levConvex3Crv is StratAuth {
 	using SafeERC20 for IERC20;
 
 	// USDC
@@ -37,6 +37,8 @@ contract levConvex is StratAuth {
 	ICurveV1Adapter public curveAdapter;
 	ICurveV1Adapter public threePoolAdapter =
 		ICurveV1Adapter(0xbd871de345b2408f48C1B249a1dac7E0D7D4F8f9);
+	uint256 threeId = 1;
+
 	IBaseRewardPool public convexRewardPool;
 	IBooster public convexBooster;
 	ISwapRouter public farmRouter;
@@ -52,7 +54,6 @@ contract levConvex is StratAuth {
 	uint256 constant shortDec = 1e18;
 	address public credAcc; // gearbox credit account // TODO can it expire?
 	uint16 coinId;
-	bool threePool = true;
 
 	event SetVault(address indexed vault);
 
@@ -64,6 +65,8 @@ contract levConvex is StratAuth {
 		creditManager = ICreditManagerV2(creditFacade.creditManager());
 		curveAdapter = ICurveV1Adapter(config.curveAdapter);
 		convexRewardPool = IBaseRewardPool(config.convexRewardPool);
+
+		// convexRewardPool = IBaseRewardPool(0x54dF63cd15f76eB562dA001c675459De294a2390);
 		convexBooster = IBooster(config.convexBooster);
 		convexPid = uint16(convexRewardPool.pid());
 		coinId = config.coinId;
@@ -197,13 +200,25 @@ contract levConvex is StratAuth {
 	//// INTERNAL METHODS
 
 	function _increasePosition(uint256 borrowAmnt, uint256 totalAmount) internal {
-		MultiCall[] memory calls = new MultiCall[](3);
+		creditFacade.multicall(_getDepositCalls(borrowAmnt, totalAmount));
+	}
+
+	function _getDepositCalls(uint256 borrowAmnt, uint256 totalAmount)
+		internal
+		view
+		returns (
+			// view
+			MultiCall[] memory
+		)
+	{
+		MultiCall[] memory calls = new MultiCall[](4);
 		calls[0] = MultiCall({
 			target: address(creditFacade),
 			callData: abi.encodeWithSelector(ICreditFacade.increaseDebt.selector, borrowAmnt)
 		});
+
 		calls[1] = MultiCall({
-			target: address(curveAdapter),
+			target: address(threePoolAdapter),
 			callData: abi.encodeWithSelector(
 				ICurveV1Adapter.add_liquidity_one_coin.selector,
 				totalAmount,
@@ -212,15 +227,28 @@ contract levConvex is StratAuth {
 			)
 		});
 		calls[2] = MultiCall({
+			target: address(curveAdapter),
+			callData: abi.encodeWithSelector(
+				ICurveV1Adapter.add_all_liquidity_one_coin.selector,
+				threeId,
+				0 // slippage parameter is checked in the vault
+			)
+		});
+		calls[3] = MultiCall({
 			target: address(convexBooster),
 			callData: abi.encodeWithSelector(IBooster.depositAll.selector, convexPid, true)
 		});
-		creditFacade.multicall(calls);
+		return calls;
 	}
 
 	function _decreasePosition(uint256 lpAmount) internal {
-		uint256 repayAmnt = curveAdapter.calc_withdraw_one_coin(lpAmount, int128(uint128(coinId)));
-		MultiCall[] memory calls = new MultiCall[](3);
+		uint256 threeLp = curveAdapter.calc_withdraw_one_coin(lpAmount, int128(uint128(threeId)));
+		uint256 repayAmnt = threePoolAdapter.calc_withdraw_one_coin(
+			threeLp,
+			int128(uint128(coinId))
+		);
+
+		MultiCall[] memory calls = new MultiCall[](4);
 		calls[0] = MultiCall({
 			target: address(convexRewardPool),
 			callData: abi.encodeWithSelector(
@@ -240,7 +268,17 @@ contract levConvex is StratAuth {
 			)
 		});
 
+		// convert extra eth to underlying
 		calls[2] = MultiCall({
+			target: address(threePoolAdapter),
+			callData: abi.encodeWithSelector(
+				ICurveV1Adapter.remove_all_liquidity_one_coin.selector,
+				threeId,
+				0 // slippage is checked in the vault
+			)
+		});
+
+		calls[3] = MultiCall({
 			target: address(creditFacade),
 			callData: abi.encodeWithSelector(ICreditFacade.decreaseDebt.selector, repayAmnt)
 		});
@@ -250,15 +288,23 @@ contract levConvex is StratAuth {
 
 	function _closePosition() internal {
 		MultiCall[] memory calls;
-		calls = new MultiCall[](2);
+		calls = new MultiCall[](3);
 		calls[0] = MultiCall({
 			target: address(convexRewardPool),
 			callData: abi.encodeWithSelector(IBaseRewardPool.withdrawAllAndUnwrap.selector, true)
 		});
 
-		// convert extra eth to underlying
 		calls[1] = MultiCall({
 			target: address(curveAdapter),
+			callData: abi.encodeWithSelector(
+				ICurveV1Adapter.remove_all_liquidity_one_coin.selector,
+				coinId,
+				0 // slippage is checked in the vault
+			)
+		});
+
+		calls[2] = MultiCall({
+			target: address(threePoolAdapter),
 			callData: abi.encodeWithSelector(
 				ICurveV1Adapter.remove_all_liquidity_one_coin.selector,
 				coinId,
@@ -272,8 +318,7 @@ contract levConvex is StratAuth {
 	function _openAccount(uint256 amount) internal {
 		// todo oracle conversion from underlying to ETH
 		uint256 borrowAmnt = (amount * leverageFactor) / 100;
-
-		MultiCall[] memory calls = new MultiCall[](3);
+		MultiCall[] memory calls = _getDepositCalls(amount, borrowAmnt + amount);
 		calls[0] = MultiCall({
 			target: address(creditFacade),
 			callData: abi.encodeWithSelector(
@@ -283,20 +328,8 @@ contract levConvex is StratAuth {
 				amount
 			)
 		});
-		calls[1] = MultiCall({
-			target: address(curveAdapter),
-			callData: abi.encodeWithSelector(
-				ICurveV1Adapter.add_liquidity_one_coin.selector,
-				borrowAmnt + amount,
-				coinId,
-				0 // slippage parameter is checked in the vault
-			)
-		});
-		calls[2] = MultiCall({
-			target: address(convexBooster),
-			callData: abi.encodeWithSelector(IBooster.depositAll.selector, convexPid, true)
-		});
 
+		// console.log("lp", IERC20(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490).balanceOf(credAcc));
 		creditFacade.openCreditAccountMulticall(borrowAmnt, address(this), calls, 0);
 		credAcc = creditManager.getCreditAccountOrRevert(address(this));
 	}
@@ -344,10 +377,11 @@ contract levConvex is StratAuth {
 	}
 
 	function getTotalAssets() public view returns (uint256 totalAssets) {
-		totalAssets = curveAdapter.calc_withdraw_one_coin(
+		uint256 threePoolLp = curveAdapter.calc_withdraw_one_coin(
 			convexRewardPool.balanceOf(credAcc),
-			int128(uint128(coinId))
+			int128(uint128(threeId))
 		);
+		totalAssets = threePoolAdapter.calc_withdraw_one_coin(threePoolLp, int128(uint128(coinId)));
 	}
 
 	function getAndUpdateTVL() public view returns (uint256) {

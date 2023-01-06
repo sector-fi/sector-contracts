@@ -183,7 +183,8 @@ abstract contract IMXFarm is IIMXFarm {
 	function _removeIMXLiquidity(
 		uint256 removeLpAmnt,
 		uint256 repayUnderlying,
-		uint256 repayShort
+		uint256 repayShort,
+		uint256 borrowUnderlying
 	) internal override {
 		uint256 redeemAmount = (removeLpAmnt * 1e18) / stakedToken.exchangeRate() + 1;
 
@@ -191,7 +192,8 @@ abstract contract IMXFarm is IIMXFarm {
 			RemoveLiqAndRepayCalldata({
 				removeLpAmnt: removeLpAmnt,
 				repayUnderlying: repayUnderlying,
-				repayShort: repayShort
+				repayShort: repayShort,
+				borrowUnderlying: borrowUnderlying
 			})
 		);
 
@@ -214,6 +216,10 @@ abstract contract IMXFarm is IIMXFarm {
 		// remove collateral
 		(, uint256 shortAmnt) = _removeLiquidity(d.removeLpAmnt);
 
+		// in some cases we need to borrow extra underlying
+		if (d.borrowUnderlying > 0)
+			_uBorrowable.borrow(address(this), address(this), d.borrowUnderlying, "");
+
 		// trade extra tokens
 
 		// if we have extra short tokens, trade them for underlying
@@ -228,12 +234,24 @@ abstract contract IMXFarm is IIMXFarm {
 		}
 		// if we know the exact amount of short we must repay, then ensure we have that amount
 		else if (d.repayShort > shortAmnt && d.repayShort != type(uint256).max) {
-			pair()._swapTokensForExactTokens(
-				d.repayShort - shortAmnt,
+			// TODO this could fail if we don't have enough underlying
+			uint256 amountOut = d.repayShort - shortAmnt;
+			uint256 amountIn = pair()._getAmountIn(
+				amountOut,
 				address(underlying()),
 				address(short())
 			);
-			shortAmnt = d.repayShort;
+			uint256 inTokenBalance = underlying().balanceOf(address(this));
+			if (amountIn > inTokenBalance) {
+				shortAmnt = pair()._swapExactTokensForTokens(
+					inTokenBalance,
+					address(underlying()),
+					address(short())
+				);
+			} else {
+				pair()._swap(amountIn, amountOut, address(underlying()), address(short()));
+				shortAmnt = d.repayShort;
+			}
 		}
 
 		uint256 uBalance = underlying().balanceOf(address(this));
@@ -243,11 +261,13 @@ abstract contract IMXFarm is IIMXFarm {
 		_sBorrowable.borrow(address(this), address(0), 0, new bytes(0));
 
 		// repay underlying loan
-		underlying().safeTransfer(
-			address(_uBorrowable),
-			d.repayUnderlying > uBalance ? uBalance : d.repayUnderlying
-		);
-		_uBorrowable.borrow(address(this), address(0), 0, new bytes(0));
+		if (uBalance > 0) {
+			underlying().safeTransfer(
+				address(_uBorrowable),
+				d.repayUnderlying > uBalance ? uBalance : d.repayUnderlying
+			);
+			_uBorrowable.borrow(address(this), address(0), 0, new bytes(0));
+		}
 
 		uint256 cAmount = (redeemAmount * 1e18) / _collateralToken.exchangeRate() + 1;
 

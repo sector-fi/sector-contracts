@@ -28,8 +28,8 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 	// string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
 	// string TEST_STRATEGY = "USDC-TAROT-Tarot-Velo";
 	// string TEST_STRATEGY = "ETH-USDC-Tarot-Velo";
-	// string TEST_STRATEGY = "USDC-OP-Tarot-Velo";
-	string TEST_STRATEGY = "USDC-VELO-Tarot-Velo";
+	string TEST_STRATEGY = "USDC-OP-Tarot-Velo";
+	// string TEST_STRATEGY = "USDC-VELO-Tarot-Velo";
 
 	// arbitrum
 	// string TEST_STRATEGY = "USDC-ETH-Tarot-Xcal";

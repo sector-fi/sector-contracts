@@ -123,4 +123,21 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 	function noRebalance() public override {}
 
 	function adjustPrice(uint256 fraction) public override {}
+
+	function testDeploymentHarvest() public {
+		// SCYVault dStrat = SCYVault(payable(0x596777F4a395e4e4dE3501858bE9719859C2F64D));
+		SCYVault dStrat = SCYVault(payable(0x48752d39E4c4e13C8a39E941b03631fED172467b));
+
+		vm.startPrank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
+		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
+		params1[0] = harvestParams;
+		params1[0].min = 0;
+		params1[0].deadline = block.timestamp + 1;
+		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+
+		uint256 tvl = dStrat.getAndUpdateTvl();
+		(uint256[] memory harvestAmnts, ) = dStrat.harvest(dStrat.getTvl(), 0, params1, params2);
+		vm.stopPrank();
+		assertGt(harvestAmnts[0], 0);
+	}
 }

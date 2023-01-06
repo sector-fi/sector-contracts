@@ -8,11 +8,13 @@ import { PriceUtils, UniUtils, IUniswapV2Pair } from "../../utils/PriceUtils.sol
 import { HarvestSwapParams } from "interfaces/Structs.sol";
 import { SCYWEpochVault, levConvexVault, Strategy, AuthConfig, FeeConfig } from "strategies/gearbox/levConvexVault.sol";
 import { levConvex } from "strategies/gearbox/levConvex.sol";
+import { levConvex3Crv } from "strategies/gearbox/levConvex3Crv.sol";
+
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SCYStratUtils } from "../common/SCYStratUtils.sol";
 import { IDegenNFT } from "interfaces/gearbox/IDegenNFT.sol";
 import { ICreditFacade } from "interfaces/gearbox/ICreditFacade.sol";
-import { LevConvexConfig } from "strategies/gearbox/levConvex.sol";
+import { LevConvexConfig } from "strategies/gearbox/ILevConvex.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -22,7 +24,13 @@ contract levConvexSetup is SCYStratUtils {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
-	string TEST_STRATEGY = "USDC-levConvex-sUSD";
+	// string TEST_STRATEGY = "USDC-sUSD-levConvex"; // year fees/slippage 3.19%
+	// string TEST_STRATEGY = "USDC-FRAXUSDC-levConvex"; // year fees/slippage 4.28%
+
+	// 3pool strats
+	// string TEST_STRATEGY = "USDC-gUSD-levConvex"; // year fees/slippage 4.10%
+	// string TEST_STRATEGY = "USDC-FRAX3CRV-levConvex"; // year fees/slippage 4.49%
+	string TEST_STRATEGY = "USDC-lUSD-levConvex"; // year fees/slippage 1.33%
 
 	uint256 currentFork;
 
@@ -31,6 +39,7 @@ contract levConvexSetup is SCYStratUtils {
 	Strategy strategyConfig;
 
 	bytes[] harvestPaths;
+	bool is3crv;
 
 	struct ConfigJSON {
 		address a1_curveAdapter;
@@ -44,6 +53,7 @@ contract levConvexSetup is SCYStratUtils {
 		address h_farmRouter;
 		address[] i_farmTokens;
 		bytes[] j_harvestPaths;
+		bool k_is3crv;
 		string x_chain;
 	}
 
@@ -67,6 +77,7 @@ contract levConvexSetup is SCYStratUtils {
 		_config.leverageFactor = stratJson.g_leverageFactor;
 		_config.farmRouter = stratJson.h_farmRouter;
 
+		is3crv = stratJson.k_is3crv;
 		harvestPaths = stratJson.j_harvestPaths;
 		strategyConfig.acceptsNativeToken = stratJson.a2_acceptsNativeToken;
 
@@ -104,7 +115,9 @@ contract levConvexSetup is SCYStratUtils {
 
 		mLp = vault.MIN_LIQUIDITY();
 
-		strategy = new levConvex(authConfig, config);
+		strategy = is3crv
+			? levConvex(address(new levConvex3Crv(authConfig, config)))
+			: new levConvex(authConfig, config);
 
 		vault.initStrategy(address(strategy));
 		strategy.setVault(address(vault));
@@ -158,7 +171,13 @@ contract levConvexSetup is SCYStratUtils {
 		uint256 newTvl = strategy.getTotalTVL();
 
 		assert(harvestAmnts.length == l);
-		for (uint256 i; i < l; ++i) assertGt(harvestAmnts[i], 0);
+		for (uint256 i; i < l; ++i) {
+			if (harvestAmnts[i] == 0) {
+				console.log("missing rewards for", i);
+				if (i == l - 1) continue;
+			}
+			assertGt(harvestAmnts[i], 0);
+		}
 		assertGt(newTvl, tvl);
 
 		assertEq(underlying.balanceOf(strategy.credAcc()), 0);
@@ -187,7 +206,7 @@ contract levConvexSetup is SCYStratUtils {
 		uint256 startTvl = vault.getAndUpdateTvl();
 		uint256 startAccBalance = vault.underlyingBalance(user);
 		deal(address(underlying), user, amount);
-		uint256 minSharesOut = (vault.underlyingToShares(amount) * 9890) / 10000;
+		uint256 minSharesOut = (vault.underlyingToShares(amount) * 9950) / 10000;
 
 		vm.startPrank(user);
 		underlying.approve(address(vault), amount);

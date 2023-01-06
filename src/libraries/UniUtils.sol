@@ -78,13 +78,7 @@ library UniUtils {
 	) internal returns (uint256) {
 		uint256 amountOut = _getAmountOut(pair, amountIn, inToken, outToken);
 		if (amountOut == 0) return 0;
-		(address token0, ) = _sortTokens(outToken, inToken);
-		(uint256 amount0Out, uint256 amount1Out) = inToken == token0
-			? (uint256(0), amountOut)
-			: (amountOut, uint256(0));
-
-		IERC20(inToken).safeTransfer(address(pair), amountIn);
-		pair.swap(amount0Out, amount1Out, address(this), new bytes(0));
+		_swap(pair, amountIn, amountOut, inToken, outToken);
 		return amountOut;
 	}
 
@@ -95,13 +89,22 @@ library UniUtils {
 		address outToken
 	) internal returns (uint256) {
 		uint256 amountIn = _getAmountIn(pair, amountOut, inToken, outToken);
+		_swap(pair, amountIn, amountOut, inToken, outToken);
+		return amountIn;
+	}
+
+	function _swap(
+		IUniswapV2Pair pair,
+		uint256 amountIn,
+		uint256 amountOut,
+		address inToken,
+		address outToken
+	) internal {
 		(address token0, ) = _sortTokens(outToken, inToken);
 		(uint256 amount0Out, uint256 amount1Out) = inToken == token0
 			? (uint256(0), amountOut)
 			: (amountOut, uint256(0));
-
 		IERC20(inToken).safeTransfer(address(pair), amountIn);
 		pair.swap(amount0Out, amount1Out, address(this), new bytes(0));
-		return amountIn;
 	}
 }

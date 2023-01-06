@@ -40,6 +40,7 @@ struct RemoveLiqAndRepayCalldata {
 	uint256 removeLpAmnt;
 	uint256 repayUnderlying;
 	uint256 repayShort;
+	uint256 borrowUnderlying;
 	// uint256 amountAMin;
 	// uint256 amountBMin;
 }

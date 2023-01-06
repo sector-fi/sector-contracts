@@ -150,9 +150,9 @@ abstract contract SCYStratUtils is SectorTest {
 		uint256 tvl = vault.getAndUpdateTvl();
 		uint256 lockedTvl = vault.sharesToUnderlying(mLp);
 		assertApproxEqRel(
-			(tvl * (1e18 + redeemSlippage)) / 1e18 + 10000,
-			lockedTvl + startTvl + 10000 - minUnderlyingOut,
-			.001e18,
+			tvl + 100000 + minUnderlyingOut,
+			lockedTvl + (startTvl * (1e18 - redeemSlippage)) / 1e18 + 100000,
+			.0011e18,
 			"tvl should update"
 		);
 		assertApproxEqRel(

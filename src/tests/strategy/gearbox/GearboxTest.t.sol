@@ -51,7 +51,6 @@ contract GearboxTest is SectorTest {
 		accFactory = IAccountFactoryGetters(addressProvider.getAccountFactory());
 
 		priceOracle = IPriceOracleV2(addressProvider.getPriceOracle());
-		console.log("priceOracle", address(priceOracle));
 
 		// address configurator = IACL(addressProvider.getACL()).owner();
 		// vm.prank(configurator);
@@ -91,7 +90,6 @@ contract GearboxTest is SectorTest {
 	}
 
 	function testGearbox() public {
-		console.log("ubal", underlying.balanceOf(credAcc));
 		(uint256 total, uint256 twv) = creditFacade.calcTotalValue(credAcc);
 		(, , uint256 borrowAmountWithInterestAndFees) = creditManager
 			.calcCreditAccountAccruedInterest(credAcc);
