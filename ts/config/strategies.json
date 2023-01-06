@@ -180,7 +180,81 @@
     ],
     "x_chain": "ARBITRUM"
   },
-  "USDC-levConvex-sUSD": {
+  "USDC-gUSD-levConvex": {
+    "a1_curveAdapter": "0x6fA17Ffe020d72212A4DcA1560b27eA3cDAf965D",
+    "a2_acceptsNativeToken": false,
+    "b_convexRewardPool": "0x3D4a70e5F355EAd0690213Ae9909f3Dc41236E3C",
+    "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
+    "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
+    "e_coinId": 1,
+    "f_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "g_leverageFactor": 500,
+    "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "i_farmTokens": [
+      "0xD533a949740bb3306d119CC777fa900bA034cd52",
+      "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B"
+    ],
+    "j_harvestPaths": [
+      "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    ],
+    "k_is3crv": true,
+    "x_chain": "ETH"
+  },
+  "levConvexStrats": [
+    "USDC-gUSD-levConvex",
+    "USDC-FRAX3CRV-levConvex",
+    "USDC-lUSD-levConvex",
+    "USDC-sUSD-levConvex",
+    "USDC-FRAXUSDC-levConvex"
+  ],
+  "USDC-FRAX3CRV-levConvex": {
+    "a1_curveAdapter": "0x1C8281606377d79522515681BD94fc9d02b0d20B",
+    "a2_acceptsNativeToken": false,
+    "b_convexRewardPool": "0xB26e063F062F76f9F7Dfa1a3f4b7fDa4A2197DfB",
+    "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
+    "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
+    "e_coinId": 1,
+    "f_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "g_leverageFactor": 500,
+    "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "i_farmTokens": [
+      "0xD533a949740bb3306d119CC777fa900bA034cd52",
+      "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+      "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0"
+    ],
+    "j_harvestPaths": [
+      "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    ],
+    "k_is3crv": true,
+    "x_chain": "ETH"
+  },
+  "USDC-lUSD-levConvex": {
+    "a1_curveAdapter": "0xD4c39a18338EA89B29965a8CAd28B7fb063c1429",
+    "a2_acceptsNativeToken": false,
+    "b_convexRewardPool": "0xc34Ef7306B82f4e38E3fAB975034Ed0f76e0fdAA",
+    "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
+    "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
+    "e_coinId": 1,
+    "f_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "g_leverageFactor": 500,
+    "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "i_farmTokens": [
+      "0xD533a949740bb3306d119CC777fa900bA034cd52",
+      "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+      "0x6DEA81C8171D0bA574754EF6F8b412F2Ed88c54D"
+    ],
+    "j_harvestPaths": [
+      "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x6dea81c8171d0ba574754ef6f8b412f2ed88c54d000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    ],
+    "k_is3crv": true,
+    "x_chain": "ETH"
+  },
+  "USDC-sUSD-levConvex": {
     "a1_curveAdapter": "0xbfB212e5D9F880bf93c47F3C32f6203fa4845222",
     "a2_acceptsNativeToken": false,
     "b_convexRewardPool": "0xbEf6108D1F6B85c4c9AA3975e15904Bb3DFcA980",
@@ -203,14 +277,10 @@
     "k_is3crv": false,
     "x_chain": "ETH"
   },
-  "levConvexStrats": [
-    "USDC-levConvex-sUSD",
-    "USDC-levConvex-gUSD"
-  ],
-  "USDC-levConvex-gUSD": {
-    "a1_curveAdapter": "0x6fA17Ffe020d72212A4DcA1560b27eA3cDAf965D",
+  "USDC-FRAXUSDC-levConvex": {
+    "a1_curveAdapter": "0xa4b2b3Dede9317fCbd9D78b8250ac44Bf23b64F4",
     "a2_acceptsNativeToken": false,
-    "b_convexRewardPool": "0x3D4a70e5F355EAd0690213Ae9909f3Dc41236E3C",
+    "b_convexRewardPool": "0x023e429Df8129F169f9756A4FBd885c18b05Ec2d",
     "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
     "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
     "e_coinId": 1,
@@ -225,7 +295,7 @@
       "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
       "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
     ],
-    "k_is3crv": true,
+    "k_is3crv": false,
     "x_chain": "ETH"
   }
 }

@@ -8,6 +8,7 @@ import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/ex
 import { IMXSetup, IUniswapV2Pair } from "./IMXSetup.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
+import { IStrategy } from "interfaces/IStrategy.sol";
 
 import "hardhat/console.sol";
 
@@ -129,9 +130,49 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		noRebalance();
 	}
 
-	// function testDeployments() public {
-	// 	IMXCore dstrat = IMXCore(0xB3E829d2aE0944a147549330a65614CD095F34c9);
-	// 	console.log(address(dstrat.sBorrowable()), address(dstrat.uBorrowable()));
-	// 	console.log("max", dstrat.getMaxTvl());
-	// }
+	function testRebalanceEdge() public {
+		deposit(user1, 10 * dec);
+
+		// logTvl(IStrategy(address(strategy)));
+		adjustPrice(100e18);
+		adjustPrice(.01e18);
+		adjustPrice(100e18);
+		adjustPrice(.01e18);
+
+		adjustPrice(1.12e18);
+		skip(60 * 60 * 24 * 5);
+		strategy.getAndUpdateTVL();
+		// logTvl(IStrategy(address(strategy)));
+
+		console.log("position offset", strategy.getPositionOffset());
+		vm.startPrank(manager);
+		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10);
+		strategy.rebalance(expectedPrice, maxDelta);
+		vm.stopPrank();
+		console.log("end position offset", strategy.getPositionOffset());
+	}
+
+	function testDeployments() public {
+		IMXCore dstrat = IMXCore(0xf38f968f3d54576AE67150F0F81d447462e12030);
+
+		logTvl(IStrategy(address(dstrat)));
+		adjustPrice(100e18);
+		adjustPrice(.01e18);
+		adjustPrice(100e18);
+		adjustPrice(.01e18);
+
+		adjustPrice(1.12e18);
+		skip(60 * 60 * 24 * 5);
+		dstrat.getAndUpdateTVL();
+		logTvl(IStrategy(address(dstrat)));
+
+		console.log("position offset", dstrat.getPositionOffset());
+		vm.startPrank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
+		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10);
+		dstrat.rebalance(expectedPrice, maxDelta);
+		vm.stopPrank();
+
+		// console.log(address(dstrat.sBorrowable()), address(dstrat.uBorrowable()));
+		// console.log("max", dstrat.getMaxTvl());
+	}
 }

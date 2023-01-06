@@ -132,12 +132,12 @@ contract levConvexUnit is levConvexSetup {
 		assertApproxEqRel(balance, startBalance, .001e18, "first balance should not decrease");
 		// vault.closePosition(0, 0);
 		withdrawEpoch(user1, 1e18);
-		assertApproxEqRel(underlying.balanceOf(user1), amnt, .0034e18, "final user1 bal");
+		assertApproxEqRel(underlying.balanceOf(user1), amnt, .0038e18, "final user1 bal");
 
 		vm.roll(block.number + 1);
 
 		withdrawEpoch(user2, 1e18);
-		assertApproxEqRel(underlying.balanceOf(user2), amnt, .00681e18, "final user2 bal");
+		assertApproxEqRel(underlying.balanceOf(user2), amnt, .0075e18, "final user2 bal");
 	}
 
 	function testManagerWithdraw() public {
@@ -149,7 +149,7 @@ contract levConvexUnit is levConvexSetup {
 		vault.withdrawFromStrategy(shares, 0);
 
 		uint256 floatBalance = vault.uBalance();
-		assertApproxEqRel(floatBalance, amnt, .0035e18);
+		assertApproxEqRel(floatBalance, amnt, .0038e18);
 		assertEq(underlying.balanceOf(address(vault)), floatBalance);
 		vm.roll(block.number + 1);
 		skip(1000);

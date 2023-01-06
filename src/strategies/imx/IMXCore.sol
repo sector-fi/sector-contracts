@@ -171,7 +171,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		uint256 uRepay = uBorrowBalance.mulDivUp(removeCollateral, balance);
 		uint256 sRepay = sBorrowBalance.mulDivUp(removeCollateral, balance);
 
-		_removeIMXLiquidity(removeLp, uRepay, sRepay);
+		_removeIMXLiquidity(removeLp, uRepay, sRepay, 0);
 	}
 
 	// increases the position based on current desired balance
@@ -253,16 +253,20 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		uint256 targetShortLp = _underlyingToShort(targetUnderlyingLP);
 		(uint256 uBorrowBalance, uint256 sBorrowBalance) = _updateAndGetBorrowBalances();
 
-		// TODO account for uBalance
+		// TODO account for uBalance?
 		// uint256 uBalance = underlying().balanceOf(address(this));
 
 		if (underlyingLp > targetUnderlyingLP) {
-			uint256 uRepay = uBorrowBalance > targetUBorrow ? uBorrowBalance - targetUBorrow : 0;
+			uint256 uRepay;
+			uint256 uBorrow;
+			if (uBorrowBalance > targetUBorrow) uRepay = uBorrowBalance - targetUBorrow;
+			else uBorrow = targetUBorrow - uBorrowBalance;
+
 			uint256 sRepay = sBorrowBalance > targetShortLp ? sBorrowBalance - targetShortLp : 0;
 
 			uint256 lp = _getLiquidity();
 			uint256 removeLp = lp - (lp * targetUnderlyingLP) / underlyingLp;
-			_removeIMXLiquidity(removeLp, uRepay, sRepay);
+			_removeIMXLiquidity(removeLp, uRepay, sRepay, uBorrow);
 		} else if (targetUnderlyingLP > underlyingLp) {
 			uint256 uBorrow = targetUBorrow > uBorrowBalance ? targetUBorrow - uBorrowBalance : 0;
 			uint256 sBorrow = targetShortLp > sBorrowBalance ? targetShortLp - sBorrowBalance : 0;
@@ -284,7 +288,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	function closePosition() public onlyVault returns (uint256 balance) {
 		(uint256 uRepay, uint256 sRepay) = _updateAndGetBorrowBalances();
 		uint256 removeLp = _getLiquidity();
-		_removeIMXLiquidity(removeLp, uRepay, sRepay);
+		_removeIMXLiquidity(removeLp, uRepay, sRepay, 0);
 		// transfer funds to vault
 		balance = _underlying.balanceOf(address(this));
 		_underlying.safeTransfer(vault, balance);
