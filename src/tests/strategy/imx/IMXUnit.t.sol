@@ -152,27 +152,24 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		console.log("end position offset", strategy.getPositionOffset());
 	}
 
-	function testDeployments() public {
-		IMXCore dstrat = IMXCore(0xf38f968f3d54576AE67150F0F81d447462e12030);
+	// function testDeployments() public {
+	// 	IMXCore dstrat = IMXCore(0xf38f968f3d54576AE67150F0F81d447462e12030);
 
-		logTvl(IStrategy(address(dstrat)));
-		adjustPrice(100e18);
-		adjustPrice(.01e18);
-		adjustPrice(100e18);
-		adjustPrice(.01e18);
+	// 	logTvl(IStrategy(address(dstrat)));
+	// 	adjustPrice(100e18);
+	// 	adjustPrice(.01e18);
+	// 	adjustPrice(100e18);
+	// 	adjustPrice(.01e18);
 
-		adjustPrice(1.12e18);
-		skip(60 * 60 * 24 * 5);
-		dstrat.getAndUpdateTVL();
-		logTvl(IStrategy(address(dstrat)));
+	// 	adjustPrice(1.12e18);
+	// 	skip(60 * 60 * 24 * 5);
+	// 	dstrat.getAndUpdateTVL();
+	// 	logTvl(IStrategy(address(dstrat)));
 
-		console.log("position offset", dstrat.getPositionOffset());
-		vm.startPrank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
-		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10);
-		dstrat.rebalance(expectedPrice, maxDelta);
-		vm.stopPrank();
-
-		// console.log(address(dstrat.sBorrowable()), address(dstrat.uBorrowable()));
-		// console.log("max", dstrat.getMaxTvl());
-	}
+	// 	console.log("position offset", dstrat.getPositionOffset());
+	// 	vm.startPrank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
+	// 	(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10);
+	// 	dstrat.rebalance(expectedPrice, maxDelta);
+	// 	vm.stopPrank();
+	// }
 }

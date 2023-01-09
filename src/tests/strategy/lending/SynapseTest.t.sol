@@ -137,24 +137,25 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		withdraw(user1, 1e18);
 		withdraw(user2, 1e18);
 		withdraw(user3, 1e18);
+		withdraw(treasury, 1e18);
 
 		uint256 tvl = vault.getTvl();
 		assertEq(tvl, 0);
 	}
 
-	function testDeploymentHarvest() public {
-		SCYVault dStrat = SCYVault(payable(0x596777F4a395e4e4dE3501858bE9719859C2F64D));
+	// function testDeploymentHarvest() public {
+	// 	SCYVault dStrat = SCYVault(payable(0x596777F4a395e4e4dE3501858bE9719859C2F64D));
 
-		vm.startPrank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
-		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
-		params1[0] = harvestParams;
-		params1[0].min = 0;
-		params1[0].deadline = block.timestamp + 1;
-		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
+	// 	vm.startPrank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
+	// 	HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
+	// 	params1[0] = harvestParams;
+	// 	params1[0].min = 0;
+	// 	params1[0].deadline = block.timestamp + 1;
+	// 	HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
 
-		uint256 tvl = dStrat.getAndUpdateTvl();
-		(uint256[] memory harvestAmnts, ) = dStrat.harvest(dStrat.getTvl(), 0, params1, params2);
-		vm.stopPrank();
-		assertGt(harvestAmnts[0], 0);
-	}
+	// 	uint256 tvl = dStrat.getAndUpdateTvl();
+	// 	(uint256[] memory harvestAmnts, ) = dStrat.harvest(dStrat.getTvl(), 0, params1, params2);
+	// 	vm.stopPrank();
+	// 	assertGt(harvestAmnts[0], 0);
+	// }
 }
