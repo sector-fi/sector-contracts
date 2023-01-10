@@ -92,7 +92,7 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
 
 		epochExchangeRate[epoch] = sharesToUnderlying;
 
-		pendingRedeem = requestedRedeem;
+		pendingRedeem += requestedRedeem;
 		pendingWithdrawU += (sharesToUnderlying * requestedRedeem) / 1e18;
 		requestedRedeem = 0;
 		// advance epoch

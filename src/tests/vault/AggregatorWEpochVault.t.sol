@@ -608,4 +608,31 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		vm.prank(manager);
 		_vault.processRedeem(minAmountOut);
 	}
+
+	function testMultiRedeem() public {
+		sectDeposit(vault, user1, 1e18);
+		sectDeposit(vault, user2, 1e18);
+
+		uint256 shares1 = vault.balanceOf(user1);
+		vm.prank(user1);
+		vault.requestRedeem(shares1);
+
+		vault.processRedeem(0);
+
+		vm.prank(user2);
+		vault.requestRedeem(shares1);
+
+		vault.processRedeem(0);
+
+		vm.prank(user1);
+		vault.redeem();
+
+		vm.prank(user2);
+		vault.redeem();
+
+		assertTrue(vault.balanceOf(user1) == 0, "user1 balance");
+		assertTrue(vault.balanceOf(user2) == 0, "user2 balance");
+		assertEq(underlying.balanceOf(user1), 1e18, "user1 underlying");
+		assertEq(underlying.balanceOf(user2), 1e18, "user2 underlying");
+	}
 }

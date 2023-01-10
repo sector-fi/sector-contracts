@@ -29,6 +29,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 
 	Strategy strategyConfig;
 	HLPConfig config;
+	string contractType;
 
 	struct HLPConfigJSON {
 		address a_underlying;
@@ -46,6 +47,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		address[] l3_lendRewardPath;
 		address l4_lendRewardRouter;
 		uint256 n_nativeToken;
+		string o_contract;
 		string x_chain;
 	}
 
@@ -76,6 +78,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 
 		harvestParams.path = stratJson.h_harvestPath;
 		harvestLendParams.path = stratJson.l3_lendRewardPath;
+		contractType = stratJson.o_contract;
 
 		string memory RPC_URL = vm.envString(string.concat(stratJson.x_chain, "_RPC_URL"));
 		uint256 BLOCK = vm.envUint(string.concat(stratJson.x_chain, "_BLOCK"));
@@ -109,7 +112,9 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		config.vault = address(vault);
 
 		AuthConfig memory authConfig = AuthConfig(owner, guardian, manager);
-		strategy = new MasterChefCompMulti(authConfig, config);
+
+		if (compare(contractType, "MasterChefCompMulti"))
+			strategy = new MasterChefCompMulti(authConfig, config);
 
 		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);
@@ -186,5 +191,9 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		address cToken = address(ICompound(address(strategy)).cTokenBorrow());
 		uint256 price = (fraction * oracle.getUnderlyingPrice(cToken)) / 1e18;
 		mockHlpOraclePrice(address(oracle), cToken, price);
+	}
+
+	function compare(string memory str1, string memory str2) public pure returns (bool) {
+		return keccak256(abi.encodePacked(str1)) == keccak256(abi.encodePacked(str2));
 	}
 }

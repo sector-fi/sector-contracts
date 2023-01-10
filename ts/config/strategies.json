@@ -64,6 +64,7 @@
     ],
     "l4_lendRewardRouter": "0xAA30eF758139ae4a7f798112902Bf6d65612045f",
     "n_nativeToken": 2,
+    "o_contract": "MasterChefCompMulti",
     "x_chain": "MOVR"
   },
   "USDC-Arbitrum-Stargate": {

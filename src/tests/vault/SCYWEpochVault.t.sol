@@ -204,4 +204,45 @@ contract SCYWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		vault.redeem(user2, amount, NATIVE, 0);
 		vm.stopPrank();
 	}
+
+	function testMultiRedeem() public {
+		uint256 amnt = 100e18;
+		scyDeposit(vault, user1, amnt);
+		scyDeposit(vault, user2, amnt);
+
+		uint256 sharesToWithdraw1 = vault.balanceOf(user1);
+		uint256 sharesToWithdraw2 = vault.balanceOf(user2);
+
+		uint256 minUnderlyingOut1 = vault.sharesToUnderlying(sharesToWithdraw1);
+		uint256 minUnderlyingOut2 = vault.sharesToUnderlying(sharesToWithdraw2);
+
+		vm.prank(user1);
+		vault.requestRedeem(sharesToWithdraw1);
+
+		scyProcessRedeem(vault);
+
+		vm.prank(user2);
+		vault.requestRedeem(sharesToWithdraw2);
+
+		scyProcessRedeem(vault);
+
+		vm.prank(user1);
+		vault.redeem(
+			user1,
+			sharesToWithdraw1,
+			address(underlying),
+			(minUnderlyingOut1 * 9930) / 10000
+		);
+
+		vm.prank(user2);
+		vault.redeem(
+			user2,
+			sharesToWithdraw2,
+			address(underlying),
+			(minUnderlyingOut2 * 9930) / 10000
+		);
+
+		assertEq(vault.underlyingBalance(user1), 0, "deposit balance 0");
+		assertEq(vault.underlyingBalance(user2), 0, "deposit balance 0");
+	}
 }

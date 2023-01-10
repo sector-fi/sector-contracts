@@ -351,6 +351,20 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 	///  Yield Token Overrides
 	///
 
+	function convertToAssets(uint256 shares) public view override returns (uint256) {
+		// we need to subtract pendingReedem because it is not included in totalAssets
+		// pendingRedeem should allways be smaller than totalSupply
+		uint256 supply = totalSupply() - pendingRedeem;
+		return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
+	}
+
+	function convertToShares(uint256 assets) public view override returns (uint256) {
+		// we need to subtract pendingReedem because it is not included in totalAssets
+		// pendingRedeem should allways be smaller than totalSupply
+		uint256 supply = totalSupply() - pendingRedeem;
+		return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
+	}
+
 	function assetInfo()
 		public
 		view
