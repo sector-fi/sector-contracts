@@ -161,7 +161,8 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 
 		_checkSlippage(expectedTvl, startTvl, maxDelta);
 
-		(harvest1, harvest2) = _stratHarvest(swap1, swap2);
+		if (swap1.length > 0 || swap2.length > 0)
+			(harvest1, harvest2) = _stratHarvest(swap1, swap2);
 
 		uint256 tvl = _strategyTvl() + _uBalance;
 
