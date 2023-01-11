@@ -207,8 +207,8 @@ contract SCYWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 	function testMultiRedeem() public {
 		uint256 amnt = 100e18;
-		scyDeposit(vault, user1, amnt);
-		scyDeposit(vault, user2, amnt);
+		scyPreDeposit(vault, user1, amnt);
+		scyPreDeposit(vault, user2, amnt);
 
 		uint256 sharesToWithdraw1 = vault.balanceOf(user1);
 		uint256 sharesToWithdraw2 = vault.balanceOf(user2);
@@ -226,6 +226,20 @@ contract SCYWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		scyProcessRedeem(vault);
 
+		scyDeposit(vault, user3, amnt);
+		uint256 assets = vault.totalAssets();
+		uint256 shares = vault.convertToShares(assets);
+		uint256 minAmountOut = vault.sharesToUnderlying(shares);
+
+		vault.withdrawFromStrategy(shares, (minAmountOut * 999) / 1000);
+
+		assertEq(vault.totalAssets(), 0, "total assets 0");
+		assertEq(vault.uBalance(), amnt + mLp, "float balance");
+
+		uint256 uBalance = vault.uBalance();
+		uint256 minSharesOut = vault.underlyingToShares(vault.uBalance());
+		vault.depositIntoStrategy(uBalance, (minSharesOut * 999) / 1000);
+
 		vm.prank(user1);
 		vault.redeem(
 			user1,
@@ -242,8 +256,11 @@ contract SCYWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 			(minUnderlyingOut2 * 9930) / 10000
 		);
 
-		assertEq(vault.underlyingBalance(user1), 0, "deposit balance 0");
-		assertEq(vault.underlyingBalance(user2), 0, "deposit balance 0");
+		assertEq(vault.underlyingBalance(user1), 0, "deposit balance1 0");
+		assertEq(vault.underlyingBalance(user2), 0, "deposit balance2 0");
+
+		assertEq(underlying.balanceOf(user1), amnt, "withdrawn amount1");
+		assertEq(underlying.balanceOf(user2), amnt, "withdrawn amount2");
 	}
 
 	function testEarlyLifecycle() public {

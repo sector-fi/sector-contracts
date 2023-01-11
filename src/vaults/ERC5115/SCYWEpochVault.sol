@@ -128,6 +128,7 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 			// don't include newly minted shares and pendingRedeem in the calculation
 			sharesOut = toSharesAfterDeposit(yieldTokenAdded);
 		} else {
+			// sharesOut = underlyingToSharesAfterDeposit(amount);
 			sharesOut = underlyingToSharesAfterDeposit(amount);
 			uBalance += amount;
 		}
@@ -194,7 +195,8 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 
 	// minAmountOut is a slippage parameter for withdrawing requestedRedeem shares
 	function processRedeem(uint256 minAmountOut) public override onlyRole(MANAGER) {
-		uint256 _totalSupply = totalSupply();
+		// we must subtract pendingRedeem form totalSupply
+		uint256 _totalSupply = totalSupply() - pendingRedeem;
 
 		uint256 yeildTokenRedeem = convertToAssets(requestedRedeem);
 
@@ -208,7 +210,7 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
 		// TODO why not use underlying.balanceOf?
 		uint256 reserves = uBalance;
-		uint256 shareOfReserves = (reserves * requestedRedeem) / _totalSupply;
+		uint256 shareOfReserves = (reserves * requestedRedeem) / (_totalSupply);
 
 		// Update strategy underlying reserves balance
 		if (shareOfReserves > 0) uBalance -= shareOfReserves;
@@ -250,8 +252,8 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
 		uBalance -= underlyingAmount;
 		uint256 yAdded = _stratDeposit(underlyingAmount);
-		uint256 virtualSharesOut = toSharesAfterDeposit(yAdded);
-		if (virtualSharesOut < minAmountOut) revert SlippageExceeded();
+		uint256 virtualSharesOut = convertToShares(yAdded);
+		if (virtualSharesOut < minAmountOut) revert InsufficientOut(virtualSharesOut, minAmountOut);
 		emit DepositIntoStrategy(msg.sender, underlyingAmount);
 	}
 
@@ -259,14 +261,16 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 	function withdrawFromStrategy(uint256 shares, uint256 minAmountOut) public onlyRole(MANAGER) {
 		uint256 yieldTokenAmnt = convertToAssets(shares);
 		(uint256 underlyingWithdrawn, ) = _stratRedeem(address(this), yieldTokenAmnt);
-		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
+		if (underlyingWithdrawn < minAmountOut)
+			revert InsufficientOut(underlyingWithdrawn, minAmountOut);
 		uBalance += underlyingWithdrawn;
 		emit WithdrawFromStrategy(msg.sender, underlyingWithdrawn);
 	}
 
 	function closePosition(uint256 minAmountOut, uint256 slippageParam) public onlyRole(MANAGER) {
 		uint256 underlyingWithdrawn = _stratClosePosition(slippageParam);
-		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
+		if (underlyingWithdrawn < minAmountOut)
+			revert InsufficientOut(underlyingWithdrawn, minAmountOut);
 		uBalance += underlyingWithdrawn;
 		emit ClosePosition(msg.sender, underlyingWithdrawn);
 	}
@@ -308,10 +312,11 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 	}
 
 	function isPaused() public view returns (bool) {
-		return uBalance > 0;
+		return (uBalance > 0 && totalAssets() > 0);
 	}
 
-	// used for estimates only
+	/// @dev used for estimates only
+	/// @dev includes pendingRedeem shares and pendingWithdrawUnderlying
 	function exchangeRateUnderlying() public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0) return _stratCollateralToUnderlying();
@@ -319,6 +324,7 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		return tvl.mulDivUp(ONE, _totalSupply);
 	}
 
+	/// @dev includes pendingRedeem shares and pendingWithdrawUnderlying
 	function getUpdatedUnderlyingBalance(address user) external returns (uint256) {
 		uint256 userBalance = balanceOf(user);
 		uint256 _totalSupply = totalSupply();
@@ -327,6 +333,7 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		return (tvl * userBalance) / _totalSupply;
 	}
 
+	/// @dev includes pendingRedeem shares and pendingWithdrawUnderlying
 	function underlyingBalance(address user) external view returns (uint256) {
 		uint256 userBalance = balanceOf(user);
 		uint256 _totalSupply = totalSupply();
@@ -335,18 +342,21 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		return (tvl * userBalance) / _totalSupply;
 	}
 
+	/// @dev includes pendingRedeem shares and pendingWithdrawUnderlying
 	function underlyingToShares(uint256 uAmnt) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0) return uAmnt.mulDivDown(ONE, _stratCollateralToUnderlying());
 		return uAmnt.mulDivDown(_totalSupply, getTvl());
 	}
 
+	/// @dev includes pendingRedeem shares and pendingWithdrawUnderlying
 	function underlyingToSharesAfterDeposit(uint256 uAmnt) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0) return uAmnt.mulDivDown(ONE, _stratCollateralToUnderlying());
 		return uAmnt.mulDivDown(_totalSupply, getTvl() - uAmnt);
 	}
 
+	/// @dev includes pendingRedeem shares and pendingWithdrawUnderlying
 	function sharesToUnderlying(uint256 shares) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0) return (shares * _stratCollateralToUnderlying()) / ONE;
@@ -396,7 +406,8 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		override
 		returns (uint256 fltAmnt)
 	{
-		if (token == address(underlying)) return underlying.balanceOf(address(this)) - uBalance;
+		if (token == address(underlying))
+			return underlying.balanceOf(address(this)) - uBalance - pendingWithdrawU;
 		if (token == NATIVE) return address(this).balance;
 	}
 

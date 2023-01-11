@@ -57,8 +57,8 @@ contract SCYWEpochVaultUtils is SectorTest {
 		if (vault.sendERC20ToStrategy()) underlying.transfer(vault.strategy(), amnt);
 		else underlying.transfer(address(vault), amnt);
 
-		uint256 minSharesOut = vault.underlyingToShares(amnt);
-		vault.deposit(acc, address(underlying), 0, (minSharesOut * 9930) / 10000);
+		uint256 minSharesOut = (vault.underlyingToShares(amnt) * 9930) / 10000;
+		vault.deposit(acc, address(underlying), 0, minSharesOut);
 		vm.stopPrank();
 		if (vault.getStrategyTvl() == 0) {
 			vm.prank(manager);

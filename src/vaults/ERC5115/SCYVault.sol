@@ -262,7 +262,7 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uBalance -= underlyingAmount;
 		if (sendERC20ToStrategy()) underlying.safeTransfer(strategy, underlyingAmount);
 		uint256 yAdded = _stratDeposit(underlyingAmount);
-		uint256 virtualSharesOut = toSharesAfterDeposit(yAdded);
+		uint256 virtualSharesOut = convertToShares(yAdded);
 		if (virtualSharesOut < minAmountOut) revert SlippageExceeded();
 		emit DepositIntoStrategy(msg.sender, underlyingAmount);
 	}
