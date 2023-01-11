@@ -66,6 +66,22 @@ contract SCYWEpochVaultUtils is SectorTest {
 		}
 	}
 
+	function scyPreDeposit(
+		SCYWEpochVault vault,
+		address acc,
+		uint256 amnt
+	) public {
+		MockERC20 underlying = MockERC20(address(vault.underlying()));
+		vm.startPrank(acc);
+		underlying.mint(acc, amnt);
+		if (vault.sendERC20ToStrategy()) underlying.transfer(vault.strategy(), amnt);
+		else underlying.transfer(address(vault), amnt);
+
+		uint256 minSharesOut = vault.underlyingToShares(amnt);
+		vault.deposit(acc, address(underlying), 0, (minSharesOut * 9930) / 10000);
+		vm.stopPrank();
+	}
+
 	function scyWithdrawEpoch(
 		SCYWEpochVault vault,
 		address user,

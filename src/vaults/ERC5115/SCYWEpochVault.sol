@@ -128,7 +128,7 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 			// don't include newly minted shares and pendingRedeem in the calculation
 			sharesOut = toSharesAfterDeposit(yieldTokenAdded);
 		} else {
-			sharesOut = underlyingToShares(amount);
+			sharesOut = underlyingToSharesAfterDeposit(amount);
 			uBalance += amount;
 		}
 
@@ -339,6 +339,12 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0) return uAmnt.mulDivDown(ONE, _stratCollateralToUnderlying());
 		return uAmnt.mulDivDown(_totalSupply, getTvl());
+	}
+
+	function underlyingToSharesAfterDeposit(uint256 uAmnt) public view returns (uint256) {
+		uint256 _totalSupply = totalSupply();
+		if (_totalSupply == 0) return uAmnt.mulDivDown(ONE, _stratCollateralToUnderlying());
+		return uAmnt.mulDivDown(_totalSupply, getTvl() - uAmnt);
 	}
 
 	function sharesToUnderlying(uint256 shares) public view returns (uint256) {

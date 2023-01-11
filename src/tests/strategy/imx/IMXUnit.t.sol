@@ -5,7 +5,7 @@ import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IMXSetup, IUniswapV2Pair } from "./IMXSetup.sol";
+import { IMXSetup, IUniswapV2Pair, SCYVault } from "./IMXSetup.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
@@ -150,6 +150,19 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		strategy.rebalance(expectedPrice, maxDelta);
 		vm.stopPrank();
 		console.log("end position offset", strategy.getPositionOffset());
+	}
+
+	function testNativeFlow() public {
+		if (!vault.acceptsNativeToken()) return;
+		// SCYVault vault = SCYVault(payable(0x5C6079193fA38868f51eac367E622DAda53cf17D));
+
+		uint256 amnt = .01e18;
+
+		vm.startPrank(user1);
+		vm.deal(user1, amnt);
+		uint256 minSharesOut = vault.underlyingToShares(amnt);
+		vault.deposit{ value: amnt }(user1, address(0), 0, (minSharesOut * 9930) / 10000);
+		vm.stopPrank();
 	}
 
 	// function testDeployments() public {

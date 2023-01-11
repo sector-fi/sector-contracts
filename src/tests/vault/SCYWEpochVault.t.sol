@@ -19,7 +19,7 @@ contract SCYWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 	function setUp() public {
 		underlying = new WETH();
 		vault = setUpSCYVault(address(underlying));
-		scyDeposit(vault, address(this), vault.MIN_LIQUIDITY());
+		scyPreDeposit(vault, address(this), vault.MIN_LIQUIDITY());
 	}
 
 	function testNativeFlow() public {
@@ -244,5 +244,16 @@ contract SCYWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		assertEq(vault.underlyingBalance(user1), 0, "deposit balance 0");
 		assertEq(vault.underlyingBalance(user2), 0, "deposit balance 0");
+	}
+
+	function testEarlyLifecycle() public {
+		uint256 amnt = 100e18;
+		scyPreDeposit(vault, user1, amnt);
+		scyPreDeposit(vault, user2, amnt);
+
+		assertEq(vault.balanceOf(user1), amnt, "user1 shares");
+		assertEq(vault.balanceOf(user2), amnt, "user2 shares");
+		assertEq(vault.underlyingBalance(user1), amnt, "user1 underlying");
+		assertEq(vault.underlyingBalance(user2), amnt, "user2 underlying");
 	}
 }
