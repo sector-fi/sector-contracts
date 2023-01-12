@@ -36,8 +36,6 @@ contract levConvexVault is SCYStrategy, SCYWEpochVault {
 		override
 		returns (uint256 amountOut, uint256 amntToTransfer)
 	{
-		// strategy doesn't transfer tokens to user
-		// TODO it should?
 		amountOut = ILevConvex(strategy).redeem(yeildTokenAmnt, recipient);
 		amntToTransfer = 0;
 	}

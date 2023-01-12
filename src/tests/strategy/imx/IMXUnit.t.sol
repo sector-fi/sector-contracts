@@ -156,13 +156,20 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		if (!vault.acceptsNativeToken()) return;
 		// SCYVault vault = SCYVault(payable(0x5C6079193fA38868f51eac367E622DAda53cf17D));
 
-		uint256 amnt = .01e18;
+		uint256 amnt = 1e18;
 
 		vm.startPrank(user1);
 		vm.deal(user1, amnt);
 		uint256 minSharesOut = vault.underlyingToShares(amnt);
 		vault.deposit{ value: amnt }(user1, address(0), 0, (minSharesOut * 9930) / 10000);
 		vm.stopPrank();
+
+		uint256 sharesToWithdraw = vault.balanceOf(user1);
+		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
+		vm.prank(user1);
+		vault.redeem(user1, sharesToWithdraw, address(0), (minUnderlyingOut * 9990) / 10000);
+
+		assertApproxEqRel(user1.balance, amnt, .001e18);
 	}
 
 	// function testDeployments() public {

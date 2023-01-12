@@ -43,6 +43,7 @@ contract IMXLend is SCYStrategy, SCYVault {
 	{
 		IERC20(yieldToken).safeTransfer(strategy, amount);
 		amountOut = IPoolToken(strategy).redeem(to);
+		amntToTransfer = to == address(this) ? amountOut : 0;
 		return (amountOut, amntToTransfer);
 	}
 

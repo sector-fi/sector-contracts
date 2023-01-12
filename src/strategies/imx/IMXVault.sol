@@ -40,6 +40,7 @@ contract IMXVault is SCYStrategy, SCYVault {
 		// strategy doesn't transfer tokens to user
 		// TODO it should?
 		amountOut = IMX(strategy).redeem(yeildTokenAmnt, recipient);
+		amntToTransfer = recipient == address(this) ? amountOut : 0;
 		return (amountOut, amntToTransfer);
 	}
 
