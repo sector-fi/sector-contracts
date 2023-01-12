@@ -144,15 +144,20 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 	}
 
 	// function testDeploymentHarvest() public {
-	// 	SCYVault dStrat = SCYVault(payable(0x596777F4a395e4e4dE3501858bE9719859C2F64D));
-
+	// SCYVault dStrat = SCYVault(payable(0x8DA9CD7232611Fef7b1f05Ab80ea9bB977F52A79));
+	// address u = 0xf09c27934A92c56c7C0dD6cBAc858C35fBd5170f;
+	// uint256 shares = dStrat.balanceOf(u);
+	// uint256 tvl = dStrat.getAndUpdateTvl();
+	// uint256 amount = dStrat.sharesToUnderlying(shares);
+	// uint256 uBal = dStrat.underlyingBalance(u);
+	// console.log("shares, tvl, amount", shares, tvl, amount);
+	// console.log("uBal", uBal, amount);
 	// 	vm.startPrank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
 	// 	HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
 	// 	params1[0] = harvestParams;
 	// 	params1[0].min = 0;
 	// 	params1[0].deadline = block.timestamp + 1;
 	// 	HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
-
 	// 	uint256 tvl = dStrat.getAndUpdateTvl();
 	// 	(uint256[] memory harvestAmnts, ) = dStrat.harvest(dStrat.getTvl(), 0, params1, params2);
 	// 	vm.stopPrank();

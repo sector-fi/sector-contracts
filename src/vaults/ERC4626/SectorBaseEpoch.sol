@@ -120,7 +120,7 @@ abstract contract SectorBaseWEpoch is BatchedWithdrawEpoch, ERC4626 {
 	/// @notice this method allows an arbitrary method to be called by the owner in case of emergency
 	/// owner must be a timelock contract in order to allow users to redeem funds in case they suspect
 	/// this action to be malicious
-	function emergencyAction(EAction[] calldata actions) public onlyOwner {
+	function emergencyAction(EAction[] calldata actions) public payable onlyOwner {
 		uint256 l = actions.length;
 		for (uint256 i = 0; i < l; i++) {
 			address target = actions[i].target;
