@@ -5,7 +5,7 @@ import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-import { IMXSetup, IUniswapV2Pair, SCYVault } from "./IMXSetup.sol";
+import { IMXSetup, IUniswapV2Pair, SCYVault, HarvestSwapParams } from "./IMXSetup.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
@@ -130,6 +130,9 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		noRebalance();
 	}
 
+	/// @dev specific conditions needed to meet the edge case:
+	// OP_BLOCK = 65972372
+	// 	string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
 	function testRebalanceEdge() public {
 		deposit(user1, 10 * dec);
 
@@ -150,6 +153,30 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		strategy.rebalance(expectedPrice, maxDelta);
 		vm.stopPrank();
 		console.log("end position offset", strategy.getPositionOffset());
+		assertEq(IERC20(config.short).balanceOf(address(strategy)), 0);
+	}
+
+	function testRebalanceEdge2() public {
+		deposit(user1, 10 * dec);
+
+		// logTvl(IStrategy(address(strategy)));
+		// adjustPrice(100e18);
+		// adjustPrice(.01e18);
+		// adjustPrice(100e18);
+		// adjustPrice(.01e18);
+
+		// skip(60 * 60 * 24 * 1000);
+		adjustPrice(.9e18);
+		strategy.getAndUpdateTVL();
+		// logTvl(IStrategy(address(strategy)));
+
+		console.log("position offset", strategy.getPositionOffset());
+		vm.startPrank(manager);
+		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10);
+		strategy.rebalance(expectedPrice, maxDelta);
+		vm.stopPrank();
+		console.log("end position offset", strategy.getPositionOffset());
+		// assertEq(IERC20(config.short).balanceOf(address(strategy)), 0);
 	}
 
 	function testNativeFlow() public {
@@ -173,23 +200,32 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 	}
 
 	// function testDeployments() public {
-	// 	IMXCore dstrat = IMXCore(0xf38f968f3d54576AE67150F0F81d447462e12030);
-
+	// 	IMXCore dstrat = IMXCore(0x2c7BBA60bF6a8b6b042A3b43C9349345DA7ad078);
+	// 	SCYVault dvault = SCYVault(payable(0x2c7BBA60bF6a8b6b042A3b43C9349345DA7ad078));
 	// 	logTvl(IStrategy(address(dstrat)));
 	// 	adjustPrice(100e18);
 	// 	adjustPrice(.01e18);
 	// 	adjustPrice(100e18);
 	// 	adjustPrice(.01e18);
-
 	// 	adjustPrice(1.12e18);
 	// 	skip(60 * 60 * 24 * 5);
 	// 	dstrat.getAndUpdateTVL();
 	// 	logTvl(IStrategy(address(dstrat)));
-
 	// 	console.log("position offset", dstrat.getPositionOffset());
 	// 	vm.startPrank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
 	// 	(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10);
 	// 	dstrat.rebalance(expectedPrice, maxDelta);
+	// 	vm.stopPrank();
+	// }
+
+	// function testDebugLiquidation() public {
+	// 	IMXCore dstrat = IMXCore(0xdB613730C823F260a1A8aC2DcdD6B8B82b491919);
+	// 	SCYVault dvault = SCYVault(payable(0xC6c72289eA5c0e28A5D3377C9d69B27161fA06aE));
+	// 	logTvl(IStrategy(address(dstrat)));
+	// 	strategy.updateOracle();
+	// 	console.log("short balance", IERC20(config.short).balanceOf(address(dstrat)));
+	// 	console.log("positionOffset", dstrat.getPositionOffset());
+	// 	console.log("loanHealth", dstrat.loanHealth());
 	// 	vm.stopPrank();
 	// }
 }

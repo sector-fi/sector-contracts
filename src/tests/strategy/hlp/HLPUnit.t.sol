@@ -7,9 +7,10 @@ import { MockERC20 } from "../../mocks/MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
-import { HLPSetup } from "./HLPSetup.sol";
+import { HLPSetup, SCYVault } from "./HLPSetup.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
+import { SectorErrors } from "interfaces/SectorErrors.sol";
 
 import "hardhat/console.sol";
 
@@ -45,6 +46,11 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 	// }
 
 	// CONFIG
+
+	function testDepositOverMaxTvl() public {
+		uint256 amount = strat.getMaxDeposit() + 1;
+		depositRevert(self, amount, SectorErrors.MaxTvlReached.selector);
+	}
 
 	function testSafeCollateralRatio() public {
 		vm.expectRevert("STRAT: BAD_INPUT");
@@ -291,4 +297,10 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 		deal(short, address(strategy), 14368479712190599);
 		vault.closePosition(0, strategy.getPriceOffset());
 	}
+
+	// function testDeployedHarvest() public {
+	// 	SCYVault dvault = SCYVault(payable(0xb2e0ff67be42A569f6B1f50a5a43E5fD0952E58a));
+	// 	// vm.warp(block.timestamp + 1 * 60 * 60 * 24);
+	// 	harvest(dvault);
+	// }
 }

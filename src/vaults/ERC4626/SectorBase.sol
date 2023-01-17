@@ -51,6 +51,9 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 		uint256 shares;
 		(amountOut, shares) = _redeem(msg.sender);
 
+		beforeWithdraw(amountOut, shares);
+		_burn(address(this), shares);
+
 		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
 
 		IWETH(address(asset)).withdraw(amountOut);

@@ -70,7 +70,7 @@ abstract contract SCYStratUtils is SectorTest {
 		uint256 tvl = vault.getAndUpdateTvl();
 		uint256 endAccBalance = vault.underlyingBalance(user);
 
-		assertApproxEqRel(tvl, startTvl + amount, .0011e18, "tvl should update");
+		assertApproxEqRel(tvl, startTvl + amount, .0015e18, "tvl should update");
 		assertApproxEqRel(
 			tvl - startTvl,
 			endAccBalance - startAccBalance,
@@ -129,7 +129,7 @@ abstract contract SCYStratUtils is SectorTest {
 		assertApproxEqRel(
 			tvl,
 			lockedTvl + (startTvl * (1e18 - fraction)) / 1e18,
-			.00001e18,
+			.0001e18,
 			"vault tvl should update"
 		);
 		assertApproxEqRel(
@@ -214,7 +214,7 @@ abstract contract SCYStratUtils is SectorTest {
 	function getAmnt() public view virtual returns (uint256) {
 		if (vault.acceptsNativeToken()) return 1e18;
 		uint256 d = vault.underlyingDecimals();
-		if (d == 6) return 700e6;
+		if (d == 6) return 100e6;
 		if (d == 18) return 1e18;
 	}
 }

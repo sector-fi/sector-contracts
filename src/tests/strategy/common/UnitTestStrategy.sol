@@ -234,11 +234,6 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 	                    HEDGEDLP TESTS
 	//////////////////////////////////////////////////////////////*/
 
-	function testDepositOverMaxTvl() public {
-		uint256 amount = strat.getMaxDeposit() + 1;
-		depositRevert(self, amount, SectorErrors.MaxTvlReached.selector);
-	}
-
 	function testClosePosition() public {
 		uint256 amnt = getAmnt();
 		deposit(self, amnt);

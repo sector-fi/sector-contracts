@@ -139,13 +139,14 @@ abstract contract IMXFarm is IIMXFarm {
 			// TODO use swap fee to get exact amount out
 			// if we have extra short tokens, trade them for underlying
 			if (sBalance > sAmnt) {
-				// TODO edge case - not enough underlying?
 				uBalance += pair()._swapExactTokensForTokens(
 					sBalance - sAmnt,
 					address(short()),
 					address(underlying())
 				);
+				// sBalance = sAmnt now
 			} else if (sAmnt > sBalance) {
+				// when rebalancing we will never have more sAmnt than sBalance
 				uBalance -= pair()._swapTokensForExactTokens(
 					sAmnt - sBalance,
 					address(underlying()),
@@ -233,8 +234,7 @@ abstract contract IMXFarm is IIMXFarm {
 			shortAmnt = d.repayShort;
 		}
 		// if we know the exact amount of short we must repay, then ensure we have that amount
-		else if (d.repayShort > shortAmnt && d.repayShort != type(uint256).max) {
-			// TODO this could fail if we don't have enough underlying
+		else if (shortAmnt < d.repayShort && d.repayShort != type(uint256).max) {
 			uint256 amountOut = d.repayShort - shortAmnt;
 			uint256 amountIn = pair()._getAmountIn(
 				amountOut,
@@ -243,7 +243,7 @@ abstract contract IMXFarm is IIMXFarm {
 			);
 			uint256 inTokenBalance = underlying().balanceOf(address(this));
 			if (amountIn > inTokenBalance) {
-				shortAmnt = pair()._swapExactTokensForTokens(
+				shortAmnt += pair()._swapExactTokensForTokens(
 					inTokenBalance,
 					address(underlying()),
 					address(short())

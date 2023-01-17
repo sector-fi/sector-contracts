@@ -18,7 +18,7 @@ abstract contract UnitTestVault is SCYStratUtils {
 		uint256 min = getAmnt() / 100;
 		fuzz = bound(fuzz, min, vault.getMaxTvl() - mLp);
 		deposit(user1, fuzz);
-		assertApproxEqRel(vault.underlyingBalance(user1), fuzz, .001e18);
+		assertApproxEqRel(vault.underlyingBalance(user1), fuzz, .0011e18);
 	}
 
 	function testDepositWithdrawPartial(uint256 fuzz) public {

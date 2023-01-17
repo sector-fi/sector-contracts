@@ -131,7 +131,13 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 	}
 
 	function harvest() public override {
-		if (!strategy.harvestIsEnabled()) return;
+		harvest(SCYVault(payable(vault)));
+	}
+
+	function harvest(SCYVault _vault) public {
+		HLPCore _strategy = HLPCore(_vault.strategy());
+		address owner = _vault.owner();
+		if (!_strategy.harvestIsEnabled()) return;
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
 		harvestParams.min = 0;
 		harvestParams.deadline = block.timestamp + 1;
@@ -139,8 +145,8 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		harvestLendParams.min = 0;
 		harvestLendParams.deadline = block.timestamp + 1;
 
-		strategy.getAndUpdateTVL();
-		uint256 tvl = strategy.getTotalTVL();
+		_strategy.getAndUpdateTVL();
+		uint256 tvl = _strategy.getTotalTVL();
 
 		HarvestSwapParams[] memory farmParams = new HarvestSwapParams[](1);
 		farmParams[0] = harvestParams;
@@ -148,16 +154,17 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		HarvestSwapParams[] memory lendParams = new HarvestSwapParams[](1);
 		lendParams[0] = harvestLendParams;
 
-		uint256 vaultTvl = vault.getTvl();
+		uint256 vaultTvl = _vault.getTvl();
 
-		(uint256[] memory harvestAmnts, uint256[] memory harvestLendAmnts) = vault.harvest(
+		vm.prank(owner);
+		(uint256[] memory harvestAmnts, uint256[] memory harvestLendAmnts) = _vault.harvest(
 			vaultTvl,
 			vaultTvl / 10,
 			farmParams,
 			lendParams
 		);
 
-		uint256 newTvl = strategy.getTotalTVL();
+		uint256 newTvl = _strategy.getTotalTVL();
 		assertGt(harvestAmnts[0], 0);
 		assertGt(harvestLendAmnts[0], 0);
 		assertGt(newTvl, tvl);

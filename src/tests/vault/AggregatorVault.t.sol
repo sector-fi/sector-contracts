@@ -358,6 +358,8 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 		deal(self, amnt);
 		vault.deposit{ value: amnt }(amnt, self);
 
+		uint256 startSupply = vault.totalSupply();
+
 		assertEq(vault.underlyingBalance(self), amnt);
 		assertEq(self.balance, 0);
 
@@ -368,6 +370,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 		vault.redeemNative();
 
 		assertEq(self.balance, amnt);
+		assertEq(vault.totalSupply(), startSupply - shares, "supply should update");
 	}
 
 	function testPendingRedeemLoss() public {

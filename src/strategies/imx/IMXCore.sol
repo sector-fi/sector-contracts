@@ -129,8 +129,6 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	// deposit underlying and recieve lp tokens
 	function deposit(uint256 underlyingAmnt) external onlyVault nonReentrant returns (uint256) {
 		if (underlyingAmnt == 0) return 0; // cannot deposit 0
-		// deposit is already included in tvl
-		require(underlyingAmnt <= getMaxDeposit(), "STRAT: OVER_MAX_TVL");
 		uint256 startBalance = collateralToken().balanceOf(address(this));
 		_increasePosition(underlyingAmnt);
 		uint256 endBalance = collateralToken().balanceOf(address(this));
@@ -296,22 +294,15 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 
 	// TVL
 	function getMaxTvl() public view returns (uint256) {
-		(, uint256 sBorrow) = _getBorrowBalances();
-		uint256 maxBorrow = availableToBorrow();
+		(uint256 uBorrow, uint256 sBorrow) = _getBorrowBalances();
+		uint256 sMax = sBorrowable().totalBalance();
+		uint256 optimalBorrow = _optimalUBorrow();
 		return
 			// adjust the availableToBorrow to account for leverage
-			_shortToUnderlying(((sBorrow + maxBorrow) * 1e18) / (_optimalUBorrow() + 1e18));
-	}
-
-	function availableToBorrow() public view returns (uint256) {
-		uint256 totalBorrows = sBorrowable().totalBorrows();
-		uint256 totalBalance = sBorrowable().totalBalance();
-		uint256 buffer = ((totalBorrows + totalBalance) * 3) / 100; // stay within 97%
-		return totalBalance > buffer ? totalBalance - buffer : 0;
-	}
-
-	function getMaxDeposit() public view returns (uint256) {
-		return _shortToUnderlying(((availableToBorrow()) * 1e18) / (_optimalUBorrow() + 1e18));
+			min(
+				((uBorrow + uBorrowable().totalBalance()) * 1e18) / optimalBorrow,
+				_shortToUnderlying((sBorrow + sMax) * 1e18) / (optimalBorrow + 1e18)
+			);
 	}
 
 	// TODO should we compute pending farm & lending rewards here?
@@ -406,6 +397,13 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 			);
 			oracle.getResult(collateralToken().underlying());
 		}
+	}
+
+	/// @dev we can call this method via staticall to get the loan health
+	/// even when oracle has not been updated
+	function callLoanHealth() external returns (uint256) {
+		updateOracle();
+		return loanHealth();
 	}
 
 	/**
