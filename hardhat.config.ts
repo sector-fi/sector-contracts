@@ -274,7 +274,6 @@ const config = {
       companionNetworks: {
         l1: 'arbitrum',
       },
-      ovm: true,
       verify: {
         etherscan: {
           apiKey: OPTIMISM_API_KEY,

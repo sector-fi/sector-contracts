@@ -45,7 +45,6 @@
     "hardhat/**/@ethereumjs/tx": "3.5.0"
   },
   "devDependencies": {
-    "@eth-optimism/hardhat-ovm": "^0.2.4",
     "@perp/curie-contract": "^2.1.1",
     "@typechain/hardhat": "^6.1.2",
     "@uniswap/sdk-core": "^3.1.0",

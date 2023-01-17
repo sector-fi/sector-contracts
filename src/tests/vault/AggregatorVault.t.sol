@@ -22,13 +22,16 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 	WETH underlying;
 
 	AggregatorVault vault;
+
+	SCYVault s1;
+	SCYVault s2;
 	AggregatorVault s3;
 
 	function setUp() public {
 		underlying = new WETH();
 
-		SCYVault s1 = setUpSCYVault(address(underlying));
-		SCYVault s2 = setUpSCYVault(address(underlying));
+		s1 = setUpSCYVault(address(underlying));
+		s2 = setUpSCYVault(address(underlying));
 		s3 = new AggregatorVault(
 			underlying,
 			"SECT_VAULT",
@@ -468,6 +471,47 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 
 		sectCompleteRedeem(vault, user1);
 		assertEq(underlying.balanceOf(user1), amnt);
+	}
+
+	function testEmergencyRedeemEdgeCase2() public {
+		uint256 amnt = 100e18;
+		sectDeposit(vault, user1, amnt);
+		sectDeposit(vault, user2, amnt);
+
+		depositToStrat(strategy1, amnt);
+		depositToStrat(strategy2, amnt);
+
+		sectInitRedeem(vault, user1, .5e18);
+		sectInitRedeem(vault, user2, .5e18);
+
+		uint256 shares1 = strategy1.underlyingToShares(amnt / 2);
+		withdrawFromStrat(strategy1, shares1);
+		uint256 shares2 = strategy2.underlyingToShares(amnt / 2);
+		withdrawFromStrat(strategy2, shares2);
+
+		sectHarvest(vault);
+		skip(7 days);
+
+		vm.prank(user1);
+		vault.emergencyRedeem();
+
+		sectCompleteRedeem(vault, user1);
+		sectCompleteRedeem(vault, user2);
+
+		vm.prank(user2);
+		vault.emergencyRedeem();
+
+		assertEq(vault.balanceOf(user1), 0, "share balance 0");
+		assertEq(vault.balanceOf(user2), 0, "share balance 0");
+
+		assertEq(s1.balanceOf(user1), s1.balanceOf(user2), "strat 1 balances");
+		assertEq(s2.balanceOf(user1), s2.balanceOf(user2), "strat 1 balances");
+		assertApproxEqAbs(
+			underlying.balanceOf(user1),
+			underlying.balanceOf(user2),
+			1,
+			"underlying balances"
+		);
 	}
 
 	/// UTILS

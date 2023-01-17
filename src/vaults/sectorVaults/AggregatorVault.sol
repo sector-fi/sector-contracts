@@ -181,9 +181,11 @@ contract AggregatorVault is SectorBase {
 	/// deposits are paused when we are in the emergency redeem state
 	function emergencyRedeem() public nonReentrant {
 		if (block.timestamp - lastHarvestTimestamp < maxHarvestInterval) revert RecentHarvest();
-		uint256 _totalSupply = totalSupply();
 		uint256 shares = balanceOf(msg.sender);
 		if (shares == 0) return;
+
+		// pendingRedeem cannot be bigger than totalSupply
+		uint256 adjustedSupply = totalSupply() - pendingRedeem;
 
 		// redeem proportional share of vault's underlying float balance
 		// (minus pendingWithdraw)
@@ -191,7 +193,7 @@ contract AggregatorVault is SectorBase {
 
 		if (floatAmnt > pendingWithdraw) {
 			uint256 availableFloat = floatAmnt - pendingWithdraw;
-			uint256 underlyingShare = (availableFloat * shares) / (_totalSupply - pendingRedeem);
+			uint256 underlyingShare = (availableFloat * shares) / adjustedSupply;
 			beforeWithdraw(underlyingShare, 0);
 			asset.safeTransfer(msg.sender, underlyingShare);
 		}
@@ -202,10 +204,13 @@ contract AggregatorVault is SectorBase {
 		for (uint256 i; i < l; ++i) {
 			ERC20 stratToken = ERC20(strategyIndex[i]);
 			uint256 balance = stratToken.balanceOf(address(this));
-			uint256 userShares = (shares * balance) / _totalSupply;
+			uint256 userShares = (shares * balance) / adjustedSupply;
 			if (userShares == 0) continue;
 			stratToken.safeTransfer(msg.sender, userShares);
 		}
+
+		// reduce the amount of totalChildHoldings
+		totalChildHoldings -= (shares * totalChildHoldings) / adjustedSupply;
 
 		_burn(msg.sender, shares);
 	}
