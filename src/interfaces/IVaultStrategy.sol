@@ -25,7 +25,7 @@ interface IVaultStrategy is IERC20 {
 		uint256 minTokenOut
 	) external returns (uint256 amountTokenOut);
 
-	function symbol() external returns (string memory);
+	function symbol() external view returns (string memory);
 
 	function requestRedeem(uint256 shares) external;
 
