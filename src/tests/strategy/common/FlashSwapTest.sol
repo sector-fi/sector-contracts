@@ -22,6 +22,6 @@ abstract contract FlashSwapTest is UniswapMixin {
 		);
 		moveUniPrice(1e36 / r);
 		uint256 balance = vault.underlyingBalance(user1);
-		assertGe(balance, startBalance, "first balance should not decrease"); // within .1%
+		assertApproxEqRel(balance, startBalance, .001e18, "first balance should not decrease"); // within .1%
 	}
 }

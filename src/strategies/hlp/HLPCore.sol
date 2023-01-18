@@ -215,7 +215,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		onlyVault
 		returns (uint256 amountTokenOut)
 	{
-		if (removeLp == 0) return 0;
+		if (removeLp < MIN_LIQUIDITY) return 0;
 		// this is the full amount of LP tokens totalSupply of shares is entitled to
 		_decreasePosition(removeLp);
 

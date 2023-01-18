@@ -228,4 +228,12 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 	// 	console.log("loanHealth", dstrat.loanHealth());
 	// 	vm.stopPrank();
 	// }
+
+	// function testDebugWithdraw() public {
+	// 	SCYVault dvault = SCYVault(payable(0xC6c72289eA5c0e28A5D3377C9d69B27161fA06aE));
+	// 	address dep = 0xf09c27934A92c56c7C0dD6cBAc858C35fBd5170f;
+	// 	uint256 shares = dvault.balanceOf(dep);
+	// 	vm.prank(dep);
+	// 	dvault.redeem(dep, shares, address(dvault.underlying()), 0);
+	// }
 }

@@ -141,10 +141,11 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		onlyVault
 		returns (uint256 amountTokenOut)
 	{
+		if (removeCollateral < MINIMUM_LIQUIDITY) return 0; // cannot redeem 0
 		// this is the full amount of LP tokens totalSupply of shares is entitled to
 		_decreasePosition(removeCollateral);
 
-		// TODO make sure we never have any extra underlying dust sitting around
+		// make sure we never have any extra underlying dust sitting around
 		// all 'extra' underlying should allways be transferred back to the vault
 
 		unchecked {
