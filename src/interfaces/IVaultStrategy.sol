@@ -33,6 +33,8 @@ interface IVaultStrategy is IERC20 {
 
 	function getTvl() external view returns (uint256 tvl);
 
+	function getMaxTvl() external view returns (uint256);
+
 	function MIN_LIQUIDITY() external view returns (uint256);
 
 	function underlying() external view returns (IERC20);
