@@ -234,6 +234,10 @@ contract AggregatorWEpochVault is SectorBaseWEpoch {
 		return floatAmnt + totalChildHoldings;
 	}
 
+	function getFloat() public view returns (uint256) {
+		return floatAmnt - convertToAssets(pendingRedeem);
+	}
+
 	/// INTERFACE UTILS
 
 	/// @dev returns accurate value used to estimate current value
