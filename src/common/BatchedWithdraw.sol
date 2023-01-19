@@ -23,6 +23,7 @@ abstract contract BatchedWithdraw is ERC20, Accounting, SectorErrors {
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
 
 	uint256 public lastHarvestTimestamp;
+	uint256 public requestedRedeem;
 	uint256 public pendingRedeem;
 
 	EpochType public constant epochType = EpochType.None;
@@ -54,7 +55,7 @@ abstract contract BatchedWithdraw is ERC20, Accounting, SectorErrors {
 		withdrawRecord.shares += shares;
 		uint256 value = convertToAssets(shares);
 		withdrawRecord.value += value;
-		pendingRedeem += shares;
+		requestedRedeem += shares;
 		emit RequestWithdraw(msg.sender, owner, shares);
 	}
 
@@ -79,6 +80,11 @@ abstract contract BatchedWithdraw is ERC20, Accounting, SectorErrors {
 		withdrawRecord.shares = 0;
 	}
 
+	function _processRedeem() internal {
+		pendingRedeem += requestedRedeem;
+		requestedRedeem = 0;
+	}
+
 	function _getWithdrawAmount(uint256 shares, uint256 redeemValue)
 		internal
 		view
@@ -92,26 +98,16 @@ abstract contract BatchedWithdraw is ERC20, Accounting, SectorErrors {
 
 	function cancelRedeem() public virtual {
 		WithdrawRecord storage withdrawRecord = withdrawLedger[msg.sender];
+		if (withdrawRecord.timestamp <= lastHarvestTimestamp) revert CannotCancelProccesedRedeem();
 
 		uint256 shares = withdrawRecord.shares;
-		// value of shares at time of redemption request
-		uint256 redeemValue = withdrawRecord.value;
-		uint256 currentValue = convertToAssets(shares);
 
 		// update accounting
 		withdrawRecord.value = 0;
 		withdrawRecord.shares = 0;
-		pendingRedeem -= shares;
+		requestedRedeem -= shares;
 
-		// if vault lost money, shares stay the same
-		if (currentValue < redeemValue) return _transfer(address(this), msg.sender, shares);
-
-		// // if vault earned money, subtract earnings since withdrawal request
-		uint256 sharesOut = (shares * redeemValue) / currentValue;
-		uint256 sharesToBurn = shares - sharesOut;
-
-		_transfer(address(this), msg.sender, sharesOut);
-		_burn(address(this), sharesToBurn);
+		return _transfer(address(this), msg.sender, shares);
 	}
 
 	/// @notice UI method to view cancellation penalty
@@ -137,5 +133,6 @@ abstract contract BatchedWithdraw is ERC20, Accounting, SectorErrors {
 	}
 
 	error NotReady();
+	error CannotCancelProccesedRedeem();
 	error NotNativeAsset();
 }

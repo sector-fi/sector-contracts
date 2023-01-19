@@ -150,7 +150,7 @@ contract SectorXVaultSetup is SectorTest {
 			uint256 value = (requests[i].amount * vaultBalance) / 1e18;
 			uint256 redeemShares = (requests[i].amount * vaultShares) / 1e18;
 
-			uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+			uint256 pendingWithdraw = vault.convertToAssets(vault.requestedRedeem());
 			assertEq(pendingWithdraw, value, "Pending value must be equal to expected");
 
 			(uint256 ts, uint256 sh, uint256 val) = vault.withdrawLedger(xAddr);

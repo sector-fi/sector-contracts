@@ -134,7 +134,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 
 		sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
 
-		uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+		uint256 pendingWithdraw = vault.convertToAssets(vault.requestedRedeem());
 		uint256 withdrawShares = (pendingWithdraw * strategy1.exchangeRateUnderlying()) / 1e18;
 
 		withdrawFromStrat(strategy1, withdrawShares);
@@ -179,16 +179,15 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.mint(address(strategy1), 10e18 + (mLp) / 10); // 10% profit
 
+		skip(1);
 		sectInitRedeem(vault, user1, 1e18);
 		sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
 
-		uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+		uint256 pendingWithdraw = vault.convertToAssets(vault.requestedRedeem());
 		uint256 withdrawShares = (pendingWithdraw * strategy1.exchangeRateUnderlying()) / 1e18;
 
 		withdrawFromStrat(strategy1, withdrawShares);
-		sectHarvest(vault);
 
 		vm.prank(user1);
 		vault.cancelRedeem();
@@ -197,10 +196,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 		assertEq(shares, 0);
 		assertEq(value, 0);
 
-		uint256 profit = ((10e18 + (mLp) / 10) * 9) / 10;
-		// TODO look into this why are we dividing by 4 twice?
-		uint256 profitFromBurn = (profit / 4) / 4;
-		assertApproxEqRel(vault.underlyingBalance(user1), amnt / 4 + profitFromBurn, .002e18);
+		assertApproxEqRel(vault.underlyingBalance(user1), amnt / 4, .001e18);
 		assertEq(underlying.balanceOf(user1), 0);
 
 		// amount should reset
@@ -245,7 +241,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 		withdrawFromStrat(strategy1, amnt / 2);
 
 		assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float");
-		uint256 pendingWithdraw = vault.convertToAssets(vault.pendingRedeem());
+		uint256 pendingWithdraw = vault.convertToAssets(vault.requestedRedeem());
 		assertEq(pendingWithdraw, amnt / 2, "pending withdraw");
 		sectHarvest(vault);
 		assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float amnt half");
@@ -450,13 +446,6 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 		sectInitRedeem(vault, user1, .5e18);
 		sectHarvest(vault);
 
-		vm.prank(user1);
-		vault.cancelRedeem();
-
-		assertEq(vault.balanceOf(user1), amnt, "share balance full");
-
-		sectInitRedeem(vault, user1, .5e18);
-
 		assertEq(vault.balanceOf(user1), amnt / 2, "share balance half");
 
 		sectHarvest(vault);
@@ -506,6 +495,37 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 
 		assertEq(s1.balanceOf(user1), s1.balanceOf(user2), "strat 1 balances");
 		assertEq(s2.balanceOf(user1), s2.balanceOf(user2), "strat 1 balances");
+		assertApproxEqAbs(
+			underlying.balanceOf(user1),
+			underlying.balanceOf(user2),
+			1,
+			"underlying balances"
+		);
+	}
+
+	function testEmergencyRedeemEdgeCase3() public {
+		uint256 amnt = 100e18;
+		sectDeposit(vault, user1, amnt);
+		sectDeposit(vault, user2, amnt);
+
+		depositToStrat(strategy1, amnt);
+		depositToStrat(strategy2, amnt);
+
+		skip(7 days);
+
+		sectInitRedeem(vault, user1, .5e18);
+		vm.prank(user1);
+		vault.emergencyRedeem();
+
+		sectInitRedeem(vault, user2, .5e18);
+		vm.prank(user2);
+		vault.emergencyRedeem();
+
+		assertEq(vault.balanceOf(user1), 0, "share balance 0");
+		assertEq(vault.balanceOf(user2), 0, "share balance 0");
+
+		assertEq(s1.balanceOf(user1), s1.balanceOf(user2), "strat 1 balances");
+		assertEq(s2.balanceOf(user1), s2.balanceOf(user2), "strat 2 balances");
 		assertApproxEqAbs(
 			underlying.balanceOf(user1),
 			underlying.balanceOf(user2),

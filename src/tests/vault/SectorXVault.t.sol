@@ -610,7 +610,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultUtils {
 
 		assertEq(vaultSharesBalance, 0, "xVault should have 0 shares on vault");
 
-		uint256 pendingWithdraw = vaults[0].convertToAssets(vaults[0].pendingRedeem());
+		uint256 pendingWithdraw = vaults[0].convertToAssets(vaults[0].requestedRedeem());
 
 		assertEq(pendingWithdraw, amount, "amount should be on computed as pending");
 	}

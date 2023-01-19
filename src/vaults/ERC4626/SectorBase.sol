@@ -91,7 +91,7 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 
 		/// this is actually a max amount that can be withdrawn given current tvl
 		/// actual withdraw amount may be slightly less if there are stale withdraw requests
-		uint256 pendingWithdraw = pendingRedeem.mulDivDown(tvl, _totalSupply);
+		uint256 pendingWithdraw = requestedRedeem.mulDivDown(tvl, _totalSupply);
 		if (floatAmnt < pendingWithdraw) revert NotEnoughtFloat();
 
 		uint256 profit = currentChildHoldings > totalChildHoldings
@@ -122,6 +122,7 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 
 		// this enables withdrawals requested prior to this timestamp
 		lastHarvestTimestamp = timestamp;
+		_processRedeem();
 	}
 
 	/// @notice this method allows an arbitrary method to be called by the owner in case of emergency
