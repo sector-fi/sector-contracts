@@ -60,4 +60,6 @@ interface IVaultStrategy is IERC20 {
 
 	/// @dev slippage param is optional
 	function processRedeem(uint256 slippageParam) external;
+
+	function balanceOf(address account) external view returns (uint256);
 }
