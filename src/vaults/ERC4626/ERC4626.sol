@@ -11,12 +11,21 @@ import { Auth, AuthConfig } from "../../common/Auth.sol";
 import { Fees, FeeConfig } from "../../common/Fees.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract ERC4626 is ERC20, Auth, Accounting, Fees, IERC4626, ReentrancyGuard {
+abstract contract ERC4626 is
+	ERC20,
+	Auth,
+	Accounting,
+	Fees,
+	IERC4626,
+	ReentrancyGuard,
+	SectorErrors
+{
 	using SafeERC20 for ERC20;
 	using FixedPointMathLib for uint256;
 
@@ -65,7 +74,7 @@ abstract contract ERC4626 is ERC20, Auth, Accounting, Fees, IERC4626, Reentrancy
 		nonReentrant
 		returns (uint256 shares)
 	{
-		if (totalAssets() + assets > maxTvl) revert OverMaxTvl();
+		if (totalAssets() + assets > maxTvl) revert MaxTvlReached();
 
 		// This check is no longer necessary because we use MIN_LIQUIDITY
 		// Check for rounding error since we round down in previewDeposit.
@@ -98,7 +107,7 @@ abstract contract ERC4626 is ERC20, Auth, Accounting, Fees, IERC4626, Reentrancy
 		returns (uint256 assets)
 	{
 		assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.
-		if (totalAssets() + assets > maxTvl) revert OverMaxTvl();
+		if (totalAssets() + assets > maxTvl) revert MaxTvlReached();
 
 		// Need to transfer before minting or ERC777s could reenter.
 		if (useNativeAsset && msg.value == assets) IWETH(address(asset)).deposit{ value: assets }();
@@ -194,7 +203,4 @@ abstract contract ERC4626 is ERC20, Auth, Accounting, Fees, IERC4626, Reentrancy
 	function afterDeposit(uint256 assets, uint256 shares) internal virtual {}
 
 	event MaxTvlUpdated(uint256 maxTvl);
-
-	error OverMaxTvl();
-	error MinLiquidity();
 }

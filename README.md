@@ -166,3 +166,26 @@ MANAGER - hot wallet / bot
 - Process deposits and withdrawals (allowed to move funds between vaults / strategies) but not custodial
 - Rebalance strategies
 - Harvest strategies
+
+# Naming Conventions
+
+## Strategies
+
+name & symbol:
+StrategyType-UnderlyingAsset|Asset?...-Protocol1|Protocol2...-Chain-Version-Instance
+ex:
+
+- "HLP-USDC|MOVR-SOLAR|WELL-v0-0"
+- "Lend-USDC-Stargate-Arbitrum-v0-0"
+- "LLP-USDC|IMX-Impermax|TraderJoe-Avalanche"
+
+## Vaults
+
+name:
+SectorVault-UnderlyingAsset-RiskLevel-Version
+symbol:
+sect<UnderlyingAsset>-Riskleve
+
+ex:  
+name: "SectorVault-USDC-r0-v0"
+symbol: "sectUSDC-r0"

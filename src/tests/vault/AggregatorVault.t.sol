@@ -11,6 +11,7 @@ import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { EAction } from "interfaces/Structs.sol";
 import { VaultType } from "interfaces/Structs.sol";
 import { Accounting } from "../../common/Accounting.sol";
+import { SectorErrors } from "interfaces/SectorErrors.sol";
 
 import "hardhat/console.sol";
 
@@ -400,7 +401,7 @@ contract AggregatorVaultTest is SectorTest, SCYVaultUtils {
 		vm.startPrank(user1);
 		underlying.approve(address(vault), 1);
 		underlying.mint(user1, 1);
-		vm.expectRevert(ERC4626.OverMaxTvl.selector);
+		vm.expectRevert(SectorErrors.MaxTvlReached.selector);
 		vault.deposit(1, user1);
 		vm.stopPrank();
 	}

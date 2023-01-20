@@ -8,6 +8,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { Accounting } from "../../common/Accounting.sol";
 import { ERC20Permit, EIP712 } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
+import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
 
@@ -16,7 +17,8 @@ abstract contract SCYBase is
 	ReentrancyGuard,
 	ERC20,
 	Accounting,
-	ERC20Permit
+	ERC20Permit,
+	SectorErrors
 {
 	using SafeERC20 for IERC20;
 
@@ -167,6 +169,5 @@ abstract contract SCYBase is
 	}
 
 	error CantPullEth();
-	error MinLiquidity();
 	error InsufficientOut(uint256 amountOut, uint256 minOut);
 }

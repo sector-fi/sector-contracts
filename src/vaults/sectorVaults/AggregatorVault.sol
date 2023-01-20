@@ -39,8 +39,6 @@ contract AggregatorVault is SectorBase {
 	mapping(IVaultStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
 
-	uint256 public totalStrategyHoldings;
-
 	constructor(
 		ERC20 asset_,
 		string memory _name,
@@ -78,6 +76,11 @@ contract AggregatorVault is SectorBase {
 	function removeStrategy(IVaultStrategy strategy) public onlyOwner {
 		if (!strategyExists[strategy]) revert StrategyNotFound();
 		strategyExists[strategy] = false;
+
+		// make sure we don't have deposits in the strategy
+		uint256 balance = strategy.balanceOf(address(this));
+		if (balance > MIN_LIQUIDITY) revert StrategyHasBalance();
+
 		uint256 length = strategyIndex.length;
 		// replace current index with last strategy and pop the index array
 		uint256 i;
