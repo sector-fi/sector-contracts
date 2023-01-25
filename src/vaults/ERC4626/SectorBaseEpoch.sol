@@ -106,7 +106,7 @@ abstract contract SectorBaseWEpoch is BatchedWithdrawEpoch, ERC4626 {
 		uint256 totalFees = _performanceFee + _managementFee;
 		uint256 feeShares;
 
-		if (totalFees > 0) {
+		if (totalFees > 0 && tvl > totalFees) {
 			// this results in more accurate accounting considering dilution
 			feeShares = totalFees.mulDivDown(_totalSupply, tvl - totalFees);
 			_mint(treasury, feeShares);

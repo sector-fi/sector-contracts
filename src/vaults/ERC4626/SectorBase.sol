@@ -91,8 +91,10 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 
 		/// this is actually a max amount that can be withdrawn given current tvl
 		/// actual withdraw amount may be slightly less if there are stale withdraw requests
-		uint256 pendingWithdraw = requestedRedeem.mulDivDown(tvl, _totalSupply);
-		if (floatAmnt < pendingWithdraw) revert NotEnoughtFloat();
+		if (_totalSupply > 0) {
+			uint256 pendingWithdraw = requestedRedeem.mulDivDown(tvl, _totalSupply);
+			if (floatAmnt < pendingWithdraw) revert NotEnoughtFloat();
+		}
 
 		uint256 profit = currentChildHoldings > totalChildHoldings
 			? currentChildHoldings - totalChildHoldings
@@ -112,7 +114,7 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 		uint256 totalFees = _performanceFee + _managementFee;
 		uint256 feeShares;
 
-		if (totalFees > 0) {
+		if (totalFees > 0 && tvl > totalFees) {
 			// this results in more accurate accounting considering dilution
 			feeShares = totalFees.mulDivDown(_totalSupply, tvl - totalFees);
 			_mint(treasury, feeShares);
