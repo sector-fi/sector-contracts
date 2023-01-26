@@ -20,7 +20,7 @@ import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
 import { BytesLib } from "../../libraries/BytesLib.sol";
 import { LevConvexConfig } from "./ILevConvex.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract levConvex3Crv is StratAuth {
 	using SafeERC20 for IERC20;
@@ -112,7 +112,7 @@ contract levConvex3Crv is StratAuth {
 		uint256 withdraw = (uBalance * amount) / startLp;
 
 		(uint256 minBorrowed, ) = creditFacade.limits();
-		uint256 minUnderlying = minBorrowed / leverageFactor;
+		uint256 minUnderlying = (100 * minBorrowed) / (leverageFactor);
 		uint256 redeposit = uBalance > withdraw ? uBalance - withdraw : 0;
 
 		if (redeposit > minUnderlying) {

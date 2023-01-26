@@ -115,6 +115,8 @@ contract levConvexSetup is SCYStratUtils {
 
 		mLp = vault.MIN_LIQUIDITY();
 
+		console.log("IS 3CRV", is3crv);
+
 		strategy = is3crv
 			? levConvex(address(new levConvex3Crv(authConfig, config)))
 			: new levConvex(authConfig, config);

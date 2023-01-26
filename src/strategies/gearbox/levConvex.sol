@@ -109,12 +109,12 @@ contract levConvex is StratAuth {
 		uint256 withdraw = (uBalance * amount) / startLp;
 
 		(uint256 minBorrowed, ) = creditFacade.limits();
-		uint256 minUnderlying = minBorrowed / leverageFactor;
+		uint256 minUnderlying = (100 * minBorrowed) / leverageFactor;
 		uint256 redeposit = uBalance > withdraw ? uBalance - withdraw : 0;
 
 		if (redeposit > minUnderlying) {
 			underlying.safeTransfer(to, withdraw);
-			_openAccount(uBalance - withdraw);
+			_openAccount(redeposit);
 		} else {
 			// do not re-open account
 			credAcc = address(0);

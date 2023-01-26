@@ -5,6 +5,7 @@ import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { levConvexSetup, SCYStratUtils } from "./levConvexSetup.sol";
+import { SCYWEpochVault } from "vaults/ERC5115/SCYWEpochVault.sol";
 
 import "hardhat/console.sol";
 
@@ -155,5 +156,22 @@ contract levConvexUnit is levConvexSetup {
 		skip(1000);
 		vm.prank(manager);
 		vault.depositIntoStrategy(floatBalance, 0);
+	}
+
+	function testRedeemEdge() public {
+		uint256 amnt = 50000e6;
+		uint256 amnt2 = 6000e6;
+
+		deposit(user1, amnt);
+		deposit(user2, amnt2);
+
+		uint256 balance = vault.balanceOf(user1);
+		vm.prank(user1);
+		getEpochVault(vault).requestRedeem(balance);
+
+		uint256 shares = SCYWEpochVault(payable(vault)).requestedRedeem();
+		uint256 minAmountOut = vault.sharesToUnderlying(shares);
+		SCYWEpochVault(payable(vault)).processRedeem((minAmountOut * 9990) / 10000);
+		redeemShares(user1, shares);
 	}
 }
