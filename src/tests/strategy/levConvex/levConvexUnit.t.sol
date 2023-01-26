@@ -165,6 +165,8 @@ contract levConvexUnit is levConvexSetup {
 		deposit(user1, amnt);
 		deposit(user2, amnt2);
 
+		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
+
 		uint256 balance = vault.balanceOf(user1);
 		vm.prank(user1);
 		getEpochVault(vault).requestRedeem(balance);
@@ -173,5 +175,6 @@ contract levConvexUnit is levConvexSetup {
 		uint256 minAmountOut = vault.sharesToUnderlying(shares);
 		SCYWEpochVault(payable(vault)).processRedeem((minAmountOut * 9990) / 10000);
 		redeemShares(user1, shares);
+		harvest();
 	}
 }

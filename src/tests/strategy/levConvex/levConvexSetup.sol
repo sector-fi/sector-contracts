@@ -24,13 +24,13 @@ contract levConvexSetup is SCYStratUtils {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
-	// string TEST_STRATEGY = "USDC-sUSD-levConvex"; // year fees/slippage 3.19%
+	string TEST_STRATEGY = "USDC-sUSD-levConvex"; // year fees/slippage 3.19%
 	// string TEST_STRATEGY = "USDC-FRAXUSDC-levConvex"; // year fees/slippage 4.28%
 
 	// 3pool strats
 	// string TEST_STRATEGY = "USDC-gUSD-levConvex"; // year fees/slippage 4.10%
 	// string TEST_STRATEGY = "USDC-FRAX3CRV-levConvex"; // year fees/slippage 4.49%
-	string TEST_STRATEGY = "USDC-lUSD-levConvex"; // year fees/slippage 1.33%
+	// string TEST_STRATEGY = "USDC-lUSD-levConvex"; // year fees/slippage 1.33%
 
 	uint256 currentFork;
 
@@ -135,7 +135,7 @@ contract levConvexSetup is SCYStratUtils {
 		address minter = degenNFT.minter();
 
 		vm.prank(minter);
-		degenNFT.mint(address(strategy), 2000);
+		degenNFT.mint(address(strategy), 200);
 
 		// so close account doesn't create issues
 		vm.roll(1);
@@ -162,7 +162,7 @@ contract levConvexSetup is SCYStratUtils {
 		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
 
 		strategy.getAndUpdateTVL();
-		uint256 tvl = strategy.getTotalTVL();
+		uint256 tvl = vault.getTvl();
 		uint256 vaultTvl = vault.getTvl();
 		(uint256[] memory harvestAmnts, ) = vault.harvest(
 			vaultTvl,
@@ -170,7 +170,7 @@ contract levConvexSetup is SCYStratUtils {
 			params1,
 			params2
 		);
-		uint256 newTvl = strategy.getTotalTVL();
+		uint256 newTvl = vault.getTvl();
 
 		assert(harvestAmnts.length == l);
 		for (uint256 i; i < l; ++i) {
@@ -180,7 +180,7 @@ contract levConvexSetup is SCYStratUtils {
 			}
 			assertGt(harvestAmnts[i], 0);
 		}
-		assertGt(newTvl, tvl);
+		assertGt(newTvl, tvl, "tvl should increase");
 
 		assertEq(underlying.balanceOf(strategy.credAcc()), 0);
 	}
