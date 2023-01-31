@@ -680,4 +680,16 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		assertEq(underlying.balanceOf(user1), 1e18, "user1 underlying");
 		assertEq(underlying.balanceOf(user2), 1e18, "user2 underlying");
 	}
+
+	function testGetMaxTvl() public {
+		vault.setMaxTvl(10e18);
+		s1.setMaxTvl(1e18);
+		s2.setMaxTvl(2e18);
+		// s3.setMaxTvl(2e18); // maxTvl will be 0 because there is no strategy
+
+		uint256 maxStratTvl = vault.getMaxTvl();
+		uint256 maxTvl = vault.maxTvl();
+		assertEq(maxStratTvl, 3e18, "max strat tvl");
+		assertEq(maxTvl, 10e18, "max tvl");
+	}
 }

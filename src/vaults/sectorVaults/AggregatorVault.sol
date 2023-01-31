@@ -61,6 +61,15 @@ contract AggregatorVault is SectorBase {
 		emit SetMaxHarvestInterval(_maxHarvestInterval);
 	}
 
+	function getMaxTvl() external view returns (uint256) {
+		uint256 startMaxTvl;
+		for (uint256 i = 0; i < strategyIndex.length; i++) {
+			IVaultStrategy strategy = IVaultStrategy(strategyIndex[i]);
+			startMaxTvl += strategy.getMaxTvl();
+		}
+		return maxTvl < startMaxTvl ? maxTvl : startMaxTvl;
+	}
+
 	function addStrategy(IVaultStrategy strategy) public onlyOwner {
 		if (strategyIndex.length >= MAX_STRATS) revert TooManyStrategies();
 		if (strategyExists[strategy]) revert StrategyExists();
