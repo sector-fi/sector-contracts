@@ -1,7 +1,13 @@
 {
-  "stargateStrats": ["USDC-Arbitrum-Stargate"],
-  "hlpStrats": ["USDC-MOVR-SOLAR-WELL"],
-  "synapseStrats": ["USDC-Arbitrum-Synapse"],
+  "stargateStrats": [
+    "USDC-Arbitrum-Stargate"
+  ],
+  "hlpStrats": [
+    "USDC-MOVR-SOLAR-WELL"
+  ],
+  "synapseStrats": [
+    "USDC-Arbitrum-Synapse"
+  ],
   "imxStrats": [
     "USDC-IMX-AVAX",
     "USDC-OP-Tarot-Velo",
@@ -37,7 +43,9 @@
     "d_poolToken": "0x2F707cfB7b6C1EF2fE01b13f13379Ab0D6961189",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "USDC-MOVR-SOLAR-WELL": {
@@ -100,7 +108,9 @@
     "d_poolToken": "0x28fA49da55A54F02Bc4ff103adbd843B50B556F4",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "ETH-USDC-Tarot-Velo": {
@@ -112,7 +122,9 @@
     "d_poolToken": "0x28fA49da55A54F02Bc4ff103adbd843B50B556F4",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "USDC-VELO-Tarot-Velo": {
@@ -124,7 +136,9 @@
     "d_poolToken": "0x1b7B202d44193f6Af293Bad8EF773791cFd24Ee1",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "USDC-TAROT-Tarot-Velo": {
@@ -136,7 +150,9 @@
     "d_poolToken": "0xB5639e9EfA70b6D70a5F1Fed3c850B14d3Cc66d3",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "USDC-ETH-Tarot-Xcal": {
@@ -148,7 +164,9 @@
     "d_poolToken": "0x7Af58BB8038D7cf978E27c2479FCfB024f146BAa",
     "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
     "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
-    "h_harvestPath": ["0xd2568acCD10A4C98e87c44E9920360031ad89fCB"],
+    "h_harvestPath": [
+      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
+    ],
     "x_chain": "ARBITRUM"
   },
   "USDC-XCAL-Tarot-Xcal": {
@@ -160,12 +178,15 @@
     "d_poolToken": "0x68a80FC6d73d80C75B78C627DC5c12c1C7D0F6A1",
     "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
     "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
-    "h_harvestPath": ["0xd2568acCD10A4C98e87c44E9920360031ad89fCB"],
+    "h_harvestPath": [
+      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
+    ],
     "x_chain": "ARBITRUM"
   },
   "USDC-gUSD-levConvex": {
     "a1_curveAdapter": "0x6fA17Ffe020d72212A4DcA1560b27eA3cDAf965D",
-    "a2_acceptsNativeToken": false,
+    "a2_curveAdapterDeposit": "0x0000000000000000000000000000000000000000",
+    "a3_acceptsNativeToken": false,
     "b_convexRewardPool": "0x3D4a70e5F355EAd0690213Ae9909f3Dc41236E3C",
     "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
     "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
@@ -179,7 +200,7 @@
     ],
     "j_harvestPaths": [
       "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
     ],
     "k_is3crv": true,
     "x_chain": "ETH"
@@ -193,7 +214,8 @@
   ],
   "USDC-FRAX3CRV-levConvex": {
     "a1_curveAdapter": "0x1C8281606377d79522515681BD94fc9d02b0d20B",
-    "a2_acceptsNativeToken": false,
+    "a2_curveAdapterDeposit": "0x0000000000000000000000000000000000000000",
+    "a3_acceptsNativeToken": false,
     "b_convexRewardPool": "0xB26e063F062F76f9F7Dfa1a3f4b7fDa4A2197DfB",
     "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
     "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
@@ -208,15 +230,16 @@
     ],
     "j_harvestPaths": [
       "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
     ],
     "k_is3crv": true,
     "x_chain": "ETH"
   },
   "USDC-lUSD-levConvex": {
     "a1_curveAdapter": "0xD4c39a18338EA89B29965a8CAd28B7fb063c1429",
-    "a2_acceptsNativeToken": false,
+    "a2_curveAdapterDeposit": "0x0000000000000000000000000000000000000000",
+    "a3_acceptsNativeToken": false,
     "b_convexRewardPool": "0xc34Ef7306B82f4e38E3fAB975034Ed0f76e0fdAA",
     "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
     "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
@@ -231,7 +254,7 @@
     ],
     "j_harvestPaths": [
       "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
       "0x6dea81c8171d0ba574754ef6f8b412f2ed88c54d000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
     ],
     "k_is3crv": true,
@@ -239,7 +262,8 @@
   },
   "USDC-sUSD-levConvex": {
     "a1_curveAdapter": "0xbfB212e5D9F880bf93c47F3C32f6203fa4845222",
-    "a2_acceptsNativeToken": false,
+    "a2_curveAdapterDeposit": "0x2bBDcc2425fa4df06676c4fb69Bd211b63314feA",
+    "a3_acceptsNativeToken": false,
     "b_convexRewardPool": "0xbEf6108D1F6B85c4c9AA3975e15904Bb3DFcA980",
     "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
     "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
@@ -254,7 +278,7 @@
     ],
     "j_harvestPaths": [
       "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
       "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
     ],
     "k_is3crv": false,
@@ -262,7 +286,8 @@
   },
   "USDC-FRAXUSDC-levConvex": {
     "a1_curveAdapter": "0xa4b2b3Dede9317fCbd9D78b8250ac44Bf23b64F4",
-    "a2_acceptsNativeToken": false,
+    "a2_curveAdapterDeposit": "0x0000000000000000000000000000000000000000",
+    "a3_acceptsNativeToken": false,
     "b_convexRewardPool": "0x023e429Df8129F169f9756A4FBd885c18b05Ec2d",
     "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
     "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
@@ -276,7 +301,7 @@
     ],
     "j_harvestPaths": [
       "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
     ],
     "k_is3crv": false,
     "x_chain": "ETH"

@@ -15,6 +15,8 @@ export const levConvex = [
     name: 'USDC-sUSD-levConvex',
     type: 'levConvex',
     curveAdapter: '0xbfB212e5D9F880bf93c47F3C32f6203fa4845222',
+    // different adapter required to compute deposit amounts
+    curveAdapterDeposit: '0x2bBDcc2425fa4df06676c4fb69Bd211b63314feA',
     convexRewardPool: '0xbEf6108D1F6B85c4c9AA3975e15904Bb3DFcA980',
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
@@ -53,6 +55,7 @@ export const levConvex = [
     farmTokens: [addrs.mainnet.CRV, addrs.mainnet.CVX],
     chain: 'mainnet',
   },
+
   {
     name: 'USDC-lUSD-levConvex',
     type: 'levConvex',

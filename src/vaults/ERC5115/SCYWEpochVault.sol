@@ -476,6 +476,14 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		return ERC20.totalSupply();
 	}
 
+	function getWithdrawAmnt(uint256 amnt) public view virtual returns (uint256) {
+		return amnt;
+	}
+
+	function getDepositAmnt(uint256 amnt) public view virtual returns (uint256) {
+		return amnt;
+	}
+
 	/**
 	 * @dev Returns the smallest of two numbers.
 	 */

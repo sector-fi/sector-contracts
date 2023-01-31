@@ -62,6 +62,8 @@ abstract contract SCYStratUtils is SectorTest {
 		deal(address(underlying), user, amount);
 		uint256 minSharesOut = vault.underlyingToShares(amount);
 
+		uint256 startShares = vault.balanceOf(user);
+
 		vm.startPrank(user);
 		underlying.approve(address(vault), amount);
 		vault.deposit(user, address(underlying), amount, (minSharesOut * 9930) / 10000);
@@ -69,6 +71,13 @@ abstract contract SCYStratUtils is SectorTest {
 
 		uint256 tvl = vault.getAndUpdateTvl();
 		uint256 endAccBalance = vault.underlyingBalance(user);
+
+		assertApproxEqRel(
+			vault.balanceOf(user) - startShares,
+			minSharesOut,
+			.01e18,
+			"min estimate should be close"
+		);
 
 		assertApproxEqRel(tvl, startTvl + amount, .0015e18, "tvl should update");
 		assertApproxEqRel(

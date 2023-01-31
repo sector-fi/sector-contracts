@@ -143,6 +143,24 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		assertEq(tvl, 0);
 	}
 
+	function testSlippage() public {
+		uint256 amount = 10000000e6;
+		uint256 shares = vault.underlyingToShares(amount);
+		uint256 actualShares = SCYVault(payable(vault)).getDepositAmnt(amount);
+		assertGt(shares, actualShares);
+		console.log("d slippage", (10000 * (shares - actualShares)) / shares);
+
+		deposit(user1, getAmnt());
+
+		// uint256 balance = vault.underlyingBalance(user1);
+		// shares = vault.balanceOf(user1);
+		uint256 wAmnt = 2000000e6;
+		shares = vault.underlyingToShares(wAmnt);
+		uint256 actualBalance = SCYVault(payable(vault)).getWithdrawAmnt(shares);
+		assertGt(wAmnt, actualBalance);
+		console.log("w slippage", (10000 * (wAmnt - actualBalance)) / wAmnt);
+	}
+
 	// function testDeploymentHarvest() public {
 	// SCYVault dStrat = SCYVault(payable(0x8DA9CD7232611Fef7b1f05Ab80ea9bB977F52A79));
 	// address u = 0xf09c27934A92c56c7C0dD6cBAc858C35fBd5170f;

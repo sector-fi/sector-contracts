@@ -259,14 +259,6 @@ abstract contract levConvexBase is StratAuth {
 		return (100 * maxBorrowed) / leverageFactor;
 	}
 
-	// this is actually not totally accurate
-	function collateralToUnderlying() public view returns (uint256) {
-		uint256 amountOut = curveAdapter.calc_withdraw_one_coin(1e18, int128(uint128(coinId)));
-		uint256 currentLeverage = getLeverage();
-		if (currentLeverage == 0) return (100 * amountOut) / (leverageFactor + 100);
-		return (100 * amountOut) / currentLeverage;
-	}
-
 	function collateralBalance() public view returns (uint256) {
 		if (credAcc == address(0)) return 0;
 		return convexRewardPool.balanceOf(credAcc);

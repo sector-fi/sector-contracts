@@ -73,4 +73,14 @@ contract levConvexVault is SCYStrategy, SCYWEpochVault {
 		if (token == yieldToken) return ILevConvex(strategy).collateralBalance();
 		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
 	}
+
+	function getWithdrawAmnt(uint256 shares) public view override returns (uint256) {
+		uint256 assets = convertToAssets(shares);
+		return ILevConvex(strategy).getWithdrawAmnt(assets);
+	}
+
+	function getDepositAmnt(uint256 uAmnt) public view override returns (uint256) {
+		uint256 assets = ILevConvex(strategy).getDepositAmnt(uAmnt);
+		return convertToShares(assets);
+	}
 }

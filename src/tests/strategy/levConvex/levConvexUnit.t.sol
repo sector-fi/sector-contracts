@@ -177,4 +177,22 @@ contract levConvexUnit is levConvexSetup {
 		redeemShares(user1, shares);
 		harvest();
 	}
+
+	function testSlippage() public {
+		uint256 amount = getAmnt();
+		deposit(user2, amount);
+		uint256 shares = vault.underlyingToShares(amount);
+		uint256 actualShares = SCYWEpochVault(payable(vault)).getDepositAmnt(amount);
+		console.log("d slippage", (10000 * (shares - actualShares)) / shares);
+		assertGt(shares, actualShares);
+		deposit(user1, amount);
+		assertApproxEqRel(vault.balanceOf(user1), actualShares, .01e18);
+
+		uint256 balance = vault.underlyingBalance(user1);
+		shares = vault.balanceOf(user1);
+		uint256 actualBalance = SCYWEpochVault(payable(vault)).getWithdrawAmnt(shares);
+		assertGt(actualBalance, balance);
+		console.log("w slippage", (10000 * (actualBalance - balance)) / actualBalance);
+		assertApproxEqRel(balance, actualBalance, .01e18);
+	}
 }

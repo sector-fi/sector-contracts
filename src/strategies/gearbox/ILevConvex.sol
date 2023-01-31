@@ -6,6 +6,7 @@ import { EAction, HarvestSwapParams } from "../../interfaces/Structs.sol";
 
 struct LevConvexConfig {
 	address curveAdapter;
+	address curveAdapterDeposit;
 	address convexRewardPool;
 	address creditFacade;
 	uint16 coinId;
@@ -48,6 +49,10 @@ interface ILevConvex {
 	function underlying() external view returns (address);
 
 	function convexRewardPool() external view returns (address);
+
+	function getWithdrawAmnt(uint256 amount) external view returns (uint256);
+
+	function getDepositAmnt(uint256 amount) external view returns (uint256);
 
 	event SetVault(address indexed vault);
 	event AdjustLeverage(uint256 newLeverage);

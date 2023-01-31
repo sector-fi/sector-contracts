@@ -77,7 +77,9 @@ const addStrategy = async (strategy) => {
 
   const config = {
     a1_curveAdapter: strategy.curveAdapter,
-    a2_acceptsNativeToken: !!strategy.acceptsNativeToken,
+    a2_curveAdapterDeposit:
+      strategy.curveAdapterDeposit || ethers.constants.AddressZero,
+    a3_acceptsNativeToken: !!strategy.acceptsNativeToken,
     b_convexRewardPool: strategy.convexRewardPool,
     c_creditFacade: strategy.creditFacade,
     d_convexBooster: strategy.convexBooster,

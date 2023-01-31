@@ -158,6 +158,17 @@ contract levConvex3Crv is levConvexBase {
 
 	/// VIEW METHODS
 
+	function collateralToUnderlying() public view returns (uint256) {
+		uint256 threePoolLp = curveAdapter.calc_withdraw_one_coin(1e18, int128(uint128(threeId)));
+		uint256 underlyingAmnt = threePoolAdapter.calc_withdraw_one_coin(
+			threePoolLp,
+			int128(uint128(coinId))
+		);
+		uint256 currentLeverage = getLeverage();
+		if (currentLeverage == 0) return (100 * underlyingAmnt) / (leverageFactor + 100);
+		return (100 * underlyingAmnt) / currentLeverage;
+	}
+
 	function getTotalAssets() public view override returns (uint256 totalAssets) {
 		if (credAcc == address(0)) return 0;
 		uint256 threePoolLp = curveAdapter.calc_withdraw_one_coin(
@@ -165,5 +176,20 @@ contract levConvex3Crv is levConvexBase {
 			int128(uint128(threeId))
 		);
 		totalAssets = threePoolAdapter.calc_withdraw_one_coin(threePoolLp, int128(uint128(coinId)));
+	}
+
+	/// @dev used to estimate slippage
+	function getWithdrawAmnt(uint256 lpAmnt) public view returns (uint256) {
+		uint256 threePoolLp = curveAdapter.calc_withdraw_one_coin(lpAmnt, int128(uint128(threeId)));
+		return
+			(100 * threePoolAdapter.calc_withdraw_one_coin(threePoolLp, int128(uint128(coinId)))) /
+			(leverageFactor + 100);
+	}
+
+	/// @dev used to estimate slippage
+	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
+		uint256 amnt = (uAmnt * (leverageFactor + 100)) / 100;
+		uint256 threePoolLp = threePoolAdapter.calc_add_one_coin(amnt, int128(uint128(coinId)));
+		return curveAdapter.calc_add_one_coin(threePoolLp, int128(uint128(threeId)));
 	}
 }

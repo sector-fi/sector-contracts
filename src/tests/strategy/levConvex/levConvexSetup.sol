@@ -43,7 +43,8 @@ contract levConvexSetup is SCYStratUtils {
 
 	struct ConfigJSON {
 		address a1_curveAdapter;
-		bool a2_acceptsNativeToken;
+		address a2_curveAdapterDeposit;
+		bool a3_acceptsNativeToken;
 		address b_convexRewardPool;
 		address c_creditFacade;
 		address d_convexBooster;
@@ -69,6 +70,7 @@ contract levConvexSetup is SCYStratUtils {
 		ConfigJSON memory stratJson = abi.decode(strat, (ConfigJSON));
 
 		_config.curveAdapter = stratJson.a1_curveAdapter;
+		_config.curveAdapterDeposit = stratJson.a2_curveAdapterDeposit;
 		_config.convexRewardPool = stratJson.b_convexRewardPool;
 		_config.creditFacade = stratJson.c_creditFacade;
 		_config.convexBooster = stratJson.d_convexBooster;
@@ -79,7 +81,7 @@ contract levConvexSetup is SCYStratUtils {
 
 		is3crv = stratJson.k_is3crv;
 		harvestPaths = stratJson.j_harvestPaths;
-		strategyConfig.acceptsNativeToken = stratJson.a2_acceptsNativeToken;
+		strategyConfig.acceptsNativeToken = stratJson.a3_acceptsNativeToken;
 
 		string memory RPC_URL = vm.envString(string.concat(stratJson.x_chain, "_RPC_URL"));
 		uint256 BLOCK = vm.envUint(string.concat(stratJson.x_chain, "_BLOCK"));
@@ -210,6 +212,8 @@ contract levConvexSetup is SCYStratUtils {
 		deal(address(underlying), user, amount);
 		uint256 minSharesOut = (vault.underlyingToShares(amount) * 9950) / 10000;
 
+		uint256 startShares = vault.balanceOf(user);
+
 		vm.startPrank(user);
 		underlying.approve(address(vault), amount);
 		vault.deposit(user, address(underlying), amount, minSharesOut);
@@ -223,6 +227,13 @@ contract levConvexSetup is SCYStratUtils {
 
 		uint256 tvl = vault.getAndUpdateTvl();
 		uint256 endAccBalance = vault.underlyingBalance(user);
+
+		assertApproxEqRel(
+			vault.balanceOf(user) - startShares,
+			minSharesOut,
+			.01e18,
+			"min estimate should be close"
+		);
 
 		// TODO this implies a 1.4% slippage / deposit fee
 		assertApproxEqRel(tvl, startTvl + amount, .015e18, "tvl should update");

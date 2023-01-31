@@ -93,7 +93,7 @@ contract Synapse is SCYStrategy, MiniChef2Farm, SCYVault {
 	}
 
 	function _stratCollateralToUnderlying() internal view override returns (uint256) {
-		return ISynapseSwap(strategy).getVirtualPrice();
+		return ISynapseSwap(strategy).calculateRemoveLiquidityOneToken(ONE, uint8(strategyId));
 	}
 
 	function _selfBalance(address token) internal view override returns (uint256) {
@@ -111,5 +111,17 @@ contract Synapse is SCYStrategy, MiniChef2Farm, SCYVault {
 		harvested = new uint256[](1);
 		harvested[0] = amountOut;
 		return (harvested, new uint256[](0));
+	}
+
+	function getWithdrawAmnt(uint256 shares) public view override returns (uint256) {
+		uint256 assets = convertToAssets(shares);
+		return ISynapseSwap(strategy).calculateRemoveLiquidityOneToken(assets, uint8(strategyId));
+	}
+
+	function getDepositAmnt(uint256 uAmnt) public view override returns (uint256) {
+		uint256[] memory amounts = new uint256[](_nTokens);
+		amounts[strategyId] = uAmnt;
+		uint256 assets = ISynapseSwap(strategy).calculateTokenAmount(amounts, true);
+		return convertToShares(assets);
 	}
 }

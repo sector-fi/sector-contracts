@@ -417,6 +417,16 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		return (_selfBalance(yieldToken) * ONE) / _totalSupply;
 	}
 
+	/// @dev used to compute slippage on withdraw
+	function getWithdrawAmnt(uint256 shares) public view virtual returns (uint256) {
+		return sharesToUnderlying(shares);
+	}
+
+	/// @dev used to compute slippage on deposit
+	function getDepositAmnt(uint256 uAmnt) public view virtual returns (uint256) {
+		return underlyingToShares(uAmnt);
+	}
+
 	/**
 	 * @dev See {ISuperComposableYield-exchangeRateStored}
 	 */
