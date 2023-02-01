@@ -33,29 +33,10 @@ contract AggregatorWEpochVaultU is SectorBaseWEpochU {
 
 	// resonable amount to not go over gas limit when doing emergencyWithdraw
 	// in reality can go up to 200
-	uint8 MAX_STRATS = 100;
+	uint8 constant MAX_STRATS = 100;
 
 	mapping(IVaultStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
-
-	// constructor(
-	// 	ERC20 asset_,
-	// 	string memory _name,
-	// 	string memory _symbol,
-	// 	bool _useNativeAsset,
-	// 	uint256 _maxTvl,
-	// 	AuthConfig memory authConfig,
-	// 	FeeConfig memory feeConfig
-	// )
-	// 	ERC4626(asset_, _name, _symbol, _useNativeAsset)
-	// 	Auth(authConfig)
-	// 	Fees(feeConfig)
-	// 	SectorBaseWEpoch()
-	// {
-	// 	maxTvl = _maxTvl;
-	// 	emit MaxTvlUpdated(_maxTvl);
-	// 	lastHarvestTimestamp = block.timestamp;
-	// }
 
 	function initialize(
 		IERC20 asset_,

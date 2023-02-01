@@ -34,7 +34,7 @@ contract AggregatorVault is SectorBase {
 
 	// resonable amount to not go over gas limit when doing emergencyWithdraw
 	// in reality can go up to 200
-	uint8 MAX_STRATS = 100;
+	uint8 constant MAX_STRATS = 100;
 
 	mapping(IVaultStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
