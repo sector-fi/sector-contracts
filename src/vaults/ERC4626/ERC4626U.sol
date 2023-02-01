@@ -13,6 +13,7 @@ import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 
 // import "hardhat/console.sol";
 
@@ -26,6 +27,7 @@ abstract contract ERC4626U is
 	FeesU,
 	IERC4626,
 	ReentrancyGuardUpgradeable,
+	ERC20PermitUpgradeable,
 	SectorErrors
 {
 	using SafeERC20 for IERC20;
@@ -47,7 +49,10 @@ abstract contract ERC4626U is
 	bool public useNativeAsset;
 	uint256 public maxTvl;
 
-	constructor() {}
+	/// @custom:oz-upgrades-unsafe-allow constructor
+	constructor() {
+		_disableInitializers();
+	}
 
 	function __ERC4626_init(
 		IERC20 _asset,
@@ -56,6 +61,7 @@ abstract contract ERC4626U is
 		bool _useNativeAsset
 	) public onlyInitializing {
 		__ERC20_init(_name, _symbol);
+		__ERC20Permit_init(_name);
 		useNativeAsset = _useNativeAsset;
 		asset = _asset;
 	}

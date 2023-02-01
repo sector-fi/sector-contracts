@@ -32,7 +32,10 @@ abstract contract SCYBaseU is
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
 
-	constructor() {}
+	/// @custom:oz-upgrades-unsafe-allow constructor
+	constructor() {
+		_disableInitializers();
+	}
 
 	function __SCYBase_init(string memory _name, string memory _symbol) internal initializer {
 		__ReentrancyGuard_init();

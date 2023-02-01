@@ -12,6 +12,7 @@ import { Fees, FeeConfig } from "../../common/Fees.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
+import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
 // import "hardhat/console.sol";
 
@@ -24,6 +25,7 @@ abstract contract ERC4626 is
 	Fees,
 	IERC4626,
 	ReentrancyGuard,
+	ERC20Permit,
 	SectorErrors
 {
 	using SafeERC20 for ERC20;
@@ -50,7 +52,7 @@ abstract contract ERC4626 is
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset
-	) ERC20(_name, _symbol) {
+	) ERC20(_name, _symbol) ERC20Permit(_name) {
 		useNativeAsset = _useNativeAsset;
 		asset = _asset;
 	}
