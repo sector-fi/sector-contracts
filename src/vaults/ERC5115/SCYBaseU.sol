@@ -11,6 +11,7 @@ import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/toke
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { FeesU } from "../../common/FeesU.sol";
 
 // import "hardhat/console.sol";
 
@@ -20,6 +21,7 @@ abstract contract SCYBaseU is
 	ReentrancyGuardUpgradeable,
 	ERC20,
 	Accounting,
+	FeesU,
 	ERC20PermitUpgradeable,
 	SectorErrors
 {

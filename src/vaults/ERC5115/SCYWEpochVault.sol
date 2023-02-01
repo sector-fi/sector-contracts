@@ -4,7 +4,6 @@ pragma solidity 0.8.16;
 import { SCYBase, Accounting, IERC20, ERC20, IERC20Metadata, SafeERC20 } from "./SCYBase.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { Auth } from "../../common/Auth.sol";
-import { Fees } from "../../common/Fees.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
@@ -17,7 +16,7 @@ import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
+abstract contract SCYWEpochVault is SCYStrategy, SCYBase, BatchedWithdrawEpoch {
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 

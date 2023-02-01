@@ -2,7 +2,6 @@
 pragma solidity 0.8.16;
 
 import { SCYBaseU, IERC20, IERC20Metadata, SafeERC20 } from "./SCYBaseU.sol";
-import { FeesU } from "../../common/FeesU.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
@@ -15,7 +14,7 @@ import { ISCYStrategy } from "../../vaults/ERC5115/ISCYStrategy.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
+abstract contract SCYVaultU is SCYStrategy, SCYBaseU {
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 

@@ -9,6 +9,7 @@ import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contr
 import { Accounting } from "../../common/Accounting.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
+import { Fees } from "../../common/Fees.sol";
 
 // import "hardhat/console.sol";
 
@@ -17,6 +18,7 @@ abstract contract SCYBase is
 	ReentrancyGuard,
 	ERC20,
 	Accounting,
+	Fees,
 	ERC20Permit,
 	SectorErrors
 {
