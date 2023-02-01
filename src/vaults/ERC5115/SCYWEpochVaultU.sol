@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity 0.8.16;
 
-import { SCYBase, Accounting, IERC20, ERC20, IERC20Metadata, SafeERC20 } from "./SCYBase.sol";
+import { SCYBaseU, Accounting, IERC20, ERC20, IERC20Metadata, SafeERC20 } from "./SCYBaseU.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { Auth } from "../../common/Auth.sol";
-import { Fees } from "../../common/Fees.sol";
+import { FeesU } from "../../common/FeesU.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
@@ -17,7 +17,7 @@ import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawEpoch {
+abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, FeesU, BatchedWithdrawEpoch {
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 
@@ -39,10 +39,10 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 	address payable public strategy;
 
 	// immutables
-	address public immutable override yieldToken;
-	uint16 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
+	address public override yieldToken;
+	uint16 public strategyId; // strategy-specific id ex: for MasterChef or 1155
 	bool public acceptsNativeToken;
-	IERC20 public immutable underlying;
+	IERC20 public underlying;
 
 	uint256 public maxTvl; // pack all params and balances
 	uint256 public vaultTvl; // strategy balance in underlying
@@ -56,8 +56,8 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		_;
 	}
 
-	constructor(Strategy memory _strategy) SCYBase(_strategy.name, _strategy.symbol) {
-		// strategy init
+	function __SCYWEpochVault_init(Strategy memory _strategy) internal initializer {
+		__SCYBase_init(_strategy.name, _strategy.symbol);
 		yieldToken = _strategy.yieldToken;
 		strategy = payable(_strategy.addr);
 		strategyId = _strategy.strategyId;
@@ -471,7 +471,7 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		super._spendAllowance(owner, spender, amount);
 	}
 
-	function totalSupply() public view override(Accounting, SCYBase) returns (uint256) {
+	function totalSupply() public view override(Accounting, SCYBaseU) returns (uint256) {
 		return ERC20.totalSupply();
 	}
 

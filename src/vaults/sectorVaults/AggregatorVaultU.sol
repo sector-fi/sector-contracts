@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
+import { ERC4626U, FixedPointMathLib, SafeERC20, FeeConfig, AuthConfig } from "../ERC4626/ERC4626U.sol";
 import { IVaultStrategy } from "../../interfaces/IVaultStrategy.sol";
-import { SectorBase } from "../ERC4626/SectorBase.sol";
+import { SectorBaseU, ERC20, IERC20 } from "../ERC4626/SectorBaseU.sol";
 import { VaultType } from "../../interfaces/Structs.sol";
 
 // import "hardhat/console.sol";
@@ -25,9 +24,9 @@ struct DepositParams {
 }
 
 // Sector Aggregator Vault
-contract AggregatorVault is SectorBase {
+contract AggregatorVaultU is SectorBaseU {
 	using FixedPointMathLib for uint256;
-	using SafeERC20 for ERC20;
+	using SafeERC20 for IERC20;
 
 	/// if vaults accepts native asset we set asset to address 0;
 	address internal constant NATIVE = address(0);
@@ -39,8 +38,8 @@ contract AggregatorVault is SectorBase {
 	mapping(IVaultStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
 
-	constructor(
-		ERC20 asset_,
+	function initialize(
+		IERC20 asset_,
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset,
@@ -48,12 +47,11 @@ contract AggregatorVault is SectorBase {
 		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
-	)
-		ERC4626(asset_, _name, _symbol, _useNativeAsset)
-		Auth(authConfig)
-		Fees(feeConfig)
-		SectorBase()
-	{
+	) public initializer {
+		__ERC4626_init(asset_, _name, _symbol, _useNativeAsset);
+		__Auth_init(authConfig);
+		__Fees_init(feeConfig);
+
 		maxTvl = _maxTvl;
 		emit MaxTvlUpdated(_maxTvl);
 
@@ -216,7 +214,7 @@ contract AggregatorVault is SectorBase {
 
 		// redeem proportional share of each strategy
 		for (uint256 i; i < l; ++i) {
-			ERC20 stratToken = ERC20(strategyIndex[i]);
+			IERC20 stratToken = IERC20(strategyIndex[i]);
 			uint256 balance = stratToken.balanceOf(address(this));
 			uint256 userShares = (shares * balance) / adjustedSupply;
 			if (userShares == 0) continue;

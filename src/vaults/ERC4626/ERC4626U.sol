@@ -1,32 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.8.0;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20Upgradeable as ERC20 } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IERC4626 } from "../../interfaces/ERC4626/IERC4626.sol";
 import { Accounting } from "../../common/Accounting.sol";
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import { Auth, AuthConfig } from "../../common/Auth.sol";
-import { Fees, FeeConfig } from "../../common/Fees.sol";
+import { AuthU, AuthConfig } from "../../common/AuthU.sol";
+import { FeesU, FeeConfig } from "../../common/FeesU.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // import "hardhat/console.sol";
 
 /// @notice Minimal ERC4626 tokenized Vault implementation.
 /// @author Solmate (https://github.com/transmissions11/solmate/blob/main/src/mixins/ERC4626.sol)
-abstract contract ERC4626 is
+abstract contract ERC4626U is
+	Initializable,
 	ERC20,
-	Auth,
+	AuthU,
 	Accounting,
-	Fees,
+	FeesU,
 	IERC4626,
-	ReentrancyGuard,
+	ReentrancyGuardUpgradeable,
 	SectorErrors
 {
-	using SafeERC20 for ERC20;
+	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 
 	/*//////////////////////////////////////////////////////////////
@@ -40,17 +42,20 @@ abstract contract ERC4626 is
                                IMMUTABLES
     //////////////////////////////////////////////////////////////*/
 
-	ERC20 immutable asset;
+	IERC20 public asset;
 	// flag that allows the vault to consume native asset
 	bool public useNativeAsset;
 	uint256 public maxTvl;
 
-	constructor(
-		ERC20 _asset,
+	constructor() {}
+
+	function __ERC4626_init(
+		IERC20 _asset,
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset
-	) ERC20(_name, _symbol) {
+	) public onlyInitializing {
+		__ERC20_init(_name, _symbol);
 		useNativeAsset = _useNativeAsset;
 		asset = _asset;
 	}
@@ -58,7 +63,7 @@ abstract contract ERC4626 is
 	receive() external payable {}
 
 	function decimals() public view virtual override returns (uint8) {
-		return asset.decimals();
+		return ERC20(address(asset)).decimals();
 	}
 
 	function totalAssets() public view virtual override returns (uint256);

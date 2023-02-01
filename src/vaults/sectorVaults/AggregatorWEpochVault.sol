@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
 import { IVaultStrategy } from "../../interfaces/IVaultStrategy.sol";
-import { SectorBaseWEpoch } from "../ERC4626/SectorBaseEpoch.sol";
+import { SectorBaseWEpoch } from "../ERC4626/SectorBaseWEpoch.sol";
 import { VaultType, EpochType } from "../../interfaces/Structs.sol";
 
 // import "hardhat/console.sol";
