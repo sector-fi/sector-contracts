@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { HLPConfig, NativeToken } from "../../interfaces/Structs.sol";
-import { HLPCore } from "./HLPCore.sol";
+import { HLPCore, IBase, IERC20 } from "./HLPCore.sol";
 import { Compound } from "../adapters/Compound.sol";
 import { MasterChefFarm } from "../adapters/MasterChefFarm.sol";
 import { CompMultiFarm } from "../adapters/CompMultiFarm.sol";
@@ -30,5 +30,9 @@ contract MasterChefCompMulti is HLPCore, Compound, CompMultiFarm, MasterChefFarm
 		__HedgedLP_init_(config.underlying, config.short, config.vault);
 
 		nativeToken = config.nativeToken;
+	}
+
+	function underlying() public view override(IBase, HLPCore) returns (IERC20) {
+		return super.underlying();
 	}
 }

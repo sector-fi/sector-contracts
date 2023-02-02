@@ -10,97 +10,100 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 import { Fees, FeeConfig } from "../../common/Fees.sol";
 import { HarvestSwapParams } from "../../interfaces/Structs.sol";
+import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { StratAuthLight } from "../../common/StratAuthLight.sol";
 
 // import "hardhat/console.sol";
 
-contract MockScyVault is SCYStrategy, SCYVault {
+contract MockScyVault is ISCYStrategy, StratAuthLight {
 	using SafeERC20 for IERC20;
 
 	uint256 underlyingBalance;
 
-	constructor(
-		AuthConfig memory authConfig,
-		FeeConfig memory feeConfig,
-		Strategy memory _strategy
-	) Auth(authConfig) Fees(feeConfig) SCYVault(_strategy) {}
+	IERC20 public underlying;
+	address public lpToken;
 
-	function sendERC20ToStrategy() public pure override returns (bool) {
-		return true;
+	constructor(
+		address _underlying,
+		address _lpToken,
+		address _vault
+	) {
+		underlying = IERC20(_underlying);
+		vault = _vault;
+		lpToken = _lpToken;
 	}
 
-	function _stratDeposit(uint256 amount) internal override returns (uint256) {
-		uint256 stratBalance = underlying.balanceOf(strategy);
-		if (underlyingBalance + amount < stratBalance) revert MissingFunds();
-		uint256 supply = MockERC20(strategy).totalSupply();
+	function deposit(uint256 amount) public onlyVault returns (uint256) {
+		underlying.transfer(address(lpToken), amount);
+
+		uint256 supply = MockERC20(lpToken).totalSupply();
+		uint256 stratBalance = underlying.balanceOf(address(lpToken));
+
 		uint256 amntToMint = supply == 0 ? amount : (amount * supply) / (stratBalance - amount);
-		MockERC20(yieldToken).mint(address(this), amntToMint);
-		underlyingBalance = underlying.balanceOf(strategy);
+
+		MockERC20(lpToken).mint(address(this), amntToMint);
 		return amntToMint;
 	}
 
-	function _stratRedeem(address to, uint256 shares)
-		internal
-		override
-		returns (uint256 amntOut, uint256 amntToTransfer)
-	{
-		uint256 stratBalance = underlying.balanceOf(strategy);
-		uint256 supply = MockERC20(strategy).totalSupply();
-		MockERC20(yieldToken).burn(address(this), shares);
+	function redeem(address to, uint256 shares) public onlyVault returns (uint256 amntOut) {
+		uint256 stratBalance = underlying.balanceOf(lpToken);
+		uint256 supply = MockERC20(lpToken).totalSupply();
 
+		MockERC20(lpToken).burn(address(this), shares);
 		uint256 amntUnderlying = (shares * stratBalance) / supply;
 
-		MockERC20(address(underlying)).burn(strategy, amntUnderlying);
+		MockERC20(address(underlying)).burn(lpToken, amntUnderlying);
 		MockERC20(address(underlying)).mint(to, amntUnderlying);
-		underlyingBalance = underlying.balanceOf(strategy);
-		amntToTransfer = to == address(this) ? amntUnderlying : 0;
-		return (amntUnderlying, amntToTransfer);
+		return amntUnderlying;
 	}
 
-	function _stratClosePosition(uint256) internal override returns (uint256) {
-		uint256 amount = underlying.balanceOf(strategy);
-		MockERC20(yieldToken).burn(strategy, amount);
-		MockERC20(address(underlying)).burn(strategy, amount);
-		MockERC20(address(underlying)).mint(address(this), amount);
-		underlyingBalance = 0;
+	function closePosition(uint256) public onlyVault returns (uint256) {
+		uint256 amount = underlying.balanceOf(lpToken);
+		MockERC20(lpToken).burn(address(this), amount);
+		MockERC20(address(underlying)).burn(lpToken, amount);
+		MockERC20(address(underlying)).mint(vault, amount);
 		return amount;
 	}
 
-	function _stratGetAndUpdateTvl() internal view override returns (uint256) {
-		return _strategyTvl();
+	function getAndUpdateTvl() public returns (uint256) {
+		return getTvl();
 	}
 
-	function _strategyTvl() internal view override returns (uint256) {
-		return underlying.balanceOf(address(strategy));
+	function getTvl() public view returns (uint256) {
+		return underlying.balanceOf(address(lpToken));
 	}
 
-	function _stratMaxTvl() internal pure override returns (uint256) {
+	function getMaxTvl() public pure returns (uint256) {
 		return type(uint256).max;
 	}
 
-	function _stratCollateralToUnderlying() internal pure override returns (uint256) {
-		return 1e18;
+	function collateralToUnderlying() public view returns (uint256) {
+		uint256 supply = MockERC20(lpToken).totalSupply();
+		if (supply == 0) return 1e18;
+		uint256 stratBalance = underlying.balanceOf(lpToken);
+		return (1e18 * stratBalance) / supply;
 	}
 
-	function _stratValidate() internal override {}
-
-	function _stratHarvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
-		internal
+	function harvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
+		public
 		override
+		onlyVault
 		returns (uint256[] memory, uint256[] memory)
 	{
 		/// simulate harvest profits
-		if (params.length > 0) MockERC20(address(underlying)).mint(strategy, params[0].min);
+		if (params.length > 0) MockERC20(address(underlying)).mint(address(lpToken), params[0].min);
 		return (new uint256[](0), new uint256[](0));
 	}
 
-	function getFloatingAmount(address token) public view override returns (uint256) {
-		if (token == address(underlying)) return underlying.balanceOf(strategy) - underlyingBalance;
-		return _selfBalance(token);
+	function getLpBalance() public view returns (uint256) {
+		return MockERC20(lpToken).balanceOf(address(this));
 	}
 
-	function isValidBaseToken(address token) public view override returns (bool) {
-		return token == address(underlying) || token == NATIVE;
+	function getWithdrawAmnt(uint256 lpTokens) public view returns (uint256) {
+		return (lpTokens * collateralToUnderlying()) / 1e18;
 	}
 
-	error MissingFunds();
+	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
+		return (uAmnt * 1e18) / collateralToUnderlying();
+	}
 }

@@ -143,8 +143,6 @@ abstract contract SCYBase is
 		uint256 amount
 	) internal virtual;
 
-	function _selfBalance(address token) internal view virtual returns (uint256);
-
 	function _depositNative() internal virtual;
 
 	// OVERRIDES
@@ -153,7 +151,7 @@ abstract contract SCYBase is
 	}
 
 	function sendERC20ToStrategy() public view virtual returns (bool) {
-		return false;
+		return true;
 	}
 
 	error CantPullEth();

@@ -5,7 +5,7 @@ import { ICreditFacade, ICreditManagerV2 } from "../../interfaces/gearbox/ICredi
 import { IPriceOracleV2 } from "../../interfaces/gearbox/IPriceOracleV2.sol";
 import { StratAuth } from "../../common/StratAuth.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
-import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { ISCYVault } from "../../interfaces/ERC5115/ISCYVault.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -16,10 +16,11 @@ import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
 import { BytesLib } from "../../libraries/BytesLib.sol";
 import { LevConvexConfig } from "./ILevConvex.sol";
+import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 
 import "hardhat/console.sol";
 
-abstract contract levConvexBase is StratAuth {
+abstract contract levConvexBase is StratAuth, ISCYStrategy {
 	using SafeERC20 for IERC20;
 
 	uint256 constant MIN_LIQUIDITY = 10**3;
@@ -75,7 +76,7 @@ abstract contract levConvexBase is StratAuth {
 	}
 
 	function setVault(address _vault) public onlyOwner {
-		if (ISCYStrategy(_vault).underlying() != underlying) revert WrongVaultUnderlying();
+		if (ISCYVault(_vault).underlying() != underlying) revert WrongVaultUnderlying();
 		vault = _vault;
 		emit SetVault(vault);
 	}
@@ -84,7 +85,7 @@ abstract contract levConvexBase is StratAuth {
 	/// @param amount amount of underlying to deposit
 	function deposit(uint256 amount) public onlyVault returns (uint256) {
 		// TODO maxTvl check?
-		uint256 startBalance = collateralBalance();
+		uint256 startBalance = getLpBalance();
 		if (credAcc == address(0)) _openAccount(amount);
 		else {
 			uint256 borrowAmnt = (amount * (leverageFactor)) / 100;
@@ -94,15 +95,15 @@ abstract contract levConvexBase is StratAuth {
 		emit Deposit(msg.sender, amount);
 		// our balance should allays increase on deposits
 		// adjust the collateralBalance by leverage amount
-		return (collateralBalance() - startBalance);
+		return (getLpBalance() - startBalance);
 	}
 
 	/// @notice deposits underlying into the strategy
 	/// @param amount amount of lp to withdraw
-	function redeem(uint256 amount, address to) public onlyVault returns (uint256) {
+	function redeem(address to, uint256 amount) public onlyVault returns (uint256) {
 		/// there is no way to partially withdraw collateral
 		/// we have to close account and re-open it :\
-		uint256 startLp = collateralBalance();
+		uint256 startLp = getLpBalance();
 		_closePosition();
 		uint256 uBalance = underlying.balanceOf(address(this));
 		uint256 withdraw = (uBalance * amount) / startLp;
@@ -151,7 +152,7 @@ abstract contract levConvexBase is StratAuth {
 			_decreasePosition(repay);
 		} else if (currentLeverageFactor < newLeverage) {
 			// we need to increase leverage -> borrow more
-			uint256 borrowAmnt = (getAndUpdateTVL() * (newLeverage - currentLeverageFactor)) / 100;
+			uint256 borrowAmnt = (getAndUpdateTvl() * (newLeverage - currentLeverageFactor)) / 100;
 			_increasePosition(borrowAmnt, borrowAmnt);
 		}
 		/// leverageFactor used for opening & closing accounts
@@ -159,10 +160,10 @@ abstract contract levConvexBase is StratAuth {
 		emit AdjustLeverage(newLeverage);
 	}
 
-	function harvest(HarvestSwapParams[] memory swapParams)
+	function harvest(HarvestSwapParams[] memory swapParams, HarvestSwapParams[] memory)
 		public
 		onlyVault
-		returns (uint256[] memory amountsOut)
+		returns (uint256[] memory amountsOut, uint256[] memory)
 	{
 		if (credAcc == address(0)) return _harvestOwnTokens(swapParams);
 
@@ -184,15 +185,17 @@ abstract contract levConvexBase is StratAuth {
 		}
 
 		uint256 balance = underlying.balanceOf(credAcc);
-		if (balance == 0) return amountsOut;
+		if (balance == 0) (amountsOut, new uint256[](0));
+
 		uint256 borrowAmnt = (balance * leverageFactor) / 100;
 		_increasePosition(borrowAmnt, borrowAmnt + balance);
+		return (amountsOut, new uint256[](0));
 	}
 
 	// method to harvest if we have closed the credit account
 	function _harvestOwnTokens(HarvestSwapParams[] memory swapParams)
 		internal
-		returns (uint256[] memory amountsOut)
+		returns (uint256[] memory amountsOut, uint256[] memory)
 	{
 		amountsOut = new uint256[](swapParams.length);
 		for (uint256 i; i < swapParams.length; ++i) {
@@ -213,9 +216,10 @@ abstract contract levConvexBase is StratAuth {
 		}
 		uint256 balance = underlying.balanceOf(address(this));
 		underlying.safeTransfer(vault, balance);
+		return (amountsOut, new uint256[](0));
 	}
 
-	function closePosition() public onlyVault returns (uint256) {
+	function closePosition(uint256) public onlyVault returns (uint256) {
 		// withdraw all rewards
 		convexRewardPool.getReward();
 		_closePosition();
@@ -259,14 +263,9 @@ abstract contract levConvexBase is StratAuth {
 		return (100 * maxBorrowed) / leverageFactor;
 	}
 
-	function collateralBalance() public view returns (uint256) {
-		if (credAcc == address(0)) return 0;
-		return convexRewardPool.balanceOf(credAcc);
-	}
-
 	/// @dev gearbox accounting is overly concervative so we use calc_withdraw_one_coin
 	/// to compute totalAsssets
-	function getTotalTVL() public view returns (uint256) {
+	function getTvl() public view returns (uint256) {
 		if (credAcc == address(0)) return 0;
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
 		uint256 totalAssets = getTotalAssets();
@@ -275,8 +274,13 @@ abstract contract levConvexBase is StratAuth {
 
 	function getTotalAssets() public view virtual returns (uint256 totalAssets);
 
-	function getAndUpdateTVL() public view returns (uint256) {
-		return getTotalTVL();
+	function getAndUpdateTvl() public view returns (uint256) {
+		if (credAcc == address(0)) return 0;
+		return convexRewardPool.balanceOf(credAcc);
+	}
+
+	function getLpBalance() public view returns (uint256) {
+		return convexRewardPool.balanceOf(address(this));
 	}
 
 	event AdjustLeverage(uint256 newLeverage);

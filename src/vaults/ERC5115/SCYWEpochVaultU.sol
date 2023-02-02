@@ -5,7 +5,6 @@ import { SCYBaseU, Accounting, IERC20, ERC20, IERC20Metadata, SafeERC20 } from "
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { Auth } from "../../common/Auth.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
-import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -13,10 +12,14 @@ import { EAction, HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { VaultType, EpochType } from "../../interfaces/Structs.sol";
 import { BatchedWithdrawEpoch } from "../../common/BatchedWithdrawEpoch.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
+import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { SCYVaultConfig } from "../../interfaces/ERC5115/ISCYVault.sol";
+import { AuthConfig } from "../../common/Auth.sol";
+import { FeeConfig } from "../../common/Fees.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch {
+abstract contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 
@@ -35,7 +38,7 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 
 	uint256 public lastHarvestTimestamp;
 
-	address payable public strategy;
+	ISCYStrategy public strategy;
 
 	// immutables
 	address public override yieldToken;
@@ -51,21 +54,27 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 	event StrategyUpdated(address strategy);
 
 	modifier isInitialized() {
-		if (strategy == address(0)) revert NotInitialized();
+		if (address(strategy) == address(0)) revert NotInitialized();
 		_;
 	}
 
-	function __SCYWEpochVault_init(Strategy memory _strategy) internal initializer {
-		__SCYBase_init(_strategy.name, _strategy.symbol);
-		yieldToken = _strategy.yieldToken;
-		strategy = payable(_strategy.addr);
-		strategyId = _strategy.strategyId;
-		underlying = _strategy.underlying;
-		acceptsNativeToken = _strategy.acceptsNativeToken;
-		maxTvl = _strategy.maxTvl;
+	function initialize(
+		AuthConfig memory authConfig,
+		FeeConfig memory feeConfig,
+		SCYVaultConfig memory vaultConfig
+	) external initializer {
+		__Auth_init(authConfig);
+		__Fees_init(feeConfig);
+		__SCYBase_init(vaultConfig.name, vaultConfig.symbol);
+
+		yieldToken = vaultConfig.yieldToken;
+		strategy = ISCYStrategy(vaultConfig.addr);
+		strategyId = vaultConfig.strategyId;
+		underlying = vaultConfig.underlying;
+		acceptsNativeToken = vaultConfig.acceptsNativeToken;
+		maxTvl = vaultConfig.maxTvl;
 
 		lastHarvestTimestamp = block.timestamp;
-		if (sendERC20ToStrategy() == true) revert DontSendERCToStrat();
 	}
 
 	// we should never send tokens directly to strategy for Epoch-based vaults
@@ -78,27 +87,31 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
     //////////////////////////////////////////////////////////////*/
 
 	function getMaxTvl() public view returns (uint256) {
-		return min(maxTvl, _stratMaxTvl());
+		return min(maxTvl, strategy.getMaxTvl());
 	}
 
 	function setMaxTvl(uint256 _maxTvl) public onlyRole(GUARDIAN) {
 		maxTvl = _maxTvl;
-		emit MaxTvlUpdated(min(maxTvl, _stratMaxTvl()));
+		emit MaxTvlUpdated(min(maxTvl, strategy.getMaxTvl()));
 	}
 
 	function initStrategy(address _strategy) public onlyRole(GUARDIAN) {
-		if (strategy != address(0)) revert NoReInit();
-		strategy = payable(_strategy);
-		_stratValidate();
+		if (address(strategy) != address(0)) revert NoReInit();
+		strategy = ISCYStrategy(_strategy);
+		_validateStrategy();
 		emit StrategyUpdated(_strategy);
 	}
 
 	function updateStrategy(address _strategy) public onlyOwner {
-		uint256 tvl = _stratGetAndUpdateTvl();
+		uint256 tvl = strategy.getAndUpdateTvl();
 		if (tvl > 0) revert InvalidStrategyUpdate();
-		strategy = payable(_strategy);
-		_stratValidate();
+		strategy = ISCYStrategy(_strategy);
+		_validateStrategy();
 		emit StrategyUpdated(_strategy);
+	}
+
+	function _validateStrategy() internal view {
+		if (strategy.underlying() != underlying) revert InvalidStrategy();
 	}
 
 	function _depositNative() internal override {
@@ -116,14 +129,13 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 		uint256 _totalAssets = totalAssets();
 		if (uBalance > 0 && _totalAssets > 0) revert DepositsPaused();
 
-		// TODO should we handle this logic inside _stratDeposit?
-		// this may be useful when a given strategy only accepts NATIVE tokens
 		if (token == NATIVE) _depositNative();
 
 		// if the strategy is active, we can deposit dirictly into strategy
 		// if not, we deposit into the vault for a future strategy deposit
 		if (_totalAssets > 0) {
-			uint256 yieldTokenAdded = _stratDeposit(amount);
+			underlying.safeTransfer(address(strategy), amount);
+			uint256 yieldTokenAdded = strategy.deposit(amount);
 			// don't include newly minted shares and pendingRedeem in the calculation
 			sharesOut = toSharesAfterDeposit(yieldTokenAdded);
 		} else {
@@ -157,14 +169,14 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 	) external onlyRole(MANAGER) returns (uint256[] memory harvest1, uint256[] memory harvest2) {
 		/// TODO refactor this
 		uint256 _uBalance = underlying.balanceOf(address(this));
-		uint256 startTvl = _stratGetAndUpdateTvl() + _uBalance;
+		uint256 startTvl = strategy.getAndUpdateTvl() + _uBalance;
 
 		_checkSlippage(expectedTvl, startTvl, maxDelta);
 
 		if (swap1.length > 0 || swap2.length > 0)
-			(harvest1, harvest2) = _stratHarvest(swap1, swap2);
+			(harvest1, harvest2) = strategy.harvest(swap1, swap2);
 
-		uint256 tvl = _strategyTvl() + _uBalance;
+		uint256 tvl = strategy.getTvl() + _uBalance;
 
 		uint256 prevTvl = vaultTvl;
 		uint256 timestamp = block.timestamp;
@@ -214,10 +226,10 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 		// Update strategy underlying reserves balance
 		if (shareOfReserves > 0) uBalance -= shareOfReserves;
 
-		uint256 stratTvl = _stratGetAndUpdateTvl();
-		(uint256 amountTokenOut, ) = stratTvl == 0
-			? (0, 0)
-			: _stratRedeem(address(this), yeildTokenRedeem);
+		uint256 stratTvl = strategy.getAndUpdateTvl();
+		uint256 amountTokenOut = stratTvl == 0
+			? 0
+			: strategy.redeem(address(this), yeildTokenRedeem);
 		emit WithdrawFromStrategy(msg.sender, amountTokenOut);
 
 		amountTokenOut += shareOfReserves;
@@ -250,7 +262,7 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 	{
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
 		uBalance -= underlyingAmount;
-		uint256 yAdded = _stratDeposit(underlyingAmount);
+		uint256 yAdded = strategy.deposit(underlyingAmount);
 		uint256 virtualSharesOut = convertToShares(yAdded);
 		if (virtualSharesOut < minAmountOut) revert InsufficientOut(virtualSharesOut, minAmountOut);
 		emit DepositIntoStrategy(msg.sender, underlyingAmount);
@@ -259,7 +271,7 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 	/// @notice slippage is computed in underlying
 	function withdrawFromStrategy(uint256 shares, uint256 minAmountOut) public onlyRole(MANAGER) {
 		uint256 yieldTokenAmnt = convertToAssets(shares);
-		(uint256 underlyingWithdrawn, ) = _stratRedeem(address(this), yieldTokenAmnt);
+		uint256 underlyingWithdrawn = strategy.redeem(address(this), yieldTokenAmnt);
 		if (underlyingWithdrawn < minAmountOut)
 			revert InsufficientOut(underlyingWithdrawn, minAmountOut);
 		uBalance += underlyingWithdrawn;
@@ -267,7 +279,7 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 	}
 
 	function closePosition(uint256 minAmountOut, uint256 slippageParam) public onlyRole(MANAGER) {
-		uint256 underlyingWithdrawn = _stratClosePosition(slippageParam);
+		uint256 underlyingWithdrawn = strategy.closePosition(slippageParam);
 		if (underlyingWithdrawn < minAmountOut)
 			revert InsufficientOut(underlyingWithdrawn, minAmountOut);
 		uBalance += underlyingWithdrawn;
@@ -289,25 +301,25 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 	}
 
 	function getStrategyTvl() public view returns (uint256) {
-		return _strategyTvl();
+		return strategy.getTvl();
 	}
 
 	/// no slippage check - slippage can be done on vault level
 	/// against total expected balance of all strategies
 	function getAndUpdateTvl() public returns (uint256 tvl) {
-		uint256 stratTvl = _stratGetAndUpdateTvl();
+		uint256 stratTvl = strategy.getAndUpdateTvl();
 		uint256 balance = underlying.balanceOf(address(this));
 		tvl = balance + stratTvl;
 	}
 
 	function getTvl() public view returns (uint256 tvl) {
-		uint256 stratTvl = _strategyTvl();
+		uint256 stratTvl = strategy.getTvl();
 		uint256 balance = underlying.balanceOf(address(this));
 		tvl = balance + stratTvl;
 	}
 
 	function totalAssets() public view override returns (uint256) {
-		return _selfBalance(yieldToken);
+		return strategy.getLpBalance();
 	}
 
 	function isPaused() public view returns (bool) {
@@ -318,8 +330,8 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 	/// @dev includes pendingRedeem shares and pendingWithdrawUnderlying
 	function exchangeRateUnderlying() public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
-		if (_totalSupply == 0) return _stratCollateralToUnderlying();
-		uint256 tvl = underlying.balanceOf(address(this)) + _strategyTvl();
+		if (_totalSupply == 0) return strategy.collateralToUnderlying();
+		uint256 tvl = underlying.balanceOf(address(this)) + strategy.getTvl();
 		return tvl.mulDivUp(ONE, _totalSupply);
 	}
 
@@ -328,7 +340,7 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 		uint256 userBalance = balanceOf(user);
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0 || userBalance == 0) return 0;
-		uint256 tvl = underlying.balanceOf(address(this)) + _stratGetAndUpdateTvl();
+		uint256 tvl = underlying.balanceOf(address(this)) + strategy.getAndUpdateTvl();
 		return (tvl * userBalance) / _totalSupply;
 	}
 
@@ -337,28 +349,28 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 		uint256 userBalance = balanceOf(user);
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0 || userBalance == 0) return 0;
-		uint256 tvl = underlying.balanceOf(address(this)) + _strategyTvl();
+		uint256 tvl = underlying.balanceOf(address(this)) + strategy.getTvl();
 		return (tvl * userBalance) / _totalSupply;
 	}
 
 	/// @dev includes pendingRedeem shares and pendingWithdrawUnderlying
 	function underlyingToShares(uint256 uAmnt) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
-		if (_totalSupply == 0) return uAmnt.mulDivDown(ONE, _stratCollateralToUnderlying());
+		if (_totalSupply == 0) return uAmnt.mulDivDown(ONE, strategy.collateralToUnderlying());
 		return uAmnt.mulDivDown(_totalSupply, getTvl());
 	}
 
 	/// @dev includes pendingRedeem shares and pendingWithdrawUnderlying
 	function underlyingToSharesAfterDeposit(uint256 uAmnt) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
-		if (_totalSupply == 0) return uAmnt.mulDivDown(ONE, _stratCollateralToUnderlying());
+		if (_totalSupply == 0) return uAmnt.mulDivDown(ONE, strategy.collateralToUnderlying());
 		return uAmnt.mulDivDown(_totalSupply, getTvl() - uAmnt);
 	}
 
 	/// @dev includes pendingRedeem shares and pendingWithdrawUnderlying
 	function sharesToUnderlying(uint256 shares) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
-		if (_totalSupply == 0) return (shares * _stratCollateralToUnderlying()) / ONE;
+		if (_totalSupply == 0) return (shares * strategy.collateralToUnderlying()) / ONE;
 		return shares.mulDivDown(getTvl(), _totalSupply);
 	}
 
@@ -449,11 +461,6 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 		}
 	}
 
-	// todo handle internal float balances
-	function _selfBalance(address token) internal view virtual override returns (uint256) {
-		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
-	}
-
 	function _transfer(
 		address sender,
 		address recipient,
@@ -474,12 +481,16 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 		return ERC20.totalSupply();
 	}
 
-	function getWithdrawAmnt(uint256 amnt) public view virtual returns (uint256) {
-		return amnt;
+	/// @dev used to compute slippage on withdraw
+	function getWithdrawAmnt(uint256 shares) public view returns (uint256) {
+		uint256 assets = convertToAssets(shares);
+		return ISCYStrategy(strategy).getWithdrawAmnt(assets);
 	}
 
-	function getDepositAmnt(uint256 amnt) public view virtual returns (uint256) {
-		return amnt;
+	/// @dev used to compute slippage on deposit
+	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
+		uint256 assets = ISCYStrategy(strategy).getDepositAmnt(uAmnt);
+		return convertToShares(assets);
 	}
 
 	/**
@@ -503,6 +514,4 @@ abstract contract SCYWEpochVaultU is SCYStrategy, SCYBaseU, BatchedWithdrawEpoch
 	error StrategyDoesntExist();
 	error NotEnoughUnderlying();
 	error SlippageExceeded();
-	error BadStaticCall();
-	error DontSendERCToStrat();
 }
