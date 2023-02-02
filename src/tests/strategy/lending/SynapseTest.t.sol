@@ -13,6 +13,7 @@ import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { SynapseStrategy, FarmConfig } from "strategies/lending/SynapseStrategy.sol";
 import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
+import { Accounting } from "../../../common/Accounting.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -88,7 +89,7 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 
 		underlying = IERC20(address(vaultConfig.underlying));
 
-		vault = new SCYVault(
+		vault = deploySCYVault(
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, .1e18, 0),
 			vaultConfig
@@ -107,7 +108,7 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 
 		configureUtils(address(vaultConfig.underlying), address(strategy));
 		mLp = vault.MIN_LIQUIDITY();
-		mLp = vault.convertToAssets(mLp);
+		mLp = Accounting(address(vault)).convertToAssets(mLp);
 	}
 
 	function rebalance() public override {}
@@ -157,7 +158,7 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 	function testSlippage() public {
 		uint256 amount = 10000000e6;
 		uint256 shares = vault.underlyingToShares(amount);
-		uint256 actualShares = SCYVault(payable(vault)).getDepositAmnt(amount);
+		uint256 actualShares = vault.getDepositAmnt(amount);
 		assertGt(shares, actualShares);
 		console.log("d slippage", (10000 * (shares - actualShares)) / shares);
 
@@ -167,7 +168,7 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		// shares = vault.balanceOf(user1);
 		uint256 wAmnt = 2000000e6;
 		shares = vault.underlyingToShares(wAmnt);
-		uint256 actualBalance = SCYVault(payable(vault)).getWithdrawAmnt(shares);
+		uint256 actualBalance = vault.getWithdrawAmnt(shares);
 		assertGt(wAmnt, actualBalance);
 		console.log("w slippage", (10000 * (wAmnt - actualBalance)) / wAmnt);
 	}

@@ -85,4 +85,8 @@ interface ISCYVault {
 	function uBalance() external view returns (uint256);
 
 	function setMaxTvl(uint256) external;
+
+	function getDepositAmnt(uint256 amount) external view returns (uint256);
+
+	function getWithdrawAmnt(uint256 amount) external view returns (uint256);
 }

@@ -113,7 +113,7 @@ contract levConvexSetup is SCYStratUtils {
 			guardian: guardian
 		});
 
-		vault = new SCYWEpochVault(authConfig, FeeConfig(treasury, .1e18, 0), vaultConfig);
+		vault = deploySCYWEpochVault(authConfig, FeeConfig(treasury, .1e18, 0), vaultConfig);
 
 		mLp = vault.MIN_LIQUIDITY();
 
@@ -212,7 +212,7 @@ contract levConvexSetup is SCYStratUtils {
 		deal(address(underlying), user, amount);
 		uint256 minSharesOut = (vault.underlyingToShares(amount) * 9950) / 10000;
 
-		uint256 startShares = vault.balanceOf(user);
+		uint256 startShares = IERC20(address(vault)).balanceOf(user);
 
 		vm.startPrank(user);
 		underlying.approve(address(vault), amount);
@@ -229,7 +229,7 @@ contract levConvexSetup is SCYStratUtils {
 		uint256 endAccBalance = vault.underlyingBalance(user);
 
 		assertApproxEqRel(
-			vault.balanceOf(user) - startShares,
+			IERC20(address(vault)).balanceOf(user) - startShares,
 			minSharesOut,
 			.01e18,
 			"min estimate should be close"

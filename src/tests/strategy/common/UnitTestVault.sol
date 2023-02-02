@@ -92,7 +92,7 @@ abstract contract UnitTestVault is SCYStratUtils, StratAuthTest {
 	function testManagerWithdraw() public {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
-		uint256 shares = vault.totalSupply();
+		uint256 shares = IERC20(address(vault)).totalSupply();
 		vm.prank(guardian);
 		vault.withdrawFromStrategy(shares, 0);
 		uint256 floatBalance = vault.uBalance();

@@ -13,8 +13,9 @@ import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
 import { SCYStratUtils } from "../common/SCYStratUtils.sol";
 import { UniswapMixin } from "../common/UniswapMixin.sol";
 
-import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
+import { SCYVault, AuthConfig, FeeConfig, Auth } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
+import { ISCYVault } from "interfaces/ERC5115/ISCYVault.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -102,7 +103,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		vaultConfig.underlying = IERC20(config.underlying);
 		vaultConfig.maxTvl = type(uint128).max;
 
-		vault = new SCYVault(
+		vault = deploySCYVault(
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, .1e18, 0),
 			vaultConfig
@@ -131,12 +132,12 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 	}
 
 	function harvest() public override {
-		harvest(SCYVault(payable(vault)));
+		harvest(vault);
 	}
 
-	function harvest(SCYVault _vault) public {
+	function harvest(ISCYVault _vault) public {
 		HLPCore _strategy = HLPCore(payable(address(_vault.strategy())));
-		address owner = _vault.owner();
+		address owner = Auth(address(_vault)).owner();
 		if (!_strategy.harvestIsEnabled()) return;
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
 		harvestParams.min = 0;

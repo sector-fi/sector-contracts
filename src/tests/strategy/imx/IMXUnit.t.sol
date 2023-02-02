@@ -42,7 +42,7 @@ contract IMXUnit is IMXSetup, UnitTestStrategy, UnitTestVault {
 		deposit(user1, amnt);
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
 		adjustPrice((maxAdjust * 9) / 10);
-		uint256 balance = vault.balanceOf(user1);
+		uint256 balance = IERC20(address(vault)).balanceOf(user1);
 		vm.prank(user1);
 		vault.redeem(user1, (balance * .2e18) / 1e18, address(underlying), 0);
 	}
@@ -191,7 +191,7 @@ contract IMXUnit is IMXSetup, UnitTestStrategy, UnitTestVault {
 		vault.deposit{ value: amnt }(user1, address(0), 0, (minSharesOut * 9930) / 10000);
 		vm.stopPrank();
 
-		uint256 sharesToWithdraw = vault.balanceOf(user1);
+		uint256 sharesToWithdraw = IERC20(address(vault)).balanceOf(user1);
 		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
 		vm.prank(user1);
 		vault.redeem(user1, sharesToWithdraw, address(0), (minUnderlyingOut * 9990) / 10000);

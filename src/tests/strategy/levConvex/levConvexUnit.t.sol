@@ -98,7 +98,7 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 	function testWithdrawMoreThanBalance() public {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
-		uint256 balance = vault.balanceOf(user1);
+		uint256 balance = IERC20(address(vault)).balanceOf(user1);
 		vm.prank(user1);
 		vm.expectRevert("ERC20: transfer amount exceeds balance");
 		getEpochVault(vault).requestRedeem(balance + 1);
@@ -145,7 +145,7 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 	function testManagerWithdraw() public {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
-		uint256 shares = vault.totalSupply();
+		uint256 shares = IERC20(address(vault)).totalSupply();
 		vm.prank(guardian);
 
 		vault.withdrawFromStrategy(shares, 0);
@@ -168,13 +168,13 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
 
-		uint256 balance = vault.balanceOf(user1);
+		uint256 balance = IERC20(address(vault)).balanceOf(user1);
 		vm.prank(user1);
 		getEpochVault(vault).requestRedeem(balance);
 
-		uint256 shares = SCYWEpochVault(payable(vault)).requestedRedeem();
+		uint256 shares = getEpochVault(vault).requestedRedeem();
 		uint256 minAmountOut = vault.sharesToUnderlying(shares);
-		SCYWEpochVault(payable(vault)).processRedeem((minAmountOut * 9990) / 10000);
+		getEpochVault(vault).processRedeem((minAmountOut * 9990) / 10000);
 		redeemShares(user1, shares);
 		harvest();
 	}
@@ -183,15 +183,15 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 		uint256 amount = getAmnt();
 		deposit(user2, amount);
 		uint256 shares = vault.underlyingToShares(amount);
-		uint256 actualShares = SCYWEpochVault(payable(vault)).getDepositAmnt(amount);
+		uint256 actualShares = getEpochVault(vault).getDepositAmnt(amount);
 		console.log("d slippage", (10000 * (shares - actualShares)) / shares);
 		assertGt(shares, actualShares);
 		deposit(user1, amount);
-		assertApproxEqRel(vault.balanceOf(user1), actualShares, .01e18);
+		assertApproxEqRel(IERC20(address(vault)).balanceOf(user1), actualShares, .01e18);
 
 		uint256 balance = vault.underlyingBalance(user1);
-		shares = vault.balanceOf(user1);
-		uint256 actualBalance = SCYWEpochVault(payable(vault)).getWithdrawAmnt(shares);
+		shares = IERC20(address(vault)).balanceOf(user1);
+		uint256 actualBalance = getEpochVault(vault).getWithdrawAmnt(shares);
 		assertGt(actualBalance, balance);
 		console.log("w slippage", (10000 * (actualBalance - balance)) / actualBalance);
 		assertApproxEqRel(balance, actualBalance, .01e18);

@@ -88,7 +88,7 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 
 		underlying = IERC20(address(vaultConfig.underlying));
 
-		vault = new SCYVault(
+		vault = deploySCYVault(
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, .1e18, 0),
 			vaultConfig

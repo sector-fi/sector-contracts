@@ -104,7 +104,7 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 			guardian: guardian
 		});
 
-		vault = new SCYVault(authConfig, FeeConfig(treasury, .1e18, 0), vaultConfig);
+		vault = deploySCYVault(authConfig, FeeConfig(treasury, .1e18, 0), vaultConfig);
 
 		mLp = vault.MIN_LIQUIDITY();
 		config.vault = address(vault);
