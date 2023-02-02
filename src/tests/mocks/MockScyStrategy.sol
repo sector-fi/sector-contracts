@@ -15,7 +15,7 @@ import { StratAuthLight } from "../../common/StratAuthLight.sol";
 
 // import "hardhat/console.sol";
 
-contract MockScyVault is ISCYStrategy, StratAuthLight {
+contract MockScyStrategy is ISCYStrategy, StratAuthLight {
 	using SafeERC20 for IERC20;
 
 	uint256 underlyingBalance;
@@ -24,9 +24,9 @@ contract MockScyVault is ISCYStrategy, StratAuthLight {
 	address public lpToken;
 
 	constructor(
-		address _underlying,
+		address _vault,
 		address _lpToken,
-		address _vault
+		address _underlying
 	) {
 		underlying = IERC20(_underlying);
 		vault = _vault;

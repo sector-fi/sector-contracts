@@ -10,7 +10,7 @@ import { StarChefFarm, FarmConfig } from "../../strategies/adapters/StarChefFarm
 import { StratAuthLight } from "../../common/StratAuthLight.sol";
 import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 // This strategy assumes that sharedDecimans and localDecimals are the same
 contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
@@ -32,6 +32,7 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 		pId = _pId;
 		stargatePool = IStargatePool(_stargatePool);
 		stargateRouter = IStargateRouter(_stargateRouter);
+		underlying = IERC20(stargatePool.token());
 		underlying.safeApprove(_stargateRouter, type(uint256).max);
 		IERC20(stargatePool).safeApprove(address(farm), type(uint256).max);
 	}
@@ -43,10 +44,13 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 		return lp;
 	}
 
-	function redeem(address to, uint256 amount) public onlyVault returns (uint256 amountOut) {
+	function redeem(address recipient, uint256 amount)
+		public
+		onlyVault
+		returns (uint256 amountOut)
+	{
 		_withdrawFromFarm(amount);
-		amountOut = stargateRouter.instantRedeemLocal(pId, amount, to);
-		underlying.safeTransfer(to, amountOut);
+		amountOut = stargateRouter.instantRedeemLocal(pId, amount, recipient);
 	}
 
 	function harvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
@@ -73,7 +77,7 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 	function closePosition(uint256) public onlyVault returns (uint256) {
 		(uint256 balance, ) = farm.userInfo(farmId, address(this));
 		_withdrawFromFarm(balance);
-		return stargateRouter.instantRedeemLocal(pId, balance, address(this));
+		return stargateRouter.instantRedeemLocal(pId, balance, address(vault));
 	}
 
 	function getMaxTvl() external view returns (uint256) {

@@ -6,13 +6,15 @@ import { ICompPriceOracle } from "interfaces/compound/ICompPriceOracle.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import { HLPConfig, HarvestSwapParams, NativeToken } from "interfaces/Structs.sol";
-import { SCYVault, HLPVault, Strategy, AuthConfig, FeeConfig } from "strategies/hlp/HLPVault.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
 
 import { SCYStratUtils } from "../common/SCYStratUtils.sol";
 import { UniswapMixin } from "../common/UniswapMixin.sol";
+
+import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
+import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -27,7 +29,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 
 	HLPCore strategy;
 
-	Strategy strategyConfig;
+	SCYVaultConfig vaultConfig;
 	HLPConfig config;
 	string contractType;
 
@@ -94,18 +96,16 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		underlying = IERC20(config.underlying);
 
 		/// todo should be able to do this via address and mixin
-		strategyConfig.symbol = "TST";
-		strategyConfig.name = "TEST";
-		strategyConfig.yieldToken = config.uniPair;
-		strategyConfig.underlying = IERC20(config.underlying);
-		strategyConfig.maxTvl = type(uint128).max;
+		vaultConfig.symbol = "TST";
+		vaultConfig.name = "TEST";
+		vaultConfig.yieldToken = config.uniPair;
+		vaultConfig.underlying = IERC20(config.underlying);
+		vaultConfig.maxTvl = type(uint128).max;
 
-		vault = SCYVault(
-			new HLPVault(
-				AuthConfig(owner, guardian, manager),
-				FeeConfig(treasury, .1e18, 0),
-				strategyConfig
-			)
+		vault = new SCYVault(
+			AuthConfig(owner, guardian, manager),
+			FeeConfig(treasury, .1e18, 0),
+			vaultConfig
 		);
 
 		mLp = vault.MIN_LIQUIDITY();
@@ -135,7 +135,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 	}
 
 	function harvest(SCYVault _vault) public {
-		HLPCore _strategy = HLPCore(_vault.strategy());
+		HLPCore _strategy = HLPCore(payable(address(_vault.strategy())));
 		address owner = _vault.owner();
 		if (!_strategy.harvestIsEnabled()) return;
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
@@ -145,7 +145,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		harvestLendParams.min = 0;
 		harvestLendParams.deadline = block.timestamp + 1;
 
-		_strategy.getAndUpdateTVL();
+		_strategy.getAndUpdateTvl();
 		uint256 tvl = _strategy.getTotalTVL();
 
 		HarvestSwapParams[] memory farmParams = new HarvestSwapParams[](1);

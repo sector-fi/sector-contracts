@@ -17,7 +17,7 @@ import { Fees, FeeConfig } from "../../common/Fees.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYVault is SCYBase {
+contract SCYVault is SCYBase {
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 
@@ -271,7 +271,7 @@ abstract contract SCYVault is SCYBase {
 	{
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
 		uBalance -= underlyingAmount;
-		if (sendERC20ToStrategy()) underlying.safeTransfer(address(strategy), underlyingAmount);
+		underlying.safeTransfer(address(strategy), underlyingAmount);
 		uint256 yAdded = strategy.deposit(underlyingAmount);
 		uint256 virtualSharesOut = convertToShares(yAdded);
 		if (virtualSharesOut < minAmountOut) revert SlippageExceeded();

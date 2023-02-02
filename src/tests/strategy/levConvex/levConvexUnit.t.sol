@@ -6,17 +6,18 @@ import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { levConvexSetup, SCYStratUtils } from "./levConvexSetup.sol";
 import { SCYWEpochVault } from "vaults/ERC5115/SCYWEpochVault.sol";
+import { StratAuthTest } from "../common/StratAuthTest.sol";
 
 import "hardhat/console.sol";
 
-contract levConvexUnit is levConvexSetup {
-	// function getAmnt() public view override(levConvexSetup, SCYStratUtils) returns (uint256) {
-	// 	return levConvexSetup.getAmnt();
-	// }
+contract levConvexUnit is levConvexSetup, StratAuthTest {
+	function getAmnt() public view override(levConvexSetup, SCYStratUtils) returns (uint256) {
+		return levConvexSetup.getAmnt();
+	}
 
-	// function deposit(address user, uint256 amnt) public override(levConvexSetup, SCYStratUtils) {
-	// 	levConvexSetup.deposit(user, amnt);
-	// }
+	function deposit(address user, uint256 amnt) public override(levConvexSetup, SCYStratUtils) {
+		levConvexSetup.deposit(user, amnt);
+	}
 
 	function testDepositLevConvex() public {
 		uint256 amnt = getAmnt();

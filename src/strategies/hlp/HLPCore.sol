@@ -15,11 +15,20 @@ import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { StratAuth } from "../../common/StratAuth.sol";
 import { ISCYVault } from "../../interfaces/ERC5115/ISCYVault.sol";
 import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
 
 // @custom: alphabetize dependencies to avoid linearization conflicts
-abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFarm, ISCYStrategy {
+abstract contract HLPCore is
+	SectorErrors,
+	StratAuth,
+	ReentrancyGuard,
+	IBase,
+	ILending,
+	IUniFarm,
+	ISCYStrategy
+{
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
@@ -652,5 +661,4 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	error NotPaused();
 	error RebalanceThreshold();
 	error NonZeroFloat();
-	error MinLiquidity();
 }

@@ -8,32 +8,29 @@ import { IStargateRouter } from "../../interfaces/stargate/IStargateRouter.sol";
 import { ISynapseSwap } from "../../interfaces/synapse/ISynapseSwap.sol";
 import { MiniChef2Farm, FarmConfig } from "../../strategies/adapters/MiniChef2Farm.sol";
 import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { StratAuthLight } from "../../common/StratAuthLight.sol";
 
 // import "hardhat/console.sol";
 
 // This synapsePool assumes that sharedDecimans and localDecimals are the same
-contract SynapseStrategy is MiniChef2Farm, ISCYStrategy {
+contract SynapseStrategy is MiniChef2Farm, ISCYStrategy, StratAuthLight {
 	using SafeERC20 for IERC20;
 
 	uint256 public _nTokens;
-	address public vault;
 	ISynapseSwap public synapsePool;
 	IERC20 public lpToken;
 	IERC20 public underlying;
 	uint8 public coinId;
 
-	modifier onlyVault() {
-		require(msg.sender == vault, "Only vault");
-		_;
-	}
-
 	constructor(
 		address _vault,
-		address _synapsePool,
 		address _lpToken,
+		address _synapsePool,
+		uint8 _coinId,
 		FarmConfig memory _farmConfig
 	) MiniChef2Farm(_farmConfig) {
 		vault = _vault;
+		coinId = _coinId;
 		synapsePool = ISynapseSwap(_synapsePool);
 		lpToken = IERC20(_lpToken);
 		underlying = synapsePool.getToken(coinId);

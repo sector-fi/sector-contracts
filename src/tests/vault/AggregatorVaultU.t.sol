@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { SCYVault } from "../mocks/MockScyVault.sol";
+import { SCYVault } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultUtils } from "./SCYVaultUtils.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { ERC4626U, SectorBaseU as SectorBase, AggregatorVaultU, RedeemParams, DepositParams, IVaultStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVaultU.sol";
@@ -149,7 +149,7 @@ contract AggregatorVaultUTest is SectorTest, SCYVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.mint(address(strategy1), 10e18); // 10% profit
+		underlying.mint(s1.yieldToken(), 10e18); // 10% profit
 
 		sectInitRedeem(vault, user1, 1e18 / 4);
 
@@ -176,7 +176,7 @@ contract AggregatorVaultUTest is SectorTest, SCYVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.burn(address(strategy1.strategy()), 10e18); // 10% loss
+		underlying.burn(s1.yieldToken(), 10e18); // 10% loss
 
 		sectInitRedeem(vault, user1, 1e18 / 4);
 
@@ -282,7 +282,7 @@ contract AggregatorVaultUTest is SectorTest, SCYVaultUtils {
 		sectDeposit(vault, user1, amnt);
 
 		depositToStrat(strategy1, amnt);
-		underlying.mint(address(strategy1), 10e18 + (mLp) / 10); // 10% profit
+		underlying.mint(s1.yieldToken(), 10e18 + (mLp) / 10); // 10% profit
 
 		uint256 expectedTvl = vault.getTvl();
 		assertEq(expectedTvl, 110e18 + mLp);
@@ -403,7 +403,7 @@ contract AggregatorVaultUTest is SectorTest, SCYVaultUtils {
 		depositToStrat(strategy1, amnt);
 		sectInitRedeem(vault, user1, 1e18);
 
-		MockERC20(underlying).burn(address(strategy1.strategy()), amnt / 10);
+		MockERC20(underlying).burn(s1.yieldToken(), amnt / 10);
 
 		uint256 shares = IERC20(address(strategy1)).balanceOf(address(vault));
 		withdrawFromStrat(strategy1, shares);

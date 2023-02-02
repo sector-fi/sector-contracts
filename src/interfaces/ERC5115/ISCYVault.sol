@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { HarvestSwapParams } from "../Structs.sol";
+import { ISCYStrategy } from "./ISCYStrategy.sol";
 
 struct SCYVaultConfig {
 	string symbol;
@@ -44,7 +45,7 @@ interface ISCYVault {
 
 	function sendERC20ToStrategy() external view returns (bool);
 
-	function strategy() external view returns (address payable);
+	function strategy() external view returns (ISCYStrategy);
 
 	function underlyingBalance(address) external view returns (uint256);
 

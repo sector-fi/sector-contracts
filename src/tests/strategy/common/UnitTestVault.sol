@@ -6,10 +6,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
 import { SCYStratUtils } from "./SCYStratUtils.sol";
+import { StratAuthTest } from "../common/StratAuthTest.sol";
 
 import "hardhat/console.sol";
 
-abstract contract UnitTestVault is SCYStratUtils {
+abstract contract UnitTestVault is SCYStratUtils, StratAuthTest {
 	/*///////////////////////////////////////////////////////////////
                         DEPOSIT/WITHDRAWAL TESTS
     //////////////////////////////////////////////////////////////*/

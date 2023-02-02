@@ -19,7 +19,7 @@ import { FeeConfig } from "../../common/Fees.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
+contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 

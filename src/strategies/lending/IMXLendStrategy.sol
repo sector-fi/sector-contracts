@@ -20,7 +20,8 @@ contract IMXLendStrategy is StratAuthLight, ISCYStrategy {
 	IPoolToken public immutable poolToken;
 	IERC20 public immutable underlying;
 
-	constructor(address _poolToken) {
+	constructor(address _vault, address _poolToken) {
+		vault = _vault;
 		poolToken = IPoolToken(_poolToken);
 		underlying = IERC20(poolToken.underlying());
 	}
@@ -54,7 +55,7 @@ contract IMXLendStrategy is StratAuthLight, ISCYStrategy {
 	function closePosition(uint256) external onlyVault returns (uint256) {
 		uint256 yeildTokenAmnt = IERC20(address(poolToken)).balanceOf(address(this));
 		IERC20(address(poolToken)).safeTransfer(address(poolToken), yeildTokenAmnt);
-		return IPoolToken(poolToken).redeem(address(this));
+		return IPoolToken(poolToken).redeem(address(vault));
 	}
 
 	// TOOD fraction of total deposits
@@ -68,6 +69,7 @@ contract IMXLendStrategy is StratAuthLight, ISCYStrategy {
 
 	function harvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
 		external
+		onlyVault
 		returns (uint256[] memory harvest1, uint256[] memory harvest2)
 	{}
 

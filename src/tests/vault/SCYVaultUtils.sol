@@ -2,13 +2,16 @@
 pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { MockScyVault, SCYVault, Strategy, AuthConfig, FeeConfig } from "../mocks/MockScyVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
 import { ISuperComposableYield as ISCY } from "../../interfaces/ERC5115/ISuperComposableYield.sol";
 import { HarvestSwapParams } from "interfaces/Structs.sol";
+
+import { MockScyStrategy } from "../mocks/MockScyStrategy.sol";
+import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
+import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 
 import "hardhat/console.sol";
 
@@ -18,31 +21,36 @@ contract SCYVaultUtils is SectorTest {
 	uint256 DEAFAULT_MANAGEMENT_FEE = 0;
 	uint256 mLp = 1000; // MIN_LIQUIDITY constant
 
-	function setUpSCYVault(address underlying) public returns (MockScyVault) {
+	function setUpSCYVault(address underlying) public returns (SCYVault) {
 		return setUpSCYVault(underlying, false);
 	}
 
-	function setUpSCYVault(address underlying, bool acceptsNativeToken)
-		public
-		returns (MockScyVault)
-	{
-		MockERC20 strategy = new MockERC20("Strat", "Strat", 18);
+	function setUpSCYVault(address underlying, bool acceptsNativeToken) public returns (SCYVault) {
+		MockERC20 yieldToken = new MockERC20("Strat", "Strat", 18);
 
-		Strategy memory strategyConfig;
+		SCYVaultConfig memory vaultConfig;
 
-		strategyConfig.symbol = "TST";
-		strategyConfig.name = "TEST";
-		strategyConfig.yieldToken = address(strategy);
-		strategyConfig.addr = address(strategy);
-		strategyConfig.underlying = IERC20(underlying);
-		strategyConfig.maxTvl = type(uint128).max;
-		strategyConfig.acceptsNativeToken = acceptsNativeToken;
+		vaultConfig.symbol = "TST";
+		vaultConfig.name = "TEST";
+		vaultConfig.yieldToken = address(yieldToken);
+		vaultConfig.underlying = IERC20(underlying);
+		vaultConfig.maxTvl = type(uint128).max;
+		vaultConfig.acceptsNativeToken = acceptsNativeToken;
 
-		MockScyVault vault = new MockScyVault(
+		SCYVault vault = new SCYVault(
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
-			strategyConfig
+			vaultConfig
 		);
+
+		MockScyStrategy strategy = new MockScyStrategy(
+			address(vault),
+			address(yieldToken),
+			underlying
+		);
+
+		vault.initStrategy(address(strategy));
+
 		return vault;
 	}
 
@@ -54,7 +62,7 @@ contract SCYVaultUtils is SectorTest {
 		MockERC20 underlying = MockERC20(address(vault.underlying()));
 		vm.startPrank(acc);
 		underlying.mint(acc, amnt);
-		if (vault.sendERC20ToStrategy()) underlying.transfer(vault.strategy(), amnt);
+		if (vault.sendERC20ToStrategy()) underlying.transfer(address(vault.strategy()), amnt);
 		else underlying.transfer(address(vault), amnt);
 
 		uint256 minSharesOut = vault.underlyingToShares(amnt);

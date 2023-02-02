@@ -3,10 +3,11 @@ pragma solidity 0.8.16;
 
 import { Auth } from "./Auth.sol";
 import { EAction } from "../interfaces/Structs.sol";
+import { SectorErrors } from "../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract StratAuthLight {
+abstract contract StratAuthLight is SectorErrors {
 	address public vault;
 
 	modifier onlyVault() {
@@ -27,6 +28,4 @@ abstract contract StratAuthLight {
 			emit EmergencyAction(target, data);
 		}
 	}
-
-	error OnlyVault();
 }

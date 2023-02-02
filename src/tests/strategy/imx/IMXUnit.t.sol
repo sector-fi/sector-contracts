@@ -12,7 +12,7 @@ import { IStrategy } from "interfaces/IStrategy.sol";
 
 import "hardhat/console.sol";
 
-contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
+contract IMXUnit is IMXSetup, UnitTestStrategy, UnitTestVault {
 	function testLoanHealth() public {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
@@ -25,7 +25,7 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
 
 		adjustPrice(maxAdjust);
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 
 		assertApproxEqRel(strategy.loanHealth(), 1e18, .001e18);
 	}
@@ -98,7 +98,7 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 
 		withdraw(user1, 1e18);
 
-		uint256 tvl = strategy.getAndUpdateTVL();
+		uint256 tvl = strategy.getAndUpdateTvl();
 		assertEq(tvl, 0);
 
 		deposit(user1, amount);
@@ -108,7 +108,7 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 	}
 
 	function testGetMaxTvlFail() public {
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 		uint256 maxTvl = strategy.getMaxTvl();
 		deposit(user1, maxTvl - 1);
 		vm.warp(block.timestamp + 30 * 60 * 60 * 24);
@@ -144,7 +144,7 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 
 		adjustPrice(1.12e18);
 		skip(60 * 60 * 24 * 5);
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 		// logTvl(IStrategy(address(strategy)));
 
 		console.log("position offset", strategy.getPositionOffset());
@@ -167,7 +167,7 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 
 		// skip(60 * 60 * 24 * 1000);
 		adjustPrice(.9e18);
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 		// logTvl(IStrategy(address(strategy)));
 
 		console.log("position offset", strategy.getPositionOffset());

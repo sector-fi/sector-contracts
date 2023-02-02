@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { MockScyVault, SCYVault, Strategy } from "../mocks/MockScyVault.sol";
+import { SCYVault } from "vaults/ERC5115/SCYVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { WETH } from "../mocks/WETH.sol";
@@ -13,12 +13,12 @@ import { HarvestSwapParams } from "interfaces/Structs.sol";
 import "hardhat/console.sol";
 
 contract SCYVaultTest is SectorTest, SCYVaultUtils {
-	MockScyVault vault;
+	SCYVault vault;
 	WETH underlying;
 
 	function setUp() public {
 		underlying = new WETH();
-		vault = setUpSCYVault(address(underlying));
+		vault = setUpSCYVault(address(underlying), true);
 		scyDeposit(vault, address(this), vault.MIN_LIQUIDITY());
 	}
 
@@ -85,7 +85,7 @@ contract SCYVaultTest is SectorTest, SCYVaultUtils {
 		uint256 amnt = 100e18;
 		scyDeposit(vault, user1, amnt);
 
-		underlying.mint(address(vault.strategy()), 10e18 + (mLp) / 10); // 10% profit
+		underlying.mint(address(vault.yieldToken()), 10e18 + (mLp) / 10); // 10% profit
 
 		uint256 expectedTvl = vault.getTvl();
 		assertEq(expectedTvl, 110e18 + mLp + (mLp) / 10, "expected tvl");
@@ -139,7 +139,8 @@ contract SCYVaultTest is SectorTest, SCYVaultUtils {
 	}
 
 	function testGetBaseTokens() public {
-		address[] memory baseTokens = vault.getBaseTokens();
+		SCYVault nonNative = setUpSCYVault(address(underlying), false);
+		address[] memory baseTokens = nonNative.getBaseTokens();
 		assertEq(baseTokens.length, 1, "base tokens length");
 		assertEq(baseTokens[0], address(underlying), "base token");
 

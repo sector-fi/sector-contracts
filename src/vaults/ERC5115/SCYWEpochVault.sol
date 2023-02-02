@@ -19,7 +19,7 @@ import { Fees, FeeConfig } from "../../common/Fees.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
+contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 
@@ -133,7 +133,7 @@ abstract contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 		// if the strategy is active, we can deposit dirictly into strategy
 		// if not, we deposit into the vault for a future strategy deposit
 		if (_totalAssets > 0) {
-			IERC20(token).safeTransfer(address(strategy), amount);
+			underlying.safeTransfer(address(strategy), amount);
 			uint256 yieldTokenAdded = strategy.deposit(amount);
 			// don't include newly minted shares and pendingRedeem in the calculation
 			sharesOut = toSharesAfterDeposit(yieldTokenAdded);
@@ -261,6 +261,7 @@ abstract contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 	{
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
 		uBalance -= underlyingAmount;
+		underlying.safeTransfer(address(strategy), underlyingAmount);
 		uint256 yAdded = strategy.deposit(underlyingAmount);
 		uint256 virtualSharesOut = convertToShares(yAdded);
 		if (virtualSharesOut < minAmountOut) revert InsufficientOut(virtualSharesOut, minAmountOut);
