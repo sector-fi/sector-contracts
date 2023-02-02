@@ -262,6 +262,7 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 	{
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
 		uBalance -= underlyingAmount;
+		underlying.safeTransfer(address(strategy), underlyingAmount);
 		uint256 yAdded = strategy.deposit(underlyingAmount);
 		uint256 virtualSharesOut = convertToShares(yAdded);
 		if (virtualSharesOut < minAmountOut) revert InsufficientOut(virtualSharesOut, minAmountOut);

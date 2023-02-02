@@ -11,7 +11,12 @@ import { HarvestSwapParams } from "interfaces/Structs.sol";
 
 import { MockScyStrategy } from "../mocks/MockScyStrategy.sol";
 import { SCYWEpochVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYWEpochVault.sol";
+import { SCYWEpochVaultU } from "vaults/ERC5115/SCYWEpochVaultU.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
+
+import { SectorFactory, UpgradeableBeacon } from "../../SectorFactory.sol";
+import { ISCYVault } from "interfaces/ERC5115/ISCYVault.sol";
+import "../../SectorBeaconProxy.sol";
 
 import "hardhat/console.sol";
 
@@ -23,6 +28,16 @@ contract SCYWEpochVaultUtils is SectorTest {
 
 	function setUpSCYVault(address underlying) public returns (SCYWEpochVault) {
 		return setUpSCYVault(underlying, false);
+	}
+
+	SectorFactory private factory;
+	string private vaultType = "SCYVWEpochVault";
+
+	function setupFactory() public {
+		factory = new SectorFactory();
+		SCYWEpochVaultU vaultImp = new SCYWEpochVaultU();
+		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
+		factory.addVaultType(vaultType, address(beacon));
 	}
 
 	function setUpSCYVault(address underlying, bool acceptsNativeToken)
@@ -57,8 +72,45 @@ contract SCYWEpochVaultUtils is SectorTest {
 		return vault;
 	}
 
+	function setUpSCYVaultU(address underlying, bool acceptsNativeToken)
+		public
+		returns (SCYWEpochVaultU)
+	{
+		MockERC20 yieldToken = new MockERC20("Strat", "Strat", 18);
+
+		SCYVaultConfig memory vaultConfig;
+
+		vaultConfig.symbol = "TST";
+		vaultConfig.name = "TEST";
+		vaultConfig.yieldToken = address(yieldToken);
+		vaultConfig.underlying = IERC20(underlying);
+		vaultConfig.maxTvl = type(uint128).max;
+		vaultConfig.acceptsNativeToken = acceptsNativeToken;
+
+		setupFactory();
+
+		bytes memory data = abi.encodeWithSelector(
+			SCYWEpochVaultU.initialize.selector,
+			AuthConfig(owner, guardian, manager),
+			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE),
+			vaultConfig
+		);
+
+		SCYWEpochVaultU vault = SCYWEpochVaultU(payable(factory.deployVault(vaultType, data)));
+
+		MockScyStrategy strategy = new MockScyStrategy(
+			address(vault),
+			address(yieldToken),
+			underlying
+		);
+
+		vault.initStrategy(address(strategy));
+
+		return vault;
+	}
+
 	function scyDeposit(
-		SCYWEpochVault vault,
+		ISCYVault vault,
 		address acc,
 		uint256 amnt
 	) public {
@@ -78,7 +130,7 @@ contract SCYWEpochVaultUtils is SectorTest {
 	}
 
 	function scyPreDeposit(
-		SCYWEpochVault vault,
+		ISCYVault vault,
 		address acc,
 		uint256 amnt
 	) public {
@@ -94,7 +146,7 @@ contract SCYWEpochVaultUtils is SectorTest {
 	}
 
 	function scyWithdrawEpoch(
-		SCYWEpochVault vault,
+		ISCYVault vault,
 		address user,
 		uint256 fraction
 	) public {
@@ -103,25 +155,25 @@ contract SCYWEpochVaultUtils is SectorTest {
 		scyRedeem(vault, user);
 	}
 
-	function scyProcessRedeem(SCYWEpochVault vault) public {
-		uint256 shares = vault.requestedRedeem();
+	function scyProcessRedeem(ISCYVault vault) public {
+		uint256 shares = SCYWEpochVault(payable(address(vault))).requestedRedeem();
 		uint256 minAmountOut = vault.sharesToUnderlying(shares);
 		vm.prank(manager);
-		SCYWEpochVault(payable(vault)).processRedeem(minAmountOut);
+		SCYWEpochVault(payable(address(vault))).processRedeem(minAmountOut);
 	}
 
 	function requestRedeem(
-		SCYWEpochVault vault,
+		ISCYVault vault,
 		address user,
 		uint256 fraction
 	) public {
-		uint256 sharesToWithdraw = (vault.balanceOf(user) * fraction) / 1e18;
+		uint256 sharesToWithdraw = (IERC20(address(vault)).balanceOf(user) * fraction) / 1e18;
 		vm.prank(user);
-		vault.requestRedeem(sharesToWithdraw);
+		SCYWEpochVault(payable(address(vault))).requestRedeem(sharesToWithdraw);
 	}
 
-	function scyRedeem(SCYWEpochVault vault, address user) public {
-		uint256 shares = vault.getRequestedShares(user);
+	function scyRedeem(ISCYVault vault, address user) public {
+		uint256 shares = SCYWEpochVault(payable(address(vault))).getRequestedShares(user);
 		MockERC20 underlying = MockERC20(address(vault.underlying()));
 		uint256 minUnderlyingOut = vault.sharesToUnderlying(shares);
 		vm.prank(user);
@@ -129,7 +181,7 @@ contract SCYWEpochVaultUtils is SectorTest {
 	}
 
 	function scyWithdraw(
-		SCYWEpochVault vault,
+		ISCYVault vault,
 		address acc,
 		uint256 fraction
 	) public {
@@ -137,18 +189,18 @@ contract SCYWEpochVaultUtils is SectorTest {
 
 		vm.startPrank(acc);
 
-		uint256 sharesToWithdraw = (vault.balanceOf(acc) * fraction) / 1e18;
+		uint256 sharesToWithdraw = (IERC20(address(vault)).balanceOf(acc) * fraction) / 1e18;
 		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
 		vault.redeem(acc, sharesToWithdraw, address(underlying), minUnderlyingOut);
 
 		vm.stopPrank();
 	}
 
-	function scyHarvest(SCYWEpochVault vault) public {
+	function scyHarvest(ISCYVault vault) public {
 		return scyHarvest(vault, 0);
 	}
 
-	function scyHarvest(SCYWEpochVault vault, uint256 underlyingProfit) public {
+	function scyHarvest(ISCYVault vault, uint256 underlyingProfit) public {
 		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](1);
 		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
 		params1[0].min = underlyingProfit;

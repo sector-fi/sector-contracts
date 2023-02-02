@@ -39,7 +39,7 @@ abstract contract SCYBaseU is
 		_disableInitializers();
 	}
 
-	function __SCYBase_init(string memory _name, string memory _symbol) internal initializer {
+	function __SCYBase_init(string memory _name, string memory _symbol) internal onlyInitializing {
 		__ReentrancyGuard_init();
 		__ERC20_init(_name, _symbol);
 		__ERC20Permit_init(_name);
