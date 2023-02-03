@@ -7,8 +7,18 @@ export const addrs = {
     SNX: '0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F',
     UniswapV3Router: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
     THREE_CRV: '0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490',
+    GearDistributor: '0xA7Df60785e556d65292A2c9A077bb3A8fBF048BC',
+    DegenDistributor: '0x6cA68adc7eC07a4bD97c97e8052510FBE6b67d10',
+    DegenNFT: '0xB829a5b349b01fc71aFE46E50dD6Ec0222A6E599',
+    GEAR: '0xBa3335588D9403515223F109EdC4eB7269a9Ab5D',
   },
 };
+
+const defaultRewardTokens = [
+  addrs.mainnet.CRV,
+  addrs.mainnet.CVX,
+  addrs.mainnet.GEAR,
+];
 
 export const levConvex = [
   {
@@ -24,7 +34,7 @@ export const levConvex = [
     underlying: addrs.mainnet.USDC,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
-    farmTokens: [addrs.mainnet.CRV, addrs.mainnet.CVX],
+    farmTokens: defaultRewardTokens,
     chain: 'mainnet',
   },
   {
@@ -38,7 +48,7 @@ export const levConvex = [
     underlying: addrs.mainnet.USDC,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
-    farmTokens: [addrs.mainnet.CRV, addrs.mainnet.CVX],
+    farmTokens: defaultRewardTokens,
     chain: 'mainnet',
   },
   {
@@ -52,7 +62,7 @@ export const levConvex = [
     underlying: addrs.mainnet.USDC,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
-    farmTokens: [addrs.mainnet.CRV, addrs.mainnet.CVX],
+    farmTokens: defaultRewardTokens,
     chain: 'mainnet',
   },
 
@@ -67,7 +77,7 @@ export const levConvex = [
     underlying: addrs.mainnet.USDC,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
-    farmTokens: [addrs.mainnet.CRV, addrs.mainnet.CVX],
+    farmTokens: defaultRewardTokens,
     chain: 'mainnet',
   },
   {
@@ -81,7 +91,7 @@ export const levConvex = [
     underlying: addrs.mainnet.USDC,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
-    farmTokens: [addrs.mainnet.CRV, addrs.mainnet.CVX],
+    farmTokens: defaultRewardTokens,
     chain: 'mainnet',
   },
 ];
