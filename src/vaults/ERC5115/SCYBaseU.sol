@@ -31,6 +31,8 @@ abstract contract SCYBaseU is
 	uint256 internal constant ONE = 1e18;
 	uint256 public constant MIN_LIQUIDITY = 1e3;
 
+	uint256 public version;
+
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
 

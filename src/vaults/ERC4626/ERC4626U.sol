@@ -39,6 +39,7 @@ abstract contract ERC4626U is
 
 	// locked liquidity to prevent rounding errors
 	uint256 public constant MIN_LIQUIDITY = 1e3;
+	uint256 public version;
 
 	/*//////////////////////////////////////////////////////////////
                                IMMUTABLES
