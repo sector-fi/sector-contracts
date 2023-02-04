@@ -33,7 +33,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset,
-		uint256 _maxHarvestInterval,
+		uint256 _harvestInterval,
 		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig,
@@ -48,8 +48,8 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		maxTvl = _maxTvl;
 		emit MaxTvlUpdated(_maxTvl);
 
-		maxHarvestInterval = _maxHarvestInterval;
-		emit SetMaxHarvestInterval(_maxHarvestInterval);
+		harvestInterval = _harvestInterval;
+		emit SetHarvestInterval(_harvestInterval);
 	}
 
 	/*/////////////////////////////////////////////////////
@@ -185,7 +185,7 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 	}
 
 	function emergencyWithdraw() external payable {
-		if (block.timestamp - lastHarvestTimestamp < maxHarvestInterval) revert RecentHarvest();
+		if (block.timestamp - lastHarvestTimestamp < harvestInterval) revert RecentHarvest();
 
 		uint256 userShares = balanceOf(msg.sender);
 

@@ -7,32 +7,30 @@ import { HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { IStargateRouter } from "../../interfaces/stargate/IStargateRouter.sol";
 import { ISynapseSwap } from "../../interfaces/synapse/ISynapseSwap.sol";
 import { MiniChef2Farm, FarmConfig } from "../../strategies/adapters/MiniChef2Farm.sol";
+import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { StratAuthLight } from "../../common/StratAuthLight.sol";
 
 // import "hardhat/console.sol";
 
 // This synapsePool assumes that sharedDecimans and localDecimals are the same
-contract SynapseStrategy is MiniChef2Farm {
+contract SynapseStrategy is MiniChef2Farm, ISCYStrategy, StratAuthLight {
 	using SafeERC20 for IERC20;
 
 	uint256 public _nTokens;
-	address public vault;
 	ISynapseSwap public synapsePool;
 	IERC20 public lpToken;
 	IERC20 public underlying;
 	uint8 public coinId;
 
-	modifier onlyVault() {
-		require(msg.sender == vault, "Only vault");
-		_;
-	}
-
 	constructor(
 		address _vault,
-		address _synapsePool,
 		address _lpToken,
+		address _synapsePool,
+		uint8 _coinId,
 		FarmConfig memory _farmConfig
 	) MiniChef2Farm(_farmConfig) {
 		vault = _vault;
+		coinId = _coinId;
 		synapsePool = ISynapseSwap(_synapsePool);
 		lpToken = IERC20(_lpToken);
 		underlying = synapsePool.getToken(coinId);
@@ -72,7 +70,7 @@ contract SynapseStrategy is MiniChef2Farm {
 		return ISynapseSwap(synapsePool).calculateRemoveLiquidityOneToken(balance, coinId);
 	}
 
-	function closePosition() external onlyVault returns (uint256 amountOut) {
+	function closePosition(uint256) external onlyVault returns (uint256 amountOut) {
 		(uint256 balance, ) = farm.userInfo(farmId, address(this));
 		_withdrawFromFarm(balance);
 		amountOut = ISynapseSwap(synapsePool).removeLiquidityOneToken(
@@ -84,7 +82,11 @@ contract SynapseStrategy is MiniChef2Farm {
 		underlying.safeTransfer(address(vault), amountOut);
 	}
 
-	function maxTvl() external view returns (uint256) {
+	function getAndUpdateTvl() external returns (uint256) {
+		return getTvl();
+	}
+
+	function getMaxTvl() external view returns (uint256) {
 		return IERC20(lpToken).totalSupply() / 10; // 10% of total deposits
 	}
 
@@ -92,15 +94,16 @@ contract SynapseStrategy is MiniChef2Farm {
 		return ISynapseSwap(synapsePool).calculateRemoveLiquidityOneToken(1e18, coinId);
 	}
 
-	function harvest(HarvestSwapParams[] calldata params)
+	function harvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
 		external
 		onlyVault
-		returns (uint256[] memory harvested)
+		returns (uint256[] memory harvested, uint256[] memory)
 	{
 		uint256 amountOut = _harvestFarm(params[0]);
 		if (amountOut > 0) deposit(amountOut);
 		harvested = new uint256[](1);
 		harvested[0] = amountOut;
+		return (harvested, new uint256[](0));
 	}
 
 	function getWithdrawAmnt(uint256 lpTokens) public view returns (uint256) {
@@ -113,8 +116,11 @@ contract SynapseStrategy is MiniChef2Farm {
 		return ISynapseSwap(synapsePool).calculateTokenAmount(amounts, true);
 	}
 
-	function getTokenBalance(address token) public view returns (uint256) {
-		if (token == address(lpToken)) return _getFarmLp();
-		return IERC20(token).balanceOf(address(this));
+	function getLpToken() public view returns (address) {
+		return address(lpToken);
+	}
+
+	function getLpBalance() public view returns (uint256) {
+		return _getFarmLp();
 	}
 }

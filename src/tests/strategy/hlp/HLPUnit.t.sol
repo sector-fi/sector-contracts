@@ -14,7 +14,7 @@ import { SectorErrors } from "interfaces/SectorErrors.sol";
 
 import "hardhat/console.sol";
 
-contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
+contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	/// INIT
 
 	function testShouldInit() public override {
@@ -219,7 +219,7 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 		vault.closePosition(0, offset);
 	}
 
-	function testSlippage() public {
+	function testRebalanceSlippage() public {
 		deposit(self, dec);
 
 		// this creates a price offset

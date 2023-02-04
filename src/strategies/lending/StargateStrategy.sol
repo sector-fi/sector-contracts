@@ -8,11 +8,12 @@ import { IStargateRouter, lzTxObj } from "../../interfaces/stargate/IStargateRou
 import { IStargatePool } from "../../interfaces/stargate/IStargatePool.sol";
 import { StarChefFarm, FarmConfig } from "../../strategies/adapters/StarChefFarm.sol";
 import { StratAuthLight } from "../../common/StratAuthLight.sol";
+import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 // This strategy assumes that sharedDecimans and localDecimals are the same
-contract StargateStrategy is StarChefFarm, StratAuthLight {
+contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 	using SafeERC20 for IERC20;
 
 	IStargatePool public stargatePool;
@@ -31,6 +32,7 @@ contract StargateStrategy is StarChefFarm, StratAuthLight {
 		pId = _pId;
 		stargatePool = IStargatePool(_stargatePool);
 		stargateRouter = IStargateRouter(_stargateRouter);
+		underlying = IERC20(stargatePool.token());
 		underlying.safeApprove(_stargateRouter, type(uint256).max);
 		IERC20(stargatePool).safeApprove(address(farm), type(uint256).max);
 	}
@@ -42,21 +44,29 @@ contract StargateStrategy is StarChefFarm, StratAuthLight {
 		return lp;
 	}
 
-	function redeem(address to, uint256 amount) public onlyVault returns (uint256 amountOut) {
+	function redeem(address recipient, uint256 amount)
+		public
+		onlyVault
+		returns (uint256 amountOut)
+	{
 		_withdrawFromFarm(amount);
-		amountOut = stargateRouter.instantRedeemLocal(pId, amount, to);
-		underlying.safeTransfer(to, amountOut);
+		amountOut = stargateRouter.instantRedeemLocal(pId, amount, recipient);
 	}
 
-	function harvest(HarvestSwapParams[] calldata params)
+	function harvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
 		external
 		onlyVault
-		returns (uint256[] memory harvested)
+		returns (uint256[] memory harvested, uint256[] memory)
 	{
 		uint256 amountOut = _harvestFarm(params[0]);
 		if (amountOut > 0) deposit(amountOut);
 		harvested = new uint256[](1);
 		harvested[0] = amountOut;
+		return (harvested, new uint256[](0));
+	}
+
+	function getAndUpdateTvl() external override returns (uint256) {
+		return getTvl();
 	}
 
 	function getTvl() public view returns (uint256) {
@@ -64,13 +74,13 @@ contract StargateStrategy is StarChefFarm, StratAuthLight {
 		return IStargatePool(stargatePool).amountLPtoLD(balance);
 	}
 
-	function closePosition() public onlyVault returns (uint256) {
+	function closePosition(uint256) public onlyVault returns (uint256) {
 		(uint256 balance, ) = farm.userInfo(farmId, address(this));
 		_withdrawFromFarm(balance);
-		return stargateRouter.instantRedeemLocal(pId, balance, address(this));
+		return stargateRouter.instantRedeemLocal(pId, balance, address(vault));
 	}
 
-	function maxTvl() external view returns (uint256) {
+	function getMaxTvl() external view returns (uint256) {
 		return IERC20(stargatePool).totalSupply() / 10; // 10% of total deposits
 	}
 
@@ -78,8 +88,20 @@ contract StargateStrategy is StarChefFarm, StratAuthLight {
 		return IStargatePool(stargatePool).amountLPtoLD(1e18);
 	}
 
-	function getFarmLp() public view returns (uint256) {
+	function getLpToken() public view returns (address) {
+		return address(stargatePool);
+	}
+
+	function getLpBalance() public view returns (uint256) {
 		return _getFarmLp();
+	}
+
+	function getWithdrawAmnt(uint256 lpTokens) public view returns (uint256) {
+		return IStargatePool(stargatePool).amountLPtoLD(lpTokens);
+	}
+
+	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
+		return ((uAmnt * 1e18) / IStargatePool(stargatePool).amountLPtoLD(1e18));
 	}
 
 	// EMERGENCY GUARDIAN METHODS

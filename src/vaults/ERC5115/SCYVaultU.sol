@@ -2,20 +2,21 @@
 pragma solidity 0.8.16;
 
 import { SCYBaseU, IERC20, IERC20Metadata, SafeERC20 } from "./SCYBaseU.sol";
-import { FeesU } from "../../common/FeesU.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
-import { SCYStrategy, Strategy } from "./SCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction, HarvestSwapParams } from "../../interfaces/Structs.sol";
 import { VaultType, EpochType } from "../../interfaces/Structs.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
-import { ISCYStrategy } from "../../vaults/ERC5115/ISCYStrategy.sol";
+import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { SCYVaultConfig } from "../../interfaces/ERC5115/ISCYVault.sol";
+import { AuthConfig } from "../../common/Auth.sol";
+import { FeeConfig } from "../../common/Fees.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
+contract SCYVaultU is SCYBaseU {
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 
@@ -35,7 +36,7 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 	uint256 public lastHarvestInterval; // time interval of last harvest
 	uint256 public maxLockedProfit;
 
-	address payable public strategy;
+	ISCYStrategy public strategy;
 
 	// immutables
 	address public override yieldToken;
@@ -51,19 +52,26 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 	event StrategyUpdated(address strategy);
 
 	modifier isInitialized() {
-		if (strategy == address(0)) revert NotInitialized();
+		if (address(strategy) == address(0)) revert NotInitialized();
 		_;
 	}
 
-	function __SCYVault_init(Strategy memory _strategy) public initializer {
-		__SCYBase_init(_strategy.name, _strategy.symbol);
-		// strategy init
-		yieldToken = _strategy.yieldToken;
-		strategy = payable(_strategy.addr);
-		strategyId = _strategy.strategyId;
-		underlying = _strategy.underlying;
-		acceptsNativeToken = _strategy.acceptsNativeToken;
-		maxTvl = _strategy.maxTvl;
+	function initialize(
+		AuthConfig memory authConfig,
+		FeeConfig memory feeConfig,
+		SCYVaultConfig memory vaultConfig
+	) external initializer {
+		__Auth_init(authConfig);
+		__Fees_init(feeConfig);
+		__SCYBase_init(vaultConfig.name, vaultConfig.symbol);
+
+		// vault init
+		yieldToken = vaultConfig.yieldToken;
+		strategy = ISCYStrategy(vaultConfig.addr);
+		strategyId = vaultConfig.strategyId;
+		underlying = vaultConfig.underlying;
+		acceptsNativeToken = vaultConfig.acceptsNativeToken;
+		maxTvl = vaultConfig.maxTvl;
 
 		lastHarvestTimestamp = block.timestamp;
 	}
@@ -73,32 +81,36 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
     //////////////////////////////////////////////////////////////*/
 
 	function getMaxTvl() public view returns (uint256) {
-		return min(maxTvl, _stratMaxTvl());
+		return min(maxTvl, strategy.getMaxTvl());
 	}
 
 	function setMaxTvl(uint256 _maxTvl) public onlyRole(GUARDIAN) {
 		maxTvl = _maxTvl;
-		emit MaxTvlUpdated(min(maxTvl, _stratMaxTvl()));
+		emit MaxTvlUpdated(min(maxTvl, strategy.getMaxTvl()));
 	}
 
 	function initStrategy(address _strategy) public onlyRole(GUARDIAN) {
-		if (strategy != address(0)) revert NoReInit();
-		strategy = payable(_strategy);
-		_stratValidate();
+		if (address(strategy) != address(0)) revert NoReInit();
+		strategy = ISCYStrategy(_strategy);
+		_validateStrategy();
 		emit StrategyUpdated(_strategy);
 	}
 
 	function updateStrategy(address _strategy) public onlyOwner {
-		uint256 tvl = _stratGetAndUpdateTvl();
+		uint256 tvl = strategy.getAndUpdateTvl();
 		if (tvl > 0) revert InvalidStrategyUpdate();
-		strategy = payable(_strategy);
-		_stratValidate();
+		strategy = ISCYStrategy(_strategy);
+		_validateStrategy();
 		emit StrategyUpdated(_strategy);
+	}
+
+	function _validateStrategy() internal view {
+		if (strategy.underlying() != underlying) revert InvalidStrategy();
 	}
 
 	function _depositNative() internal override {
 		IWETH(address(underlying)).deposit{ value: msg.value }();
-		if (sendERC20ToStrategy()) IERC20(underlying).safeTransfer(strategy, msg.value);
+		if (sendERC20ToStrategy()) underlying.safeTransfer(address(strategy), msg.value);
 	}
 
 	function _deposit(
@@ -112,7 +124,7 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 		// TODO should we handle this logic inside _stratDeposit?
 		// this may be useful when a given strategy only accepts NATIVE tokens
 		if (token == NATIVE) _depositNative();
-		uint256 yieldTokenAdded = _stratDeposit(amount);
+		uint256 yieldTokenAdded = strategy.deposit(amount);
 		sharesOut = toSharesAfterDeposit(yieldTokenAdded);
 		vaultTvl += amount;
 	}
@@ -143,10 +155,10 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 		// if we also need to send the user share of reserves, we allways withdraw to vault first
 		// if we don't we can have strategy withdraw directly to user if possible
 		if (shareOfReserves > 0) {
-			(amountTokenOut, amountToTransfer) = _stratRedeem(receiver, yeildTokenRedeem);
+			amountTokenOut = strategy.redeem(receiver, yeildTokenRedeem);
 			amountTokenOut += shareOfReserves;
 			amountToTransfer += shareOfReserves;
-		} else (amountTokenOut, amountToTransfer) = _stratRedeem(receiver, yeildTokenRedeem);
+		} else amountTokenOut = strategy.redeem(receiver, yeildTokenRedeem);
 
 		// its possible that cached vault tvl is lower than actual tvl
 		uint256 _vaultTvl = vaultTvl;
@@ -171,15 +183,15 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 	) external onlyRole(MANAGER) returns (uint256[] memory harvest1, uint256[] memory harvest2) {
 		/// TODO refactor this
 		uint256 _uBalance = underlying.balanceOf(address(this));
-		uint256 startTvl = _stratGetAndUpdateTvl() + _uBalance;
+		uint256 startTvl = strategy.getAndUpdateTvl() + _uBalance;
 
 		_checkSlippage(expectedTvl, startTvl, maxDelta);
 
 		// this allows us to skip strategy harvest if needeed
 		if (swap1.length > 0 || swap2.length > 0)
-			(harvest1, harvest2) = _stratHarvest(swap1, swap2);
+			(harvest1, harvest2) = strategy.harvest(swap1, swap2);
 
-		uint256 tvl = _strategyTvl() + _uBalance;
+		uint256 tvl = strategy.getTvl() + _uBalance;
 
 		uint256 prevTvl = vaultTvl;
 		uint256 timestamp = block.timestamp;
@@ -264,8 +276,8 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 	{
 		if (underlyingAmount > uBalance) revert NotEnoughUnderlying();
 		uBalance -= underlyingAmount;
-		if (sendERC20ToStrategy()) underlying.safeTransfer(strategy, underlyingAmount);
-		uint256 yAdded = _stratDeposit(underlyingAmount);
+		underlying.safeTransfer(address(strategy), underlyingAmount);
+		uint256 yAdded = strategy.deposit(underlyingAmount);
 		uint256 virtualSharesOut = convertToShares(yAdded);
 		if (virtualSharesOut < minAmountOut) revert SlippageExceeded();
 		emit DepositIntoStrategy(msg.sender, underlyingAmount);
@@ -274,14 +286,14 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 	/// @notice slippage is computed in underlying
 	function withdrawFromStrategy(uint256 shares, uint256 minAmountOut) public onlyRole(GUARDIAN) {
 		uint256 yieldTokenAmnt = convertToAssets(shares);
-		(uint256 underlyingWithdrawn, ) = _stratRedeem(address(this), yieldTokenAmnt);
+		uint256 underlyingWithdrawn = strategy.redeem(address(this), yieldTokenAmnt);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
 		uBalance += underlyingWithdrawn;
 		emit WithdrawFromStrategy(msg.sender, underlyingWithdrawn);
 	}
 
 	function closePosition(uint256 minAmountOut, uint256 slippageParam) public onlyRole(GUARDIAN) {
-		uint256 underlyingWithdrawn = _stratClosePosition(slippageParam);
+		uint256 underlyingWithdrawn = strategy.closePosition(slippageParam);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
 		uBalance += underlyingWithdrawn;
 		emit ClosePosition(msg.sender, underlyingWithdrawn);
@@ -302,25 +314,25 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 	}
 
 	function getStrategyTvl() public view returns (uint256) {
-		return _strategyTvl();
+		return strategy.getTvl();
 	}
 
 	/// no slippage check - slippage can be done on vault level
 	/// against total expected balance of all strategies
 	function getAndUpdateTvl() public returns (uint256 tvl) {
-		uint256 stratTvl = _stratGetAndUpdateTvl();
+		uint256 stratTvl = strategy.getAndUpdateTvl();
 		uint256 balance = underlying.balanceOf(address(this));
 		tvl = balance + stratTvl;
 	}
 
 	function getTvl() public view returns (uint256 tvl) {
-		uint256 stratTvl = _strategyTvl();
+		uint256 stratTvl = strategy.getTvl();
 		uint256 balance = underlying.balanceOf(address(this));
 		tvl = balance + stratTvl;
 	}
 
 	function totalAssets() public view override returns (uint256) {
-		return _selfBalance(yieldToken);
+		return strategy.getLpBalance();
 	}
 
 	function isPaused() public view returns (bool) {
@@ -330,8 +342,8 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 	// used for estimates only
 	function exchangeRateUnderlying() public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
-		if (_totalSupply == 0) return _stratCollateralToUnderlying();
-		uint256 tvl = underlying.balanceOf(address(this)) + _strategyTvl();
+		if (_totalSupply == 0) return strategy.collateralToUnderlying();
+		uint256 tvl = underlying.balanceOf(address(this)) + strategy.getTvl();
 		return tvl.mulDivUp(ONE, _totalSupply);
 	}
 
@@ -339,7 +351,7 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 		uint256 userBalance = balanceOf(user);
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0 || userBalance == 0) return 0;
-		uint256 tvl = underlying.balanceOf(address(this)) + _stratGetAndUpdateTvl();
+		uint256 tvl = underlying.balanceOf(address(this)) + strategy.getAndUpdateTvl();
 		return (tvl * userBalance) / _totalSupply;
 	}
 
@@ -347,7 +359,7 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 		uint256 userBalance = balanceOf(user);
 		uint256 _totalSupply = totalSupply();
 		if (_totalSupply == 0 || userBalance == 0) return 0;
-		uint256 tvl = underlying.balanceOf(address(this)) + _strategyTvl();
+		uint256 tvl = underlying.balanceOf(address(this)) + strategy.getTvl();
 		uint256 adjustedShares = (userBalance * _totalSupply) / (_totalSupply + lockedProfit());
 		return (tvl * adjustedShares) / _totalSupply;
 	}
@@ -356,13 +368,13 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 		uint256 _totalSupply = totalSupply();
 		uint256 tvl = getTvl();
 		if (_totalSupply == 0 || tvl == 0)
-			return uAmnt.mulDivDown(ONE, _stratCollateralToUnderlying());
+			return uAmnt.mulDivDown(ONE, strategy.collateralToUnderlying());
 		return uAmnt.mulDivDown(_totalSupply, tvl);
 	}
 
 	function sharesToUnderlying(uint256 shares) public view returns (uint256) {
 		uint256 _totalSupply = totalSupply();
-		if (_totalSupply == 0) return (shares * _stratCollateralToUnderlying()) / ONE;
+		if (_totalSupply == 0) return (shares * strategy.collateralToUnderlying()) / ONE;
 		uint256 adjustedShares = (shares * _totalSupply) / (_totalSupply + lockedProfit());
 		return adjustedShares.mulDivDown(getTvl(), _totalSupply);
 	}
@@ -399,7 +411,7 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 		if (token == address(underlying))
 			return
 				sendERC20ToStrategy()
-					? underlying.balanceOf(strategy)
+					? underlying.balanceOf(address(strategy))
 					: underlying.balanceOf(address(this)) - uBalance;
 		if (token == NATIVE) return address(this).balance;
 	}
@@ -409,13 +421,15 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 	}
 
 	/// @dev used to compute slippage on withdraw
-	function getWithdrawAmnt(uint256 shares) public view virtual returns (uint256) {
-		return sharesToUnderlying(shares);
+	function getWithdrawAmnt(uint256 shares) public view returns (uint256) {
+		uint256 assets = convertToAssets(shares);
+		return ISCYStrategy(strategy).getWithdrawAmnt(assets);
 	}
 
 	/// @dev used to compute slippage on deposit
-	function getDepositAmnt(uint256 uAmnt) public view virtual returns (uint256) {
-		return underlyingToShares(uAmnt);
+	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
+		uint256 assets = ISCYStrategy(strategy).getDepositAmnt(uAmnt);
+		return convertToShares(assets);
 	}
 
 	function getBaseTokens() external view virtual override returns (address[] memory res) {
@@ -436,7 +450,7 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 		address from,
 		uint256 amount
 	) internal virtual override {
-		address to = sendERC20ToStrategy() ? strategy : address(this);
+		address to = sendERC20ToStrategy() ? address(strategy) : address(this);
 		IERC20(token).safeTransferFrom(from, to, amount);
 	}
 
@@ -451,11 +465,6 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 		} else {
 			IERC20(token).safeTransfer(to, amount);
 		}
-	}
-
-	// todo handle internal float balances
-	function _selfBalance(address token) internal view virtual override returns (uint256) {
-		return (token == NATIVE) ? address(this).balance : IERC20(token).balanceOf(address(this));
 	}
 
 	/**
@@ -479,5 +488,4 @@ abstract contract SCYVaultU is SCYStrategy, SCYBaseU, FeesU {
 	error StrategyDoesntExist();
 	error NotEnoughUnderlying();
 	error SlippageExceeded();
-	error BadStaticCall();
 }

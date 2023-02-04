@@ -19,6 +19,12 @@ abstract contract SectorBaseWEpochU is BatchedWithdrawEpoch, ERC4626U {
 	uint256 public totalChildHoldings;
 	uint256 public floatAmnt; // amount of underlying tracked in vault
 	uint256 public lastHarvestTimestamp;
+	uint256 public harvestInterval;
+
+	function setHarvestInterval(uint256 harvestInterval_) public onlyOwner {
+		harvestInterval = harvestInterval_;
+		emit SetHarvestInterval(harvestInterval);
+	}
 
 	function withdraw(
 		uint256,
@@ -202,6 +208,7 @@ abstract contract SectorBaseWEpochU is BatchedWithdrawEpoch, ERC4626U {
 		uint256 sharesFees,
 		uint256 tvl
 	);
+	event SetHarvestInterval(uint256 harvestInterval);
 
 	error RecentHarvest();
 	error MaxRedeemNotZero();

@@ -53,7 +53,7 @@ contract SectorFactory is Ownable {
 	function deployVault(string calldata _vaultType, bytes memory _callData)
 		external
 		onlyOwner
-		returns (BeaconProxy vault)
+		returns (address vault)
 	{
 		address beacon = beacons[_vaultType];
 		if (beacon == address(0)) revert MissingVaultType();
@@ -62,9 +62,9 @@ contract SectorFactory is Ownable {
 		// use both id and chain id as salt
 		bytes32 salt = bytes32(abi.encodePacked(uint16(lastId), uint16(block.chainid)));
 
-		vault = new BeaconProxy{ salt: salt }(beacon, "");
+		vault = address(new BeaconProxy{ salt: salt }(beacon, ""));
 		// call initialization method
-		Address.functionCall(address(vault), _callData);
+		Address.functionCall(vault, _callData);
 
 		emit AddVault(address(vault), _vaultType);
 		lastId += 1;

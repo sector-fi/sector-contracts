@@ -69,6 +69,7 @@ contract AggregatorWEpochVaultUTest is SectorTest, SCYWEpochVaultUtils {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			false,
+			30 days,
 			type(uint256).max,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
@@ -141,7 +142,7 @@ contract AggregatorWEpochVaultUTest is SectorTest, SCYWEpochVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.mint(address(strategy1), 10e18); // 10% profit
+		underlying.mint(s1.yieldToken(), 10e18); // 10% profit
 
 		sectInitRedeem(vault, user1, 1e18 / 4);
 
@@ -165,7 +166,7 @@ contract AggregatorWEpochVaultUTest is SectorTest, SCYWEpochVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.burn(address(strategy1.strategy()), 10e18); // 10% loss
+		underlying.burn(s1.yieldToken(), 10e18); // 10% loss
 
 		sectInitRedeem(vault, user1, 1e18 / 4);
 
@@ -186,7 +187,7 @@ contract AggregatorWEpochVaultUTest is SectorTest, SCYWEpochVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.mint(address(strategy1), 10e18 + (mLp) / 10); // 10% profit
+		underlying.mint(s1.yieldToken(), 10e18 + (mLp) / 10); // 10% profit
 
 		sectHarvest(vault);
 		sectInitRedeem(vault, user1, 1e18);
@@ -365,6 +366,7 @@ contract AggregatorWEpochVaultUTest is SectorTest, SCYWEpochVaultUtils {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			true,
+			30 days,
 			type(uint256).max,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
@@ -401,7 +403,7 @@ contract AggregatorWEpochVaultUTest is SectorTest, SCYWEpochVaultUtils {
 		depositToStrat(strategy1, amnt);
 		sectInitRedeem(vault, user1, 1e18);
 
-		MockERC20(underlying).burn(address(strategy1.strategy()), amnt / 10);
+		MockERC20(underlying).burn(s1.yieldToken(), amnt / 10);
 
 		uint256 shares = IERC20(address(strategy1)).balanceOf(address(vault));
 		withdrawFromStrat(strategy1, shares);
@@ -546,9 +548,11 @@ contract AggregatorWEpochVaultUTest is SectorTest, SCYWEpochVaultUtils {
 		uint256 fract = ((1e18 * amount) / strategy.balanceOf(address(vault)));
 		requestRedeemFromStrategy(strategy, fract);
 		processRedeem(strategy);
-
+		uint256 withdrawShares = BatchedWithdrawEpoch(address(strategy)).getRequestedShares(
+			address(vault)
+		);
 		RedeemParams[] memory rParams = new RedeemParams[](1);
-		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), amount, 0));
+		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), withdrawShares, 0));
 		vault.withdrawFromStrategies(rParams);
 	}
 
