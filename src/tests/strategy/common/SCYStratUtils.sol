@@ -10,8 +10,15 @@ import { SCYBase } from "vaults/ERC5115/SCYBase.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
-import { Auth } from "../../../common/Auth.sol";
+import { Auth, AuthConfig } from "../../../common/Auth.sol";
 import { SCYWEpochVault } from "vaults/ERC5115/SCYWEpochVault.sol";
+import { ISCYVault } from "interfaces/ERC5115/ISCYVault.sol";
+import { SCYVault } from "vaults/ERC5115/SCYVault.sol";
+import { SCYVaultU } from "vaults/ERC5115/SCYVaultU.sol";
+import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
+import { FeeConfig } from "../../../common/Fees.sol";
+import { SectorFactory, UpgradeableBeacon } from "../../../SectorFactory.sol";
+import { SCYWEpochVaultU } from "vaults/ERC5115/SCYWEpochVaultU.sol";
 
 import "hardhat/console.sol";
 
@@ -25,7 +32,7 @@ abstract contract SCYStratUtils is SectorTest {
 
 	IERC20 underlying;
 	IStrategy strat;
-	SCYBase vault;
+	ISCYVault vault;
 
 	uint256 dec;
 	bytes32 GUARDIAN;
@@ -35,8 +42,52 @@ abstract contract SCYStratUtils is SectorTest {
 		underlying = IERC20(_underlying);
 		strat = IStrategy(_strategy);
 		dec = 10**underlying.decimals();
-		GUARDIAN = Auth(payable(vault)).GUARDIAN();
-		MANAGER = Auth(payable(vault)).MANAGER();
+		GUARDIAN = Auth(payable(address(vault))).GUARDIAN();
+		MANAGER = Auth(payable(address(vault))).MANAGER();
+	}
+
+	// function deploySCYVault(
+	// 	AuthConfig memory authConfig,
+	// 	FeeConfig memory feeConfig,
+	// 	SCYVaultConfig memory vaultConfig
+	// ) public returns (ISCYVault) {
+	// 	return new SCYVault(authConfig, feeConfig, vaultConfig);
+	// }
+
+	function deploySCYVault(
+		AuthConfig memory authConfig,
+		FeeConfig memory feeConfig,
+		SCYVaultConfig memory vaultConfig
+	) public returns (ISCYVault) {
+		SectorFactory factory = new SectorFactory();
+		SCYVaultU vaultImp = new SCYVaultU();
+		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
+		factory.addVaultType("SCYVault", address(beacon));
+		bytes memory data = abi.encodeWithSelector(
+			SCYVaultU.initialize.selector,
+			authConfig,
+			feeConfig,
+			vaultConfig
+		);
+		return SCYVaultU(payable(factory.deployVault("SCYVault", data)));
+	}
+
+	function deploySCYWEpochVault(
+		AuthConfig memory authConfig,
+		FeeConfig memory feeConfig,
+		SCYVaultConfig memory vaultConfig
+	) public returns (ISCYVault) {
+		SectorFactory factory = new SectorFactory();
+		SCYWEpochVaultU vaultImp = new SCYWEpochVaultU();
+		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
+		factory.addVaultType("SCYWEpochVault", address(beacon));
+		bytes memory data = abi.encodeWithSelector(
+			SCYVaultU.initialize.selector,
+			authConfig,
+			feeConfig,
+			vaultConfig
+		);
+		return SCYWEpochVaultU(payable(factory.deployVault("SCYWEpochVault", data)));
 	}
 
 	function deposit(uint256 amount) public {
@@ -62,7 +113,7 @@ abstract contract SCYStratUtils is SectorTest {
 		deal(address(underlying), user, amount);
 		uint256 minSharesOut = vault.underlyingToShares(amount);
 
-		uint256 startShares = vault.balanceOf(user);
+		uint256 startShares = IERC20(address(vault)).balanceOf(user);
 
 		vm.startPrank(user);
 		underlying.approve(address(vault), amount);
@@ -73,7 +124,7 @@ abstract contract SCYStratUtils is SectorTest {
 		uint256 endAccBalance = vault.underlyingBalance(user);
 
 		assertApproxEqRel(
-			vault.balanceOf(user) - startShares,
+			IERC20(address(vault)).balanceOf(user) - startShares,
 			minSharesOut,
 			.01e18,
 			"min estimate should be close"
@@ -100,7 +151,7 @@ abstract contract SCYStratUtils is SectorTest {
 	}
 
 	function withdraw(address user, uint256 fraction) public {
-		uint256 sharesToWithdraw = (vault.balanceOf(user) * fraction) / 1e18;
+		uint256 sharesToWithdraw = (IERC20(address(vault)).balanceOf(user) * fraction) / 1e18;
 		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
 		vm.prank(user);
 		vault.redeem(
@@ -113,20 +164,20 @@ abstract contract SCYStratUtils is SectorTest {
 
 	function withdrawEpoch(address user, uint256 fraction) public {
 		requestRedeem(user, fraction);
-		uint256 shares = SCYWEpochVault(payable(vault)).requestedRedeem();
+		uint256 shares = SCYWEpochVault(payable(address(vault))).requestedRedeem();
 		uint256 minAmountOut = vault.sharesToUnderlying(shares);
-		SCYWEpochVault(payable(vault)).processRedeem((minAmountOut * 9990) / 10000);
+		SCYWEpochVault(payable(address(vault))).processRedeem((minAmountOut * 9990) / 10000);
 		redeemShares(user, shares);
 	}
 
 	function requestRedeem(address user, uint256 fraction) public {
-		uint256 sharesToWithdraw = (vault.balanceOf(user) * fraction) / 1e18;
+		uint256 sharesToWithdraw = (IERC20(address(vault)).balanceOf(user) * fraction) / 1e18;
 		vm.prank(user);
-		SCYWEpochVault(payable(vault)).requestRedeem(sharesToWithdraw);
+		SCYWEpochVault(payable(address(vault))).requestRedeem(sharesToWithdraw);
 	}
 
-	function getEpochVault(SCYBase _vault) public pure returns (SCYWEpochVault) {
-		return SCYWEpochVault(payable(_vault));
+	function getEpochVault(ISCYVault _vault) public pure returns (SCYWEpochVault) {
+		return SCYWEpochVault(payable(address(_vault)));
 	}
 
 	function withdrawCheck(address user, uint256 fraction) public {
@@ -175,7 +226,7 @@ abstract contract SCYStratUtils is SectorTest {
 	function withdrawAll(address user) public {
 		skip(7 days);
 
-		uint256 balance = vault.balanceOf(user);
+		uint256 balance = IERC20(address(vault)).balanceOf(user);
 
 		vm.prank(user);
 		vault.redeem(user, balance, address(underlying), 0);
@@ -186,7 +237,7 @@ abstract contract SCYStratUtils is SectorTest {
 
 		assertApproxEqAbs(tvl, fees, vault.sharesToUnderlying(mLp) + 10, "strategy tvl");
 
-		assertEq(vault.balanceOf(user), 0, "account shares");
+		assertEq(IERC20(address(vault)).balanceOf(user), 0, "account shares");
 		assertEq(vault.underlyingBalance(user), 0, "account value");
 	}
 

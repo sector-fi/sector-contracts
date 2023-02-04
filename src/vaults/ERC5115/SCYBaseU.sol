@@ -11,6 +11,7 @@ import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/toke
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { FeesU } from "../../common/FeesU.sol";
 
 // import "hardhat/console.sol";
 
@@ -20,6 +21,7 @@ abstract contract SCYBaseU is
 	ReentrancyGuardUpgradeable,
 	ERC20,
 	Accounting,
+	FeesU,
 	ERC20PermitUpgradeable,
 	SectorErrors
 {
@@ -29,6 +31,8 @@ abstract contract SCYBaseU is
 	uint256 internal constant ONE = 1e18;
 	uint256 public constant MIN_LIQUIDITY = 1e3;
 
+	uint256 public version;
+
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
 
@@ -37,7 +41,7 @@ abstract contract SCYBaseU is
 		_disableInitializers();
 	}
 
-	function __SCYBase_init(string memory _name, string memory _symbol) internal initializer {
+	function __SCYBase_init(string memory _name, string memory _symbol) internal onlyInitializing {
 		__ReentrancyGuard_init();
 		__ERC20_init(_name, _symbol);
 		__ERC20Permit_init(_name);
@@ -150,8 +154,6 @@ abstract contract SCYBaseU is
 		uint256 amount
 	) internal virtual;
 
-	function _selfBalance(address token) internal view virtual returns (uint256);
-
 	function _depositNative() internal virtual;
 
 	// OVERRIDES
@@ -160,7 +162,7 @@ abstract contract SCYBaseU is
 	}
 
 	function sendERC20ToStrategy() public view virtual returns (bool) {
-		return false;
+		return true;
 	}
 
 	error CantPullEth();

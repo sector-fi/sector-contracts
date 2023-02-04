@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { SCYVault } from "vaults/ERC5115/SCYVault.sol";
+import { SCYVaultU as SCYVault } from "vaults/ERC5115/SCYVaultU.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { WETH } from "../mocks/WETH.sol";
@@ -12,13 +12,13 @@ import { HarvestSwapParams } from "interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
-contract SCYVaultTest is SectorTest, SCYVaultUtils {
+contract SCYVaultTestU is SectorTest, SCYVaultUtils {
 	SCYVault vault;
 	WETH underlying;
 
 	function setUp() public {
 		underlying = new WETH();
-		vault = setUpSCYVault(address(underlying), true);
+		vault = setUpSCYVaultU(address(underlying), true);
 		scyDeposit(vault, address(this), vault.MIN_LIQUIDITY());
 	}
 
@@ -139,12 +139,12 @@ contract SCYVaultTest is SectorTest, SCYVaultUtils {
 	}
 
 	function testGetBaseTokens() public {
-		SCYVault nonNative = setUpSCYVault(address(underlying), false);
+		SCYVault nonNative = setUpSCYVaultU(address(underlying), false);
 		address[] memory baseTokens = nonNative.getBaseTokens();
 		assertEq(baseTokens.length, 1, "base tokens length");
 		assertEq(baseTokens[0], address(underlying), "base token");
 
-		SCYVault nativeVault = setUpSCYVault(address(underlying), true);
+		SCYVault nativeVault = setUpSCYVaultU(address(underlying), true);
 
 		address[] memory baseTokensNative = nativeVault.getBaseTokens();
 		assertEq(baseTokensNative.length, 2, "base tokens length");
@@ -207,7 +207,7 @@ contract SCYVaultTest is SectorTest, SCYVaultUtils {
 		MockERC20 testToken = new MockERC20("TEST", "TEST", 18);
 		// WETH testToken = new WETH();
 
-		vault = setUpSCYVault(address(testToken), false);
+		vault = setUpSCYVaultU(address(testToken), false);
 		scyDeposit(vault, address(this), vault.MIN_LIQUIDITY());
 
 		uint256 amount = 10e18;

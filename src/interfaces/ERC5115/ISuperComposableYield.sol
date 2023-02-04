@@ -23,9 +23,9 @@
 
 pragma solidity 0.8.16;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ISCYStrategy } from "./ISCYStrategy.sol";
+import { ISCYVault } from "./ISCYVault.sol";
 
-interface ISuperComposableYield is ISCYStrategy {
+interface ISuperComposableYield is ISCYVault {
 	/// @dev Emitted whenever the exchangeRate is updated
 	event ExchangeRateUpdated(uint256 oldExchangeRate, uint256 newExchangeRate);
 

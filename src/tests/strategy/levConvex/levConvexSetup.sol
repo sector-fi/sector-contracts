@@ -6,7 +6,6 @@ import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.so
 import { PriceUtils, UniUtils, IUniswapV2Pair } from "../../utils/PriceUtils.sol";
 
 import { HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYWEpochVault, levConvexVault, Strategy, AuthConfig, FeeConfig } from "strategies/gearbox/levConvexVault.sol";
 import { levConvex } from "strategies/gearbox/levConvex.sol";
 import { levConvex3Crv } from "strategies/gearbox/levConvex3Crv.sol";
 
@@ -15,6 +14,9 @@ import { SCYStratUtils } from "../common/SCYStratUtils.sol";
 import { IDegenNFT } from "interfaces/gearbox/IDegenNFT.sol";
 import { ICreditFacade } from "interfaces/gearbox/ICreditFacade.sol";
 import { LevConvexConfig } from "strategies/gearbox/ILevConvex.sol";
+
+import { SCYWEpochVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYWEpochVault.sol";
+import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -36,7 +38,7 @@ contract levConvexSetup is SCYStratUtils {
 
 	levConvex strategy;
 
-	Strategy strategyConfig;
+	SCYVaultConfig vaultConfig;
 
 	bytes[] harvestPaths;
 	bool is3crv;
@@ -81,7 +83,7 @@ contract levConvexSetup is SCYStratUtils {
 
 		is3crv = stratJson.k_is3crv;
 		harvestPaths = stratJson.j_harvestPaths;
-		strategyConfig.acceptsNativeToken = stratJson.a3_acceptsNativeToken;
+		vaultConfig.acceptsNativeToken = stratJson.a3_acceptsNativeToken;
 
 		string memory RPC_URL = vm.envString(string.concat(stratJson.x_chain, "_RPC_URL"));
 		uint256 BLOCK = vm.envUint(string.concat(stratJson.x_chain, "_BLOCK"));
@@ -97,13 +99,13 @@ contract levConvexSetup is SCYStratUtils {
 		underlying = IERC20(config.underlying);
 
 		/// todo should be able to do this via address and mixin
-		strategyConfig.symbol = "TST";
-		strategyConfig.name = "TEST";
-		strategyConfig.yieldToken = config.convexRewardPool;
-		strategyConfig.underlying = underlying;
+		vaultConfig.symbol = "TST";
+		vaultConfig.name = "TEST";
+		vaultConfig.yieldToken = config.convexRewardPool;
+		vaultConfig.underlying = underlying;
 
 		uint256 maxTvl = 1000000e6;
-		strategyConfig.maxTvl = uint128(maxTvl);
+		vaultConfig.maxTvl = uint128(maxTvl);
 
 		AuthConfig memory authConfig = AuthConfig({
 			owner: owner,
@@ -111,9 +113,7 @@ contract levConvexSetup is SCYStratUtils {
 			guardian: guardian
 		});
 
-		vault = SCYWEpochVault(
-			new levConvexVault(authConfig, FeeConfig(treasury, .1e18, 0), strategyConfig)
-		);
+		vault = deploySCYWEpochVault(authConfig, FeeConfig(treasury, .1e18, 0), vaultConfig);
 
 		mLp = vault.MIN_LIQUIDITY();
 
@@ -163,7 +163,7 @@ contract levConvexSetup is SCYStratUtils {
 
 		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
 
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 		uint256 tvl = vault.getTvl();
 		uint256 vaultTvl = vault.getTvl();
 		(uint256[] memory harvestAmnts, ) = vault.harvest(
@@ -213,14 +213,14 @@ contract levConvexSetup is SCYStratUtils {
 		deal(address(underlying), user, amount);
 		uint256 minSharesOut = (vault.underlyingToShares(amount) * 9950) / 10000;
 
-		uint256 startShares = vault.balanceOf(user);
+		uint256 startShares = IERC20(address(vault)).balanceOf(user);
 
 		vm.startPrank(user);
 		underlying.approve(address(vault), amount);
 		vault.deposit(user, address(underlying), amount, minSharesOut);
 		vm.stopPrank();
 
-		uint256 stratTvl = strategy.getTotalTVL();
+		uint256 stratTvl = strategy.getTvl();
 		if (stratTvl == 0) {
 			vm.prank(manager);
 			vault.depositIntoStrategy(vault.uBalance(), minSharesOut);
@@ -230,7 +230,7 @@ contract levConvexSetup is SCYStratUtils {
 		uint256 endAccBalance = vault.underlyingBalance(user);
 
 		assertApproxEqRel(
-			vault.balanceOf(user) - startShares,
+			IERC20(address(vault)).balanceOf(user) - startShares,
 			minSharesOut,
 			.01e18,
 			"min estimate should be close"

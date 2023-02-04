@@ -6,10 +6,11 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
 import { SCYStratUtils } from "./SCYStratUtils.sol";
+import { StratAuthTest } from "../common/StratAuthTest.sol";
 
 import "hardhat/console.sol";
 
-abstract contract UnitTestVault is SCYStratUtils {
+abstract contract UnitTestVault is SCYStratUtils, StratAuthTest {
 	/*///////////////////////////////////////////////////////////////
                         DEPOSIT/WITHDRAWAL TESTS
     //////////////////////////////////////////////////////////////*/
@@ -91,7 +92,7 @@ abstract contract UnitTestVault is SCYStratUtils {
 	function testManagerWithdraw() public {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
-		uint256 shares = vault.totalSupply();
+		uint256 shares = IERC20(address(vault)).totalSupply();
 		vm.prank(guardian);
 		vault.withdrawFromStrategy(shares, 0);
 		uint256 floatBalance = vault.uBalance();
@@ -100,5 +101,24 @@ abstract contract UnitTestVault is SCYStratUtils {
 		vm.roll(block.number + 1);
 		vm.prank(guardian);
 		vault.depositIntoStrategy(floatBalance, 0);
+	}
+
+	function testLpToken() public virtual {
+		assertEq(vault.yieldToken(), vault.strategy().getLpToken());
+	}
+
+	function testSlippage() public virtual {
+		uint256 amount = getAmnt();
+		deposit(user2, amount);
+		uint256 shares = vault.underlyingToShares(amount);
+		uint256 actualShares = getEpochVault(vault).getDepositAmnt(amount);
+		assertApproxEqRel(shares, actualShares, .001e18, "deposit shares");
+		deposit(user1, amount);
+		assertApproxEqRel(IERC20(address(vault)).balanceOf(user1), actualShares, .01e18);
+
+		uint256 balance = vault.underlyingBalance(user1);
+		shares = IERC20(address(vault)).balanceOf(user1);
+		uint256 actualBalance = getEpochVault(vault).getWithdrawAmnt(shares);
+		assertApproxEqRel(actualBalance, balance, .001e18, "withdraw shares");
 	}
 }

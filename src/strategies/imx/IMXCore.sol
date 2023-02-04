@@ -13,10 +13,11 @@ import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import { StratAuth } from "../../common/StratAuth.sol";
+import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
+abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm, ISCYStrategy {
 	using FixedPointMathLib for uint256;
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
@@ -122,7 +123,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		return _short;
 	}
 
-	function underlying() public view override returns (IERC20) {
+	function underlying() public view virtual override(IBase, ISCYStrategy) returns (IERC20) {
 		return _underlying;
 	}
 
@@ -136,7 +137,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	}
 
 	// redeem lp for underlying
-	function redeem(uint256 removeCollateral, address recipient)
+	function redeem(address recipient, uint256 removeCollateral)
 		public
 		onlyVault
 		returns (uint256 amountTokenOut)
@@ -180,7 +181,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		(uint256 uLp, uint256 sLp) = _getLPBalances();
 		(uint256 uBorrowBalance, uint256 sBorrowBalance) = _getBorrowBalances();
 
-		uint256 tvl = getAndUpdateTVL() - amntUnderlying;
+		uint256 tvl = getAndUpdateTvl() - amntUnderlying;
 
 		uint256 uBorrow;
 		uint256 sBorrow;
@@ -212,11 +213,11 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	}
 
 	// use the return of the function to estimate pending harvest via staticCall
-	function harvest(HarvestSwapParams[] calldata harvestParams)
+	function harvest(HarvestSwapParams[] calldata harvestParams, HarvestSwapParams[] calldata)
 		external
 		onlyVault
 		nonReentrant
-		returns (uint256[] memory farmHarvest)
+		returns (uint256[] memory farmHarvest, uint256[] memory)
 	{
 		(uint256 startTvl, , , , , ) = getTVL();
 
@@ -227,6 +228,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		// compound our lp position
 		_increasePosition(_underlying.balanceOf(address(this)));
 		emit Harvest(startTvl);
+		return (farmHarvest, new uint256[](0));
 	}
 
 	function rebalance(uint256 expectedPrice, uint256 maxDelta)
@@ -236,7 +238,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		nonReentrant
 	{
 		// call this first to ensure we use an updated borrowBalance when computing offset
-		uint256 tvl = getAndUpdateTVL();
+		uint256 tvl = getAndUpdateTvl();
 		uint256 positionOffset = getPositionOffset();
 
 		// don't rebalance unless we exceeded the threshold
@@ -284,7 +286,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	}
 
 	// vault handles slippage
-	function closePosition() public onlyVault returns (uint256 balance) {
+	function closePosition(uint256) public onlyVault returns (uint256 balance) {
 		(uint256 uRepay, uint256 sRepay) = _updateAndGetBorrowBalances();
 		uint256 removeLp = _getLiquidity();
 		_removeIMXLiquidity(removeLp, uRepay, sRepay, 0);
@@ -307,7 +309,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	}
 
 	// TODO should we compute pending farm & lending rewards here?
-	function getAndUpdateTVL() public returns (uint256 tvl) {
+	function getAndUpdateTvl() public returns (uint256 tvl) {
 		(uint256 uBorrow, uint256 shortPosition) = _updateAndGetBorrowBalances();
 		uint256 borrowBalance = _shortToUnderlying(shortPosition) + uBorrow;
 		uint256 shortP = _short.balanceOf(address(this));
@@ -382,7 +384,7 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 	}
 
 	// used to estimate price of collateral token in underlying
-	function collateralToUnderlying() external view returns (uint256) {
+	function collateralToUnderlying() public view returns (uint256) {
 		(uint256 uR, uint256 sR, ) = pair().getReserves();
 		(uR, sR) = address(_underlying) == pair().token0() ? (uR, sR) : (sR, uR);
 		uint256 lp = pair().totalSupply();
@@ -402,6 +404,22 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 			);
 			oracle.getResult(collateralToken().underlying());
 		}
+	}
+
+	function getLpToken() public view returns (address) {
+		return address(collateralToken());
+	}
+
+	function getLpBalance() external view returns (uint256) {
+		return collateralToken().balanceOf(address(this));
+	}
+
+	function getWithdrawAmnt(uint256 lpTokens) public view returns (uint256) {
+		return (lpTokens * collateralToUnderlying()) / 1e18;
+	}
+
+	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
+		return (uAmnt * 1e18) / collateralToUnderlying();
 	}
 
 	/// @dev we can call this method via staticall to get the loan health

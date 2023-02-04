@@ -4,12 +4,16 @@ pragma solidity 0.8.16;
 import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 import { HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYVault, Synapse, FarmConfig, Strategy, AuthConfig, FeeConfig } from "strategies/lending/Synapse.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IStarchef } from "interfaces/stargate/IStarchef.sol";
 
 import { IntegrationTest } from "../common/IntegrationTest.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
+
+import { SynapseStrategy, FarmConfig } from "strategies/lending/SynapseStrategy.sol";
+import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
+import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
+import { Accounting } from "../../../common/Accounting.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -22,11 +26,12 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 
 	uint256 currentFork;
 
-	Strategy strategyConfig;
+	SCYVaultConfig vaultConfig;
 	FarmConfig farmConfig;
 
-	Synapse strategy;
+	SynapseStrategy strategy;
 	uint256 pooledTokens;
+	address synapsePool;
 
 	struct StargateConfigJSON {
 		address a_underlying;
@@ -52,11 +57,12 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		bytes memory strat = json.parseRaw(string.concat(".", symbol));
 		StargateConfigJSON memory stratJson = abi.decode(strat, (StargateConfigJSON));
 
-		strategyConfig.underlying = IERC20(stratJson.a_underlying);
-		strategyConfig.yieldToken = stratJson.d_yieldToken; // collateral token
-		strategyConfig.addr = stratJson.b_strategy;
-		strategyConfig.strategyId = stratJson.c_strategyId;
-		strategyConfig.maxTvl = 10000000e6;
+		vaultConfig.underlying = IERC20(stratJson.a_underlying);
+		vaultConfig.yieldToken = stratJson.d_yieldToken; // collateral token
+		vaultConfig.strategyId = stratJson.c_strategyId;
+		vaultConfig.maxTvl = 10000000e6;
+
+		synapsePool = stratJson.b_strategy;
 
 		farmConfig = FarmConfig({
 			farmId: stratJson.e_farmId,
@@ -78,25 +84,31 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		getConfig(TEST_STRATEGY);
 
 		/// todo should be able to do this via address and mixin
-		strategyConfig.symbol = "TST";
-		strategyConfig.name = "TEST";
+		vaultConfig.symbol = "TST";
+		vaultConfig.name = "TEST";
 
-		underlying = IERC20(address(strategyConfig.underlying));
+		underlying = IERC20(address(vaultConfig.underlying));
 
-		vault = SCYVault(
-			new Synapse(
-				AuthConfig(owner, guardian, manager),
-				FeeConfig(treasury, .1e18, 0),
-				strategyConfig,
-				farmConfig
-			)
+		vault = deploySCYVault(
+			AuthConfig(owner, guardian, manager),
+			FeeConfig(treasury, .1e18, 0),
+			vaultConfig
 		);
 
+		strategy = new SynapseStrategy(
+			address(vault),
+			vaultConfig.yieldToken,
+			synapsePool,
+			uint8(vaultConfig.strategyId),
+			farmConfig
+		);
+
+		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);
 
-		configureUtils(address(strategyConfig.underlying), address(strategy));
+		configureUtils(address(vaultConfig.underlying), address(strategy));
 		mLp = vault.MIN_LIQUIDITY();
-		mLp = vault.convertToAssets(mLp);
+		mLp = Accounting(address(vault)).convertToAssets(mLp);
 	}
 
 	function rebalance() public override {}
@@ -143,10 +155,10 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		assertEq(tvl, 0);
 	}
 
-	function testSlippage() public {
+	function testSlippage() public override {
 		uint256 amount = 10000000e6;
 		uint256 shares = vault.underlyingToShares(amount);
-		uint256 actualShares = SCYVault(payable(vault)).getDepositAmnt(amount);
+		uint256 actualShares = vault.getDepositAmnt(amount);
 		assertGt(shares, actualShares);
 		console.log("d slippage", (10000 * (shares - actualShares)) / shares);
 
@@ -156,7 +168,7 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		// shares = vault.balanceOf(user1);
 		uint256 wAmnt = 2000000e6;
 		shares = vault.underlyingToShares(wAmnt);
-		uint256 actualBalance = SCYVault(payable(vault)).getWithdrawAmnt(shares);
+		uint256 actualBalance = vault.getWithdrawAmnt(shares);
 		assertGt(wAmnt, actualBalance);
 		console.log("w slippage", (10000 * (wAmnt - actualBalance)) / wAmnt);
 	}

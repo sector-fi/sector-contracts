@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { MockSCYWEpochVault, SCYWEpochVault, Strategy } from "../mocks/MockSCYWEpochVault.sol";
+import { SCYWEpochVault } from "vaults/ERC5115/SCYWEpochVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { WETH } from "../mocks/WETH.sol";
@@ -13,16 +13,18 @@ import { HarvestSwapParams } from "interfaces/Structs.sol";
 import "hardhat/console.sol";
 
 contract SCYWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
-	MockSCYWEpochVault vault;
+	SCYWEpochVault vault;
 	WETH underlying;
 
 	function setUp() public {
 		underlying = new WETH();
-		vault = setUpSCYVault(address(underlying));
+		vault = setUpSCYVault(address(underlying), true);
 		scyPreDeposit(vault, address(this), vault.MIN_LIQUIDITY());
 	}
 
 	function testNativeFlow() public {
+		scyPreDeposit(vault, address(this), vault.MIN_LIQUIDITY());
+
 		uint256 amnt = 100e18;
 
 		vm.startPrank(user1);
@@ -84,7 +86,7 @@ contract SCYWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		uint256 amnt = 100e18;
 		scyDeposit(vault, user1, amnt);
 
-		underlying.mint(address(vault.strategy()), 10e18 + (mLp) / 10); // 10% profit
+		underlying.mint(address(vault.yieldToken()), 10e18 + (mLp) / 10); // 10% profit
 
 		uint256 expectedTvl = vault.getTvl();
 		assertEq(expectedTvl, 110e18 + mLp + (mLp) / 10, "expected tvl");
@@ -108,7 +110,8 @@ contract SCYWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 	}
 
 	function testGetBaseTokens() public {
-		address[] memory baseTokens = vault.getBaseTokens();
+		SCYWEpochVault nonNativeVault = setUpSCYVault(address(underlying), false);
+		address[] memory baseTokens = nonNativeVault.getBaseTokens();
 		assertEq(baseTokens.length, 1, "base tokens length");
 		assertEq(baseTokens[0], address(underlying), "base token");
 

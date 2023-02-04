@@ -5,12 +5,15 @@ import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import { HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYVault, Stargate, FarmConfig, Strategy, AuthConfig, FeeConfig } from "strategies/lending/Stargate.sol";
+import { StargateStrategy, FarmConfig } from "strategies/lending/StargateStrategy.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IStarchef } from "interfaces/stargate/IStarchef.sol";
 
 import { IntegrationTest } from "../common/IntegrationTest.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
+
+import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
+import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -23,10 +26,11 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 
 	uint256 currentFork;
 
-	Strategy strategyConfig;
+	SCYVaultConfig vaultConfig;
 	FarmConfig farmConfig;
 
-	Stargate strategy;
+	StargateStrategy strategy;
+	address stargateRouter;
 
 	struct StargateConfigJSON {
 		address a_underlying;
@@ -52,11 +56,12 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 		bytes memory strat = json.parseRaw(string.concat(".", symbol));
 		StargateConfigJSON memory stratJson = abi.decode(strat, (StargateConfigJSON));
 
-		strategyConfig.underlying = IERC20(stratJson.a_underlying);
-		strategyConfig.yieldToken = stratJson.d_yieldToken; // collateral token
-		strategyConfig.addr = stratJson.b_strategy;
-		strategyConfig.strategyId = stratJson.c_strategyId;
-		strategyConfig.maxTvl = type(uint128).max;
+		vaultConfig.underlying = IERC20(stratJson.a_underlying);
+		vaultConfig.yieldToken = stratJson.d_yieldToken; // collateral token
+		vaultConfig.strategyId = stratJson.c_strategyId;
+		vaultConfig.maxTvl = type(uint128).max;
+
+		stargateRouter = stratJson.b_strategy;
 
 		farmConfig = FarmConfig({
 			farmId: stratJson.e_farmId,
@@ -78,23 +83,29 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 		getConfig(TEST_STRATEGY);
 
 		/// todo should be able to do this via address and mixin
-		strategyConfig.symbol = "TST";
-		strategyConfig.name = "TEST";
+		vaultConfig.symbol = "TST";
+		vaultConfig.name = "TEST";
 
-		underlying = IERC20(address(strategyConfig.underlying));
+		underlying = IERC20(address(vaultConfig.underlying));
 
-		vault = SCYVault(
-			new Stargate(
-				AuthConfig(owner, guardian, manager),
-				FeeConfig(treasury, .1e18, 0),
-				strategyConfig,
-				farmConfig
-			)
+		vault = deploySCYVault(
+			AuthConfig(owner, guardian, manager),
+			FeeConfig(treasury, .1e18, 0),
+			vaultConfig
 		);
 
+		strategy = new StargateStrategy(
+			address(vault),
+			vaultConfig.yieldToken,
+			stargateRouter,
+			vaultConfig.strategyId,
+			farmConfig
+		);
+
+		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);
 
-		configureUtils(address(strategyConfig.underlying), address(strategy));
+		configureUtils(address(vaultConfig.underlying), address(strategy));
 		mLp = vault.MIN_LIQUIDITY();
 		mLp = vault.sharesToUnderlying(mLp);
 	}

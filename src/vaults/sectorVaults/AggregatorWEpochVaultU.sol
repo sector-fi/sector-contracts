@@ -43,6 +43,7 @@ contract AggregatorWEpochVaultU is SectorBaseWEpochU {
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset,
+		uint256 _harvestInterval,
 		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
@@ -50,8 +51,13 @@ contract AggregatorWEpochVaultU is SectorBaseWEpochU {
 		__ERC4626_init(asset_, _name, _symbol, _useNativeAsset);
 		__Auth_init(authConfig);
 		__Fees_init(feeConfig);
+
 		maxTvl = _maxTvl;
 		emit MaxTvlUpdated(_maxTvl);
+
+		harvestInterval = _harvestInterval;
+		emit SetHarvestInterval(_harvestInterval);
+
 		lastHarvestTimestamp = block.timestamp;
 	}
 

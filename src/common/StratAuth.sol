@@ -3,14 +3,15 @@ pragma solidity 0.8.16;
 
 import { Auth } from "./Auth.sol";
 import { EAction } from "../interfaces/Structs.sol";
+import { SectorErrors } from "../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract StratAuth is Auth {
+abstract contract StratAuth is Auth, SectorErrors {
 	address public vault;
 
 	modifier onlyVault() {
-		require(msg.sender == vault, "Strat: ONLY_VAULT");
+		if (msg.sender != vault) revert OnlyVault();
 		_;
 	}
 

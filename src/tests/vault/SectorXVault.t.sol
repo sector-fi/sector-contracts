@@ -2,7 +2,6 @@
 pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { SCYVault } from "../mocks/MockScyVault.sol";
 import { SCYVaultUtils } from "./SCYVaultUtils.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, RedeemParams, DepositParams, AuthConfig, FeeConfig } from "../../vaults/sectorVaults/SectorVault.sol";
@@ -368,7 +367,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultUtils {
 
 		messageFee = xVault.estimateMessageFee(withdrawRequests, MessageType.WITHDRAW);
 
-		skip(xVault.maxHarvestInterval());
+		skip(xVault.harvestInterval());
 
 		vm.prank(user1);
 
@@ -399,7 +398,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultUtils {
 			messageFee
 		);
 
-		skip(xVault.maxHarvestInterval());
+		skip(xVault.harvestInterval());
 		vm.prank(user1);
 
 		xVault.emergencyWithdraw{ value: messageFee }();
