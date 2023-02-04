@@ -12,6 +12,25 @@ export const chainToEnv = {
   mainnet: 'ETH',
 };
 
+export enum StratType {
+  LevCVX = 'LCVX',
+  LLP = 'LLP',
+  HLP = 'HLP',
+  Lend = 'LND',
+}
+
+export const genStratName = (
+  type: StratType,
+  underlying: string,
+  otherAssets: string[],
+  protocols: string[],
+  chain: string
+) => {
+  return `${type}-${underlying}-${otherAssets.join('|')}-${protocols.join(
+    '|'
+  )}-${chain}`;
+};
+
 export const getUniswapV3Path = async (token0: string, token1: string) => {
   const chainId = network.config.chainId!;
   const alphaRouter = new AlphaRouter({
@@ -31,6 +50,7 @@ export const getUniswapV3Path = async (token0: string, token1: string) => {
   );
   if (!trade) throw new Error('no trade found');
 
+  // console.log(trade.trade.routes[0].pools);
   // @ts-ignore
   const path = encodeRouteToPath(trade.trade.routes[0], false);
   return path;
@@ -43,7 +63,7 @@ export const addStratToConfig = async (key: string, data, stratConfig) => {
   });
   const config = JSON.parse(jsonString);
   config[key] = data;
-  const typeKey = stratConfig.type + 'Strats';
+  const typeKey = '_list_' + stratConfig.type;
   const typeStrats = config[typeKey] || [];
   config[typeKey] = [...new Set([...typeStrats, key])];
   await fs.writeFile(filePath, JSON.stringify(config, null, 2), {

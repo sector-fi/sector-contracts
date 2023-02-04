@@ -1,3 +1,5 @@
+import { StratType, genStratName } from '../utils';
+
 export const addrs = {
   mainnet: {
     USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
@@ -20,10 +22,12 @@ const defaultRewardTokens = [
   addrs.mainnet.GEAR,
 ];
 
+const type = StratType.LevCVX;
+
 export const levConvex = [
   {
-    name: 'USDC-sUSD-levConvex',
-    type: 'levConvex',
+    name: genStratName(type, 'USDC', ['sUSD'], ['Gearbox'], 'mainnet'),
+    type,
     curveAdapter: '0xbfB212e5D9F880bf93c47F3C32f6203fa4845222',
     // different adapter required to compute deposit amounts
     curveAdapterDeposit: '0x2bBDcc2425fa4df06676c4fb69Bd211b63314feA',
@@ -38,8 +42,8 @@ export const levConvex = [
     chain: 'mainnet',
   },
   {
-    name: 'USDC-FRAXUSDC-levConvex',
-    type: 'levConvex',
+    name: genStratName(type, 'USDC', ['FRAX'], ['Gearbox'], 'mainnet'),
+    type,
     curveAdapter: '0xa4b2b3Dede9317fCbd9D78b8250ac44Bf23b64F4',
     convexRewardPool: '0x023e429Df8129F169f9756A4FBd885c18b05Ec2d',
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
@@ -52,8 +56,8 @@ export const levConvex = [
     chain: 'mainnet',
   },
   {
-    name: 'USDC-gUSD-levConvex',
-    type: 'levConvex',
+    name: genStratName(type, 'USDC', ['gUSD', '3Crv'], ['Gearbox'], 'mainnet'),
+    type,
     is3crv: true,
     curveAdapter: '0x6fA17Ffe020d72212A4DcA1560b27eA3cDAf965D',
     convexRewardPool: '0x3D4a70e5F355EAd0690213Ae9909f3Dc41236E3C',
@@ -67,8 +71,8 @@ export const levConvex = [
   },
 
   {
-    name: 'USDC-lUSD-levConvex',
-    type: 'levConvex',
+    name: genStratName(type, 'USDC', ['lUSD', '3Crv'], ['Gearbox'], 'mainnet'),
+    type,
     is3crv: true,
     curveAdapter: '0xD4c39a18338EA89B29965a8CAd28B7fb063c1429',
     convexRewardPool: '0xc34Ef7306B82f4e38E3fAB975034Ed0f76e0fdAA',
@@ -81,8 +85,8 @@ export const levConvex = [
     chain: 'mainnet',
   },
   {
-    name: 'USDC-FRAX3CRV-levConvex',
-    type: 'levConvex',
+    name: genStratName(type, 'USDC', ['FRAX', '3Crv'], ['Gearbox'], 'mainnet'),
+    type,
     is3crv: true,
     curveAdapter: '0x1C8281606377d79522515681BD94fc9d02b0d20B',
     convexRewardPool: '0xB26e063F062F76f9F7Dfa1a3f4b7fDa4A2197DfB',

@@ -1,0 +1,341 @@
+{
+  "stargateStrats": [
+    "USDC-Arbitrum-Stargate"
+  ],
+  "hlpStrats": [
+    "USDC-MOVR-SOLAR-WELL"
+  ],
+  "synapseStrats": [
+    "USDC-Arbitrum-Synapse"
+  ],
+  "imxStrats": [
+    "USDC-IMX-AVAX",
+    "USDC-OP-Tarot-Velo",
+    "USDC-ETH-Tarot-Velo",
+    "ETH-USDC-Tarot-Velo",
+    "USDC-VELO-Tarot-Velo",
+    "USDC-TAROT-Tarot-Velo",
+    "USDC-ETH-Tarot-Xcal",
+    "USDC-XCAL-Tarot-Xcal"
+  ],
+  "USDC-IMX-AVAX": {
+    "a1_underlying": "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
+    "c0_uniPair": "0xA389f9430876455C36478DeEa9769B7Ca4E3DDB1",
+    "c1_pairRouter": "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106",
+    "d_poolToken": "0xEE2A27B7c3165A5E2a3FEB113A77B26b46dB0baE",
+    "e_farmToken": "0xeA6887e4a9CdA1B77E70129E5Fba830CdB5cdDef",
+    "f_farmRouter": "0xE54Ca86531e17Ef3616d22Ca28b0D458b6C89106",
+    "h_harvestPath": [
+      "0xeA6887e4a9CdA1B77E70129E5Fba830CdB5cdDef",
+      "0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7",
+      "0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664"
+    ],
+    "x_chain": "AVAX"
+  },
+  "USDC-OP-Tarot-Velo": {
+    "a1_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0x4200000000000000000000000000000000000042",
+    "c0_uniPair": "0x47029bc8f5CBe3b464004E87eF9c9419a48018cd",
+    "c1_pairRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "d_poolToken": "0x2F707cfB7b6C1EF2fE01b13f13379Ab0D6961189",
+    "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+    "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
+    "x_chain": "OP"
+  },
+  "USDC-MOVR-SOLAR-WELL": {
+    "a_underlying": "0xE3F5a90F9cb311505cd691a46596599aA1A0AD7D",
+    "b_short": "0x98878B06940aE243284CA214f92Bb71a2b032B8A",
+    "c_uniPair": "0xe537f70a8b62204832B8Ba91940B77d3f79AEb81",
+    "d1_cTokenLend": "0xd0670AEe3698F66e2D4dAf071EB9c690d978BFA8",
+    "d2_cTokenBorrow": "0x6a1A771C7826596652daDC9145fEAaE62b1cd07f",
+    "e1_farmToken": "0x6bD193Ee6D2104F14F94E2cA6efefae561A4334B",
+    "e2_farmId": 10,
+    "e3_uniFarm": "0x0329867a8c457e9f75e25b0685011291cd30904f",
+    "f_farmRouter": "0xAA30eF758139ae4a7f798112902Bf6d65612045f",
+    "h_harvestPath": [
+      "0x6bD193Ee6D2104F14F94E2cA6efefae561A4334B",
+      "0x98878B06940aE243284CA214f92Bb71a2b032B8A",
+      "0xE3F5a90F9cb311505cd691a46596599aA1A0AD7D"
+    ],
+    "l1_comptroller": "0x0b7a0EAA884849c6Af7a129e899536dDDcA4905E",
+    "l2_lendRewardToken": "0xBb8d88bcD9749636BC4D2bE22aaC4Bb3B01A58F1",
+    "l3_lendRewardPath": [
+      "0xBb8d88bcD9749636BC4D2bE22aaC4Bb3B01A58F1",
+      "0x98878B06940aE243284CA214f92Bb71a2b032B8A",
+      "0xE3F5a90F9cb311505cd691a46596599aA1A0AD7D"
+    ],
+    "l4_lendRewardRouter": "0xAA30eF758139ae4a7f798112902Bf6d65612045f",
+    "n_nativeToken": 2,
+    "o_contract": "MasterChefCompMulti",
+    "x_chain": "MOVR"
+  },
+  "USDC-Arbitrum-Stargate": {
+    "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    "b_strategy": "0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614",
+    "c_strategyId": 1,
+    "d_yieldToken": "0x892785f33CdeE22A30AEF750F285E18c18040c3e",
+    "e_farmId": 0,
+    "f1_farm": "0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176",
+    "f2_farmToken": "0x6694340fc020c5E6B96567843da2df01b2CE1eb6",
+    "g_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "h_harvestPath": "0x6694340fc020c5e6b96567843da2df01b2ce1eb6000bb882af49447d8a07e3bd95bd0d56f35241523fbab10001f4ff970a61a04b1ca14834a43f5de4533ebddb5cc8",
+    "x_chain": "ARBITRUM"
+  },
+  "USDC-Arbitrum-Synapse": {
+    "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    "b_strategy": "0x9Dd329F5411466d9e0C488fF72519CA9fEf0cb40",
+    "c_strategyId": 1,
+    "d_yieldToken": "0xcFd72be67Ee69A0dd7cF0f846Fc0D98C33d60F16",
+    "e_farmId": 3,
+    "f1_farm": "0x73186f2Cf2493f20836b17b21ae79fc12934E207",
+    "f2_farmToken": "0x080F6AEd32Fc474DD5717105Dba5ea57268F46eb",
+    "g_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "h_harvestPath": "0x080f6aed32fc474dd5717105dba5ea57268f46eb00271082af49447d8a07e3bd95bd0d56f35241523fbab10001f4ff970a61a04b1ca14834a43f5de4533ebddb5cc8",
+    "x_chain": "ARBITRUM"
+  },
+  "USDC-ETH-Tarot-Velo": {
+    "a1_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0x4200000000000000000000000000000000000006",
+    "c0_uniPair": "0x79c912FEF520be002c2B6e57EC4324e260f38E50",
+    "c1_pairRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "d_poolToken": "0x28fA49da55A54F02Bc4ff103adbd843B50B556F4",
+    "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+    "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
+    "x_chain": "OP"
+  },
+  "ETH-USDC-Tarot-Velo": {
+    "a1_underlying": "0x4200000000000000000000000000000000000006",
+    "a2_acceptsNativeToken": true,
+    "b_short": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+    "c0_uniPair": "0x79c912FEF520be002c2B6e57EC4324e260f38E50",
+    "c1_pairRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "d_poolToken": "0x28fA49da55A54F02Bc4ff103adbd843B50B556F4",
+    "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+    "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
+    "x_chain": "OP"
+  },
+  "USDC-VELO-Tarot-Velo": {
+    "a1_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+    "c0_uniPair": "0xe8537b6FF1039CB9eD0B71713f697DDbaDBb717d",
+    "c1_pairRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "d_poolToken": "0x1b7B202d44193f6Af293Bad8EF773791cFd24Ee1",
+    "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+    "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
+    "x_chain": "OP"
+  },
+  "USDC-TAROT-Tarot-Velo": {
+    "a1_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0x375488F097176507e39B9653b88FDc52cDE736Bf",
+    "c0_uniPair": "0x3bBDE95B1ed19F8d76252D0B48854d9EAaEc3ceF",
+    "c1_pairRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "d_poolToken": "0xB5639e9EfA70b6D70a5F1Fed3c850B14d3Cc66d3",
+    "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
+    "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
+    "x_chain": "OP"
+  },
+  "USDC-ETH-Tarot-Xcal": {
+    "a1_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+    "c0_uniPair": "0x3C94d5ABcF49a2980d55721c35093210699c1493",
+    "c1_pairRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
+    "d_poolToken": "0x7Af58BB8038D7cf978E27c2479FCfB024f146BAa",
+    "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
+    "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
+    "h_harvestPath": [
+      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
+    ],
+    "x_chain": "ARBITRUM"
+  },
+  "USDC-XCAL-Tarot-Xcal": {
+    "a1_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    "a2_acceptsNativeToken": false,
+    "b_short": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
+    "c0_uniPair": "0x2Cc6AC1454490AfA83333Fabc84345FaD751285B",
+    "c1_pairRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
+    "d_poolToken": "0x68a80FC6d73d80C75B78C627DC5c12c1C7D0F6A1",
+    "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
+    "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
+    "h_harvestPath": [
+      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
+    ],
+    "x_chain": "ARBITRUM"
+  },
+  "USDC-gUSD-levConvex": {
+    "a1_curveAdapter": "0x6fA17Ffe020d72212A4DcA1560b27eA3cDAf965D",
+    "a2_curveAdapterDeposit": "0x0000000000000000000000000000000000000000",
+    "a3_acceptsNativeToken": false,
+    "b_convexRewardPool": "0x3D4a70e5F355EAd0690213Ae9909f3Dc41236E3C",
+    "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
+    "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
+    "e_coinId": 1,
+    "f_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "g_leverageFactor": 500,
+    "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "i_farmTokens": [
+      "0xD533a949740bb3306d119CC777fa900bA034cd52",
+      "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+      "0xBa3335588D9403515223F109EdC4eB7269a9Ab5D",
+      "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
+      "0x6DEA81C8171D0bA574754EF6F8b412F2Ed88c54D",
+      "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0"
+    ],
+    "j_harvestPaths": [
+      "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0xba3335588d9403515223f109edc4eb7269a9ab5d002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x6dea81c8171d0ba574754ef6f8b412f2ed88c54d000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    ],
+    "k_is3crv": true,
+    "x_chain": "ETH"
+  },
+  "levConvexStrats": [
+    "USDC-gUSD-levConvex",
+    "USDC-FRAX3CRV-levConvex",
+    "USDC-lUSD-levConvex",
+    "USDC-sUSD-levConvex",
+    "USDC-FRAXUSDC-levConvex"
+  ],
+  "USDC-FRAX3CRV-levConvex": {
+    "a1_curveAdapter": "0x1C8281606377d79522515681BD94fc9d02b0d20B",
+    "a2_curveAdapterDeposit": "0x0000000000000000000000000000000000000000",
+    "a3_acceptsNativeToken": false,
+    "b_convexRewardPool": "0xB26e063F062F76f9F7Dfa1a3f4b7fDa4A2197DfB",
+    "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
+    "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
+    "e_coinId": 1,
+    "f_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "g_leverageFactor": 500,
+    "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "i_farmTokens": [
+      "0xD533a949740bb3306d119CC777fa900bA034cd52",
+      "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+      "0xBa3335588D9403515223F109EdC4eB7269a9Ab5D",
+      "0x6DEA81C8171D0bA574754EF6F8b412F2Ed88c54D",
+      "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0"
+    ],
+    "j_harvestPaths": [
+      "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0xba3335588d9403515223f109edc4eb7269a9ab5d002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x6dea81c8171d0ba574754ef6f8b412f2ed88c54d000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    ],
+    "k_is3crv": true,
+    "x_chain": "ETH"
+  },
+  "USDC-lUSD-levConvex": {
+    "a1_curveAdapter": "0xD4c39a18338EA89B29965a8CAd28B7fb063c1429",
+    "a2_curveAdapterDeposit": "0x0000000000000000000000000000000000000000",
+    "a3_acceptsNativeToken": false,
+    "b_convexRewardPool": "0xc34Ef7306B82f4e38E3fAB975034Ed0f76e0fdAA",
+    "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
+    "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
+    "e_coinId": 1,
+    "f_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "g_leverageFactor": 500,
+    "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "i_farmTokens": [
+      "0xD533a949740bb3306d119CC777fa900bA034cd52",
+      "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+      "0xBa3335588D9403515223F109EdC4eB7269a9Ab5D",
+      "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
+      "0x6DEA81C8171D0bA574754EF6F8b412F2Ed88c54D",
+      "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0"
+    ],
+    "j_harvestPaths": [
+      "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0xba3335588d9403515223f109edc4eb7269a9ab5d002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x6dea81c8171d0ba574754ef6f8b412f2ed88c54d000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    ],
+    "k_is3crv": true,
+    "x_chain": "ETH"
+  },
+  "USDC-sUSD-levConvex": {
+    "a1_curveAdapter": "0xbfB212e5D9F880bf93c47F3C32f6203fa4845222",
+    "a2_curveAdapterDeposit": "0x2bBDcc2425fa4df06676c4fb69Bd211b63314feA",
+    "a3_acceptsNativeToken": false,
+    "b_convexRewardPool": "0xbEf6108D1F6B85c4c9AA3975e15904Bb3DFcA980",
+    "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
+    "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
+    "e_coinId": 1,
+    "f_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "g_leverageFactor": 500,
+    "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "i_farmTokens": [
+      "0xD533a949740bb3306d119CC777fa900bA034cd52",
+      "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+      "0xBa3335588D9403515223F109EdC4eB7269a9Ab5D",
+      "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
+      "0x6DEA81C8171D0bA574754EF6F8b412F2Ed88c54D",
+      "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0"
+    ],
+    "j_harvestPaths": [
+      "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0xba3335588d9403515223f109edc4eb7269a9ab5d002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x6dea81c8171d0ba574754ef6f8b412f2ed88c54d000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    ],
+    "k_is3crv": false,
+    "x_chain": "ETH"
+  },
+  "USDC-FRAXUSDC-levConvex": {
+    "a1_curveAdapter": "0xa4b2b3Dede9317fCbd9D78b8250ac44Bf23b64F4",
+    "a2_curveAdapterDeposit": "0x0000000000000000000000000000000000000000",
+    "a3_acceptsNativeToken": false,
+    "b_convexRewardPool": "0x023e429Df8129F169f9756A4FBd885c18b05Ec2d",
+    "c_creditFacade": "0x61fbb350e39cc7bF22C01A469cf03085774184aa",
+    "d_convexBooster": "0xB548DaCb7e5d61BF47A026903904680564855B4E",
+    "e_coinId": 1,
+    "f_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "g_leverageFactor": 500,
+    "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
+    "i_farmTokens": [
+      "0xD533a949740bb3306d119CC777fa900bA034cd52",
+      "0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B",
+      "0xBa3335588D9403515223F109EdC4eB7269a9Ab5D",
+      "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F",
+      "0x6DEA81C8171D0bA574754EF6F8b412F2Ed88c54D",
+      "0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0"
+    ],
+    "j_harvestPaths": [
+      "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0xba3335588d9403515223f109edc4eb7269a9ab5d002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0xc011a73ee8576fb46f5e1c5751ca3b9fe0af2a6f002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x6dea81c8171d0ba574754ef6f8b412f2ed88c54d000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+      "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+    ],
+    "k_is3crv": false,
+    "x_chain": "ETH"
+  }
+}

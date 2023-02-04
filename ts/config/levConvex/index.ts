@@ -67,11 +67,16 @@ const addStrategy = async (strategy) => {
 
   strategy.harvestPaths = [];
   for (let j = 0; j < strategy.farmTokens.length; j++) {
-    const path = await getUniswapV3Path(
-      strategy.farmTokens[j],
-      strategy.underlying
-    );
-    strategy.harvestPaths.push(path);
+    try {
+      const path = await getUniswapV3Path(
+        strategy.farmTokens[j],
+        strategy.underlying
+      );
+      strategy.harvestPaths.push(path);
+    } catch (e) {
+      console.log('could not get path for ', strategy.farmTokens[j]);
+      console.log(e);
+    }
   }
   console.log(strategy.harvestPaths);
 

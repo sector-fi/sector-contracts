@@ -175,9 +175,9 @@ name & symbol:
 StrategyType-UnderlyingAsset|Asset?...-Protocol1|Protocol2...-Chain-Version-Instance
 ex:
 
-- "HLP-USDC|MOVR-SOLAR|WELL-v0-0"
+- "HLP-USDC|MOVR-SOLAR|WELL-Moonriver-v0-0"
 - "Lend-USDC-Stargate-Arbitrum-v0-0"
-- "LLP-USDC|IMX-Impermax|TraderJoe-Avalanche"
+- "LLP-USDC|IMX-Impermax|TraderJoe-Avalanche-v0-0"
 
 ## Vaults
 
