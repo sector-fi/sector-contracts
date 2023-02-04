@@ -17,7 +17,7 @@ import { SCYVaultConfig } from "../../interfaces/ERC5115/ISCYVault.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 import { Fees, FeeConfig } from "../../common/Fees.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 	using SafeERC20 for IERC20;
@@ -149,10 +149,13 @@ contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 	function _redeem(
 		address,
 		address token,
-		uint256
+		uint256 expectedShares
 	) internal override returns (uint256 amountTokenOut, uint256 amountToTransfer) {
 		uint256 sharesToRedeem;
 		(amountTokenOut, sharesToRedeem) = _redeem(msg.sender);
+		// this ensures that we emit the correct amount in the redeem event
+		console.log("sharesToRedeem", sharesToRedeem, expectedShares);
+		if (sharesToRedeem != expectedShares) revert InvalidSharesOut();
 		_burn(address(this), sharesToRedeem);
 
 		if (token == NATIVE) IWETH(address(underlying)).withdraw(amountTokenOut);
@@ -514,4 +517,5 @@ contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 	error StrategyDoesntExist();
 	error NotEnoughUnderlying();
 	error SlippageExceeded();
+	error InvalidSharesOut();
 }

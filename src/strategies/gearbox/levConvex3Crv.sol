@@ -165,7 +165,6 @@ contract levConvex3Crv is levConvexBase {
 			int128(uint128(coinId))
 		);
 		uint256 currentLeverage = getLeverage();
-		if (currentLeverage == 0) return (100 * underlyingAmnt) / (leverageFactor + 100);
 		return (100 * underlyingAmnt) / currentLeverage;
 	}
 
@@ -183,12 +182,12 @@ contract levConvex3Crv is levConvexBase {
 		uint256 threePoolLp = curveAdapter.calc_withdraw_one_coin(lpAmnt, int128(uint128(threeId)));
 		return
 			(100 * threePoolAdapter.calc_withdraw_one_coin(threePoolLp, int128(uint128(coinId)))) /
-			(leverageFactor + 100);
+			getLeverage();
 	}
 
 	/// @dev used to estimate slippage
 	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
-		uint256 amnt = (uAmnt * (leverageFactor + 100)) / 100;
+		uint256 amnt = (uAmnt * getLeverage()) / 100;
 		uint256 threePoolLp = threePoolAdapter.calc_add_one_coin(amnt, int128(uint128(coinId)));
 		return curveAdapter.calc_add_one_coin(threePoolLp, int128(uint128(threeId)));
 	}

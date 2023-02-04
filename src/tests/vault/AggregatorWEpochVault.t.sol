@@ -526,8 +526,12 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		requestRedeemFromStrategy(strategy, fract);
 		processRedeem(strategy);
 
+		uint256 withdrawShares = BatchedWithdrawEpoch(address(strategy)).getRequestedShares(
+			address(vault)
+		);
+
 		RedeemParams[] memory rParams = new RedeemParams[](1);
-		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), amount, 0));
+		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), withdrawShares, 0));
 		vault.withdrawFromStrategies(rParams);
 	}
 

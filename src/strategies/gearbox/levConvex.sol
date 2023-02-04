@@ -135,7 +135,6 @@ contract levConvex is levConvexBase {
 	function collateralToUnderlying() public view returns (uint256) {
 		uint256 amountOut = curveAdapter.calc_withdraw_one_coin(1e18, int128(uint128(coinId)));
 		uint256 currentLeverage = getLeverage();
-		if (currentLeverage == 0) return (100 * amountOut) / (leverageFactor + 100);
 		return (100 * amountOut) / currentLeverage;
 	}
 
@@ -151,12 +150,12 @@ contract levConvex is levConvexBase {
 	function getWithdrawAmnt(uint256 lpAmnt) public view returns (uint256) {
 		return
 			(100 * curveAdapter.calc_withdraw_one_coin(lpAmnt, int128(uint128(coinId)))) /
-			(leverageFactor + 100);
+			getLeverage();
 	}
 
 	/// @dev used to estimate slippage
 	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
-		uint256 amnt = (uAmnt * (leverageFactor + 100)) / 100;
+		uint256 amnt = (uAmnt * getLeverage()) / 100;
 		if (address(curveAdapterDeposit) != address(0))
 			return curveAdapterDeposit.calc_add_one_coin(amnt, int128(uint128(coinId)));
 		return curveAdapter.calc_add_one_coin(amnt, int128(uint128(coinId)));

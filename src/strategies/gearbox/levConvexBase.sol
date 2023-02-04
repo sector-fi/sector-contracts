@@ -249,7 +249,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 	}
 
 	function getLeverage() public view returns (uint256) {
-		if (credAcc == address(0)) return 0;
+		if (credAcc == address(0)) return leverageFactor + 100;
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
 		uint256 totalAssets = getTotalAssets();
 		/// this means we're in an upredictable state and should revert

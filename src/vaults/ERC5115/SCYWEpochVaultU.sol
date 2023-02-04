@@ -150,10 +150,11 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 	function _redeem(
 		address,
 		address token,
-		uint256
+		uint256 expectedShares
 	) internal override returns (uint256 amountTokenOut, uint256 amountToTransfer) {
 		uint256 sharesToRedeem;
 		(amountTokenOut, sharesToRedeem) = _redeem(msg.sender);
+		if (sharesToRedeem != expectedShares) revert InvalidSharesOut();
 		_burn(address(this), sharesToRedeem);
 
 		if (token == NATIVE) IWETH(address(underlying)).withdraw(amountTokenOut);
@@ -515,4 +516,5 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 	error StrategyDoesntExist();
 	error NotEnoughUnderlying();
 	error SlippageExceeded();
+	error InvalidSharesOut();
 }
