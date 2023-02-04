@@ -287,8 +287,8 @@ contract SCYVault is SCYBase {
 		emit WithdrawFromStrategy(msg.sender, underlyingWithdrawn);
 	}
 
-	function closePosition(uint256 minAmountOut, uint256 slippageParam) public onlyRole(GUARDIAN) {
-		uint256 underlyingWithdrawn = strategy.closePosition(slippageParam);
+	function closePosition(uint256 minAmountOut, uint256 slippageParam) public onlyRole(MANAGER) {
+		uint256 underlyingWithdrawn = _stratClosePosition(slippageParam);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
 		uBalance += underlyingWithdrawn;
 		emit ClosePosition(msg.sender, underlyingWithdrawn);
