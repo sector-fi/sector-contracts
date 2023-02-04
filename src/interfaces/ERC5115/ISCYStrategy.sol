@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { HarvestSwapParams } from "../Structs.sol";
 
-interface ISCYStrategy is IERC20 {
+interface ISCYStrategy {
 	// scy deposit
 	function deposit(
 		address receiver,

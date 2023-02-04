@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC4626, FixedPointMathLib, SafeERC20, IWETH, Accounting } from "./ERC4626.sol";
-import { BatchedWithdraw } from "../../common/BatchedWithdraw.sol";
+import { ERC4626U, FixedPointMathLib, SafeERC20, IWETH, Accounting, ERC20, IERC20 } from "./ERC4626U.sol";
+import { BatchedWithdrawEpoch } from "../../common/BatchedWithdrawEpoch.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { EAction } from "../../interfaces/Structs.sol";
 import { VaultType } from "../../interfaces/Structs.sol";
@@ -11,24 +10,15 @@ import { SafeETH } from "../../libraries/SafeETH.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SectorBase is BatchedWithdraw, ERC4626 {
+abstract contract SectorBaseWEpochU is BatchedWithdrawEpoch, ERC4626U {
 	using FixedPointMathLib for uint256;
-	using SafeERC20 for ERC20;
+	using SafeERC20 for IERC20;
 
 	VaultType public constant vaultType = VaultType.Aggregator;
 
 	uint256 public totalChildHoldings;
 	uint256 public floatAmnt; // amount of underlying tracked in vault
-	uint256 public maxHarvestInterval; // emergency redeem is enabled after this time
-
-	constructor() {
-		lastHarvestTimestamp = block.timestamp;
-	}
-
-	function setMaxHarvestInterval(uint256 maxHarvestInterval_) public onlyOwner {
-		maxHarvestInterval = maxHarvestInterval_;
-		emit SetMaxHarvestInterval(maxHarvestInterval);
-	}
+	uint256 public lastHarvestTimestamp;
 
 	function withdraw(
 		uint256,
@@ -44,6 +34,16 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 		address
 	) public virtual override returns (uint256 amountOut) {
 		return redeem(receiver);
+	}
+
+	/// @dev safest UI method
+	function redeem() public virtual returns (uint256 amountOut) {
+		return redeem(msg.sender);
+	}
+
+	/// @dev safest UI method
+	function redeemNative() public virtual returns (uint256 amountOut) {
+		return redeemNative(msg.sender);
 	}
 
 	function redeemNative(address receiver) public virtual returns (uint256 amountOut) {
@@ -63,7 +63,6 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 	function redeem(address receiver) public virtual returns (uint256 amountOut) {
 		uint256 shares;
 		(amountOut, shares) = _redeem(msg.sender);
-
 		beforeWithdraw(amountOut, shares);
 		_burn(address(this), shares);
 
@@ -71,30 +70,17 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 		asset.safeTransfer(receiver, amountOut);
 	}
 
-	/// @dev safest UI method
-	function redeem() public virtual returns (uint256 amountOut) {
-		return redeem(msg.sender);
-	}
-
-	/// @dev safest UI method
-	function redeemNative() public virtual returns (uint256 amountOut) {
-		return redeemNative(msg.sender);
+	/// @dev slippage parameter to make interface consistent with SCYVault
+	function processRedeem(uint256) public override onlyRole(MANAGER) {
+		// ensure we have the funds to cover withdrawals
+		uint256 pendingWithdraw = convertToAssets(requestedRedeem);
+		if (floatAmnt < pendingWithdraw) revert NotEnoughtFloat();
+		_processRedeem(convertToAssets(1e18));
 	}
 
 	function _harvest(uint256 currentChildHoldings) internal {
-		// withdrawFromStrategies should be called prior to harvest to ensure this tx doesn't revert
-		// pendingWithdraw may be larger than the actual withdrawable amount if vault sufferred losses
-		// since the previous harvest
-
 		uint256 tvl = currentChildHoldings + floatAmnt;
 		uint256 _totalSupply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
-
-		/// this is actually a max amount that can be withdrawn given current tvl
-		/// actual withdraw amount may be slightly less if there are stale withdraw requests
-		if (_totalSupply > 0) {
-			uint256 pendingWithdraw = requestedRedeem.mulDivDown(tvl, _totalSupply);
-			if (floatAmnt < pendingWithdraw) revert NotEnoughtFloat();
-		}
 
 		uint256 profit = currentChildHoldings > totalChildHoldings
 			? currentChildHoldings - totalChildHoldings
@@ -122,9 +108,7 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 
 		emit Harvest(treasury, profit, _performanceFee, _managementFee, feeShares, tvl);
 
-		// this enables withdrawals requested prior to this timestamp
 		lastHarvestTimestamp = timestamp;
-		_processRedeem();
 	}
 
 	/// @notice this method allows an arbitrary method to be called by the owner in case of emergency
@@ -132,7 +116,7 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 	/// this action to be malicious
 	function emergencyAction(EAction[] calldata actions) public payable onlyOwner {
 		uint256 l = actions.length;
-		for (uint256 i; i < l; ++i) {
+		for (uint256 i = 0; i < l; i++) {
 			address target = actions[i].target;
 			bytes memory data = actions[i].data;
 			(bool success, ) = target.call{ value: actions[i].value }(data);
@@ -152,7 +136,7 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 		if (delta > maxDelta) revert SlippageExceeded();
 	}
 
-	function totalAssets() public view virtual override(Accounting, ERC4626) returns (uint256) {
+	function totalAssets() public view virtual override(Accounting, ERC4626U) returns (uint256) {
 		return floatAmnt + totalChildHoldings;
 	}
 
@@ -170,7 +154,7 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 	}
 
 	function underlyingDecimals() public view returns (uint8) {
-		return asset.decimals();
+		return decimals();
 	}
 
 	function underlying() public view returns (address) {
@@ -178,15 +162,11 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 	}
 
 	/// OVERRIDES
-	function decimals() public view override returns (uint8) {
-		return asset.decimals();
-	}
-
 	function _transfer(
 		address sender,
 		address recipient,
 		uint256 amount
-	) internal override(BatchedWithdraw, ERC20) {
+	) internal override(BatchedWithdrawEpoch, ERC20) {
 		super._transfer(sender, recipient, amount);
 	}
 
@@ -194,26 +174,20 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 		address owner,
 		address spender,
 		uint256 amount
-	) internal override(BatchedWithdraw, ERC20) {
+	) internal override(BatchedWithdrawEpoch, ERC20) {
 		super._spendAllowance(owner, spender, amount);
 	}
 
-	function totalSupply() public view override(Accounting, ERC4626) returns (uint256) {
+	function totalSupply() public view override(Accounting, ERC4626U) returns (uint256) {
 		return super.totalSupply();
 	}
 
 	function afterDeposit(uint256 assets, uint256) internal override {
-		if (block.timestamp - lastHarvestTimestamp > maxHarvestInterval)
-			revert EmergencyRedeemEnabled();
-
 		floatAmnt += assets;
 	}
 
 	function beforeWithdraw(uint256 assets, uint256) internal override {
-		// this check prevents withdrawing more underlying from the vault then
-		// what we need to keep to honor withdrawals
-		uint256 pendingWithdraw = convertToAssets(pendingRedeem);
-		if (floatAmnt < assets + pendingWithdraw) revert NotEnoughtFloat();
+		if (floatAmnt < assets + pendingWithdrawU) revert NotEnoughtFloat();
 		floatAmnt -= assets;
 	}
 
@@ -228,7 +202,6 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 		uint256 sharesFees,
 		uint256 tvl
 	);
-	event SetMaxHarvestInterval(uint256 maxHarvestInterval);
 
 	error RecentHarvest();
 	error MaxRedeemNotZero();
@@ -239,4 +212,6 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 	error StrategyNotFound();
 	error MissingDepositValue();
 	error EmergencyRedeemEnabled();
+
+	uint256[50] private __gap;
 }

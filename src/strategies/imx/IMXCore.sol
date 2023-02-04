@@ -324,6 +324,10 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm {
 		(tvl, , , , , ) = getTVL();
 	}
 
+	function getTvl() public view returns (uint256 tvl) {
+		(tvl, , , , , ) = getTVL();
+	}
+
 	function getTVL()
 		public
 		view

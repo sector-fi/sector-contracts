@@ -1,23 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.16;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20Upgradeable as ERC20 } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import { ISuperComposableYield } from "../../interfaces/ERC5115/ISuperComposableYield.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { Accounting } from "../../common/Accounting.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
+import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract SCYBase is
+abstract contract SCYBaseU is
+	Initializable,
 	ISuperComposableYield,
-	ReentrancyGuard,
+	ReentrancyGuardUpgradeable,
 	ERC20,
 	Accounting,
-	ERC20Permit,
+	ERC20PermitUpgradeable,
 	SectorErrors
 {
 	using SafeERC20 for IERC20;
@@ -29,10 +32,16 @@ abstract contract SCYBase is
 	// solhint-disable no-empty-blocks
 	receive() external payable {}
 
-	constructor(string memory _name, string memory _symbol)
-		ERC20(_name, _symbol)
-		ERC20Permit(_name)
-	{}
+	/// @custom:oz-upgrades-unsafe-allow constructor
+	constructor() {
+		_disableInitializers();
+	}
+
+	function __SCYBase_init(string memory _name, string memory _symbol) internal initializer {
+		__ReentrancyGuard_init();
+		__ERC20_init(_name, _symbol);
+		__ERC20Permit_init(_name);
+	}
 
 	/*///////////////////////////////////////////////////////////////
                     DEPOSIT/REDEEM USING BASE TOKENS
@@ -156,4 +165,6 @@ abstract contract SCYBase is
 
 	error CantPullEth();
 	error InsufficientOut(uint256 amountOut, uint256 minOut);
+
+	uint256[50] private __gap;
 }

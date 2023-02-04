@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ERC4626, FixedPointMathLib, SafeERC20, Fees, FeeConfig, Auth, AuthConfig } from "../ERC4626/ERC4626.sol";
+import { ERC4626U, FixedPointMathLib, SafeERC20, FeeConfig, AuthConfig, IERC20 } from "../ERC4626/ERC4626U.sol";
 import { IVaultStrategy } from "../../interfaces/IVaultStrategy.sol";
-import { SectorBaseWEpoch } from "../ERC4626/SectorBaseWEpoch.sol";
+import { SectorBaseWEpochU } from "../ERC4626/SectorBaseWEpochU.sol";
 import { VaultType, EpochType } from "../../interfaces/Structs.sol";
 
 // import "hardhat/console.sol";
@@ -25,36 +24,35 @@ struct DepositParams {
 }
 
 // Sector Aggregator Vault
-contract AggregatorWEpochVault is SectorBaseWEpoch {
+contract AggregatorWEpochVaultU is SectorBaseWEpochU {
 	using FixedPointMathLib for uint256;
-	using SafeERC20 for ERC20;
+	using SafeERC20 for IERC20;
 
 	/// if vaults accepts native asset we set asset to address 0;
 	address internal constant NATIVE = address(0);
 
 	// resonable amount to not go over gas limit when doing emergencyWithdraw
 	// in reality can go up to 200
-	uint8 MAX_STRATS = 100;
+	uint8 constant MAX_STRATS = 100;
 
 	mapping(IVaultStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
 
-	constructor(
-		ERC20 asset_,
+	function initialize(
+		IERC20 asset_,
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset,
 		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
-	)
-		ERC4626(asset_, _name, _symbol, _useNativeAsset)
-		Auth(authConfig)
-		Fees(feeConfig)
-		SectorBaseWEpoch()
-	{
+	) public initializer {
+		__ERC4626_init(asset_, _name, _symbol, _useNativeAsset);
+		__Auth_init(authConfig);
+		__Fees_init(feeConfig);
 		maxTvl = _maxTvl;
 		emit MaxTvlUpdated(_maxTvl);
+		lastHarvestTimestamp = block.timestamp;
 	}
 
 	function getMaxTvl() external view returns (uint256) {
@@ -208,7 +206,7 @@ contract AggregatorWEpochVault is SectorBaseWEpoch {
 
 		// redeem proportional share of each strategy
 		for (uint256 i; i < l; ++i) {
-			ERC20 stratToken = ERC20(strategyIndex[i]);
+			IERC20 stratToken = IERC20(strategyIndex[i]);
 			uint256 balance = stratToken.balanceOf(address(this));
 			uint256 userShares = (shares * balance) / adjustedSupply;
 			if (userShares == 0) continue;
