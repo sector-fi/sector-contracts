@@ -32,4 +32,6 @@ interface ISCYStrategy {
 	function getDepositAmnt(uint256 uAmnt) external view returns (uint256);
 
 	function getLpBalance() external view returns (uint256);
+
+	// function lpToken() external view returns (address);
 }

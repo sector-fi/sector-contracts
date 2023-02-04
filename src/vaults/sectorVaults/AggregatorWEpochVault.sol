@@ -44,6 +44,7 @@ contract AggregatorWEpochVault is SectorBaseWEpoch {
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset,
+		uint256 _harvestInterval,
 		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
@@ -55,6 +56,11 @@ contract AggregatorWEpochVault is SectorBaseWEpoch {
 	{
 		maxTvl = _maxTvl;
 		emit MaxTvlUpdated(_maxTvl);
+
+		harvestInterval = _harvestInterval;
+		emit SetHarvestInterval(_harvestInterval);
+
+		lastHarvestTimestamp = block.timestamp;
 	}
 
 	function getMaxTvl() external view returns (uint256) {

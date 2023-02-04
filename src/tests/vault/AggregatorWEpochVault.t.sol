@@ -38,6 +38,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			false,
+			30 days,
 			type(uint256).max,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
@@ -52,6 +53,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			false,
+			30 days,
 			type(uint256).max,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
@@ -346,6 +348,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 			"SECT_VAULT",
 			"SECT_VAULT",
 			true,
+			30 days,
 			type(uint256).max,
 			AuthConfig(owner, guardian, manager),
 			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)

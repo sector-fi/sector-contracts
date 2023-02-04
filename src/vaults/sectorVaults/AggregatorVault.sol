@@ -44,7 +44,7 @@ contract AggregatorVault is SectorBase {
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset,
-		uint256 _maxHarvestInterval,
+		uint256 _harvestInterval,
 		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
@@ -57,8 +57,8 @@ contract AggregatorVault is SectorBase {
 		maxTvl = _maxTvl;
 		emit MaxTvlUpdated(_maxTvl);
 
-		maxHarvestInterval = _maxHarvestInterval;
-		emit SetMaxHarvestInterval(_maxHarvestInterval);
+		harvestInterval = _harvestInterval;
+		emit SetHarvestInterval(_harvestInterval);
 
 		lastHarvestTimestamp = block.timestamp;
 	}
@@ -194,7 +194,7 @@ contract AggregatorVault is SectorBase {
 	/// a portion of the float amount + a portion of all the strategy shares the vault holds
 	/// deposits are paused when we are in the emergency redeem state
 	function emergencyRedeem() public nonReentrant {
-		if (block.timestamp - lastHarvestTimestamp < maxHarvestInterval) revert RecentHarvest();
+		if (block.timestamp - lastHarvestTimestamp < harvestInterval) revert RecentHarvest();
 		uint256 shares = balanceOf(msg.sender);
 		if (shares == 0) return;
 

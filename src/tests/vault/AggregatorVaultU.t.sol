@@ -317,7 +317,7 @@ contract AggregatorVaultUTest is SectorTest, SCYVaultUtils {
 		vm.expectRevert(SectorBase.RecentHarvest.selector);
 		vault.emergencyRedeem();
 
-		skip(vault.maxHarvestInterval());
+		skip(vault.harvestInterval());
 		vault.emergencyRedeem();
 
 		assertApproxEqAbs(underlying.balanceOf(user1), 100e18, mLp, "recovered float");
@@ -474,7 +474,7 @@ contract AggregatorVaultUTest is SectorTest, SCYVaultUtils {
 
 		sectHarvest(vault);
 
-		skip(vault.maxHarvestInterval());
+		skip(vault.harvestInterval());
 
 		vm.prank(user1);
 		vault.emergencyRedeem();

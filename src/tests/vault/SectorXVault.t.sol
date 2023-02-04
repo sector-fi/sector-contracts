@@ -367,7 +367,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultUtils {
 
 		messageFee = xVault.estimateMessageFee(withdrawRequests, MessageType.WITHDRAW);
 
-		skip(xVault.maxHarvestInterval());
+		skip(xVault.harvestInterval());
 
 		vm.prank(user1);
 
@@ -398,7 +398,7 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultUtils {
 			messageFee
 		);
 
-		skip(xVault.maxHarvestInterval());
+		skip(xVault.harvestInterval());
 		vm.prank(user1);
 
 		xVault.emergencyWithdraw{ value: messageFee }();

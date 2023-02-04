@@ -18,11 +18,11 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 
 	uint256 public totalChildHoldings;
 	uint256 public floatAmnt; // amount of underlying tracked in vault
-	uint256 public maxHarvestInterval; // emergency redeem is enabled after this time
+	uint256 public harvestInterval; // emergency redeem is enabled after this time
 
-	function setMaxHarvestInterval(uint256 maxHarvestInterval_) public onlyOwner {
-		maxHarvestInterval = maxHarvestInterval_;
-		emit SetMaxHarvestInterval(maxHarvestInterval);
+	function setHarvestInterval(uint256 harvestInterval_) public onlyOwner {
+		harvestInterval = harvestInterval_;
+		emit SetHarvestInterval(harvestInterval);
 	}
 
 	function withdraw(
@@ -194,7 +194,7 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 	}
 
 	function afterDeposit(uint256 assets, uint256) internal override {
-		if (block.timestamp - lastHarvestTimestamp > maxHarvestInterval)
+		if (block.timestamp - lastHarvestTimestamp > harvestInterval)
 			revert EmergencyRedeemEnabled();
 
 		floatAmnt += assets;
@@ -219,7 +219,7 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 		uint256 sharesFees,
 		uint256 tvl
 	);
-	event SetMaxHarvestInterval(uint256 maxHarvestInterval);
+	event SetHarvestInterval(uint256 harvestInterval);
 
 	error RecentHarvest();
 	error MaxRedeemNotZero();
