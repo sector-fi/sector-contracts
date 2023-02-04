@@ -103,6 +103,10 @@ abstract contract UnitTestVault is SCYStratUtils, StratAuthTest {
 		vault.depositIntoStrategy(floatBalance, 0);
 	}
 
+	function testLpToken() public virtual {
+		assertEq(vault.yieldToken(), vault.strategy().getLpToken());
+	}
+
 	function testSlippage() public virtual {
 		uint256 amount = getAmnt();
 		deposit(user2, amount);

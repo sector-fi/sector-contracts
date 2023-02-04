@@ -179,6 +179,10 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 		harvest();
 	}
 
+	function testLpToken() public virtual {
+		assertEq(vault.yieldToken(), vault.strategy().getLpToken());
+	}
+
 	function testSlippage() public {
 		uint256 amount = getAmnt();
 		deposit(user2, amount);

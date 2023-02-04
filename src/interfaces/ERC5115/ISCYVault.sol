@@ -43,6 +43,8 @@ interface ISCYVault {
 
 	function underlying() external view returns (IERC20);
 
+	function yieldToken() external view returns (address);
+
 	function sendERC20ToStrategy() external view returns (bool);
 
 	function strategy() external view returns (ISCYStrategy);
