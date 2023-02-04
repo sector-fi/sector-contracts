@@ -106,4 +106,8 @@ contract MockScyStrategy is ISCYStrategy, StratAuthLight {
 	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
 		return (uAmnt * 1e18) / collateralToUnderlying();
 	}
+
+	function getLpToken() public view returns (address) {
+		return lpToken;
+	}
 }

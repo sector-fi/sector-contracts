@@ -278,6 +278,10 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		return getTvl();
 	}
 
+	function getLpToken() public view returns (address) {
+		return address(convexRewardPool);
+	}
+
 	function getLpBalance() public view returns (uint256) {
 		if (credAcc == address(0)) return 0;
 		return convexRewardPool.balanceOf(credAcc);

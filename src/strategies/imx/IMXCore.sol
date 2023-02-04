@@ -406,6 +406,10 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm, ISCYSt
 		}
 	}
 
+	function getLpToken() public view returns (address) {
+		return address(collateralToken());
+	}
+
 	function getLpBalance() external view returns (uint256) {
 		return collateralToken().balanceOf(address(this));
 	}

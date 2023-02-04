@@ -155,7 +155,7 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		assertEq(tvl, 0);
 	}
 
-	function testSlippage() public {
+	function testSlippage() public override {
 		uint256 amount = 10000000e6;
 		uint256 shares = vault.underlyingToShares(amount);
 		uint256 actualShares = vault.getDepositAmnt(amount);

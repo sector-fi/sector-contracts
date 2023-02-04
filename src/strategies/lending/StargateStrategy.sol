@@ -88,6 +88,10 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 		return IStargatePool(stargatePool).amountLPtoLD(1e18);
 	}
 
+	function getLpToken() public view returns (address) {
+		return address(stargatePool);
+	}
+
 	function getLpBalance() public view returns (uint256) {
 		return _getFarmLp();
 	}
@@ -97,7 +101,7 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 	}
 
 	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
-		return (uAmnt * 1e18) / IStargatePool(stargatePool).amountLPtoLD(1e18);
+		return ((uAmnt * 1e18) / IStargatePool(stargatePool).amountLPtoLD(1e18));
 	}
 
 	// EMERGENCY GUARDIAN METHODS

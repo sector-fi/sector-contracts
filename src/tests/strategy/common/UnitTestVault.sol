@@ -102,4 +102,19 @@ abstract contract UnitTestVault is SCYStratUtils, StratAuthTest {
 		vm.prank(guardian);
 		vault.depositIntoStrategy(floatBalance, 0);
 	}
+
+	function testSlippage() public virtual {
+		uint256 amount = getAmnt();
+		deposit(user2, amount);
+		uint256 shares = vault.underlyingToShares(amount);
+		uint256 actualShares = getEpochVault(vault).getDepositAmnt(amount);
+		assertApproxEqRel(shares, actualShares, .001e18, "deposit shares");
+		deposit(user1, amount);
+		assertApproxEqRel(IERC20(address(vault)).balanceOf(user1), actualShares, .01e18);
+
+		uint256 balance = vault.underlyingBalance(user1);
+		shares = IERC20(address(vault)).balanceOf(user1);
+		uint256 actualBalance = getEpochVault(vault).getWithdrawAmnt(shares);
+		assertApproxEqRel(actualBalance, balance, .001e18, "withdraw shares");
+	}
 }

@@ -219,7 +219,7 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		vault.closePosition(0, offset);
 	}
 
-	function testSlippage() public {
+	function testRebalanceSlippage() public {
 		deposit(self, dec);
 
 		// this creates a price offset

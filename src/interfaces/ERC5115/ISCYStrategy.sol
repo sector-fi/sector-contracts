@@ -33,5 +33,5 @@ interface ISCYStrategy {
 
 	function getLpBalance() external view returns (uint256);
 
-	// function lpToken() external view returns (address);
+	function getLpToken() external view returns (address);
 }

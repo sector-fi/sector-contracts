@@ -116,6 +116,10 @@ contract SynapseStrategy is MiniChef2Farm, ISCYStrategy, StratAuthLight {
 		return ISynapseSwap(synapsePool).calculateTokenAmount(amounts, true);
 	}
 
+	function getLpToken() public view returns (address) {
+		return address(lpToken);
+	}
+
 	function getLpBalance() public view returns (uint256) {
 		return _getFarmLp();
 	}

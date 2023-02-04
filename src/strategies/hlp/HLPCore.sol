@@ -630,6 +630,10 @@ abstract contract HLPCore is
 		return (1e18 * (uR * _getLiquidity(1e18))) / lp / _totalToLp(1e18);
 	}
 
+	function getLpToken() public view returns (address) {
+		return address(pair());
+	}
+
 	function getLpBalance() public view returns (uint256) {
 		return _getLiquidity();
 	}

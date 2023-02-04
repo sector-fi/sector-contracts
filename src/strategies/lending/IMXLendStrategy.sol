@@ -73,12 +73,16 @@ contract IMXLendStrategy is StratAuthLight, ISCYStrategy {
 		returns (uint256[] memory harvest1, uint256[] memory harvest2)
 	{}
 
+	function getLpToken() public view returns (address) {
+		return address(poolToken);
+	}
+
 	function getLpBalance() external view returns (uint256) {
 		return IERC20(address(poolToken)).balanceOf(address(this));
 	}
 
 	function getWithdrawAmnt(uint256 lpTokens) public view returns (uint256) {
-		return IBorrowable(address(poolToken)).exchangeRateLast();
+		return (lpTokens * IBorrowable(address(poolToken)).exchangeRateLast()) / 1e18;
 	}
 
 	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
