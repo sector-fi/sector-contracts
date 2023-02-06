@@ -1,4 +1,11 @@
 {
+  "_list_LCVX": [
+    "LCVX-USDC-gUSD|3Crv-Gearbox-mainnet",
+    "LCVX-USDC-FRAX-Gearbox-mainnet",
+    "LCVX-USDC-sUSD-Gearbox-mainnet",
+    "LCVX-USDC-lUSD|3Crv-Gearbox-mainnet",
+    "LCVX-USDC-FRAX|3Crv-Gearbox-mainnet"
+  ],
   "LCVX-USDC-FRAX-Gearbox-mainnet": {
     "a1_curveAdapter": "0xa4b2b3Dede9317fCbd9D78b8250ac44Bf23b64F4",
     "a2_curveAdapterDeposit": "0x0000000000000000000000000000000000000000",
@@ -117,13 +124,7 @@
     "k_is3crv": true,
     "x_chain": "ETH"
   },
-  "_list_LCVX": [
-    "LCVX-USDC-gUSD|3Crv-Gearbox-mainnet",
-    "LCVX-USDC-FRAX-Gearbox-mainnet",
-    "LCVX-USDC-sUSD-Gearbox-mainnet",
-    "LCVX-USDC-lUSD|3Crv-Gearbox-mainnet",
-    "LCVX-USDC-FRAX|3Crv-Gearbox-mainnet"
-  ],
+
   "LCVX-USDC-lUSD|3Crv-Gearbox-mainnet": {
     "a1_curveAdapter": "0xD4c39a18338EA89B29965a8CAd28B7fb063c1429",
     "a2_curveAdapterDeposit": "0x0000000000000000000000000000000000000000",

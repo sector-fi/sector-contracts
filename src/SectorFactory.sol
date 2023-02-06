@@ -28,11 +28,17 @@ contract SectorFactory is Ownable {
 	/// @notice Upgrades are handled seprately via beacon
 	mapping(string => address) beacons;
 	string[] public vaultTypes;
+	uint256 totalVaultTypes;
+
+	function getAllVaultTypes() external view returns (string[] memory) {
+		return vaultTypes;
+	}
 
 	function addVaultType(string calldata _vaultType, address _beacon) public onlyOwner {
 		if (beacons[_vaultType] != address(0)) revert VaultTypeExists();
 		beacons[_vaultType] = _beacon;
 		vaultTypes.push(_vaultType);
+		totalVaultTypes++;
 	}
 
 	function implementation(string calldata _vaultType) external view returns (address) {
