@@ -16,7 +16,7 @@ contract SectorFactory is Ownable {
 	using BytesLib for bytes32;
 
 	// length of the deployed vault array
-	uint256 public lastId;
+	uint256 public totalVaults;
 
 	/*///////////////////////////////////////////////////////////////
                                CONSTRUCTOR
@@ -28,7 +28,7 @@ contract SectorFactory is Ownable {
 	/// @notice Upgrades are handled seprately via beacon
 	mapping(string => address) beacons;
 	string[] public vaultTypes;
-	uint256 totalVaultTypes;
+	uint256 public totalVaultTypes;
 
 	function getAllVaultTypes() external view returns (string[] memory) {
 		return vaultTypes;
@@ -66,14 +66,14 @@ contract SectorFactory is Ownable {
 		// Use the CREATE2 opcode to deploy a new Vault contract.
 
 		// use both id and chain id as salt
-		bytes32 salt = bytes32(abi.encodePacked(uint16(lastId), uint16(block.chainid)));
+		bytes32 salt = bytes32(abi.encodePacked(uint16(totalVaults), uint16(block.chainid)));
 
 		vault = address(new BeaconProxy{ salt: salt }(beacon, ""));
 		// call initialization method
 		Address.functionCall(vault, _callData);
 
 		emit AddVault(address(vault), _vaultType);
-		lastId += 1;
+		totalVaults += 1;
 	}
 
 	/*///////////////////////////////////////////////////////////////

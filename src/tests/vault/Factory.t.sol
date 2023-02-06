@@ -43,6 +43,7 @@ contract FactoryTest is SectorTest {
 		vault = AggregatorVaultU(payable(address(factory.deployVault(vaultType, data))));
 		address vaultAddr = factory.getVaultById(vaultType, 0);
 		assertEq(address(vaultAddr), address(vault));
+		assertEq(factory.totalVaults(), 1);
 	}
 
 	function testAddNewType() public {
@@ -66,5 +67,6 @@ contract FactoryTest is SectorTest {
 		vault = AggregatorVaultU(payable(address(factory.deployVault(newType, data))));
 		address vaultAddr = factory.getVaultById(newType, 0);
 		assertEq(address(vaultAddr), address(vault));
+		assertEq(factory.totalVaultTypes(), 2);
 	}
 }
