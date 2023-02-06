@@ -26,7 +26,7 @@ contract SectorFactory is Ownable {
 	constructor() Ownable() {}
 
 	/// @notice Upgrades are handled seprately via beacon
-	mapping(string => address) beacons;
+	mapping(string => address) public beacons;
 	string[] public vaultTypes;
 	uint256 public totalVaultTypes;
 
