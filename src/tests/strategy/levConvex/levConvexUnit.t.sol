@@ -31,7 +31,7 @@ contract levConvexUnit is levConvexSetup {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
 		uint16 targetLev = 500;
-		strategy.adjustLeverage(targetLev);
+		adjustLeverage(targetLev);
 		assertApproxEqAbs(strategy.getLeverage(), targetLev, 1);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
 
@@ -39,7 +39,7 @@ contract levConvexUnit is levConvexSetup {
 
 		deposit(user1, amnt);
 		targetLev = 500;
-		strategy.adjustLeverage(targetLev);
+		adjustLeverage(targetLev);
 		assertGt(strategy.loanHealth(), 1e18);
 		assertApproxEqAbs(strategy.getLeverage(), targetLev, 1);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
@@ -49,11 +49,17 @@ contract levConvexUnit is levConvexSetup {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
 		uint16 targetLev = 800;
-		strategy.adjustLeverage(targetLev);
+		adjustLeverage(targetLev);
 		assertGt(strategy.loanHealth(), 1e18);
 		assertApproxEqAbs(strategy.getLeverage(), targetLev, 2);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
 		assertEq(underlying.balanceOf(strategy.credAcc()), 0);
+	}
+
+	function adjustLeverage(uint16 targetLev) public returns (uint256 tvl, uint256 maxDelta) {
+		tvl = strategy.getTotalTVL();
+		maxDelta = (tvl * 1) / 1000;
+		strategy.adjustLeverage(tvl, maxDelta, targetLev);
 	}
 
 	function testHarvestDev() public {
