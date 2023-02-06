@@ -10,7 +10,7 @@ import { StarChefFarm, FarmConfig } from "../../strategies/adapters/StarChefFarm
 import { StratAuthLight } from "../../common/StratAuthLight.sol";
 import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 // This strategy assumes that sharedDecimans and localDecimals are the same
 contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {

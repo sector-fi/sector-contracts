@@ -7,7 +7,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { Accounting } from "../../common/Accounting.sol";
-import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
+// import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -22,8 +22,8 @@ abstract contract SCYBaseU is
 	ERC20,
 	Accounting,
 	FeesU,
-	ERC20PermitUpgradeable,
 	SectorErrors
+	// ERC20PermitUpgradeable,
 {
 	using SafeERC20 for IERC20;
 
@@ -44,7 +44,7 @@ abstract contract SCYBaseU is
 	function __SCYBase_init(string memory _name, string memory _symbol) internal onlyInitializing {
 		__ReentrancyGuard_init();
 		__ERC20_init(_name, _symbol);
-		__ERC20Permit_init(_name);
+		// __ERC20Permit_init(_name);
 	}
 
 	/*///////////////////////////////////////////////////////////////

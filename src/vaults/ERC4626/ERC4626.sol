@@ -6,7 +6,6 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IERC4626 } from "../../interfaces/ERC4626/IERC4626.sol";
 import { Accounting } from "../../common/Accounting.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 import { Fees, FeeConfig } from "../../common/Fees.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
@@ -168,6 +167,25 @@ abstract contract ERC4626 is
 		emit Withdraw(msg.sender, receiver, owner, assets, shares);
 
 		asset.safeTransfer(receiver, assets);
+	}
+
+	function previewDeposit(uint256 assets) public view virtual returns (uint256) {
+		return convertToShares(assets);
+	}
+
+	function previewMint(uint256 shares) public view virtual returns (uint256) {
+		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+
+		return supply == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
+	}
+
+	function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
+		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+		return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
+	}
+
+	function previewRedeem(uint256 shares) public view virtual returns (uint256) {
+		return convertToAssets(shares);
 	}
 
 	/*//////////////////////////////////////////////////////////////

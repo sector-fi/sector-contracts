@@ -34,25 +34,6 @@ abstract contract Accounting is IERC4626Accounting {
 		return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
 	}
 
-	function previewDeposit(uint256 assets) public view virtual returns (uint256) {
-		return convertToShares(assets);
-	}
-
-	function previewMint(uint256 shares) public view virtual returns (uint256) {
-		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
-
-		return supply == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
-	}
-
-	function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
-		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
-		return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
-	}
-
-	function previewRedeem(uint256 shares) public view virtual returns (uint256) {
-		return convertToAssets(shares);
-	}
-
 	error ZeroAmount();
 
 	uint256[50] private __gap;

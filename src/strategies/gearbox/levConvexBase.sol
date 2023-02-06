@@ -18,7 +18,7 @@ import { BytesLib } from "../../libraries/BytesLib.sol";
 import { LevConvexConfig } from "./ILevConvex.sol";
 import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 abstract contract levConvexBase is StratAuth, ISCYStrategy {
 	using SafeERC20 for IERC20;
