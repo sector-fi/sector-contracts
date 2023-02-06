@@ -109,7 +109,7 @@ const config = {
     hardhat: {
       chainId: 1337,
       tags: [FORK_CHAIN],
-      allowUnlimitedContractSize: true,
+      // allowUnlimitedContractSize: true,
       supportMultichain: true,
       chains: {
         43114: {
