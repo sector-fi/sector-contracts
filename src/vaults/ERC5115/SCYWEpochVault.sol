@@ -195,6 +195,8 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 
 	// minAmountOut is a slippage parameter for withdrawing requestedRedeem shares
 	function processRedeem(uint256 minAmountOut) public override onlyRole(MANAGER) {
+		if (requestedRedeem == 0) return; // nothing to process
+
 		// we must subtract pendingRedeem form totalSupply
 		uint256 _totalSupply = totalSupply() - pendingRedeem;
 
@@ -229,8 +231,7 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 
 		if (amountTokenOut < minAmountOut) revert InsufficientOut(amountTokenOut, minAmountOut);
 
-		// manually compute redeem shares here
-		_processRedeem((1e18 * amountTokenOut) / requestedRedeem);
+		_processRedeem(amountTokenOut);
 	}
 
 	function _checkSlippage(

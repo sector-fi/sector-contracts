@@ -35,13 +35,13 @@ contract AuthU is AccessControlUpgradeable {
 		/// Set up the roles
 		// owner can manage all roles
 		owner = authConfig.owner;
-		emit OwnershipTransferred(address(0), authConfig.owner);
+		emit OwnershipTransferred(address(0), owner);
 
 		// TODO do we want cascading roles like this?
-		_grantRole(DEFAULT_ADMIN_ROLE, authConfig.owner);
+		_grantRole(DEFAULT_ADMIN_ROLE, owner);
 		_grantRole(GUARDIAN, owner);
 		_grantRole(GUARDIAN, authConfig.guardian);
-		_grantRole(MANAGER, authConfig.owner);
+		_grantRole(MANAGER, owner);
 		_grantRole(MANAGER, authConfig.guardian);
 		_grantRole(MANAGER, authConfig.manager);
 

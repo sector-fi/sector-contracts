@@ -41,7 +41,7 @@ contract Auth is AccessControl {
 
 		// TODO do we want cascading roles like this?
 		_grantRole(DEFAULT_ADMIN_ROLE, authConfig.owner);
-		_grantRole(GUARDIAN, owner);
+		_grantRole(GUARDIAN, authConfig.owner);
 		_grantRole(GUARDIAN, authConfig.guardian);
 		_grantRole(MANAGER, authConfig.owner);
 		_grantRole(MANAGER, authConfig.guardian);
@@ -58,25 +58,26 @@ contract Auth is AccessControl {
 	/// Can only be called by the current owner.
 	function transferOwnership(address _pendingOwner) external onlyOwner {
 		pendingOwner = _pendingOwner;
-		emit OwnershipTransferInitiated(owner, pendingOwner);
+		emit OwnershipTransferInitiated(owner, _pendingOwner);
 	}
 
 	/// @dev Accept transfer of ownership of the contract.
 	/// Can only be called by the pendingOwner.
 	function acceptOwnership() external {
-		require(msg.sender == pendingOwner, "ONLY_PENDING_OWNER");
+		address newOwner = pendingOwner;
+		require(msg.sender == newOwner, "ONLY_PENDING_OWNER");
 		address oldOwner = owner;
-		owner = pendingOwner;
+		owner = newOwner;
 
 		// revoke the DEFAULT ADMIN ROLE from prev owner
 		_revokeRole(DEFAULT_ADMIN_ROLE, oldOwner);
 		_revokeRole(GUARDIAN, oldOwner);
 		_revokeRole(MANAGER, oldOwner);
 
-		_grantRole(DEFAULT_ADMIN_ROLE, owner);
-		_grantRole(GUARDIAN, owner);
-		_grantRole(MANAGER, owner);
+		_grantRole(DEFAULT_ADMIN_ROLE, newOwner);
+		_grantRole(GUARDIAN, newOwner);
+		_grantRole(MANAGER, newOwner);
 
-		emit OwnershipTransferred(oldOwner, owner);
+		emit OwnershipTransferred(oldOwner, newOwner);
 	}
 }

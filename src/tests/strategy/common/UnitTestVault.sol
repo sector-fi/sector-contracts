@@ -5,7 +5,8 @@ import { MockERC20 } from "../../mocks/MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
-import { SCYStratUtils } from "./SCYStratUtils.sol";
+import { SCYStratUtils, Auth } from "./SCYStratUtils.sol";
+import { AuthConfig } from "../../../common/Auth.sol";
 
 import "hardhat/console.sol";
 
@@ -100,5 +101,18 @@ abstract contract UnitTestVault is SCYStratUtils {
 		vm.roll(block.number + 1);
 		vm.prank(guardian);
 		vault.depositIntoStrategy(floatBalance, 0);
+	}
+
+	function testOwnershipTransfer() public {
+		Auth _vault = Auth(address(vault));
+		_vault.transferOwnership(user1);
+		assertEq(_vault.owner(), address(this));
+		vm.prank(user1);
+		_vault.acceptOwnership();
+		assertEq(_vault.owner(), user1);
+	}
+
+	function testAuth() public {
+		Auth _vault = new Auth(AuthConfig({ owner: owner, guardian: guardian, manager: manager }));
 	}
 }

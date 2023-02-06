@@ -78,10 +78,11 @@ abstract contract SectorBaseWEpoch is BatchedWithdrawEpoch, ERC4626 {
 
 	/// @dev slippage parameter to make interface consistent with SCYVault
 	function processRedeem(uint256) public override onlyRole(MANAGER) {
+		if (requestedRedeem == 0) return; // nothing to process
 		// ensure we have the funds to cover withdrawals
 		uint256 pendingWithdraw = convertToAssets(requestedRedeem);
 		if (floatAmnt < pendingWithdraw) revert NotEnoughtFloat();
-		_processRedeem(convertToAssets(1e18));
+		_processRedeem(pendingWithdraw);
 	}
 
 	function _harvest(uint256 currentChildHoldings) internal {
