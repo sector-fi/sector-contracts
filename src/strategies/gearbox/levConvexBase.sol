@@ -204,7 +204,9 @@ abstract contract levConvexBase is StratAuth {
 		uint256 balance = underlying.balanceOf(credAcc);
 		if (balance == 0) return amountsOut;
 		uint256 borrowAmnt = (balance * leverageFactor) / 100;
-		_increasePosition(borrowAmnt, borrowAmnt + balance);
+		(, uint256 maxBorrow) = creditFacade.limits();
+		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
+		if (totalOwed + balance < maxBorrow) _increasePosition(borrowAmnt, borrowAmnt + balance);
 	}
 
 	// method to harvest if we have closed the credit account
@@ -282,12 +284,12 @@ abstract contract levConvexBase is StratAuth {
 		return convexRewardPool.balanceOf(credAcc);
 	}
 
-	/// @dev gearbox accounting is overly concervative so we use calc_withdraw_one_coin
-	/// to compute totalAsssets
+	/// @dev gearbox accounting is overly concervative so
+	/// we use calc_withdraw_one_coin to compute totalAsssets
 	function getTotalTVL() public view returns (uint256) {
 		if (credAcc == address(0)) return 0;
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
-		uint256 totalAssets = getTotalAssets();
+		uint256 totalAssets = getTotalAssets() + underlying.balanceOf(credAcc);
 		return totalAssets > totalOwed ? totalAssets - totalOwed : 0;
 	}
 

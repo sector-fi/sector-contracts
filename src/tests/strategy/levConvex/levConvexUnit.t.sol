@@ -201,4 +201,11 @@ contract levConvexUnit is levConvexSetup {
 		console.log("w slippage", (10000 * (actualBalance - balance)) / actualBalance);
 		assertApproxEqRel(balance, actualBalance, .01e18);
 	}
+
+	function testLeveragedHarvest() public {
+		deposit(user1, 142857e6);
+		adjustLeverage(800);
+		skip(10 days);
+		harvest();
+	}
 }
