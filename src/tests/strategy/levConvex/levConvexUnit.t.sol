@@ -32,7 +32,7 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
 		uint16 targetLev = 500;
-		strategy.adjustLeverage(targetLev);
+		adjustLeverage(targetLev);
 		assertApproxEqAbs(strategy.getLeverage(), targetLev, 1);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
 
@@ -40,7 +40,7 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 
 		deposit(user1, amnt);
 		targetLev = 500;
-		strategy.adjustLeverage(targetLev);
+		adjustLeverage(targetLev);
 		assertGt(strategy.loanHealth(), 1e18);
 		assertApproxEqAbs(strategy.getLeverage(), targetLev, 1);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
@@ -50,11 +50,17 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
 		uint16 targetLev = 800;
-		strategy.adjustLeverage(targetLev);
+		adjustLeverage(targetLev);
 		assertGt(strategy.loanHealth(), 1e18);
 		assertApproxEqAbs(strategy.getLeverage(), targetLev, 2);
 		assertEq(strategy.leverageFactor(), strategy.getLeverage() - 100);
 		assertEq(underlying.balanceOf(strategy.credAcc()), 0);
+	}
+
+	function adjustLeverage(uint16 targetLev) public returns (uint256 tvl, uint256 maxDelta) {
+		tvl = strategy.getTvl();
+		maxDelta = (tvl * 1) / 1000;
+		strategy.adjustLeverage(tvl, maxDelta, targetLev);
 	}
 
 	function testHarvestDev() public {
@@ -199,5 +205,12 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 		assertGt(actualBalance, balance);
 		console.log("w slippage", (10000 * (actualBalance - balance)) / actualBalance);
 		assertApproxEqRel(balance, actualBalance, .01e18);
+	}
+
+	function testLeveragedHarvest() public {
+		deposit(user1, 142857e6);
+		adjustLeverage(800);
+		skip(10 days);
+		harvest();
 	}
 }

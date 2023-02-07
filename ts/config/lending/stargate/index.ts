@@ -5,12 +5,13 @@ import {
   IStargateFactory,
   IStargatePool,
   IStarchef,
-} from '../../../typechain';
-import { stargate } from './stargateConfigs';
-import { getUniswapV3Path, addStratToConfig } from '../utils';
+} from '../../../../typechain';
+import { stargate } from './config';
+import { getUniswapV3Path, addStratToConfig, StratType } from '../../utils';
 
-const main = async () => {
-  stargate.filter((s) => s.chain == network.name).forEach(addStrategy);
+export const main = async () => {
+  const strategies = stargate.filter((s) => s.chain == network.name);
+  for (const strategy of strategies) await addStrategy(strategy);
 };
 
 const addStrategy = async (strategy) => {
@@ -69,8 +70,3 @@ const addStrategy = async (strategy) => {
   };
   await addStratToConfig(strategy.name, config, strategy);
 };
-
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});

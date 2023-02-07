@@ -83,13 +83,12 @@ abstract contract BatchedWithdrawEpoch is Accounting, SectorErrors {
 	/// @notice this methods updates lastEpochTimestamp and alows all pending withdrawals to be completed
 	/// @dev ensure that we we have enought funds to process withdrawals
 	/// before calling this method
-	function _processRedeem(uint256 sharesToUnderlying) internal {
+	function _processRedeem(uint256 amountTokenOut) internal {
 		// store current epoch exchange rate
-
-		epochExchangeRate[epoch] = sharesToUnderlying;
+		epochExchangeRate[epoch] = (1e18 * amountTokenOut) / requestedRedeem;
 
 		pendingRedeem += requestedRedeem;
-		pendingWithdrawU += (sharesToUnderlying * requestedRedeem) / 1e18;
+		pendingWithdrawU += amountTokenOut;
 		requestedRedeem = 0;
 		// advance epoch
 		++epoch;

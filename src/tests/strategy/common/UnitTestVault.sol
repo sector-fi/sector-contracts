@@ -7,6 +7,7 @@ import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
 import { SCYStratUtils } from "./SCYStratUtils.sol";
 import { StratAuthTest } from "../common/StratAuthTest.sol";
+import { Auth, AuthConfig } from "../../../common/Auth.sol";
 
 import "hardhat/console.sol";
 
@@ -120,5 +121,14 @@ abstract contract UnitTestVault is SCYStratUtils, StratAuthTest {
 		shares = IERC20(address(vault)).balanceOf(user1);
 		uint256 actualBalance = getEpochVault(vault).getWithdrawAmnt(shares);
 		assertApproxEqRel(actualBalance, balance, .001e18, "withdraw shares");
+	}
+
+	function testOwnershipTransfer() public {
+		Auth _vault = Auth(address(vault));
+		_vault.transferOwnership(user1);
+		assertEq(_vault.owner(), address(this));
+		vm.prank(user1);
+		_vault.acceptOwnership();
+		assertEq(_vault.owner(), user1);
 	}
 }

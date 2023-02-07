@@ -22,7 +22,7 @@ import "hardhat/console.sol";
 contract SynapseTest is IntegrationTest, UnitTestVault {
 	using stdJson for string;
 
-	string TEST_STRATEGY = "USDC-Arbitrum-Synapse";
+	string TEST_STRATEGY = "LND_USDC_Synapse_arbitrum";
 
 	uint256 currentFork;
 

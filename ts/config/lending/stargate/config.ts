@@ -1,3 +1,5 @@
+import { genStratName, StratType } from '../../utils';
+
 const stargateRouters = {
   arbitrum: '0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614',
 };
@@ -15,11 +17,13 @@ const uniswapRouter = {
   arbitrum: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
 };
 
+const type = StratType.LND;
+
 export const stargate = [
   {
-    type: 'stargate',
+    type: 'Stargate',
     poolId: 1, // get this from interface?
-    name: 'USDC-Arbitrum-Stargate',
+    name: genStratName(type, 'USDC', [], ['Stargate'], 'arbitrum'),
     underlying: tokens.USDC,
     strategy: stargateRouters['arbitrum'],
     farm: farms['arbitrum'],

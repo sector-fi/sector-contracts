@@ -130,7 +130,11 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 
 	/// @dev manager should be able to lower leverage in case of emergency, but not increase it
 	/// increase of leverage can only be done by owner();
-	function adjustLeverage(uint16 newLeverage) public onlyRole(MANAGER) {
+	function adjustLeverage(
+		uint256 expectedTvl,
+		uint256 maxDelta,
+		uint16 newLeverage
+	) public onlyRole(MANAGER) {
 		if (msg.sender != owner && newLeverage > leverageFactor + 100)
 			revert IncreaseLeveragePermissions();
 
@@ -144,20 +148,34 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
 
 		if (totalOwed > totalAssets) revert BadLoan();
-		uint256 currentLeverageFactor = ((100 * totalAssets) / (totalAssets - totalOwed));
+		uint256 tvl = (totalAssets - totalOwed);
+		_checkSlippage(expectedTvl, tvl, maxDelta);
 
-		if (currentLeverageFactor > newLeverage) {
+		uint256 currentLeverage = ((100 * totalAssets) / tvl);
+
+		if (currentLeverage > newLeverage) {
 			uint256 lp = convexRewardPool.balanceOf(credAcc);
-			uint256 repay = (lp * (currentLeverageFactor - newLeverage)) / currentLeverageFactor;
+			uint256 repay = (lp * (currentLeverage - newLeverage)) / currentLeverage;
 			_decreasePosition(repay);
-		} else if (currentLeverageFactor < newLeverage) {
+		} else if (currentLeverage < newLeverage) {
 			// we need to increase leverage -> borrow more
-			uint256 borrowAmnt = (getAndUpdateTvl() * (newLeverage - currentLeverageFactor)) / 100;
+			uint256 borrowAmnt = (getAndUpdateTvl() * (newLeverage - currentLeverage)) / 100;
 			_increasePosition(borrowAmnt, borrowAmnt);
 		}
 		/// leverageFactor used for opening & closing accounts
 		leverageFactor = uint16(getLeverage()) - 100;
 		emit AdjustLeverage(newLeverage);
+	}
+
+	function _checkSlippage(
+		uint256 expectedValue,
+		uint256 actualValue,
+		uint256 maxDelta
+	) internal pure {
+		uint256 delta = expectedValue > actualValue
+			? expectedValue - actualValue
+			: actualValue - expectedValue;
+		if (delta > maxDelta) revert SlippageExceeded();
 	}
 
 	function harvest(HarvestSwapParams[] memory swapParams, HarvestSwapParams[] memory)
@@ -188,7 +206,10 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		if (balance == 0) (amountsOut, new uint256[](0));
 
 		uint256 borrowAmnt = (balance * leverageFactor) / 100;
-		_increasePosition(borrowAmnt, borrowAmnt + balance);
+		(, uint256 maxBorrow) = creditFacade.limits();
+		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
+		if (totalOwed + balance < maxBorrow) _increasePosition(borrowAmnt, borrowAmnt + balance);
+
 		return (amountsOut, new uint256[](0));
 	}
 
@@ -263,12 +284,12 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		return (100 * maxBorrowed) / leverageFactor;
 	}
 
-	/// @dev gearbox accounting is overly concervative so we use calc_withdraw_one_coin
-	/// to compute totalAsssets
+	/// @dev gearbox accounting is overly concervative so
+	/// we use calc_withdraw_one_coin to compute totalAsssets
 	function getTvl() public view returns (uint256) {
 		if (credAcc == address(0)) return 0;
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
-		uint256 totalAssets = getTotalAssets();
+		uint256 totalAssets = getTotalAssets() + underlying.balanceOf(credAcc);
 		return totalAssets > totalOwed ? totalAssets - totalOwed : 0;
 	}
 
@@ -295,4 +316,5 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 	error BadLoan();
 	error IncreaseLeveragePermissions();
 	error WrongVaultUnderlying();
+	error SlippageExceeded();
 }

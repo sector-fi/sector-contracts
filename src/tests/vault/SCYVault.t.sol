@@ -190,11 +190,12 @@ contract SCYVaultTest is SectorTest, SCYVaultUtils {
 		uint256 amnt = 100e18;
 		scyDeposit(vault, user1, amnt);
 
+		uint256 tvl = vault.getTvl();
 		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](0);
 		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
 		(uint256[] memory h1, uint256[] memory h2) = vault.harvest(
-			vault.getTvl(),
-			0,
+			tvl,
+			tvl / 1000,
 			params1,
 			params2
 		);

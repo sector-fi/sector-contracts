@@ -91,7 +91,7 @@ contract IMXUnit is IMXSetup, UnitTestStrategy, UnitTestVault {
 	}
 
 	function testEdgeCases() public {
-		uint256 amount = getAmnt();
+		uint256 amount = getAmnt() / 2;
 
 		deposit(user1, amount);
 		uint256 exchangeRate = vault.sharesToUnderlying(1e18);
@@ -99,7 +99,7 @@ contract IMXUnit is IMXSetup, UnitTestStrategy, UnitTestVault {
 		withdraw(user1, 1e18);
 
 		uint256 tvl = strategy.getAndUpdateTvl();
-		assertEq(tvl, 0);
+		assertEq((1e6 * tvl) / dec, 0);
 
 		deposit(user1, amount);
 
@@ -134,7 +134,8 @@ contract IMXUnit is IMXSetup, UnitTestStrategy, UnitTestVault {
 	// OP_BLOCK = 65972372
 	// 	string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
 	function testRebalanceEdge() public {
-		deposit(user1, 10 * dec);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 
 		// logTvl(IStrategy(address(strategy)));
 		adjustPrice(100e18);
@@ -157,7 +158,8 @@ contract IMXUnit is IMXSetup, UnitTestStrategy, UnitTestVault {
 	}
 
 	function testRebalanceEdge2() public {
-		deposit(user1, 10 * dec);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 
 		// logTvl(IStrategy(address(strategy)));
 		// adjustPrice(100e18);

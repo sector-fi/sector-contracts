@@ -22,7 +22,7 @@ import "hardhat/console.sol";
 contract StargateTest is IntegrationTest, UnitTestVault {
 	using stdJson for string;
 
-	string TEST_STRATEGY = "USDC-Arbitrum-Stargate";
+	string TEST_STRATEGY = "LND_USDC_Stargate_arbitrum";
 
 	uint256 currentFork;
 

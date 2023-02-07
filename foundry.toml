@@ -7,5 +7,5 @@ solc-version = "0.8.16"
 # doesn't work ?
 # path_pattern_inverse = "src/test/strategy/*"
 
-gas_reports = ["IMX", "IMXVault", "IMXLend", "MockScyVault"]
+# gas_reports = ["IMX", "IMXVault", "IMXLend", "MockScyVault"]
 fs_permissions = [{ access = "read", path = "./ts/config/"}]

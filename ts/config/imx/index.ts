@@ -1,10 +1,13 @@
 import { ethers, getNamedAccounts, network } from 'hardhat';
 import { IIMXFactory, IVaultToken } from '../../../typechain';
 import { imx } from './config';
-import { chainToEnv, addStratToConfig } from '../utils';
+import { chainToEnv, addStratToConfig, StratType } from '../utils';
 
 const main = async () => {
-  imx.filter((s) => s.chain === network.name).forEach(addIMXStrategy);
+  const strats = imx.filter((s) => s.chain === network.name);
+  for (const strategy of strats) {
+    await addIMXStrategy(strategy);
+  }
 };
 
 const addIMXStrategy = async (strategy) => {
@@ -49,6 +52,8 @@ const addIMXStrategy = async (strategy) => {
     h_harvestPath: [rewardToken, ...strategy.harvestPath],
     x_chain: chainToEnv[strategy.chain],
   };
+
+  strategy.type = StratType.LLP;
   await addStratToConfig(strategy.name, config, strategy);
 };
 

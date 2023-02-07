@@ -1,10 +1,11 @@
 import { ethers, getNamedAccounts, network } from 'hardhat';
-import { ISynapseSwap, ISynapseMiniChef2 } from '../../../typechain';
-import { strategies } from './synapseConfigs';
-import { getUniswapV3Path, addStratToConfig } from '../utils';
+import { ISynapseSwap, ISynapseMiniChef2 } from '../../../../typechain';
+import { strategies } from './config';
+import { getUniswapV3Path, addStratToConfig, StratType } from '../../utils';
 
-const main = async () => {
-  strategies.filter((s) => s.chain == network.name).forEach(addStrategy);
+export const main = async () => {
+  const strats = strategies.filter((s) => s.chain == network.name);
+  for (const strategy of strats) await addStrategy(strategy);
 };
 
 const addStrategy = async (strategy) => {
@@ -52,10 +53,6 @@ const addStrategy = async (strategy) => {
     h_harvestPath: path,
     x_chain: 'ARBITRUM',
   };
+
   await addStratToConfig(strategy.name, config, strategy);
 };
-
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});

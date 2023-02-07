@@ -238,6 +238,7 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 		uint256 amnt = getAmnt();
 		deposit(self, amnt);
 
+		vm.prank(manager);
 		vault.closePosition(0, priceSlippageParam());
 		assertApproxEqAbs(underlying.balanceOf(address(strat)), 0, 10);
 		assertApproxEqRel(underlying.balanceOf(address(vault)), amnt, .001e18);
@@ -249,7 +250,7 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 		assertEq(underlying.balanceOf(address(vault)), floatBalance);
 
 		uint256 priceOffset = priceSlippageParam();
-		vm.expectRevert(_accessErrorString(GUARDIAN, user1));
+		vm.expectRevert(_accessErrorString(MANAGER, user1));
 		vm.prank(user1);
 		vault.closePosition(0, priceOffset);
 	}

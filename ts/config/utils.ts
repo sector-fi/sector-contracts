@@ -6,6 +6,28 @@ import fs from 'fs/promises';
 
 export const CONFIG_PATH = './ts/config/strategies.json';
 
+export const tokens = {
+  mainnet: {
+    USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
+    WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    CRV: '0xD533a949740bb3306d119CC777fa900bA034cd52',
+    CVX: '0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B',
+    SNX: '0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F',
+  },
+  optimism: {
+    ETH: '0x4200000000000000000000000000000000000006',
+    OP: '0x4200000000000000000000000000000000000042',
+    USDC: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607',
+    VELO: '0x3c8B650257cFb5f272f799F5e2b4e65093a11a05',
+    TAROT: '0x375488F097176507e39B9653b88FDc52cDE736Bf',
+  },
+  arbitrum: {
+    USDC: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
+    ETH: '0x82af49447d8a07e3bd95bd0d56f35241523fbab1',
+    XCAL: '0xd2568acCD10A4C98e87c44E9920360031ad89fCB',
+  },
+};
+
 export const chainToEnv = {
   optimism: 'OP',
   arbitrum: 'ARBITRUM',
@@ -16,7 +38,7 @@ export enum StratType {
   LevCVX = 'LCVX',
   LLP = 'LLP',
   HLP = 'HLP',
-  Lend = 'LND',
+  LND = 'LND',
 }
 
 export const genStratName = (
@@ -26,9 +48,8 @@ export const genStratName = (
   protocols: string[],
   chain: string
 ) => {
-  return `${type}-${underlying}-${otherAssets.join('|')}-${protocols.join(
-    '|'
-  )}-${chain}`;
+  const assets = otherAssets.length ? `${otherAssets.join('-')}_` : '';
+  return `${type}_${underlying}_${assets}${protocols.join('-')}_${chain}`;
 };
 
 export const getUniswapV3Path = async (token0: string, token1: string) => {

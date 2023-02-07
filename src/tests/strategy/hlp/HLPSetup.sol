@@ -24,7 +24,7 @@ import "hardhat/console.sol";
 contract HLPSetup is SCYStratUtils, UniswapMixin {
 	using stdJson for string;
 
-	string TEST_STRATEGY = "USDC-MOVR-SOLAR-WELL";
+	string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
 
 	uint256 currentFork;
 

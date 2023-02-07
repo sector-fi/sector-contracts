@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX_License_Identifier: MIT
 pragma solidity 0.8.16;
 
 import { ICollateral } from "interfaces/imx/IImpermax.sol";
@@ -24,18 +24,20 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 	using stdJson for string;
 
 	// avalanche
-	// string TEST_STRATEGY = "USDC-IMX-AVAX";
+	// string TEST_STRATEGY = "USDC_IMX_AVAX";
 
 	// optimism
-	string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
-	// string TEST_STRATEGY = "USDC-TAROT-Tarot-Velo";
-	// string TEST_STRATEGY = "ETH-USDC-Tarot-Velo";
-	// string TEST_STRATEGY = "USDC-OP-Tarot-Velo";
-	// string TEST_STRATEGY = "USDC-VELO-Tarot-Velo";
+	string TEST_STRATEGY = "LLP_ETH_USDC_Tarot-Velo_optimism";
+	// string TEST_STRATEGY = "LLP_USDC_ETH_Tarot-Velo_optimism";
+	// string TEST_STRATEGY = "ETH_USDC_Tarot_Velo";
+	// string TEST_STRATEGY = "USDC_OP_Tarot_Velo";
+	// string TEST_STRATEGY = "USDC_VELO_Tarot_Velo";
 
 	// arbitrum
-	// string TEST_STRATEGY = "USDC-ETH-Tarot-Xcal";
-	// string TEST_STRATEGY = "USDC-XCAL-Tarot-Xcal";
+	// string TEST_STRATEGY = "LLP_USDC_ETH_Tarot-Xcal_arbitrum";
+	// string TEST_STRATEGY = "LLP_ETH_USDC_Tarot-Xcal_arbitrum";
+
+	// string TEST_STRATEGY = "USDC_XCAL_Tarot_Xcal";
 
 	uint256 currentFork;
 
