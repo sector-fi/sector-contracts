@@ -226,7 +226,7 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		// so we only use actual underlying balance if startegy is totalAssets is 0
 		// otherwise we only reduce uBalance by shareOfReserves
 		if (totalAssets() == 0) uBalance = underlying.balanceOf(address(this)) - pendingWithdrawU;
-		else uBalance -= shareOfReserves;
+		else if (shareOfReserves > 0) uBalance -= shareOfReserves;
 	}
 
 	function _checkSlippage(
