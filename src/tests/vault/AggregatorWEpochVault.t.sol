@@ -114,7 +114,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		assertEq(underlying.balanceOf(user1), amnt / 4);
 
 		// amount should reset
-		vm.expectRevert(Accounting.ZeroAmount.selector);
+		vm.expectRevert(SectorErrors.ZeroAmount.selector);
 		vm.prank(user1);
 		vault.redeem();
 	}
@@ -197,7 +197,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		assertEq(underlying.balanceOf(user1), 0);
 
 		// amount should reset
-		vm.expectRevert(Accounting.ZeroAmount.selector);
+		vm.expectRevert(SectorErrors.ZeroAmount.selector);
 		vm.prank(user1);
 		vault.redeem();
 	}
@@ -278,7 +278,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		sectDeposit(vault, user1, amnt);
 
 		depositToStrat(strategy1, amnt);
-		underlying.mint(address(strategy1), 10e18 + (mLp) / 10); // 10% profit
+		underlying.mint(address(s1.yieldToken()), 10e18 + (mLp) / 10); // 10% profit
 
 		uint256 expectedTvl = vault.getTvl();
 		assertEq(expectedTvl, 110e18 + mLp);

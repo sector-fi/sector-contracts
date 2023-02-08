@@ -7,4 +7,5 @@ interface SectorErrors {
 	error StrategyHasBalance();
 	error MinLiquidity();
 	error OnlyVault();
+	error ZeroAmount();
 }

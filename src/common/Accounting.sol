@@ -34,7 +34,5 @@ abstract contract Accounting is IERC4626Accounting {
 		return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
 	}
 
-	error ZeroAmount();
-
 	uint256[50] private __gap;
 }

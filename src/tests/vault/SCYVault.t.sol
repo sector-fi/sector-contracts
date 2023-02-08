@@ -76,6 +76,7 @@ contract SCYVaultTest is SectorTest, SCYVaultUtils {
 
 		uint256 uBalance = underlying.balanceOf(address(vault));
 		uint256 minSharesOut = vault.underlyingToShares(uBalance);
+		console.log("u", uBalance);
 		vault.depositIntoStrategy(uBalance, minSharesOut);
 
 		scyDeposit(vault, user3, amnt);
@@ -193,12 +194,7 @@ contract SCYVaultTest is SectorTest, SCYVaultUtils {
 		uint256 tvl = vault.getTvl();
 		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](0);
 		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
-		(uint256[] memory h1, uint256[] memory h2) = vault.harvest(
-			tvl,
-			tvl / 1000,
-			params1,
-			params2
-		);
+		(uint256[] memory h1, uint256[] memory h2) = vault.harvest(tvl, 1000, params1, params2);
 		assertEq(h1.length, 0, "harvest 1 length");
 		assertEq(h2.length, 0, "harvest 1 length");
 	}

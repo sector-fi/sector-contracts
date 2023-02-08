@@ -288,14 +288,14 @@ contract SCYVaultU is SCYBaseU {
 		uint256 yieldTokenAmnt = convertToAssets(shares);
 		uint256 underlyingWithdrawn = strategy.redeem(address(this), yieldTokenAmnt);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
-		uBalance += underlyingWithdrawn;
+		uBalance = underlying.balanceOf(address(this));
 		emit WithdrawFromStrategy(msg.sender, underlyingWithdrawn);
 	}
 
 	function closePosition(uint256 minAmountOut, uint256 slippageParam) public onlyRole(MANAGER) {
 		uint256 underlyingWithdrawn = strategy.closePosition(slippageParam);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
-		uBalance += underlyingWithdrawn;
+		uBalance = underlying.balanceOf(address(this));
 		emit ClosePosition(msg.sender, underlyingWithdrawn);
 	}
 

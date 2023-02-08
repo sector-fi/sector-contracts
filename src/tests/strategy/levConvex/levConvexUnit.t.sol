@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { levConvexSetup, SCYStratUtils } from "./levConvexSetup.sol";
 import { SCYWEpochVault } from "vaults/ERC5115/SCYWEpochVault.sol";
 import { StratAuthTest } from "../common/StratAuthTest.sol";
+import { SectorErrors } from "interfaces/SectorErrors.sol";
 
 import "hardhat/console.sol";
 
@@ -212,5 +212,41 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 		adjustLeverage(800);
 		skip(10 days);
 		harvest();
+	}
+
+	function testProcessedRedeemState() public {
+		uint256 amnt = 20000e6;
+		deposit(user1, amnt);
+		uint256 shares = IERC20(address(vault)).balanceOf(user1) / 2;
+		vm.prank(user1);
+		getEpochVault(vault).requestRedeem(shares);
+		uint256 minAmountOut = vault.sharesToUnderlying(shares);
+		getEpochVault(vault).processRedeem((minAmountOut * 9990) / 10000);
+
+		assertEq(vault.getStrategyTvl(), 0);
+		uint256 tvl = vault.getTvl();
+		uint256 uBalance = vault.uBalance();
+		assertEq(tvl, uBalance + getEpochVault(vault).pendingWithdrawU());
+
+		vm.prank(user1);
+		vm.expectRevert(SectorErrors.ZeroAmount.selector);
+		vault.deposit(user1, address(underlying), 0, 0);
+	}
+
+	function testWithdrawFromStrategyState() public {
+		uint256 amnt = 20000e6;
+		deposit(user1, amnt);
+		uint256 shares = IERC20(address(vault)).balanceOf(user1) / 2;
+
+		vault.withdrawFromStrategy(shares, 0);
+
+		assertEq(vault.getStrategyTvl(), 0);
+		uint256 tvl = vault.getTvl();
+		uint256 uBalance = vault.uBalance();
+		assertEq(tvl, uBalance + getEpochVault(vault).pendingWithdrawU());
+
+		vm.prank(user1);
+		vm.expectRevert(SectorErrors.ZeroAmount.selector);
+		vault.deposit(user1, address(underlying), 0, 0);
 	}
 }

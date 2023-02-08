@@ -211,25 +211,14 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 
 		// we must subtract pendingRedeem form totalSupply
 		uint256 _totalSupply = totalSupply() - pendingRedeem;
-
 		uint256 yeildTokenRedeem = convertToAssets(requestedRedeem);
 
-		// account for any extra underlying balance to avoide DOS attacks
-		uint256 balance = underlying.balanceOf(address(this));
-		if (balance > (pendingWithdrawU + uBalance)) {
-			uint256 extraFloat = balance - (pendingWithdrawU + uBalance);
-			uBalance += extraFloat;
-		}
-
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
-		// TODO why not use underlying.balanceOf?
-		uint256 reserves = uBalance;
-		uint256 shareOfReserves = (reserves * requestedRedeem) / (_totalSupply);
-
-		// Update strategy underlying reserves balance
-		if (shareOfReserves > 0) uBalance -= shareOfReserves;
+		uint256 shareOfReserves = (uBalance * requestedRedeem) / (_totalSupply);
 
 		uint256 stratTvl = strategy.getAndUpdateTvl();
+		/// @dev redeem may actually return MORE underlying than requested
+		/// but amountTokenOut is equivalent to requestedRedeem shares
 		uint256 amountTokenOut = stratTvl == 0
 			? 0
 			: strategy.redeem(address(this), yeildTokenRedeem);
@@ -244,6 +233,13 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		if (amountTokenOut < minAmountOut) revert InsufficientOut(amountTokenOut, minAmountOut);
 
 		_processRedeem(amountTokenOut);
+
+		// update uBalance to refelct both the reserves & penidngWithdrawU
+		// this could lead to а DDOS attack if someone sends in a few tokens before processRedeem,
+		// so we only use actual underlying balance if startegy is totalAssets is 0
+		// otherwise we only reduce uBalance by shareOfReserves
+		if (totalAssets() == 0) uBalance = underlying.balanceOf(address(this)) - pendingWithdrawU;
+		else if (shareOfReserves > 0) uBalance -= shareOfReserves;
 	}
 
 	function _checkSlippage(
@@ -277,7 +273,9 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		uint256 underlyingWithdrawn = strategy.redeem(address(this), yieldTokenAmnt);
 		if (underlyingWithdrawn < minAmountOut)
 			revert InsufficientOut(underlyingWithdrawn, minAmountOut);
-		uBalance += underlyingWithdrawn;
+		// its possible that a strategy may transfer a greater amount of tokens than
+		// returned in underlyingWithdrawn so we use actualy balance to do the update
+		uBalance = underlying.balanceOf(address(this)) - pendingWithdrawU;
 		emit WithdrawFromStrategy(msg.sender, underlyingWithdrawn);
 	}
 
@@ -285,7 +283,7 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		uint256 underlyingWithdrawn = strategy.closePosition(slippageParam);
 		if (underlyingWithdrawn < minAmountOut)
 			revert InsufficientOut(underlyingWithdrawn, minAmountOut);
-		uBalance += underlyingWithdrawn;
+		uBalance = underlying.balanceOf(address(this)) - pendingWithdrawU;
 		emit ClosePosition(msg.sender, underlyingWithdrawn);
 	}
 
