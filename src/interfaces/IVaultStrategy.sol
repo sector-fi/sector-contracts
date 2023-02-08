@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { VaultType } from "./Structs.sol";
+import { VaultType, EpochType } from "./Structs.sol";
 
 interface IVaultStrategy is IERC20 {
 	// scy deposit
@@ -24,6 +24,8 @@ interface IVaultStrategy is IERC20 {
 		address tokenOut,
 		uint256 minTokenOut
 	) external returns (uint256 amountTokenOut);
+
+	function epochType() external view returns (EpochType);
 
 	function symbol() external view returns (string memory);
 

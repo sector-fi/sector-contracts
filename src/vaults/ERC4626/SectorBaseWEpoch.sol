@@ -226,4 +226,6 @@ abstract contract SectorBaseWEpoch is BatchedWithdrawEpoch, ERC4626 {
 	error StrategyNotFound();
 	error MissingDepositValue();
 	error EmergencyRedeemEnabled();
+	error TooManyStrategies();
+	error WrongEpochType();
 }

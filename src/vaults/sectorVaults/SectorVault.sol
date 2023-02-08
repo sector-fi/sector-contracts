@@ -137,7 +137,7 @@ contract SectorVault is AggregatorVault, XChainIntegrator {
 		for (uint256 i = length; i > 0; ) {
 			VaultAddr memory v = bridgeQueue[i - 1];
 
-			if (requests[i - 1].vaultAddr != v.addr) revert AggregatorVault.VaultAddressNotMatch();
+			if (requests[i - 1].vaultAddr != v.addr) revert VaultAddressNotMatch();
 			address xVaultAddr = getXAddr(v.addr, v.chainId);
 
 			// this returns the underlying amount the vault is withdrawing
@@ -177,4 +177,6 @@ contract SectorVault is AggregatorVault, XChainIntegrator {
 		(amountOut, shares) = _redeem(xVault);
 		emit Withdraw(_vault, _vault, _vault, amountOut, shares);
 	}
+
+	error VaultAddressNotMatch();
 }
