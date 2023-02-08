@@ -76,6 +76,7 @@ contract AggregatorVaultU is SectorBaseU {
 
 		/// make sure underlying matches
 		if (address(strategy.underlying()) != address(asset)) revert WrongUnderlying();
+		if (strategy.epochType() != epochType) revert WrongEpochType();
 
 		strategyExists[strategy] = true;
 		strategyIndex.push(address(strategy));
@@ -282,8 +283,6 @@ contract AggregatorVaultU is SectorBaseU {
 		return supply == 0 ? underlyingAmnt : underlyingAmnt.mulDivDown(supply, getTvl());
 	}
 
-	error TooManyStrategies();
-	error VaultAddressNotMatch();
 	event AddStrategy(address indexed strategy);
 	event RemoveStrategy(address indexed strategy);
 	event DepositIntoStrategy(address caller, address strategy, uint256 amount);

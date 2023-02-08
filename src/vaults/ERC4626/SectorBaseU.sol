@@ -230,6 +230,8 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 	error StrategyNotFound();
 	error MissingDepositValue();
 	error EmergencyRedeemEnabled();
+	error TooManyStrategies();
+	error WrongEpochType();
 
 	uint256[50] private __gap;
 }
