@@ -26,13 +26,13 @@ contract levConvexSetup is SCYStratUtils {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
-	string TEST_STRATEGY = "LCVX_USDC_sUSD_Gearbox_mainnet"; // year fees/slippage 3.19%
-	// string TEST_STRATEGY = "LCVX_USDC_FRAX_Gearbox_mainnet"; // year fees/slippage 4.28%
+	string TEST_STRATEGY = "LCVX_USDC-sUSD_Gearbox_mainnet"; // year fees/slippage 3.19%
+	// string TEST_STRATEGY = "LCVX_USDC-FRAX_Gearbox_mainnet"; // year fees/slippage 4.28%
 
 	// 3pool strats
-	// string TEST_STRATEGY = "LCVX_USDC_gUSD-3Crv_Gearbox_mainnet"; // year fees/slippage 4.10%
-	// string TEST_STRATEGY = "LCVX_USDC_FRAX-3Crv_Gearbox_mainnet"; // year fees/slippage 4.49%
-	// string TEST_STRATEGY = "LCVX_USDC_lUSD-3Crv_Gearbox_mainnet"; // year fees/slippage 1.33%
+	// string TEST_STRATEGY = "LCVX_USDC-gUSD-3Crv_Gearbox_mainnet"; // year fees/slippage 4.10%
+	// string TEST_STRATEGY = "LCVX_USDC-FRAX-3Crv_Gearbox_mainnet"; // year fees/slippage 4.49%
+	// string TEST_STRATEGY = "LCVX_USDC-lUSD-3Crv_Gearbox_mainnet"; // year fees/slippage 1.33%
 
 	uint256 currentFork;
 
