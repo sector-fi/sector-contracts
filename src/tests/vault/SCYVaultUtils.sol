@@ -33,7 +33,6 @@ contract SCYVaultUtils is SectorTest {
 		factory = new SectorFactory();
 		SCYVaultU vaultImp = new SCYVaultU();
 		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
-		console.log("vaultType", vaultType);
 		factory.addVaultType(vaultType, address(beacon));
 	}
 
