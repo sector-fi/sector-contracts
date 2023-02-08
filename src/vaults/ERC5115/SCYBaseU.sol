@@ -12,6 +12,7 @@ import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { FeesU } from "../../common/FeesU.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 // import "hardhat/console.sol";
 
@@ -22,6 +23,7 @@ abstract contract SCYBaseU is
 	ERC20,
 	Accounting,
 	FeesU,
+	PausableUpgradeable,
 	SectorErrors
 	// ERC20PermitUpgradeable,
 {
@@ -44,6 +46,7 @@ abstract contract SCYBaseU is
 	function __SCYBase_init(string memory _name, string memory _symbol) internal onlyInitializing {
 		__ReentrancyGuard_init();
 		__ERC20_init(_name, _symbol);
+		__Pausable_init();
 		// __ERC20Permit_init(_name);
 	}
 
@@ -163,6 +166,24 @@ abstract contract SCYBaseU is
 
 	function sendERC20ToStrategy() public view virtual returns (bool) {
 		return true;
+	}
+
+	/// PAUSABLE
+
+	function pause() public onlyRole(GUARDIAN) {
+		_pause();
+	}
+
+	function unpause() public onlyRole(GUARDIAN) {
+		_unpause();
+	}
+
+	function _beforeTokenTransfer(
+		address from,
+		address to,
+		uint256 amount
+	) internal override whenNotPaused {
+		super._beforeTokenTransfer(from, to, amount);
 	}
 
 	error CantPullEth();

@@ -13,6 +13,7 @@ import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 // import "hardhat/console.sol";
 
@@ -27,6 +28,7 @@ abstract contract ERC4626U is
 	IERC4626,
 	ReentrancyGuardUpgradeable,
 	ERC20PermitUpgradeable,
+	PausableUpgradeable,
 	SectorErrors
 {
 	using SafeERC20 for IERC20;
@@ -238,5 +240,23 @@ abstract contract ERC4626U is
 
 	function totalSupply() public view virtual override(Accounting, ERC20) returns (uint256) {
 		return ERC20.totalSupply();
+	}
+
+	/// PAUSABLE
+
+	function pause() public onlyRole(GUARDIAN) {
+		_pause();
+	}
+
+	function unpause() public onlyRole(GUARDIAN) {
+		_unpause();
+	}
+
+	function _beforeTokenTransfer(
+		address from,
+		address to,
+		uint256 amount
+	) internal override whenNotPaused {
+		super._beforeTokenTransfer(from, to, amount);
 	}
 }

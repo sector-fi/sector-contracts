@@ -204,7 +204,7 @@ contract AggregatorWEpochVaultU is SectorBaseWEpochU {
 
 		if (floatAmnt > pendingWithdraw) {
 			uint256 availableFloat = floatAmnt - pendingWithdraw;
-			uint256 underlyingShare = (availableFloat * shares) / adjustedSupply;
+			uint256 underlyingShare = availableFloat.mulDivDown(shares, adjustedSupply);
 			beforeWithdraw(underlyingShare, 0);
 			asset.safeTransfer(msg.sender, underlyingShare);
 		}
@@ -215,13 +215,13 @@ contract AggregatorWEpochVaultU is SectorBaseWEpochU {
 		for (uint256 i; i < l; ++i) {
 			IERC20 stratToken = IERC20(strategyIndex[i]);
 			uint256 balance = stratToken.balanceOf(address(this));
-			uint256 userShares = (shares * balance) / adjustedSupply;
+			uint256 userShares = shares.mulDivDown(balance, adjustedSupply);
 			if (userShares == 0) continue;
 			stratToken.safeTransfer(msg.sender, userShares);
 		}
 
 		// reduce the amount of totalChildHoldings
-		totalChildHoldings -= (shares * totalChildHoldings) / adjustedSupply;
+		totalChildHoldings -= shares.mulDivDown(totalChildHoldings, adjustedSupply);
 
 		_burn(msg.sender, shares);
 	}

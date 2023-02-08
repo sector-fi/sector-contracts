@@ -10,6 +10,7 @@ import { Accounting } from "../../common/Accounting.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { Fees } from "../../common/Fees.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 // import "hardhat/console.sol";
 
@@ -20,6 +21,7 @@ abstract contract SCYBase is
 	Accounting,
 	Fees,
 	ERC20Permit,
+	Pausable,
 	SectorErrors
 {
 	using SafeERC20 for IERC20;
@@ -152,6 +154,22 @@ abstract contract SCYBase is
 
 	function sendERC20ToStrategy() public view virtual returns (bool) {
 		return true;
+	}
+
+	function pause() public onlyRole(GUARDIAN) {
+		_pause();
+	}
+
+	function unpause() public onlyRole(GUARDIAN) {
+		_unpause();
+	}
+
+	function _beforeTokenTransfer(
+		address from,
+		address to,
+		uint256 amount
+	) internal override whenNotPaused {
+		super._beforeTokenTransfer(from, to, amount);
 	}
 
 	error CantPullEth();

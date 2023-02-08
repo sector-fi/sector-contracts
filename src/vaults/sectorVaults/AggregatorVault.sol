@@ -78,8 +78,8 @@ contract AggregatorVault is SectorBase {
 
 		/// make sure underlying matches
 		if (address(strategy.underlying()) != address(asset)) revert WrongUnderlying();
-
 		if (strategy.epochType() != epochType) revert WrongEpochType();
+
 		strategyExists[strategy] = true;
 		strategyIndex.push(address(strategy));
 		emit AddStrategy(address(strategy));
@@ -208,7 +208,7 @@ contract AggregatorVault is SectorBase {
 
 		if (floatAmnt > pendingWithdraw) {
 			uint256 availableFloat = floatAmnt - pendingWithdraw;
-			uint256 underlyingShare = (availableFloat * shares) / adjustedSupply;
+			uint256 underlyingShare = availableFloat.mulDivDown(shares, adjustedSupply);
 			beforeWithdraw(underlyingShare, 0);
 			asset.safeTransfer(msg.sender, underlyingShare);
 		}
@@ -219,13 +219,13 @@ contract AggregatorVault is SectorBase {
 		for (uint256 i; i < l; ++i) {
 			ERC20 stratToken = ERC20(strategyIndex[i]);
 			uint256 balance = stratToken.balanceOf(address(this));
-			uint256 userShares = (shares * balance) / adjustedSupply;
+			uint256 userShares = shares.mulDivDown(balance, adjustedSupply);
 			if (userShares == 0) continue;
 			stratToken.safeTransfer(msg.sender, userShares);
 		}
 
 		// reduce the amount of totalChildHoldings
-		totalChildHoldings -= (shares * totalChildHoldings) / adjustedSupply;
+		totalChildHoldings -= shares.mulDivDown(totalChildHoldings, adjustedSupply);
 
 		_burn(msg.sender, shares);
 	}
