@@ -209,7 +209,7 @@ abstract contract levConvexBase is StratAuth {
 		uint256 borrowAmnt = (balance * leverageFactor) / 100;
 		(, uint256 maxBorrow) = creditFacade.limits();
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
-		if (totalOwed + balance < maxBorrow) _increasePosition(borrowAmnt, borrowAmnt + balance);
+		if (totalOwed + balance <= maxBorrow) _increasePosition(borrowAmnt, borrowAmnt + balance);
 	}
 
 	// method to harvest if we have closed the credit account
