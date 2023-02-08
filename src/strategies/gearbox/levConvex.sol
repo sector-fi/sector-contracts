@@ -9,10 +9,13 @@ import { IBaseRewardPool } from "../../interfaces/gearbox/adapters/IBaseRewardPo
 import { IBooster } from "../../interfaces/gearbox/adapters/IBooster.sol";
 import { LevConvexConfig } from "./ILevConvex.sol";
 import { levConvexBase } from "./levConvexBase.sol";
+import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
 // import "hardhat/console.sol";
 
 contract levConvex is levConvexBase {
+	using FixedPointMathLib for uint256;
+
 	ICurveV1Adapter public curveAdapterDeposit;
 
 	constructor(AuthConfig memory authConfig, LevConvexConfig memory config)
@@ -135,7 +138,7 @@ contract levConvex is levConvexBase {
 	function collateralToUnderlying() public view returns (uint256) {
 		uint256 amountOut = curveAdapter.calc_withdraw_one_coin(1e18, int128(uint128(coinId)));
 		uint256 currentLeverage = getLeverage();
-		return (100 * amountOut) / currentLeverage;
+		return amountOut.mulDivDown(100, currentLeverage);
 	}
 
 	function getTotalAssets() public view override returns (uint256 totalAssets) {

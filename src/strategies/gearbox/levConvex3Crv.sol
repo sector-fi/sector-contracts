@@ -9,10 +9,13 @@ import { IBaseRewardPool } from "../../interfaces/gearbox/adapters/IBaseRewardPo
 import { IBooster } from "../../interfaces/gearbox/adapters/IBooster.sol";
 import { LevConvexConfig } from "./ILevConvex.sol";
 import { levConvexBase } from "./levConvexBase.sol";
+import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
 // import "hardhat/console.sol";
 
 contract levConvex3Crv is levConvexBase {
+	using FixedPointMathLib for uint256;
+
 	uint256 threeId = 1;
 
 	constructor(AuthConfig memory authConfig, LevConvexConfig memory config)
@@ -165,7 +168,7 @@ contract levConvex3Crv is levConvexBase {
 			int128(uint128(coinId))
 		);
 		uint256 currentLeverage = getLeverage();
-		return (100 * underlyingAmnt) / currentLeverage;
+		return underlyingAmnt.mulDivDown(100, currentLeverage);
 	}
 
 	function getTotalAssets() public view override returns (uint256 totalAssets) {
@@ -181,8 +184,9 @@ contract levConvex3Crv is levConvexBase {
 	function getWithdrawAmnt(uint256 lpAmnt) public view returns (uint256) {
 		uint256 threePoolLp = curveAdapter.calc_withdraw_one_coin(lpAmnt, int128(uint128(threeId)));
 		return
-			(100 * threePoolAdapter.calc_withdraw_one_coin(threePoolLp, int128(uint128(coinId)))) /
-			getLeverage();
+			threePoolAdapter
+				.calc_withdraw_one_coin(threePoolLp, int128(uint128(coinId)))
+				.mulDivDown(100, getLeverage());
 	}
 
 	/// @dev used to estimate slippage

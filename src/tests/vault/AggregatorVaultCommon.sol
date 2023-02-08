@@ -2,11 +2,11 @@
 pragma solidity 0.8.16;
 
 import { SectorTest } from "../utils/SectorTest.sol";
-import { SCYWEpochVault } from "vaults/ERC5115/SCYWEpochVault.sol";
-import { SCYWEpochVaultUtils } from "./SCYWEpochVaultUtils.sol";
+import { SCYVault } from "vaults/ERC5115/SCYVault.sol";
+import { SCYVaultUtils } from "./SCYVaultUtils.sol";
 import { WETH } from "../mocks/WETH.sol";
-import { ERC4626, SectorBaseWEpoch, AggregatorWEpochVault, RedeemParams, DepositParams, IVaultStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorWEpochVault.sol";
-import { BatchedWithdrawEpoch } from "../../common/BatchedWithdrawEpoch.sol";
+import { ERC4626, SectorBase, AggregatorVault, RedeemParams, DepositParams, IVaultStrategy, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
+import { BatchedWithdraw } from "../../common/BatchedWithdraw.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { EAction } from "interfaces/Structs.sol";
 import { VaultType } from "interfaces/Structs.sol";
@@ -15,49 +15,35 @@ import { SectorErrors } from "interfaces/SectorErrors.sol";
 
 import "hardhat/console.sol";
 
-contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
-	SCYWEpochVault s1;
-	SCYWEpochVault s2;
-	AggregatorWEpochVault s3;
-
+abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 	IVaultStrategy strategy1;
 	IVaultStrategy strategy2;
 	IVaultStrategy strategy3;
 
 	WETH underlying;
 
-	AggregatorWEpochVault vault;
+	AggregatorVault vault;
 
-	function setUp() public {
+	SCYVault s1;
+	SCYVault s2;
+	AggregatorVault s3;
+
+	receive() external payable {}
+
+	function deployAggVault(bool) public virtual returns (AggregatorVault);
+
+	function setUpCommonTest() public {
 		underlying = new WETH();
 
 		s1 = setUpSCYVault(address(underlying));
 		s2 = setUpSCYVault(address(underlying));
-		s3 = new AggregatorWEpochVault(
-			underlying,
-			"SECT_VAULT",
-			"SECT_VAULT",
-			false,
-			30 days,
-			type(uint256).max,
-			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
-		);
+
+		s3 = deployAggVault(false);
+		vault = deployAggVault(false);
 
 		strategy1 = IVaultStrategy(address(s1));
 		strategy2 = IVaultStrategy(address(s2));
 		strategy3 = IVaultStrategy(address(s3));
-
-		vault = new AggregatorWEpochVault(
-			underlying,
-			"SECT_VAULT",
-			"SECT_VAULT",
-			false,
-			30 days,
-			type(uint256).max,
-			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
-		);
 
 		// lock min liquidity
 		sectDeposit(vault, owner, mLp);
@@ -70,21 +56,19 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		vault.addStrategy(strategy3);
 	}
 
-	receive() external payable {}
-
 	function testAddRemoveStrat() public {
 		vault.removeStrategy(strategy2);
 		assertEq(address(vault.strategyIndex(1)), address(strategy3));
 		assertEq(vault.totalStrategies(), 2);
 
-		vm.expectRevert(SectorBaseWEpoch.StrategyNotFound.selector);
+		vm.expectRevert(SectorBase.StrategyNotFound.selector);
 		vault.removeStrategy(strategy2);
 
 		vault.addStrategy(strategy2);
 		assertEq(address(vault.strategyIndex(2)), address(strategy2));
 		assertEq(vault.totalStrategies(), 3);
 
-		vm.expectRevert(SectorBaseWEpoch.StrategyExists.selector);
+		vm.expectRevert(SectorBase.StrategyExists.selector);
 		vault.addStrategy(strategy2);
 	}
 
@@ -104,10 +88,14 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		assertFalse(vault.redeemIsReady(user1), "redeem not ready");
 
-		vm.expectRevert(BatchedWithdrawEpoch.NotReady.selector);
+		vm.expectRevert(BatchedWithdraw.NotReady.selector);
 		vm.prank(user1);
 		vault.redeem();
 
+		sectHarvest(vault);
+		skip(1);
+
+		assertTrue(vault.redeemIsReady(user1), "redeem ready");
 		sectCompleteRedeem(vault, user1);
 		assertEq(vault.underlyingBalance(user1), (100e18 * 3) / 4, "3/4 of deposit remains");
 
@@ -129,7 +117,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		sectInitRedeem(vault, user1, 1e18 / 4);
 
-		// sectHarvestRevert(vault, SectorBaseWEpoch.NotEnoughtFloat.selector);
+		sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
 
 		uint256 pendingWithdraw = vault.convertToAssets(vault.requestedRedeem());
 		uint256 withdrawShares = (pendingWithdraw * strategy1.exchangeRateUnderlying()) / 1e18;
@@ -138,9 +126,12 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		sectHarvest(vault);
 
+		vm.prank(user1);
+		assertApproxEqAbs(vault.getPenalty(), .09e18, mLp);
+
 		sectCompleteRedeem(vault, user1);
 
-		assertApproxEqRel(underlying.balanceOf(user1), amnt / 4 + 9e18 / 4, .00001e18);
+		assertEq(underlying.balanceOf(user1), amnt / 4);
 	}
 
 	function testWithdrawAfterLoss() public {
@@ -149,7 +140,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.burn(s1.yieldToken(), 10e18); // 10% loss
+		underlying.burn(address(s1.yieldToken()), 10e18); // 10% loss
 
 		sectInitRedeem(vault, user1, 1e18 / 4);
 
@@ -157,6 +148,9 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		withdrawFromStrat(strategy1, shares);
 
 		sectHarvest(vault);
+
+		vm.prank(user1);
+		assertEq(vault.getPenalty(), 0);
 
 		sectCompleteRedeem(vault, user1);
 
@@ -170,10 +164,10 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.mint(s1.yieldToken(), 10e18 + (mLp) / 10); // 10% profit
 
-		sectHarvest(vault);
+		skip(1);
 		sectInitRedeem(vault, user1, 1e18);
+		sectHarvestRevert(vault, SectorBase.NotEnoughtFloat.selector);
 
 		uint256 pendingWithdraw = vault.convertToAssets(vault.requestedRedeem());
 		uint256 withdrawShares = (pendingWithdraw * strategy1.exchangeRateUnderlying()) / 1e18;
@@ -183,17 +177,11 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		vm.prank(user1);
 		vault.cancelRedeem();
 
-		(, uint256 shares) = vault.withdrawLedger(user1);
+		(, uint256 shares, uint256 value) = vault.withdrawLedger(user1);
 		assertEq(shares, 0);
+		assertEq(value, 0);
 
-		uint256 profit = ((10e18 + (mLp) / 10) * 9) / 10;
-		uint256 profitFromBurn = (profit / 4);
-		assertApproxEqRel(
-			vault.underlyingBalance(user1),
-			amnt / 4 + profitFromBurn,
-			.001e18,
-			"user balance"
-		);
+		assertApproxEqRel(vault.underlyingBalance(user1), amnt / 4, .001e18);
 		assertEq(underlying.balanceOf(user1), 0);
 
 		// amount should reset
@@ -211,25 +199,11 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		assertEq(vault.getTvl(), amnt);
 		assertEq(vault.totalChildHoldings(), amnt);
 
-		uint256 nStrats = vault.totalStrategies();
-		IVaultStrategy[] memory strats = new IVaultStrategy[](nStrats);
-		uint256[] memory redeemFract = new uint256[](nStrats);
-		for (uint256 i = 0; i < nStrats; i++) {
-			strats[i] = IVaultStrategy(vault.strategyIndex(i));
-			redeemFract[i] = .5e18;
-		}
-		requestRedeemFromStrats(strats, redeemFract);
-
+		uint256 s3Balance = s3.balanceOf(address(vault));
+		requestRedeemFromStrat(strategy3, s3Balance / 2);
 		skip(1);
 		sectHarvest(s3);
-
-		for (uint256 i = 0; i < nStrats; i++) {
-			IVaultStrategy strat = IVaultStrategy(vault.strategyIndex(i));
-			processRedeem(strat);
-		}
-
 		skip(1);
-		vm.roll(block.number + 1);
 
 		sectRedeem3Strats(vault, 200e18 / 2, 300e18 / 2, 500e18 / 2);
 
@@ -253,19 +227,13 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float");
 		uint256 pendingWithdraw = vault.convertToAssets(vault.requestedRedeem());
-
 		assertEq(pendingWithdraw, amnt / 2, "pending withdraw");
 		sectHarvest(vault);
-
-		vm.prank(manager);
-		vault.processRedeem(0);
-
-		assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float doesnt update on process redeem");
+		assertEq(vault.floatAmnt(), amnt / 2 + mLp, "float amnt half");
 
 		DepositParams[] memory dParams = new DepositParams[](1);
 		dParams[0] = (DepositParams(strategy1, VaultType.Strategy, amnt / 2, 0));
-
-		vm.expectRevert(SectorBaseWEpoch.NotEnoughtFloat.selector);
+		vm.expectRevert(SectorBase.NotEnoughtFloat.selector);
 		vault.depositIntoStrategies(dParams);
 
 		vm.prank(user1);
@@ -278,7 +246,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		sectDeposit(vault, user1, amnt);
 
 		depositToStrat(strategy1, amnt);
-		underlying.mint(address(s1.yieldToken()), 10e18 + (mLp) / 10); // 10% profit
+		underlying.mint(s1.yieldToken(), 10e18 + (mLp) / 10); // 10% profit
 
 		uint256 expectedTvl = vault.getTvl();
 		assertEq(expectedTvl, 110e18 + mLp);
@@ -310,15 +278,30 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		skip(1);
 
 		vm.startPrank(user1);
-
+		vm.expectRevert(SectorBase.RecentHarvest.selector);
 		vault.emergencyRedeem();
+
+		skip(vault.harvestInterval());
+		vault.emergencyRedeem();
+
 		assertApproxEqAbs(underlying.balanceOf(user1), 100e18, mLp, "recovered float");
+
+		uint256 b1 = IERC20(address(strategy1)).balanceOf(user1);
+		uint256 b2 = IERC20(address(strategy2)).balanceOf(user1);
+		uint256 b3 = IERC20(address(strategy3)).balanceOf(user1);
+
+		strategy1.redeem(user1, b1, address(underlying), 0);
+		strategy2.redeem(user1, b2, address(underlying), 0);
+
+		s3.requestRedeem(b3, user1);
+
 		vm.stopPrank();
 
-		// redeem
-		scyWithdrawEpoch(s1, user1, 1e18);
-		scyWithdrawEpoch(s2, user1, 1e18);
-		sectRedeemEpoch(s3, user1, 1e18);
+		skip(1);
+		sectHarvest(s3);
+
+		vm.prank(user1);
+		strategy3.redeem();
 
 		assertApproxEqAbs(underlying.balanceOf(user1), amnt, 1, "recovered amnt");
 		assertApproxEqAbs(vault.getTvl(), mLp, 1);
@@ -343,16 +326,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 	}
 
 	function testDepositRedeemNative() public {
-		vault = new AggregatorWEpochVault(
-			underlying,
-			"SECT_VAULT",
-			"SECT_VAULT",
-			true,
-			30 days,
-			type(uint256).max,
-			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
-		);
+		vault = deployAggVault(true);
 		sectDeposit(vault, owner, mLp);
 
 		uint256 amnt = 1000e18;
@@ -368,8 +342,6 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		vault.requestRedeem(shares, self);
 		skip(1);
 		sectHarvest(vault);
-		vault.processRedeem(0);
-
 		vault.redeemNative();
 
 		assertEq(self.balance, amnt);
@@ -383,7 +355,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		depositToStrat(strategy1, amnt);
 		sectInitRedeem(vault, user1, 1e18);
 
-		MockERC20(underlying).burn(s1.yieldToken(), amnt / 10);
+		MockERC20(underlying).burn(address(s1.yieldToken()), amnt / 10);
 
 		uint256 shares = IERC20(address(strategy1)).balanceOf(address(vault));
 		withdrawFromStrat(strategy1, shares);
@@ -432,19 +404,15 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		sectHarvest(vault);
 
 		// TODO we can have this should fail?
-
-		vm.startPrank(user1);
-		uint256 sharesToWithdraw = vault.balanceOf(user1) / 2;
-		vm.expectRevert(BatchedWithdrawEpoch.RedeemRequestExists.selector);
-		vault.requestRedeem(sharesToWithdraw);
-		vm.stopPrank();
+		sectInitRedeem(vault, user1, 1e18);
 
 		// deposit should work
 		sectDeposit(vault, user2, amnt);
 
+		sectHarvest(vault);
 		sectCompleteRedeem(vault, user1);
 
-		assertEq(underlying.balanceOf(user1), amnt / 2);
+		assertEq(underlying.balanceOf(user1), amnt);
 	}
 
 	function testEmergencyRedeemEdgeCase() public {
@@ -454,16 +422,11 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		sectInitRedeem(vault, user1, .5e18);
 		sectHarvest(vault);
 
-		vm.prank(user1);
-		vault.cancelRedeem();
-
-		assertEq(vault.balanceOf(user1), amnt, "share balance full");
-
-		sectInitRedeem(vault, user1, .5e18);
-
 		assertEq(vault.balanceOf(user1), amnt / 2, "share balance half");
 
 		sectHarvest(vault);
+
+		skip(vault.harvestInterval());
 
 		vm.prank(user1);
 		vault.emergencyRedeem();
@@ -491,8 +454,8 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		uint256 shares2 = strategy2.underlyingToShares(amnt / 2);
 		withdrawFromStrat(strategy2, shares2);
 
-		// sectHarvest(vault);
-		vault.processRedeem(0);
+		sectHarvest(vault);
+		skip(7 days);
 
 		vm.prank(user1);
 		vault.emergencyRedeem();
@@ -516,6 +479,37 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		);
 	}
 
+	function testEmergencyRedeemEdgeCase3() public {
+		uint256 amnt = 100e18;
+		sectDeposit(vault, user1, amnt);
+		sectDeposit(vault, user2, amnt);
+
+		depositToStrat(strategy1, amnt);
+		depositToStrat(strategy2, amnt);
+
+		skip(7 days);
+
+		sectInitRedeem(vault, user1, .5e18);
+		vm.prank(user1);
+		vault.emergencyRedeem();
+
+		sectInitRedeem(vault, user2, .5e18);
+		vm.prank(user2);
+		vault.emergencyRedeem();
+
+		assertEq(vault.balanceOf(user1), 0, "share balance 0");
+		assertEq(vault.balanceOf(user2), 0, "share balance 0");
+
+		assertEq(s1.balanceOf(user1), s1.balanceOf(user2), "strat 1 balances");
+		assertEq(s2.balanceOf(user1), s2.balanceOf(user2), "strat 2 balances");
+		assertApproxEqAbs(
+			underlying.balanceOf(user1),
+			underlying.balanceOf(user2),
+			1,
+			"underlying balances"
+		);
+	}
+
 	/// UTILS
 
 	function depositToStrat(IVaultStrategy strategy, uint256 amount) public {
@@ -525,40 +519,18 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 	}
 
 	function withdrawFromStrat(IVaultStrategy strategy, uint256 amount) public {
-		uint256 fract = ((1e18 * amount) / strategy.balanceOf(address(vault)));
-		requestRedeemFromStrategy(strategy, fract);
-		processRedeem(strategy);
-
-		uint256 withdrawShares = BatchedWithdrawEpoch(address(strategy)).getRequestedShares(
-			address(vault)
-		);
-
 		RedeemParams[] memory rParams = new RedeemParams[](1);
-		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), withdrawShares, 0));
+		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), amount, 0));
 		vault.withdrawFromStrategies(rParams);
 	}
 
-	function requestRedeemFromStrategy(IVaultStrategy strat, uint256 fraction) public {
-		IVaultStrategy[] memory strats = new IVaultStrategy[](1);
-		strats[0] = strat;
-		uint256[] memory fracs = new uint256[](1);
-		fracs[0] = fraction;
-		requestRedeemFromStrats(strats, fracs);
-	}
-
-	function requestRedeemFromStrats(IVaultStrategy[] memory strats, uint256[] memory fraction)
-		public
-	{
-		RedeemParams[] memory rParams = new RedeemParams[](strats.length);
-		for (uint256 i = 0; i < strats.length; i++) {
-			uint256 balance = strats[i].balanceOf(address(vault));
-			uint256 redeem = (balance * fraction[i]) / 1e18;
-			rParams[i] = (RedeemParams(strats[i], strats[i].vaultType(), redeem, 0));
-		}
+	function requestRedeemFromStrat(IVaultStrategy strategy, uint256 amount) public {
+		RedeemParams[] memory rParams = new RedeemParams[](1);
+		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), amount, 0));
 		vault.requestRedeemFromStrategies(rParams);
 	}
 
-	function sectHarvest(AggregatorWEpochVault _vault) public {
+	function sectHarvest(AggregatorVault _vault) public {
 		vm.startPrank(manager);
 		uint256 expectedTvl = _vault.getTvl();
 		uint256 maxDelta = expectedTvl / 1000; // .1%
@@ -566,7 +538,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		vm.stopPrank();
 	}
 
-	function sectHarvestRevert(AggregatorWEpochVault _vault, bytes4 err) public {
+	function sectHarvestRevert(AggregatorVault _vault, bytes4 err) public {
 		vm.startPrank(manager);
 		uint256 expectedTvl = vault.getTvl();
 		uint256 maxDelta = expectedTvl / 1000; // .1%
@@ -575,25 +547,8 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		vm.stopPrank();
 	}
 
-	function sectRedeemEpoch(
-		AggregatorWEpochVault _vault,
-		address acc,
-		uint256 faction
-	) public {
-		vm.startPrank(acc);
-		uint256 balance = IERC20(address(strategy3)).balanceOf(user1);
-		_vault.requestRedeem((faction * balance) / 1e18, acc);
-		// sectHarvest(_vault);
-		// skip(1);
-		vm.stopPrank();
-		vm.prank(manager);
-		_vault.processRedeem(0);
-		vm.prank(user1);
-		strategy3.redeem();
-	}
-
 	function sectDeposit(
-		AggregatorWEpochVault _vault,
+		AggregatorVault _vault,
 		address acc,
 		uint256 amnt
 	) public {
@@ -606,7 +561,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 	}
 
 	function sectInitRedeem(
-		AggregatorWEpochVault _vault,
+		AggregatorVault _vault,
 		address acc,
 		uint256 fraction
 	) public {
@@ -618,18 +573,14 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		skip(1);
 	}
 
-	function sectCompleteRedeem(AggregatorWEpochVault _vault, address acc) public {
-		vm.prank(manager);
-		_vault.processRedeem(0);
-
-		assertTrue(vault.redeemIsReady(acc), "redeem ready");
-
-		vm.prank(acc);
+	function sectCompleteRedeem(AggregatorVault _vault, address acc) public {
+		vm.startPrank(acc);
 		_vault.redeem();
+		vm.stopPrank();
 	}
 
 	function sectDeposit3Strats(
-		AggregatorWEpochVault _vault,
+		AggregatorVault _vault,
 		uint256 a1,
 		uint256 a2,
 		uint256 a3
@@ -642,7 +593,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 	}
 
 	function sectRedeem3Strats(
-		AggregatorWEpochVault _vault,
+		AggregatorVault _vault,
 		uint256 a1,
 		uint256 a2,
 		uint256 a3
@@ -652,40 +603,6 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		rParams[1] = (RedeemParams(strategy2, strategy2.vaultType(), a2, 0));
 		rParams[2] = (RedeemParams(strategy3, strategy3.vaultType(), a3, 0));
 		_vault.withdrawFromStrategies(rParams);
-	}
-
-	function processRedeem(IVaultStrategy _vault) public {
-		uint256 shares = _vault.requestedRedeem();
-		uint256 minAmountOut = (_vault.sharesToUnderlying(shares) * 9990) / 10000;
-		vm.prank(manager);
-		_vault.processRedeem(minAmountOut);
-	}
-
-	function testMultiRedeem() public {
-		sectDeposit(vault, user1, 1e18);
-		sectDeposit(vault, user2, 1e18);
-
-		uint256 shares1 = vault.balanceOf(user1);
-		vm.prank(user1);
-		vault.requestRedeem(shares1);
-
-		vault.processRedeem(0);
-
-		vm.prank(user2);
-		vault.requestRedeem(shares1);
-
-		vault.processRedeem(0);
-
-		vm.prank(user1);
-		vault.redeem();
-
-		vm.prank(user2);
-		vault.redeem();
-
-		assertTrue(vault.balanceOf(user1) == 0, "user1 balance");
-		assertTrue(vault.balanceOf(user2) == 0, "user2 balance");
-		assertEq(underlying.balanceOf(user1), 1e18, "user1 underlying");
-		assertEq(underlying.balanceOf(user2), 1e18, "user2 underlying");
 	}
 
 	function testGetMaxTvl() public {
@@ -698,5 +615,49 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		uint256 maxTvl = vault.maxTvl();
 		assertEq(maxStratTvl, 3e18, "max strat tvl");
 		assertEq(maxTvl, 10e18, "max tvl");
+	}
+
+	function testPausable() public {
+		uint256 amnt = 1e18;
+		vm.prank(user1);
+		underlying.approve(address(vault), type(uint256).max);
+		underlying.mint(user1, amnt * 10);
+
+		// DEPOSIT SHOULD FAIL
+		vault.pause();
+		vm.expectRevert("Pausable: paused");
+		vm.prank(user1);
+		vault.deposit(amnt, user1);
+		vault.unpause();
+
+		// REQUEST REDEEM SHOULD FAIL
+		sectDeposit(vault, user1, amnt);
+		vault.pause();
+		uint256 shares = vault.balanceOf(user1);
+
+		vm.expectRevert("Pausable: paused");
+		vm.prank(user1);
+		vault.requestRedeem(shares, user1);
+
+		vault.unpause();
+		vm.prank(user1);
+		vault.requestRedeem(shares, user1);
+
+		// REDEEM SHOULD FAIL
+		skip(1);
+		sectHarvest(vault);
+		vault.pause();
+		vm.prank(user1);
+		vm.expectRevert("Pausable: paused");
+		vault.redeem();
+		vault.unpause();
+
+		// EMERGENCY REDEEM SHOULD FAIL
+		sectDeposit(vault, user1, amnt);
+		skip(vault.harvestInterval());
+		vault.pause();
+		vm.expectRevert("Pausable: paused");
+		vm.prank(user1);
+		vault.emergencyRedeem();
 	}
 }

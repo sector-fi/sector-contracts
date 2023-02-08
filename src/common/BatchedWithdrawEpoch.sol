@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import { Accounting } from "./Accounting.sol";
 import { SectorErrors } from "../interfaces/SectorErrors.sol";
 import { EpochType } from "../interfaces/Structs.sol";
+import { FixedPointMathLib } from "../libraries/FixedPointMathLib.sol";
 
 // import "hardhat/console.sol";
 
@@ -13,7 +14,7 @@ struct WithdrawRecord {
 }
 
 abstract contract BatchedWithdrawEpoch is Accounting, SectorErrors {
-	// using SafeERC20 for IERC20;
+	using FixedPointMathLib for uint256;
 
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
 
@@ -84,6 +85,7 @@ abstract contract BatchedWithdrawEpoch is Accounting, SectorErrors {
 	/// @dev ensure that we we have enought funds to process withdrawals
 	/// before calling this method
 	function _processRedeem(uint256 amountTokenOut) internal {
+		if (requestedRedeem == 0) return;
 		// store current epoch exchange rate
 		epochExchangeRate[epoch] = (1e18 * amountTokenOut) / requestedRedeem;
 

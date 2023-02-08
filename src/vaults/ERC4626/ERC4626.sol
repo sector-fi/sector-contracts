@@ -12,6 +12,7 @@ import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 // import "hardhat/console.sol";
 
@@ -25,6 +26,7 @@ abstract contract ERC4626 is
 	IERC4626,
 	ReentrancyGuard,
 	ERC20Permit,
+	Pausable,
 	SectorErrors
 {
 	using SafeERC20 for ERC20;
@@ -228,5 +230,23 @@ abstract contract ERC4626 is
 
 	function totalSupply() public view virtual override(Accounting, ERC20) returns (uint256) {
 		return ERC20.totalSupply();
+	}
+
+	/// PAUSABLE
+
+	function pause() public onlyRole(GUARDIAN) {
+		_pause();
+	}
+
+	function unpause() public onlyRole(GUARDIAN) {
+		_unpause();
+	}
+
+	function _beforeTokenTransfer(
+		address from,
+		address to,
+		uint256 amount
+	) internal override whenNotPaused {
+		super._beforeTokenTransfer(from, to, amount);
 	}
 }

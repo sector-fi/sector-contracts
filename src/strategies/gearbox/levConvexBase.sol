@@ -17,11 +17,13 @@ import { ISwapRouter } from "../../interfaces/uniswap/ISwapRouter.sol";
 import { BytesLib } from "../../libraries/BytesLib.sol";
 import { LevConvexConfig } from "./ILevConvex.sol";
 import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
 // import "hardhat/console.sol";
 
 abstract contract levConvexBase is StratAuth, ISCYStrategy {
 	using SafeERC20 for IERC20;
+	using FixedPointMathLib for uint256;
 
 	uint256 constant MIN_LIQUIDITY = 10**3;
 
@@ -106,7 +108,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		uint256 startLp = getLpBalance();
 		_closePosition();
 		uint256 uBalance = underlying.balanceOf(address(this));
-		uint256 withdraw = (uBalance * amount) / startLp;
+		uint256 withdraw = uBalance.mulDivDown(amount, startLp);
 
 		(uint256 minBorrowed, ) = creditFacade.limits();
 		uint256 minUnderlying = leverageFactor == 0
@@ -154,7 +156,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		uint256 tvl = (totalAssets - totalOwed);
 		_checkSlippage(expectedTvl, tvl, maxDelta);
 
-		uint256 currentLeverage = ((100 * totalAssets) / tvl);
+		uint256 currentLeverage = totalAssets.mulDivDown(100, tvl);
 
 		if (currentLeverage > newLeverage) {
 			uint256 lp = convexRewardPool.balanceOf(credAcc);
