@@ -172,12 +172,12 @@ MANAGER - hot wallet / bot
 ## Strategies
 
 name & symbol:
-StrategyType-UnderlyingAsset|Asset?...-Protocol1|Protocol2...-Chain-Version-Instance
+StrategyType_UnderlyingAsset-Asset?...\_Protocol1-Protocol2...\_Chain_Version_Instance
 ex:
 
-- "HLP-USDC|MOVR-SOLAR|WELL-Moonriver-v0-0"
-- "Lend-USDC-Stargate-Arbitrum-v0-0"
-- "LLP-USDC|IMX-Impermax|TraderJoe-Avalanche-v0-0"
+- "HLP_USDC|MOVR_SOLAR|WELL_Moonriver_v0_0"
+- "Lend_USDC_Stargate-Arbitrum_v0_0"
+- "LLP_USDC|IMX_Impermax|TraderJoe_Avalanche_v0_0"
 
 ## Vaults
 

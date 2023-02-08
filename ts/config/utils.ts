@@ -48,8 +48,8 @@ export const genStratName = (
   protocols: string[],
   chain: string
 ) => {
-  const assets = otherAssets.length ? `${otherAssets.join('-')}_` : '';
-  return `${type}_${underlying}_${assets}${protocols.join('-')}_${chain}`;
+  const assets = [underlying, ...otherAssets];
+  return `${type}_${assets.join('-')}_${protocols.join('-')}_${chain}`;
 };
 
 export const getUniswapV3Path = async (token0: string, token1: string) => {

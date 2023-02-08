@@ -1,7 +1,12 @@
 import { ethers, getNamedAccounts, network } from 'hardhat';
 import { ISynapseSwap, ISynapseMiniChef2 } from '../../../../typechain';
 import { strategies } from './config';
-import { getUniswapV3Path, addStratToConfig, StratType } from '../../utils';
+import {
+  getUniswapV3Path,
+  addStratToConfig,
+  StratType,
+  chainToEnv,
+} from '../../utils';
 
 export const main = async () => {
   const strats = strategies.filter((s) => s.chain == network.name);
@@ -51,7 +56,7 @@ const addStrategy = async (strategy) => {
     f2_farmToken: farmToken,
     g_farmRouter: strategy.farmRouter,
     h_harvestPath: path,
-    x_chain: 'ARBITRUM',
+    x_chain: chainToEnv[strategy.chain],
   };
 
   await addStratToConfig(strategy.name, config, strategy);

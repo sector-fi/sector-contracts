@@ -15,33 +15,58 @@ import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 
+import "forge-std/StdJson.sol";
+
 import "hardhat/console.sol";
 
 contract ImxLendTest is IntegrationTest, UnitTestVault {
-	string AVAX_RPC_URL = vm.envString("AVAX_RPC_URL");
-	uint256 AVAX_BLOCK = vm.envUint("AVAX_BLOCK");
-	uint256 avaxFork;
+	using stdJson for string;
+
+	string TEST_STRATEGY = "LND_USDC-ETH_Tarot_optimism";
+	// string TEST_STRATEGY = "LND_ETH-USDC_Tarot_optimism";
+
+	// string TEST_STRATEGY = "LND_USDC-ETH_Tarot_arbitrum";
+	// string TEST_STRATEGY = "LND_ETH-USDC_Tarot_arbitrum";
 
 	SCYVaultConfig vaultConfig;
-
-	IERC20 usdc = IERC20(0xA7D7079b0FEaD91F3e65f86E8915Cb59c1a4C664);
-	IERC20 avax = IERC20(0xB31f66AA3C1e785363F0875A1B74E27b85FD66c7);
-
-	address pool = 0x3b611a8E02908607c409b382D5671e8b3e39755d;
-	address poolEth = 0xBE48d2910a8908d33A1fE11d4F156eEf87ED563c;
-
 	IMXLendStrategy strategy;
 
+	uint256 currentFork;
+
+	struct StratConfJSON {
+		address a_underlying;
+		address b_strategy;
+		string x_chain;
+	}
+
+	// TODO we can return a full array for a given chain
+	// and test all strats...
+	function getConfig(string memory symbol) public {
+		string memory root = vm.projectRoot();
+		string memory path = string.concat(root, "/ts/config/strategies.json");
+		string memory json = vm.readFile(path);
+		// bytes memory names = json.parseRaw(".strats");
+		// string[] memory strats = abi.decode(names, (string[]));
+		bytes memory strat = json.parseRaw(string.concat(".", symbol));
+		StratConfJSON memory stratJson = abi.decode(strat, (StratConfJSON));
+
+		vaultConfig.underlying = IERC20(stratJson.a_underlying);
+		vaultConfig.yieldToken = stratJson.b_strategy; // collateral token
+		vaultConfig.maxTvl = type(uint128).max;
+
+		string memory RPC_URL = vm.envString(string.concat(stratJson.x_chain, "_RPC_URL"));
+		uint256 BLOCK = vm.envUint(string.concat(stratJson.x_chain, "_BLOCK"));
+
+		currentFork = vm.createFork(RPC_URL, BLOCK);
+		vm.selectFork(currentFork);
+	}
+
 	function setUp() public {
-		avaxFork = vm.createFork(AVAX_RPC_URL, AVAX_BLOCK);
-		vm.selectFork(avaxFork);
+		getConfig(TEST_STRATEGY);
 
 		/// todo should be able to do this via address and mixin
 		vaultConfig.symbol = "TST";
 		vaultConfig.name = "TEST";
-		vaultConfig.yieldToken = pool;
-		vaultConfig.underlying = IERC20(address(usdc));
-		vaultConfig.maxTvl = type(uint128).max;
 
 		underlying = IERC20(address(vaultConfig.underlying));
 
@@ -51,10 +76,10 @@ contract ImxLendTest is IntegrationTest, UnitTestVault {
 			vaultConfig
 		);
 
-		strategy = new IMXLendStrategy(address(vault), pool);
+		strategy = new IMXLendStrategy(address(vault), vaultConfig.yieldToken);
 		vault.initStrategy(address(strategy));
 
-		usdc.approve(address(vault), type(uint256).max);
+		underlying.approve(address(vault), type(uint256).max);
 
 		configureUtils(address(vaultConfig.underlying), address(strategy));
 
