@@ -135,6 +135,9 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uint256 reserves = uBalance;
 		uint256 shareOfReserves = (reserves * adjustedShares) / _totalSupply;
 
+		// Update strategy underlying reserves balance
+		if (shareOfReserves > 0) uBalance -= shareOfReserves;
+
 		receiver = token == NATIVE ? address(this) : receiver;
 
 		// if we also need to send the user share of reserves, we allways withdraw to vault first
@@ -154,10 +157,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 			IWETH(address(underlying)).withdraw(amountTokenOut);
 			// ensure that we are tranferring these tokens to the user
 			amountToTransfer = amountTokenOut;
-			uBalance = underlying.balanceOf(address(this));
-		} else {
-			// update uBalance
-			uBalance = underlying.balanceOf(address(this)) - amountToTransfer;
 		}
 
 		_burn(msg.sender, sharesToRedeem);
