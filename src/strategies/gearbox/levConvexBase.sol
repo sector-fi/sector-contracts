@@ -211,7 +211,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		uint256 borrowAmnt = (balance * leverageFactor) / 100;
 		(, uint256 maxBorrow) = creditFacade.limits();
 		(, , uint256 totalOwed) = creditManager.calcCreditAccountAccruedInterest(credAcc);
-		if (totalOwed + balance < maxBorrow) _increasePosition(borrowAmnt, borrowAmnt + balance);
+		if (totalOwed + balance <= maxBorrow) _increasePosition(borrowAmnt, borrowAmnt + balance);
 
 		return (amountsOut, new uint256[](0));
 	}
