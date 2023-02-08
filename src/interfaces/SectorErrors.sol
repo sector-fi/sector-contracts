@@ -6,4 +6,5 @@ interface SectorErrors {
 	error MaxTvlReached();
 	error StrategyHasBalance();
 	error MinLiquidity();
+	error ZeroAmount();
 }

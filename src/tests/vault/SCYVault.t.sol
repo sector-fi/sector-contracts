@@ -76,6 +76,7 @@ contract SCYVaultTest is SectorTest, SCYVaultUtils {
 
 		uint256 uBalance = underlying.balanceOf(address(vault));
 		uint256 minSharesOut = vault.underlyingToShares(uBalance);
+		console.log("u", uBalance);
 		vault.depositIntoStrategy(uBalance, minSharesOut);
 
 		scyDeposit(vault, user3, amnt);

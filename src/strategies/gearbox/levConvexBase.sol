@@ -124,6 +124,9 @@ abstract contract levConvexBase is StratAuth {
 		}
 
 		emit Redeem(msg.sender, amount);
+		// note we are returning the amount that is equivalent to the amount of LP tokens
+		// requested to be redeemed, this may not be the same as the total amount of underlying transferred
+		// the vault accounting logic needs to handle this case correctly
 		return withdraw;
 	}
 

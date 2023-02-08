@@ -156,7 +156,6 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		HarvestSwapParams[] calldata swap1,
 		HarvestSwapParams[] calldata swap2
 	) external onlyRole(MANAGER) returns (uint256[] memory harvest1, uint256[] memory harvest2) {
-		/// TODO refactor this
 		uint256 _uBalance = underlying.balanceOf(address(this));
 		uint256 startTvl = _stratGetAndUpdateTvl() + _uBalance;
 
@@ -199,25 +198,14 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 
 		// we must subtract pendingRedeem form totalSupply
 		uint256 _totalSupply = totalSupply() - pendingRedeem;
-
 		uint256 yeildTokenRedeem = convertToAssets(requestedRedeem);
 
-		// account for any extra underlying balance to avoide DOS attacks
-		uint256 balance = underlying.balanceOf(address(this));
-		if (balance > (pendingWithdrawU + uBalance)) {
-			uint256 extraFloat = balance - (pendingWithdrawU + uBalance);
-			uBalance += extraFloat;
-		}
-
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
-		// TODO why not use underlying.balanceOf?
-		uint256 reserves = uBalance;
-		uint256 shareOfReserves = (reserves * requestedRedeem) / (_totalSupply);
-
-		// Update strategy underlying reserves balance
-		if (shareOfReserves > 0) uBalance -= shareOfReserves;
+		uint256 shareOfReserves = (uBalance * requestedRedeem) / (_totalSupply);
 
 		uint256 stratTvl = _stratGetAndUpdateTvl();
+		/// @dev redeem may actually return MORE underlying than requested
+		/// but amountTokenOut is equivalent to requestedRedeem shares
 		(uint256 amountTokenOut, ) = stratTvl == 0
 			? (0, 0)
 			: _stratRedeem(address(this), yeildTokenRedeem);
@@ -232,6 +220,9 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		if (amountTokenOut < minAmountOut) revert InsufficientOut(amountTokenOut, minAmountOut);
 
 		_processRedeem(amountTokenOut);
+
+		// update uBalance to refelct both the withdraw & penidngWithdrawU
+		uBalance = underlying.balanceOf(address(this)) - pendingWithdrawU;
 	}
 
 	function _checkSlippage(
@@ -264,7 +255,9 @@ abstract contract SCYWEpochVault is SCYStrategy, SCYBase, Fees, BatchedWithdrawE
 		(uint256 underlyingWithdrawn, ) = _stratRedeem(address(this), yieldTokenAmnt);
 		if (underlyingWithdrawn < minAmountOut)
 			revert InsufficientOut(underlyingWithdrawn, minAmountOut);
-		uBalance += underlyingWithdrawn;
+		// its possible that a strategy may transfer a greater amount of tokens than
+		// returned in underlyingWithdrawn so we use actualy balance to do the update
+		uBalance = underlying.balanceOf(address(this)) - pendingWithdrawU;
 		emit WithdrawFromStrategy(msg.sender, underlyingWithdrawn);
 	}
 

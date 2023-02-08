@@ -135,9 +135,6 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uint256 reserves = uBalance;
 		uint256 shareOfReserves = (reserves * adjustedShares) / _totalSupply;
 
-		// Update strategy underlying reserves balance
-		if (shareOfReserves > 0) uBalance -= shareOfReserves;
-
 		receiver = token == NATIVE ? address(this) : receiver;
 
 		// if we also need to send the user share of reserves, we allways withdraw to vault first
@@ -157,6 +154,10 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 			IWETH(address(underlying)).withdraw(amountTokenOut);
 			// ensure that we are tranferring these tokens to the user
 			amountToTransfer = amountTokenOut;
+			uBalance = underlying.balanceOf(address(this));
+		} else {
+			// update uBalance
+			uBalance = underlying.balanceOf(address(this)) - amountToTransfer;
 		}
 
 		_burn(msg.sender, sharesToRedeem);
@@ -276,14 +277,14 @@ abstract contract SCYVault is SCYStrategy, SCYBase, Fees {
 		uint256 yieldTokenAmnt = convertToAssets(shares);
 		(uint256 underlyingWithdrawn, ) = _stratRedeem(address(this), yieldTokenAmnt);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
-		uBalance += underlyingWithdrawn;
+		uBalance = underlying.balanceOf(address(this));
 		emit WithdrawFromStrategy(msg.sender, underlyingWithdrawn);
 	}
 
 	function closePosition(uint256 minAmountOut, uint256 slippageParam) public onlyRole(MANAGER) {
 		uint256 underlyingWithdrawn = _stratClosePosition(slippageParam);
 		if (underlyingWithdrawn < minAmountOut) revert SlippageExceeded();
-		uBalance += underlyingWithdrawn;
+		uBalance = underlying.balanceOf(address(this));
 		emit ClosePosition(msg.sender, underlyingWithdrawn);
 	}
 

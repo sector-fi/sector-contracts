@@ -49,6 +49,4 @@ abstract contract Accounting is IERC4626Accounting, ERC20 {
 	function previewRedeem(uint256 shares) public view virtual returns (uint256) {
 		return convertToAssets(shares);
 	}
-
-	error ZeroAmount();
 }
