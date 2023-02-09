@@ -1,7 +1,5 @@
 {
-  "_list_HLP": [
-    "HLP_USDC-MOVR_Solar-Well_moonriver"
-  ],
+  "_list_HLP": ["HLP_USDC-MOVR_Solar-Well_moonriver"],
   "_list_LCVX": [
     "LCVX_USDC-gUSD-3Crv_Gearbox_mainnet",
     "LCVX_USDC-FRAX_Gearbox_mainnet",
@@ -185,9 +183,7 @@
     "d_poolToken": "0x28fA49da55A54F02Bc4ff103adbd843B50B556F4",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": [
-      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
-    ],
+    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
     "x_chain": "OP"
   },
   "LLP_USDC-ETH_Tarot-Velo_optimism": {
@@ -199,9 +195,7 @@
     "d_poolToken": "0x28fA49da55A54F02Bc4ff103adbd843B50B556F4",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": [
-      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
-    ],
+    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
     "x_chain": "OP"
   },
   "LLP_USDC-ETH_Tarot-Xcal_arbitrum": {
@@ -213,9 +207,7 @@
     "d_poolToken": "0x7Af58BB8038D7cf978E27c2479FCfB024f146BAa",
     "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
     "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
-    "h_harvestPath": [
-      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
-    ],
+    "h_harvestPath": ["0xd2568acCD10A4C98e87c44E9920360031ad89fCB"],
     "x_chain": "ARBITRUM"
   },
   "LLP_ETH-USDC_Tarot-Xcal_arbitrum": {
@@ -227,9 +219,7 @@
     "d_poolToken": "0x7Af58BB8038D7cf978E27c2479FCfB024f146BAa",
     "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
     "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
-    "h_harvestPath": [
-      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
-    ],
+    "h_harvestPath": ["0xd2568acCD10A4C98e87c44E9920360031ad89fCB"],
     "x_chain": "ARBITRUM"
   },
   "LND_ETH-USDC_Tarot_arbitrum": {
@@ -271,12 +261,8 @@
     "b_strategy": "0x074e82153303ec002CBD996FebD148321E1302cE",
     "x_chain": "ARBITRUM"
   },
-  "_list_Stargate": [
-    "LND_USDC_Stargate_arbitrum"
-  ],
-  "_list_Synapse": [
-    "LND_USDC_Synapse_arbitrum"
-  ],
+  "_list_Stargate": ["LND_USDC_Stargate_arbitrum"],
+  "_list_Synapse": ["LND_USDC_Synapse_arbitrum"],
   "LND_USDC-ETH_Tarot_optimism": {
     "a_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
     "b_strategy": "0xeBe70Ea3ff5fe44A22185870F46A9d092958Db69",
