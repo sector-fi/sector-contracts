@@ -182,10 +182,10 @@ ex:
 ## Vaults
 
 name:
-AggregatorVault-UnderlyingAsset-RiskLevel-Version
+UnderlyingAsset-VaultType-RiskLevel-Version
 symbol:
 sect<UnderlyingAsset>-Riskleve
 
 ex:  
-name: "AggregatorVault-USDC-r0-v0"
+name: "USDC-Aggregator-r0-v0"
 symbol: "sectUSDC-r0"
