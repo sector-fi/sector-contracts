@@ -15,6 +15,10 @@ abstract contract UnitTestVault is SCYStratUtils, StratAuthTest {
 	/*///////////////////////////////////////////////////////////////
                         DEPOSIT/WITHDRAWAL TESTS
     //////////////////////////////////////////////////////////////*/
+	function testGetTvl() public {
+		uint256 tvl = vault.getTvl();
+		assertEq(tvl, 0);
+	}
 
 	function testDepositFuzz(uint256 fuzz) public {
 		uint256 min = getAmnt() / 100;
