@@ -35,31 +35,13 @@ abstract contract AggregatorWEpochVaultCommon is SectorTest, SCYWEpochVaultUtils
 
 		s1 = setUpSCYVault(address(underlying));
 		s2 = setUpSCYVault(address(underlying));
-		s3 = new AggregatorWEpochVault(
-			underlying,
-			"SECT_VAULT",
-			"SECT_VAULT",
-			false,
-			30 days,
-			type(uint256).max,
-			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
-		);
+		s3 = deployAggVault(false);
 
 		strategy1 = IVaultStrategy(address(s1));
 		strategy2 = IVaultStrategy(address(s2));
 		strategy3 = IVaultStrategy(address(s3));
 
-		vault = new AggregatorWEpochVault(
-			underlying,
-			"SECT_VAULT",
-			"SECT_VAULT",
-			false,
-			30 days,
-			type(uint256).max,
-			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
-		);
+		vault = deployAggVault(false);
 
 		// lock min liquidity
 		sectDeposit(vault, owner, mLp);
@@ -345,16 +327,8 @@ abstract contract AggregatorWEpochVaultCommon is SectorTest, SCYWEpochVaultUtils
 	}
 
 	function testDepositRedeemNative() public {
-		vault = new AggregatorWEpochVault(
-			underlying,
-			"SECT_VAULT",
-			"SECT_VAULT",
-			true,
-			30 days,
-			type(uint256).max,
-			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
-		);
+		vault = deployAggVault(true);
+
 		sectDeposit(vault, owner, mLp);
 
 		uint256 amnt = 1000e18;

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { AggregatorVault, RedeemParams, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
+import { RedeemParams, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVault.sol";
 import { AggregatorWEpochVaultCommon, AggregatorWEpochVault } from "./AggregatorWEpochVaultCommon.sol";
 
 import "hardhat/console.sol";

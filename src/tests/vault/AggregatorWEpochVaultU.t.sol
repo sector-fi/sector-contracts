@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { AggregatorVaultU, RedeemParams, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVaultU.sol";
+import { AggregatorWEpochVaultU, RedeemParams, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorWEpochVaultU.sol";
 import { SectorFactory, UpgradeableBeacon } from "../../SectorFactory.sol";
 import { AggregatorWEpochVaultCommon, AggregatorWEpochVault } from "./AggregatorWEpochVaultCommon.sol";
 
@@ -12,7 +12,7 @@ contract AggregatorVaultUTest is AggregatorWEpochVaultCommon {
 	string vaultType = "AggregatorVaultWEpoch";
 
 	function setupFactory(string memory _vaultType) public {
-		AggregatorVaultU vaultImp = new AggregatorVaultU();
+		AggregatorWEpochVaultU vaultImp = new AggregatorWEpochVaultU();
 		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
 		factory = new SectorFactory();
 		factory.addVaultType(_vaultType, address(beacon));
@@ -29,7 +29,7 @@ contract AggregatorVaultUTest is AggregatorWEpochVaultCommon {
 		returns (AggregatorWEpochVault)
 	{
 		bytes memory data = abi.encodeWithSelector(
-			AggregatorVaultU.initialize.selector,
+			AggregatorWEpochVaultU.initialize.selector,
 			underlying,
 			"SECT_VAULT",
 			"SECT_VAULT",
