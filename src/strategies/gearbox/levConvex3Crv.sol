@@ -16,6 +16,7 @@ import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 contract levConvex3Crv is levConvexBase {
 	using FixedPointMathLib for uint256;
 
+	// these constants are specific to this contract
 	ICurveV1Adapter public constant threePoolAdapter =
 		ICurveV1Adapter(0xbd871de345b2408f48C1B249a1dac7E0D7D4F8f9);
 
