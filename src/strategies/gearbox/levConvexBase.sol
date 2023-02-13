@@ -33,9 +33,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 	IBaseRewardPool public immutable convexRewardPool;
 	IBooster public immutable convexBooster;
 	ISwapRouter public immutable farmRouter;
-
 	IERC20 public immutable underlying;
-
 	uint16 immutable convexPid;
 	uint16 immutable coinId;
 
