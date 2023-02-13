@@ -14,7 +14,7 @@ abstract contract CompoundFarm is ICompound, IFarmable {
 	IUniswapV2Router01 private _router;
 	IERC20 _farmToken;
 
-	function __CompoundFarm_init_(address router_, address token_) internal initializer {
+	constructor(address router_, address token_) {
 		_farmToken = IERC20(token_);
 		_router = IUniswapV2Router01(router_);
 		_farmToken.safeApprove(address(_router), type(uint256).max);

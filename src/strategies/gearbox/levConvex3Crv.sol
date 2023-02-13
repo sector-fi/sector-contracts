@@ -154,7 +154,6 @@ contract levConvex3Crv is levConvexBase {
 			)
 		});
 
-		// console.log("lp", IERC20(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490).balanceOf(credAcc));
 		creditFacade.openCreditAccountMulticall(borrowAmnt, address(this), calls, 0);
 		credAcc = creditManager.getCreditAccountOrRevert(address(this));
 	}

@@ -89,11 +89,11 @@ abstract contract HLPCore is
 		_;
 	}
 
-	function __HedgedLP_init_(
+	constructor(
 		address underlying_,
 		address short_,
 		address _vault
-	) internal initializer {
+	) {
 		_underlying = IERC20(underlying_);
 		_short = IERC20(short_);
 
@@ -109,8 +109,6 @@ abstract contract HLPCore is
 
 		// TODO should we add a revoke aprovals methods?
 		_addLendingApprovals();
-		_addFarmApprovals();
-		isInitialized = true;
 	}
 
 	function safeCollateralRatio() public view override returns (uint256) {
