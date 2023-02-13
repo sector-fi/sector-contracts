@@ -25,42 +25,29 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 
-	uint256 constant MIN_LIQUIDITY = 10**3;
-
 	// USDC
-	ICreditFacade public creditFacade;
+	ICreditFacade public immutable creditFacade;
+	ICreditManagerV2 public immutable creditManager;
+	ISwapRouter public immutable uniswapV3Adapter;
+	ICurveV1Adapter public immutable curveAdapter;
+	IBaseRewardPool public immutable convexRewardPool;
+	IBooster public immutable convexBooster;
+	ISwapRouter public immutable farmRouter;
 
-	ICreditManagerV2 public creditManager;
-
-	IPriceOracleV2 public priceOracle = IPriceOracleV2(0x6385892aCB085eaa24b745a712C9e682d80FF681);
-
-	ISwapRouter public uniswapV3Adapter;
-
-	ICurveV1Adapter public curveAdapter;
-	ICurveV1Adapter public threePoolAdapter =
-		ICurveV1Adapter(0xbd871de345b2408f48C1B249a1dac7E0D7D4F8f9);
-	IBaseRewardPool public convexRewardPool;
-	IBooster public convexBooster;
-	ISwapRouter public farmRouter;
-
-	IERC20 public farmToken;
 	IERC20 public immutable underlying;
 
-	uint16 convexPid;
+	uint16 immutable convexPid;
+	uint16 immutable coinId;
+
 	// leverage factor is how much we borrow in %
 	// ex 2x leverage = 100, 3x leverage = 200
 	uint16 public leverageFactor;
-	uint256 immutable dec;
-	uint256 constant shortDec = 1e18;
 	address public credAcc; // gearbox credit account // TODO can it expire?
-	uint16 coinId;
-	bool threePool = true;
 
 	event SetVault(address indexed vault);
 
 	constructor(AuthConfig memory authConfig, LevConvexConfig memory config) Auth(authConfig) {
 		underlying = IERC20(config.underlying);
-		dec = 10**uint256(IERC20Metadata(address(underlying)).decimals());
 		leverageFactor = config.leverageFactor;
 		creditFacade = ICreditFacade(config.creditFacade);
 		creditManager = ICreditManagerV2(creditFacade.creditManager());
@@ -69,7 +56,6 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		convexBooster = IBooster(config.convexBooster);
 		convexPid = uint16(convexRewardPool.pid());
 		coinId = config.coinId;
-		farmToken = IERC20(convexRewardPool.rewardToken());
 		farmRouter = ISwapRouter(config.farmRouter);
 		uniswapV3Adapter = ISwapRouter(creditManager.contractToAdapter(address(farmRouter)));
 		// do we need granular approvals? or can we just approve once?
@@ -160,7 +146,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 
 		if (currentLeverage > newLeverage) {
 			uint256 lp = convexRewardPool.balanceOf(credAcc);
-			uint256 repay = (lp * (currentLeverage - newLeverage)) / currentLeverage;
+			uint256 repay = lp.mulDivDown(currentLeverage - newLeverage, currentLeverage);
 			_decreasePosition(repay);
 		} else if (currentLeverage < newLeverage) {
 			// we need to increase leverage -> borrow more
@@ -204,7 +190,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 				amountOutMinimum: swapParams[i].min
 			});
 			amountsOut[i] = uniswapV3Adapter.exactInput(params);
-			emit HarvestedToken(address(farmToken), harvested, amountsOut[i]);
+			emit HarvestedToken(address(token), harvested, amountsOut[i]);
 		}
 
 		uint256 balance = underlying.balanceOf(credAcc);
@@ -238,7 +224,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 				amountOutMinimum: swapParams[i].min
 			});
 			amountsOut[i] = farmRouter.exactInput(params);
-			emit HarvestedToken(address(farmToken), harvested, amountsOut[i]);
+			emit HarvestedToken(address(token), harvested, amountsOut[i]);
 		}
 		uint256 balance = underlying.balanceOf(address(this));
 		underlying.safeTransfer(vault, balance);
@@ -280,7 +266,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		uint256 totalAssets = getTotalAssets();
 		/// this means we're in an upredictable state and should revert
 		if (totalOwed > totalAssets) revert BadLoan();
-		return ((100 * totalAssets) / (totalAssets - totalOwed));
+		return totalAssets.mulDivDown(100, totalAssets - totalOwed);
 	}
 
 	function getMaxTvl() public view returns (uint256) {

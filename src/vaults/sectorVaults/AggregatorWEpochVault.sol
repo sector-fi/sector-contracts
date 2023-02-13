@@ -29,12 +29,9 @@ contract AggregatorWEpochVault is SectorBaseWEpoch {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
 
-	/// if vaults accepts native asset we set asset to address 0;
-	address internal constant NATIVE = address(0);
-
 	// resonable amount to not go over gas limit when doing emergencyWithdraw
 	// in reality can go up to 200
-	uint8 MAX_STRATS = 100;
+	uint8 constant MAX_STRATS = 100;
 
 	mapping(IVaultStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
@@ -65,7 +62,7 @@ contract AggregatorWEpochVault is SectorBaseWEpoch {
 
 	function getMaxTvl() external view returns (uint256) {
 		uint256 startMaxTvl;
-		for (uint256 i = 0; i < strategyIndex.length; i++) {
+		for (uint256 i; i < strategyIndex.length; ++i) {
 			IVaultStrategy strategy = IVaultStrategy(strategyIndex[i]);
 			startMaxTvl += strategy.getMaxTvl();
 		}

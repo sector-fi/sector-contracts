@@ -43,7 +43,7 @@ contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 	// immutables
 	address public immutable override yieldToken;
 	uint16 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
-	bool public acceptsNativeToken;
+	bool public immutable acceptsNativeToken;
 	IERC20 public immutable underlying;
 
 	uint256 public maxTvl; // pack all params and balances
@@ -291,7 +291,7 @@ contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 	/// this action to be malicious
 	function emergencyAction(EAction[] calldata actions) public payable onlyOwner {
 		uint256 l = actions.length;
-		for (uint256 i = 0; i < l; i++) {
+		for (uint256 i; i < l; ++i) {
 			address target = actions[i].target;
 			bytes memory data = actions[i].data;
 			(bool success, ) = target.call{ value: actions[i].value }(data);

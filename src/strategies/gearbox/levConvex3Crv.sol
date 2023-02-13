@@ -16,7 +16,11 @@ import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 contract levConvex3Crv is levConvexBase {
 	using FixedPointMathLib for uint256;
 
-	uint256 threeId = 1;
+	ICurveV1Adapter public constant threePoolAdapter =
+		ICurveV1Adapter(0xbd871de345b2408f48C1B249a1dac7E0D7D4F8f9);
+
+	// this is the ID of the THREE POOL coin in the COIN-threePool
+	uint256 constant threeId = 1;
 
 	constructor(AuthConfig memory authConfig, LevConvexConfig memory config)
 		levConvexBase(authConfig, config)

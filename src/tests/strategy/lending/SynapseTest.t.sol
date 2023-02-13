@@ -37,7 +37,8 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		address a_underlying;
 		address b_strategy;
 		uint16 c_strategyId;
-		address d_yieldToken;
+		address d1_yieldToken;
+		bool d2_acceptsNativeToken;
 		uint16 e_farmId;
 		address f1_farm;
 		address f2_farmToken;
@@ -58,9 +59,10 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		StargateConfigJSON memory stratJson = abi.decode(strat, (StargateConfigJSON));
 
 		vaultConfig.underlying = IERC20(stratJson.a_underlying);
-		vaultConfig.yieldToken = stratJson.d_yieldToken; // collateral token
+		vaultConfig.yieldToken = stratJson.d1_yieldToken; // collateral token
 		vaultConfig.strategyId = stratJson.c_strategyId;
 		vaultConfig.maxTvl = 10000000e6;
+		vaultConfig.acceptsNativeToken = stratJson.d2_acceptsNativeToken;
 
 		synapsePool = stratJson.b_strategy;
 

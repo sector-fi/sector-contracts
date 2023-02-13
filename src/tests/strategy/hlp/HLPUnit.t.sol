@@ -7,7 +7,7 @@ import { MockERC20 } from "../../mocks/MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
-import { HLPSetup, SCYVault } from "./HLPSetup.sol";
+import { HLPSetup, SCYVault, HLPCore } from "./HLPSetup.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { SectorErrors } from "interfaces/SectorErrors.sol";
@@ -298,8 +298,18 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	}
 
 	// function testDeployedHarvest() public {
-	// 	SCYVault dvault = SCYVault(payable(0xb2e0ff67be42A569f6B1f50a5a43E5fD0952E58a));
+	// 	// SCYVault dvault = SCYVault(payable(0xb2e0ff67be42A569f6B1f50a5a43E5fD0952E58a));
+	// 	HLPStrategy strategy = HLPStrategy(payable(0xaa47c9422fd5e12f1a364e659b593e1a10fc5436));
+	// 	vm.prank(0x6ddf9da4c37df97cb2458f85050e09994cbb9c2a);
+	// 	strategy.rebalance(0);
 	// 	// vm.warp(block.timestamp + 1 * 60 * 60 * 24);
 	// 	harvest(dvault);
+	// }
+
+	// function testDeployedDebug() public {
+	// 	HLPCore dstrat = HLPCore(payable(0xaA47C9422FD5E12F1A364E659B593E1A10FC5436));
+	// 	uint256 param = priceSlippageParam();
+	// 	vm.prank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
+	// 	dstrat.rebalance(param);
 	// }
 }

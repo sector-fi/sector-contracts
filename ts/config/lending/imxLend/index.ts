@@ -9,6 +9,7 @@ const addStrategy = async (strategy) => {
   const config = {
     a_underlying: strategy.underlying,
     b_strategy: strategy.strategy,
+    c_acceptsNativeToken: !!strategy.acceptsNativeToken,
     x_chain: chainToEnv[strategy.chain],
   };
   await addStratToConfig(strategy.name, config, strategy);

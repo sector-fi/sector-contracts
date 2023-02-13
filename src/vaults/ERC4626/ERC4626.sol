@@ -45,7 +45,7 @@ abstract contract ERC4626 is
 
 	ERC20 immutable asset;
 	// flag that allows the vault to consume native asset
-	bool public useNativeAsset;
+	bool public immutable useNativeAsset;
 	uint256 public maxTvl;
 
 	constructor(

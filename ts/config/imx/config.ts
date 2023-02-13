@@ -75,6 +75,7 @@ export const imx = [
   {
     name: genStratName(type, 'ETH', ['USDC'], ['Tarot', 'Xcal'], 'arbitrum'),
     pair: '0xc52cd7727920f0af088378d7192e2f19a22b861e',
+    acceptsNativeToken: true,
     underlying: tokens.arbitrum.ETH,
     ...xcalConfig,
   },

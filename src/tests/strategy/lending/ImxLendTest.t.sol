@@ -36,6 +36,7 @@ contract ImxLendTest is IntegrationTest, UnitTestVault {
 	struct StratConfJSON {
 		address a_underlying;
 		address b_strategy;
+		bool c_acceptsNativeToken;
 		string x_chain;
 	}
 
@@ -53,6 +54,7 @@ contract ImxLendTest is IntegrationTest, UnitTestVault {
 		vaultConfig.underlying = IERC20(stratJson.a_underlying);
 		vaultConfig.yieldToken = stratJson.b_strategy; // collateral token
 		vaultConfig.maxTvl = type(uint128).max;
+		vaultConfig.acceptsNativeToken = stratJson.c_acceptsNativeToken;
 
 		string memory RPC_URL = vm.envString(string.concat(stratJson.x_chain, "_RPC_URL"));
 		uint256 BLOCK = vm.envUint(string.concat(stratJson.x_chain, "_BLOCK"));

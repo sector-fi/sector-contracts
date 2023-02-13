@@ -42,7 +42,7 @@ contract SCYVault is SCYBase {
 	// immutables
 	address public immutable override yieldToken;
 	uint16 public immutable strategyId; // strategy-specific id ex: for MasterChef or 1155
-	bool public acceptsNativeToken;
+	bool public immutable acceptsNativeToken;
 	IERC20 public immutable underlying;
 
 	uint256 public maxTvl; // pack all params and balances

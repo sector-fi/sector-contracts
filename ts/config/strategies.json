@@ -1,5 +1,7 @@
 {
-  "_list_HLP": ["HLP_USDC-MOVR_Solar-Well_moonriver"],
+  "_list_HLP": [
+    "HLP_USDC-MOVR_Solar-Well_moonriver"
+  ],
   "_list_LCVX": [
     "LCVX_USDC-gUSD-3Crv_Gearbox_mainnet",
     "LCVX_USDC-FRAX_Gearbox_mainnet",
@@ -183,7 +185,9 @@
     "d_poolToken": "0x28fA49da55A54F02Bc4ff103adbd843B50B556F4",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "LLP_USDC-ETH_Tarot-Velo_optimism": {
@@ -195,7 +199,9 @@
     "d_poolToken": "0x28fA49da55A54F02Bc4ff103adbd843B50B556F4",
     "e_farmToken": "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05",
     "f_farmRouter": "0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9",
-    "h_harvestPath": ["0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"],
+    "h_harvestPath": [
+      "0x3c8B650257cFb5f272f799F5e2b4e65093a11a05"
+    ],
     "x_chain": "OP"
   },
   "LLP_USDC-ETH_Tarot-Xcal_arbitrum": {
@@ -207,24 +213,29 @@
     "d_poolToken": "0x7Af58BB8038D7cf978E27c2479FCfB024f146BAa",
     "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
     "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
-    "h_harvestPath": ["0xd2568acCD10A4C98e87c44E9920360031ad89fCB"],
+    "h_harvestPath": [
+      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
+    ],
     "x_chain": "ARBITRUM"
   },
   "LLP_ETH-USDC_Tarot-Xcal_arbitrum": {
-    "a1_underlying": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
-    "a2_acceptsNativeToken": false,
+    "a1_underlying": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+    "a2_acceptsNativeToken": true,
     "b_short": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
     "c0_uniPair": "0x3C94d5ABcF49a2980d55721c35093210699c1493",
     "c1_pairRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
     "d_poolToken": "0x7Af58BB8038D7cf978E27c2479FCfB024f146BAa",
     "e_farmToken": "0xd2568acCD10A4C98e87c44E9920360031ad89fCB",
     "f_farmRouter": "0x8e72bf5A45F800E182362bDF906DFB13d5D5cb5d",
-    "h_harvestPath": ["0xd2568acCD10A4C98e87c44E9920360031ad89fCB"],
+    "h_harvestPath": [
+      "0xd2568acCD10A4C98e87c44E9920360031ad89fCB"
+    ],
     "x_chain": "ARBITRUM"
   },
   "LND_ETH-USDC_Tarot_arbitrum": {
-    "a_underlying": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
+    "a_underlying": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
     "b_strategy": "0x38b00d3FfB648f443C3DAF16f215F9E99c74bAa8",
+    "c_acceptsNativeToken": true,
     "x_chain": "ARBITRUM"
   },
   "_list_imxLend": [
@@ -237,7 +248,8 @@
     "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
     "b_strategy": "0x9Dd329F5411466d9e0C488fF72519CA9fEf0cb40",
     "c_strategyId": 1,
-    "d_yieldToken": "0xcFd72be67Ee69A0dd7cF0f846Fc0D98C33d60F16",
+    "d1_yieldToken": "0xcFd72be67Ee69A0dd7cF0f846Fc0D98C33d60F16",
+    "d2_acceptsNativeToken": false,
     "e_farmId": 3,
     "f1_farm": "0x73186f2Cf2493f20836b17b21ae79fc12934E207",
     "f2_farmToken": "0x080F6AEd32Fc474DD5717105Dba5ea57268F46eb",
@@ -254,30 +266,38 @@
   "LND_ETH-USDC_Tarot_optimism": {
     "a_underlying": "0x4200000000000000000000000000000000000006",
     "b_strategy": "0xabCC0531d4Cf0B4d6A92f1e5668696033a96f6D2",
+    "c_acceptsNativeToken": true,
     "x_chain": "OP"
   },
   "LND_USDC-ETH_Tarot_arbitrum": {
     "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
     "b_strategy": "0x074e82153303ec002CBD996FebD148321E1302cE",
+    "c_acceptsNativeToken": false,
     "x_chain": "ARBITRUM"
   },
-  "_list_Stargate": ["LND_USDC_Stargate_arbitrum"],
-  "_list_Synapse": ["LND_USDC_Synapse_arbitrum"],
+  "_list_Stargate": [
+    "LND_USDC_Stargate_arbitrum"
+  ],
+  "_list_Synapse": [
+    "LND_USDC_Synapse_arbitrum"
+  ],
   "LND_USDC-ETH_Tarot_optimism": {
     "a_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
     "b_strategy": "0xeBe70Ea3ff5fe44A22185870F46A9d092958Db69",
+    "c_acceptsNativeToken": false,
     "x_chain": "OP"
   },
   "LND_USDC_Stargate_arbitrum": {
     "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
     "b_strategy": "0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614",
     "c_strategyId": 1,
-    "d_yieldToken": "0x892785f33CdeE22A30AEF750F285E18c18040c3e",
+    "d1_yieldToken": "0x892785f33CdeE22A30AEF750F285E18c18040c3e",
+    "d2_acceptsNativeToken": false,
     "e_farmId": 0,
     "f1_farm": "0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176",
     "f2_farmToken": "0x6694340fc020c5E6B96567843da2df01b2CE1eb6",
     "g_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
-    "h_harvestPath": "0x6694340fc020c5e6b96567843da2df01b2ce1eb6000bb882af49447d8a07e3bd95bd0d56f35241523fbab10001f4ff970a61a04b1ca14834a43f5de4533ebddb5cc8",
+    "h_harvestPath": "0x6694340fc020c5e6b96567843da2df01b2ce1eb6002710ff970a61a04b1ca14834a43f5de4533ebddb5cc8",
     "x_chain": "ARBITRUM"
   }
 }
