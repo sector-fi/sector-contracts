@@ -106,9 +106,6 @@ abstract contract HLPCore is
 		emit SetMaxDefaultPriceMismatch(maxDefaultPriceMismatch);
 		emit SetRebalanceThreshold(rebalanceThreshold);
 		emit SetSafeCollateralRaio(_safeCollateralRatio);
-
-		// TODO should we add a revoke aprovals methods?
-		_addLendingApprovals();
 	}
 
 	function safeCollateralRatio() public view override returns (uint256) {
