@@ -18,7 +18,6 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	/// INIT
 
 	function testShouldInit() public override {
-		// assertTrue(strategy.isInitialized());
 		assertEq(strategy.vault(), address(vault));
 		assertEq(vault.getFloatingAmount(address(underlying)), 0);
 		assertEq(strategy.decimals(), underlying.decimals());

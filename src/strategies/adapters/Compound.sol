@@ -19,16 +19,17 @@ abstract contract Compound is ICompound {
 	IComptroller private _comptroller;
 	ICompPriceOracle private _oracle;
 
-	function __Compound_init_(
+	constructor(
 		address comptroller_,
 		address cTokenLend_,
 		address cTokenBorrow_
-	) internal {
+	) {
 		_cTokenLend = ICTokenErc20(cTokenLend_);
 		_cTokenBorrow = ICTokenErc20(cTokenBorrow_);
 		_comptroller = IComptroller(comptroller_);
 		_oracle = ICompPriceOracle(ComptrollerV1Storage(comptroller_).oracle());
 		_enterMarket();
+		_addLendingApprovals();
 	}
 
 	function _addLendingApprovals() internal override {

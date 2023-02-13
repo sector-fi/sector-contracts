@@ -17,7 +17,6 @@ abstract contract UnitTestStrategy is SCYStratUtils {
 	/// INIT
 
 	function testShouldInit() public virtual {
-		// assertTrue(strat.isInitialized());
 		assertEq(strat.vault(), address(vault));
 		assertEq(vault.getFloatingAmount(address(underlying)), 0);
 		assertEq(strat.decimals(), underlying.decimals());
