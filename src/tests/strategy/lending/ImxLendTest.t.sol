@@ -22,8 +22,8 @@ import "hardhat/console.sol";
 contract ImxLendTest is IntegrationTest, UnitTestVault {
 	using stdJson for string;
 
-	string TEST_STRATEGY = "LND_USDC-ETH_Tarot_optimism";
-	// string TEST_STRATEGY = "LND_ETH-USDC_Tarot_optimism";
+	// string TEST_STRATEGY = "LND_USDC-ETH_Tarot_optimism";
+	string TEST_STRATEGY = "LND_ETH-USDC_Tarot_optimism";
 
 	// string TEST_STRATEGY = "LND_USDC-ETH_Tarot_arbitrum";
 	// string TEST_STRATEGY = "LND_ETH-USDC_Tarot_arbitrum";

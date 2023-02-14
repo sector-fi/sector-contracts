@@ -32,6 +32,7 @@ contract IMXLendStrategy is StratAuthLight, ISCYStrategy {
 	}
 
 	function redeem(address to, uint256 amount) public onlyVault returns (uint256 amountOut) {
+		if (amount == 0) return 0;
 		IERC20(address(poolToken)).safeTransfer(address(poolToken), amount);
 		amountOut = poolToken.redeem(to);
 		return amountOut;

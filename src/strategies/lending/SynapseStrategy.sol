@@ -54,6 +54,7 @@ contract SynapseStrategy is MiniChef2Farm, ISCYStrategy, StratAuthLight {
 		onlyVault
 		returns (uint256 amountOut)
 	{
+		if (amount == 0) return 0;
 		_withdrawFromFarm(amount);
 		amountOut = ISynapseSwap(synapsePool).removeLiquidityOneToken(
 			amount,

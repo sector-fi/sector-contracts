@@ -135,4 +135,14 @@ abstract contract UnitTestVault is SCYStratUtils, StratAuthTest {
 		_vault.acceptOwnership();
 		assertEq(_vault.owner(), user1);
 	}
+
+	function testZeroStratRedeem() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		vm.prank(manager);
+		vault.closePosition(0, 0);
+		// we should handle this gracefully
+		vault.getDepositAmnt(amnt);
+		withdraw(user1, 1e18);
+	}
 }

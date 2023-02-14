@@ -150,7 +150,8 @@ contract SCYVault is SCYBase {
 		// if we also need to send the user share of reserves, we allways withdraw to vault first
 		// if we don't we can have strategy withdraw directly to user if possible
 		if (shareOfReserves > 0) {
-			(amountTokenOut) = strategy.redeem(receiver, yeildTokenRedeem);
+			if (yeildTokenRedeem > 0)
+				(amountTokenOut) = strategy.redeem(receiver, yeildTokenRedeem);
 			amountTokenOut += shareOfReserves;
 			amountToTransfer += shareOfReserves;
 		} else (amountTokenOut) = strategy.redeem(receiver, yeildTokenRedeem);
@@ -423,8 +424,11 @@ contract SCYVault is SCYBase {
 
 	/// @dev used to compute slippage on deposit
 	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
+		uint256 _totalAssets = totalAssets();
+		uint256 _totalSupply = totalSupply();
+		if (_totalAssets == 0 && _totalSupply > 0) return uAmnt.mulDivDown(_totalSupply, uBalance);
 		uint256 assets = ISCYStrategy(strategy).getDepositAmnt(uAmnt);
-		return convertToShares(assets);
+		return _totalSupply == 0 ? assets : assets.mulDivDown(_totalSupply, _totalAssets);
 	}
 
 	function getBaseTokens() external view virtual override returns (address[] memory res) {

@@ -489,8 +489,11 @@ contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 
 	/// @dev used to compute slippage on deposit
 	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
+		uint256 _totalAssets = totalAssets();
+		uint256 _totalSupply = totalSupply();
+		if (_totalAssets == 0 && _totalSupply > 0) return uAmnt.mulDivDown(_totalSupply, uBalance);
 		uint256 assets = ISCYStrategy(strategy).getDepositAmnt(uAmnt);
-		return convertToShares(assets);
+		return _totalSupply == 0 ? assets : assets.mulDivDown(_totalSupply, _totalAssets);
 	}
 
 	/**
