@@ -11,6 +11,7 @@ import { HLPSetup, SCYVault, HLPCore } from "./HLPSetup.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { SectorErrors } from "interfaces/SectorErrors.sol";
+import { AggregatorVault } from "vaults/sectorVaults/AggregatorVault.sol";
 
 import "hardhat/console.sol";
 
@@ -298,18 +299,40 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	}
 
 	// function testDeployedHarvest() public {
-	// 	// SCYVault dvault = SCYVault(payable(0xb2e0ff67be42A569f6B1f50a5a43E5fD0952E58a));
-	// 	HLPStrategy strategy = HLPStrategy(payable(0xaa47c9422fd5e12f1a364e659b593e1a10fc5436));
-	// 	vm.prank(0x6ddf9da4c37df97cb2458f85050e09994cbb9c2a);
-	// 	strategy.rebalance(0);
+	// 	SCYVault dvault = SCYVault(payable(0x615C884C42C3bca1B93d6E28f7D416916d9F4bf8));
+	// 	HLPCore _strategy = HLPCore(payable(address(dvault.strategy())));
+	// 	// vm.prank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
+	// 	// strategy.rebalance(0);
 	// 	// vm.warp(block.timestamp + 1 * 60 * 60 * 24);
-	// 	harvest(dvault);
-	// }
 
-	// function testDeployedDebug() public {
-	// 	HLPCore dstrat = HLPCore(payable(0xaA47C9422FD5E12F1A364E659B593E1A10FC5436));
-	// 	uint256 param = priceSlippageParam();
+	// 	harvestParams.min = 0;
+	// 	harvestParams.deadline = block.timestamp + 1;
+
+	// 	harvestLendParams.min = 0;
+	// 	harvestLendParams.deadline = block.timestamp + 1;
+
+	// 	// _strategy.getAndUpdateTvl();
+	// 	uint256 tvl = _strategy.getTotalTVL();
+
+	// 	HarvestSwapParams[] memory farmParams = new HarvestSwapParams[](1);
+	// 	farmParams[0] = harvestParams;
+
+	// 	HarvestSwapParams[] memory lendParams = new HarvestSwapParams[](1);
+	// 	lendParams[0] = harvestLendParams;
+
+	// 	uint256 vaultTvl = dvault.getTvl();
+
 	// 	vm.prank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
-	// 	dstrat.rebalance(param);
+	// 	(uint256[] memory harvestAmnts, uint256[] memory harvestLendAmnts) = dvault.harvest(
+	// 		vaultTvl,
+	// 		vaultTvl / 10,
+	// 		farmParams,
+	// 		lendParams
+	// 	);
+
+	// 	uint256 newTvl = _strategy.getTotalTVL();
+	// 	assertGt(harvestAmnts[0], 0);
+	// 	assertGt(harvestLendAmnts[0], 0);
+	// 	assertGt(newTvl, tvl);
 	// }
 }

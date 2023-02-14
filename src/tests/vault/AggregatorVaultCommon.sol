@@ -660,4 +660,11 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 		vm.prank(user1);
 		vault.emergencyRedeem();
 	}
+
+	function testEmptyHarvest() public {
+		vault = deployAggVault(true);
+		vault.addStrategy(strategy1);
+		vault.addStrategy(strategy2);
+		vault.harvest(0, 0);
+	}
 }
