@@ -259,4 +259,6 @@ abstract contract ERC4626U is
 	) internal override whenNotPaused {
 		super._beforeTokenTransfer(from, to, amount);
 	}
+
+	uint256[50] private __gap;
 }

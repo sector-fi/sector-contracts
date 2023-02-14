@@ -18,6 +18,7 @@ import { BytesLib } from "../../libraries/BytesLib.sol";
 import { LevConvexConfig } from "./ILevConvex.sol";
 import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 // import "hardhat/console.sol";
 
@@ -202,6 +203,15 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		return (amountsOut, new uint256[](0));
 	}
 
+	function harvestOwnTokens(HarvestSwapParams[] memory swapParams)
+		public
+		onlyRole(GUARDIAN)
+		returns (uint256[] memory amountsOut, uint256[] memory)
+	{
+		if (!Pausable(vault).paused() && credAcc == address(0)) revert NotPaused();
+		return _harvestOwnTokens(swapParams);
+	}
+
 	// method to harvest if we have closed the credit account
 	function _harvestOwnTokens(HarvestSwapParams[] memory swapParams)
 		internal
@@ -225,17 +235,25 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 			emit HarvestedToken(address(token), harvested, amountsOut[i]);
 		}
 		uint256 balance = underlying.balanceOf(address(this));
-		underlying.safeTransfer(vault, balance);
+		if (credAcc != address(0)) {
+			uint256 borrowAmnt = (balance * (leverageFactor)) / 100;
+			creditFacade.addCollateral(address(this), address(underlying), balance);
+			_increasePosition(borrowAmnt, borrowAmnt + balance);
+		} else underlying.safeTransfer(vault, balance);
 		return (amountsOut, new uint256[](0));
 	}
 
+	function recieve() external payable {}
+
 	function closePosition(uint256) public onlyVault returns (uint256) {
-		// withdraw all rewards
-		convexRewardPool.getReward();
-		_closePosition();
-		credAcc = address(0);
+		if (credAcc != address(0)) {
+			// withdraw all rewards
+			convexRewardPool.getReward();
+			_closePosition();
+			credAcc = address(0);
+		}
 		uint256 balance = underlying.balanceOf(address(this));
-		underlying.safeTransfer(vault, balance);
+		if (balance > 0) underlying.safeTransfer(vault, balance);
 		return balance;
 	}
 
@@ -302,6 +320,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 	event Deposit(address sender, uint256 amount);
 	event Redeem(address sender, uint256 amount);
 
+	error NotPaused();
 	error BadLoan();
 	error IncreaseLeveragePermissions();
 	error WrongVaultUnderlying();

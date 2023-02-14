@@ -1,25 +1,19 @@
-import { StratType, genStratName } from '../utils';
+import { StratType, genStratName, tokens } from '../utils';
 
 export const addrs = {
   mainnet: {
-    USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-    CRV: '0xD533a949740bb3306d119CC777fa900bA034cd52',
-    CVX: '0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B',
-    SNX: '0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F',
     UniswapV3Router: '0xE592427A0AEce92De3Edee1F18E0157C05861564',
     THREE_CRV: '0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490',
     GearDistributor: '0xA7Df60785e556d65292A2c9A077bb3A8fBF048BC',
     DegenDistributor: '0x6cA68adc7eC07a4bD97c97e8052510FBE6b67d10',
     DegenNFT: '0xB829a5b349b01fc71aFE46E50dD6Ec0222A6E599',
-    GEAR: '0xBa3335588D9403515223F109EdC4eB7269a9Ab5D',
   },
 };
 
 const defaultRewardTokens = [
-  addrs.mainnet.CRV,
-  addrs.mainnet.CVX,
-  addrs.mainnet.GEAR,
+  tokens.mainnet.CRV,
+  tokens.mainnet.CVX,
+  tokens.mainnet.GEAR,
 ];
 
 const type = StratType.LevCVX;
@@ -35,7 +29,7 @@ export const levConvex = [
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
     coinId: 1, // curve token index
-    underlying: addrs.mainnet.USDC,
+    underlying: tokens.mainnet.USDC,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
     farmTokens: defaultRewardTokens,
@@ -49,7 +43,7 @@ export const levConvex = [
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
     coinId: 1, // curve token index
-    underlying: addrs.mainnet.USDC,
+    underlying: tokens.mainnet.USDC,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
     farmTokens: defaultRewardTokens,
@@ -63,7 +57,7 @@ export const levConvex = [
     convexRewardPool: '0x3D4a70e5F355EAd0690213Ae9909f3Dc41236E3C',
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
-    underlying: addrs.mainnet.USDC,
+    underlying: tokens.mainnet.USDC,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
     farmTokens: defaultRewardTokens,
@@ -78,7 +72,7 @@ export const levConvex = [
     convexRewardPool: '0xc34Ef7306B82f4e38E3fAB975034Ed0f76e0fdAA',
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
-    underlying: addrs.mainnet.USDC,
+    underlying: tokens.mainnet.USDC,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
     farmTokens: defaultRewardTokens,
@@ -92,7 +86,7 @@ export const levConvex = [
     convexRewardPool: '0xB26e063F062F76f9F7Dfa1a3f4b7fDa4A2197DfB',
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
-    underlying: addrs.mainnet.USDC,
+    underlying: tokens.mainnet.USDC,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
     farmTokens: defaultRewardTokens,

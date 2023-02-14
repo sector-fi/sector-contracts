@@ -203,6 +203,8 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		vaultTvl = tvl;
 
 		lastHarvestTimestamp = timestamp;
+		// harvesting a closed gearbox account will send tokens back to vault
+		uBalance = underlying.balanceOf(address(this)) - pendingWithdrawU;
 	}
 
 	// minAmountOut is a slippage parameter for withdrawing requestedRedeem shares

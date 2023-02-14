@@ -35,6 +35,10 @@ interface ISCYVault {
 		uint256 minTokenOut
 	) external returns (uint256 amountTokenOut);
 
+	function pause() external;
+
+	function unpause() external;
+
 	function getAndUpdateTvl() external returns (uint256 tvl);
 
 	function getTvl() external view returns (uint256 tvl);

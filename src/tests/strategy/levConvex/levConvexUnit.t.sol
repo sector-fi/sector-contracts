@@ -3,10 +3,11 @@ pragma solidity 0.8.16;
 
 import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { levConvexSetup, SCYStratUtils } from "./levConvexSetup.sol";
+import { levConvexSetup, SCYStratUtils, HarvestSwapParams } from "./levConvexSetup.sol";
 import { SCYWEpochVault } from "vaults/ERC5115/SCYWEpochVault.sol";
 import { StratAuthTest } from "../common/StratAuthTest.sol";
 import { SectorErrors } from "interfaces/SectorErrors.sol";
+import { levConvexBase } from "strategies/gearbox/levConvex.sol";
 
 import "hardhat/console.sol";
 
@@ -183,6 +184,7 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 		getEpochVault(vault).processRedeem((minAmountOut * 9990) / 10000);
 		redeemShares(user1, shares);
 		harvest();
+		assertApproxEqAbs(vault.uBalance(), underlying.balanceOf(address(vault)), 1);
 	}
 
 	function testLpToken() public virtual {
@@ -248,5 +250,56 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 		vm.prank(user1);
 		vm.expectRevert(SectorErrors.ZeroAmount.selector);
 		vault.deposit(user1, address(underlying), 0, 0);
+	}
+
+	function testHarvestGear() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		address GEAR = 0xBa3335588D9403515223F109EdC4eB7269a9Ab5D;
+		deal(GEAR, address(strategy), 10000e18);
+
+		HarvestSwapParams[] memory params1 = getHarvestParams();
+
+		strategy.getAndUpdateTvl();
+		uint256 tvl = vault.getTvl();
+
+		levConvexBase(address(strategy)).harvestOwnTokens(params1);
+
+		uint256 newTvl = vault.getTvl();
+		assertGt(newTvl, tvl, "tvl should increase");
+	}
+
+	function testHarvestGearClosedPosition() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		vault.closePosition(0, 0);
+
+		address GEAR = 0xBa3335588D9403515223F109EdC4eB7269a9Ab5D;
+		deal(GEAR, address(strategy), 10000e18);
+
+		HarvestSwapParams[] memory params1 = getHarvestParams();
+
+		vm.expectRevert(levConvexBase.NotPaused.selector);
+		levConvexBase(address(strategy)).harvestOwnTokens(params1);
+	}
+
+	function testHarvestGearWhenPaused() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		vault.closePosition(0, 0);
+		vault.pause();
+
+		address GEAR = 0xBa3335588D9403515223F109EdC4eB7269a9Ab5D;
+		deal(GEAR, address(strategy), 10000e18);
+		uint256 tvl = vault.getTvl();
+
+		HarvestSwapParams[] memory params1 = getHarvestParams();
+		levConvexBase(address(strategy)).harvestOwnTokens(params1);
+
+		uint256 newTvl = vault.getTvl();
+		assertGt(newTvl, tvl, "tvl should increase");
+
+		vault.closePosition(0, 0);
+		assertApproxEqAbs(vault.uBalance(), underlying.balanceOf(address(vault)), 1);
 	}
 }

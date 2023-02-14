@@ -18,6 +18,8 @@ abstract contract BatchedWithdrawEpoch is Accounting, SectorErrors {
 
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
 
+	uint256 constant EX_MULTIPLIER = 1e36;
+
 	uint256 public epoch;
 	uint256 public pendingRedeem; // pending shares
 	uint256 public requestedRedeem; // requested shares
@@ -69,7 +71,7 @@ abstract contract BatchedWithdrawEpoch is Accounting, SectorErrors {
 		shares = withdrawRecord.shares;
 
 		// actual amount out is the smaller of currentValue and redeemValue
-		amountOut = (shares * epochExchangeRate[withdrawRecord.epoch]) / 1e18;
+		amountOut = (shares * epochExchangeRate[withdrawRecord.epoch]) / EX_MULTIPLIER;
 
 		// update total pending redeem
 		pendingRedeem -= shares;
@@ -87,7 +89,7 @@ abstract contract BatchedWithdrawEpoch is Accounting, SectorErrors {
 	function _processRedeem(uint256 amountTokenOut) internal {
 		if (requestedRedeem == 0) return;
 		// store current epoch exchange rate
-		epochExchangeRate[epoch] = (1e18 * amountTokenOut) / requestedRedeem;
+		epochExchangeRate[epoch] = (EX_MULTIPLIER * amountTokenOut) / requestedRedeem;
 
 		pendingRedeem += requestedRedeem;
 		pendingWithdrawU += amountTokenOut;

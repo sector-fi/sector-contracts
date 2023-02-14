@@ -153,14 +153,8 @@ contract levConvexSetup is SCYStratUtils {
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
 
 		uint256 l = harvestPaths.length;
-		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](l);
 
-		for (uint256 i; i < l; ++i) {
-			params1[i].min = 0;
-			params1[i].deadline = block.timestamp + 1;
-			params1[i].pathData = harvestPaths[i];
-		}
-
+		HarvestSwapParams[] memory params1 = getHarvestParams();
 		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
 
 		strategy.getAndUpdateTvl();
@@ -186,6 +180,19 @@ contract levConvexSetup is SCYStratUtils {
 		assertGt(newTvl, tvl, "tvl should increase");
 
 		// assertEq(underlying.balanceOf(strategy.credAcc()), 0);
+	}
+
+	function getHarvestParams() public view returns (HarvestSwapParams[] memory) {
+		uint256 l = harvestPaths.length;
+		HarvestSwapParams[] memory params = new HarvestSwapParams[](l);
+
+		for (uint256 i; i < l; ++i) {
+			params[i].min = 0;
+			params[i].deadline = block.timestamp + 1;
+			params[i].pathData = harvestPaths[i];
+		}
+
+		return params;
 	}
 
 	function rebalance() public override {}
