@@ -8,6 +8,7 @@ import { SCYWEpochVault } from "vaults/ERC5115/SCYWEpochVault.sol";
 import { StratAuthTest } from "../common/StratAuthTest.sol";
 import { SectorErrors } from "interfaces/SectorErrors.sol";
 import { levConvexBase } from "strategies/gearbox/levConvex.sol";
+import { EAction } from "interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
@@ -301,5 +302,19 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 
 		vault.closePosition(0, 0);
 		assertApproxEqAbs(vault.uBalance(), underlying.balanceOf(address(vault)), 1);
+	}
+
+	function testEmergencyStrategyAction() public {
+		address GEAR = 0xBa3335588D9403515223F109EdC4eB7269a9Ab5D;
+		uint256 amnt = 10000e18;
+		deal(GEAR, address(strategy), 10000e18);
+
+		EAction[] memory strategyActions = new EAction[](1);
+		bytes memory callData = abi.encodeWithSignature("transfer(address,uint256)", self, amnt);
+		strategyActions[0] = EAction(address(GEAR), 0, callData);
+
+		strategy.emergencyAction(strategyActions);
+		assertEq(IERC20(GEAR).balanceOf(self), amnt);
+		assertEq(IERC20(GEAR).balanceOf(address(strategy)), 0);
 	}
 }
