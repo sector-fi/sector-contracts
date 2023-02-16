@@ -84,6 +84,17 @@ contract SectorFactory is Ownable {
 	/// @return The address of a Vault which accepts the provided underlying token.
 	/// @dev The Vault returned may not be deployed yet. Use isVaultDeployed to check.
 	function getVaultById(string memory _vaultType, uint256 id) external view returns (address) {
+		return getVaultById(_vaultType, block.chainid, id);
+	}
+
+	/// @notice Computes a Vault's address from its accepted underlying token.
+	/// @return The address of a Vault which accepts the provided underlying token.
+	/// @dev The Vault returned may not be deployed yet. Use isVaultDeployed to check.
+	function getVaultById(
+		string memory _vaultType,
+		uint256 chainId,
+		uint256 id
+	) public view returns (address) {
 		return
 			address(
 				keccak256(
@@ -93,7 +104,7 @@ contract SectorFactory is Ownable {
 						// Creator:
 						address(this),
 						// Salt:
-						bytes32(abi.encodePacked(uint16(id), uint16(block.chainid))),
+						bytes32(abi.encodePacked(uint16(id), uint16(chainId))),
 						// Bytecode hash:
 						keccak256(
 							abi.encodePacked(
