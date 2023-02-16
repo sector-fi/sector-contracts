@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.16;
 
-import { SCYBaseU, Accounting, IERC20, ERC20, IERC20Metadata, SafeERC20 } from "./SCYBaseU.sol";
+import { SCYBaseU, IERC20, ERC20, IERC20Metadata, SafeERC20 } from "./SCYBaseU.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { Auth } from "../../common/Auth.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
@@ -17,7 +17,7 @@ import { SCYVaultConfig } from "../../interfaces/ERC5115/ISCYVault.sol";
 import { AuthConfig } from "../../common/Auth.sol";
 import { FeeConfig } from "../../common/Fees.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 	using SafeERC20 for IERC20;
@@ -216,14 +216,14 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		uint256 yeildTokenRedeem = convertToAssets(requestedRedeem);
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
-		uint256 shareOfReserves = (uBalance * requestedRedeem) / (_totalSupply);
+		uint256 shareOfReserves = uBalance.mulDivDown(requestedRedeem, _totalSupply);
 
-		uint256 stratTvl = strategy.getAndUpdateTvl();
 		/// @dev redeem may actually return MORE underlying than requested
 		/// but amountTokenOut is equivalent to requestedRedeem shares
-		uint256 amountTokenOut = stratTvl == 0
+		uint256 amountTokenOut = yeildTokenRedeem < MIN_LIQUIDITY
 			? 0
 			: strategy.redeem(address(this), yeildTokenRedeem);
+
 		emit WithdrawFromStrategy(msg.sender, amountTokenOut);
 
 		amountTokenOut += shareOfReserves;
@@ -392,7 +392,10 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		// we need to subtract pendingReedem because it is not included in totalAssets
 		// pendingRedeem should allways be smaller than totalSupply
 		uint256 supply = totalSupply() - pendingRedeem;
-		return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
+		uint256 _totalAssets = totalAssets();
+		// when _totalAssets < MIN_LIQUIDITY, treat it as 0
+		if (_totalAssets < MIN_LIQUIDITY || supply == 0) return assets;
+		return assets.mulDivDown(supply, _totalAssets);
 	}
 
 	function assetInfo()
@@ -478,10 +481,6 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		uint256 amount
 	) internal override(BatchedWithdrawEpoch, ERC20) {
 		super._spendAllowance(owner, spender, amount);
-	}
-
-	function totalSupply() public view override(Accounting, SCYBaseU) returns (uint256) {
-		return ERC20.totalSupply();
 	}
 
 	/// @dev used to compute slippage on withdraw

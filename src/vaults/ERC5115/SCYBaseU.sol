@@ -6,13 +6,13 @@ import { ISuperComposableYield } from "../../interfaces/ERC5115/ISuperComposable
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import { Accounting } from "../../common/Accounting.sol";
 // import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { FeesU } from "../../common/FeesU.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
 // import "hardhat/console.sol";
 
@@ -21,13 +21,16 @@ abstract contract SCYBaseU is
 	ISuperComposableYield,
 	ReentrancyGuardUpgradeable,
 	ERC20,
-	Accounting,
 	FeesU,
 	PausableUpgradeable,
 	SectorErrors
 	// ERC20PermitUpgradeable,
 {
 	using SafeERC20 for IERC20;
+	using FixedPointMathLib for uint256;
+
+	// gap that allows us to add new inhereted contracts without breaking the storage layout
+	uint256[100] private __gapPre;
 
 	address internal constant NATIVE = address(0);
 	uint256 internal constant ONE = 1e18;
@@ -132,6 +135,33 @@ abstract contract SCYBaseU is
 		uint256 amountSharesToRedeem
 	) internal virtual returns (uint256 amountTokenOut, uint256 tokensToTransfer);
 
+	/*///////////////////////////////////////////////////////////////
+										Accounting
+		//////////////////////////////////////////////////////////////*/
+
+	function totalAssets() public view virtual returns (uint256);
+
+	function toSharesAfterDeposit(uint256 assets) public view virtual returns (uint256) {
+		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+		uint256 _totalAssets = totalAssets() - assets;
+		// when _totalAssets < MIN_LIQUIDITY, treat it as 0
+		if (_totalAssets < MIN_LIQUIDITY || supply == 0) return assets;
+		return assets.mulDivDown(supply, _totalAssets);
+	}
+
+	function convertToShares(uint256 assets) public view virtual returns (uint256) {
+		uint256 supply = totalSupply();
+		uint256 _totalAssets = totalAssets();
+		// when _totalAssets < MIN_LIQUIDITY, treat it as 0
+		if (_totalAssets < MIN_LIQUIDITY || supply == 0) return assets;
+		return assets.mulDivDown(supply, _totalAssets);
+	}
+
+	function convertToAssets(uint256 shares) public view virtual returns (uint256) {
+		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+		return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
+	}
+
 	// VIRTUALS
 	function getFloatingAmount(address token) public view virtual returns (uint256);
 
@@ -160,16 +190,11 @@ abstract contract SCYBaseU is
 	function _depositNative() internal virtual;
 
 	// OVERRIDES
-	function totalSupply() public view virtual override(Accounting, ERC20) returns (uint256) {
-		return ERC20.totalSupply();
-	}
-
 	function sendERC20ToStrategy() public view virtual returns (bool) {
 		return true;
 	}
 
 	/// PAUSABLE
-
 	function pause() public onlyRole(GUARDIAN) {
 		_pause();
 	}

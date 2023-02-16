@@ -98,7 +98,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 		(uint256 minBorrowed, ) = creditFacade.limits();
 		uint256 minUnderlying = leverageFactor == 0
 			? minBorrowed
-			: (100 * minBorrowed) / leverageFactor;
+			: minBorrowed.mulDivDown(100, leverageFactor);
 		uint256 redeposit = uBalance > withdraw ? uBalance - withdraw : 0;
 
 		if (redeposit > minUnderlying) {
@@ -288,7 +288,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 	function getMaxTvl() public view returns (uint256) {
 		(, uint256 maxBorrowed) = creditFacade.limits();
 		if (leverageFactor == 0) return maxBorrowed;
-		return (100 * maxBorrowed) / leverageFactor;
+		return maxBorrowed.mulDivDown(100, leverageFactor);
 	}
 
 	/// @dev gearbox accounting is overly concervative so

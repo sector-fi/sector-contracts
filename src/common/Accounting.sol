@@ -15,13 +15,6 @@ abstract contract Accounting is IERC4626Accounting {
 
 	function totalSupply() public view virtual returns (uint256);
 
-	function toSharesAfterDeposit(uint256 assets) public view virtual returns (uint256) {
-		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
-		uint256 _totalAssets = totalAssets() - assets;
-		if (_totalAssets == 0) return assets;
-		return supply == 0 ? assets : assets.mulDivDown(supply, _totalAssets);
-	}
-
 	function convertToShares(uint256 assets) public view virtual returns (uint256) {
 		uint256 supply = totalSupply();
 

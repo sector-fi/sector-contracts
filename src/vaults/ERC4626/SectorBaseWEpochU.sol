@@ -143,7 +143,7 @@ abstract contract SectorBaseWEpochU is BatchedWithdrawEpoch, ERC4626U {
 		if (delta > maxDelta) revert SlippageExceeded();
 	}
 
-	function totalAssets() public view virtual override(Accounting, ERC4626U) returns (uint256) {
+	function totalAssets() public view virtual override returns (uint256) {
 		return floatAmnt + totalChildHoldings;
 	}
 
@@ -183,10 +183,6 @@ abstract contract SectorBaseWEpochU is BatchedWithdrawEpoch, ERC4626U {
 		uint256 amount
 	) internal override(BatchedWithdrawEpoch, ERC20) {
 		super._spendAllowance(owner, spender, amount);
-	}
-
-	function totalSupply() public view override(Accounting, ERC4626U) returns (uint256) {
-		return super.totalSupply();
 	}
 
 	function afterDeposit(uint256 assets, uint256) internal override {

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { SCYVault } from "../../vaults/ERC5115/SCYVault.sol";
-import { SCYStrategy, Strategy } from "../../vaults/ERC5115/SCYStrategy.sol";
 import { MockERC20 } from "./MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "./../../libraries/SafeETH.sol";

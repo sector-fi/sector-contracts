@@ -95,4 +95,6 @@ interface ISCYVault {
 	function getDepositAmnt(uint256 amount) external view returns (uint256);
 
 	function getWithdrawAmnt(uint256 amount) external view returns (uint256);
+
+	// function totalAssets() external view returns (uint256);
 }

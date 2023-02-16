@@ -34,6 +34,9 @@ abstract contract ERC4626U is
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
 
+	// gap that allows us to add new inhereted contracts without breaking the storage layout
+	uint256[100] private __gapPre;
+
 	/*//////////////////////////////////////////////////////////////
                                CONSTANTS
     //////////////////////////////////////////////////////////////*/

@@ -152,8 +152,10 @@ contract levConvex is levConvexBase {
 	/// @dev used to estimate slippage
 	function getWithdrawAmnt(uint256 lpAmnt) public view returns (uint256) {
 		return
-			(100 * curveAdapter.calc_withdraw_one_coin(lpAmnt, int128(uint128(coinId)))) /
-			getLeverage();
+			curveAdapter.calc_withdraw_one_coin(lpAmnt, int128(uint128(coinId))).mulDivDown(
+				100,
+				getLeverage()
+			);
 	}
 
 	/// @dev used to estimate slippage

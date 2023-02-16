@@ -9,6 +9,7 @@ import { IMXSetup, IUniswapV2Pair, SCYVault, HarvestSwapParams } from "./IMXSetu
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
+import { Accounting } from "../../../common/Accounting.sol";
 
 import "hardhat/console.sol";
 
@@ -199,6 +200,17 @@ contract IMXUnit is IMXSetup, UnitTestStrategy, UnitTestVault {
 		vault.redeem(user1, sharesToWithdraw, address(0), (minUnderlyingOut * 9990) / 10000);
 
 		assertApproxEqRel(user1.balance, amnt, .001e18);
+	}
+
+	function testPausedEdgeCase() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		vault.closePosition(0, 0);
+		withdraw(user1, 1e18);
+
+		uint256 balance = vault.uBalance();
+		console.log("balance", balance, Accounting(address(vault)).totalAssets());
+		deposit(user2, amnt);
 	}
 
 	// function testDeployments() public {

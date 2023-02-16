@@ -117,7 +117,7 @@ contract SCYVault is SCYBase {
 	) internal override isInitialized returns (uint256 sharesOut) {
 		if (vaultTvl + amount > getMaxTvl()) revert MaxTvlReached();
 		// if we have any float in the contract we cannot do deposit accounting
-		if (uBalance > 0) revert DepositsPaused();
+		if (uBalance >= MIN_LIQUIDITY && totalAssets() >= MIN_LIQUIDITY) revert DepositsPaused();
 		if (token == NATIVE) _depositNative();
 		uint256 yieldTokenAdded = strategy.deposit(amount);
 		sharesOut = toSharesAfterDeposit(yieldTokenAdded);
@@ -150,7 +150,8 @@ contract SCYVault is SCYBase {
 		// if we also need to send the user share of reserves, we allways withdraw to vault first
 		// if we don't we can have strategy withdraw directly to user if possible
 		if (shareOfReserves > 0) {
-			if (yeildTokenRedeem > 0)
+			// don't try to redeem small amounts, it will fail
+			if (yeildTokenRedeem >= MIN_LIQUIDITY)
 				(amountTokenOut) = strategy.redeem(receiver, yeildTokenRedeem);
 			amountTokenOut += shareOfReserves;
 			amountToTransfer += shareOfReserves;
@@ -332,7 +333,7 @@ contract SCYVault is SCYBase {
 	}
 
 	function isPaused() public view returns (bool) {
-		return uBalance > 0;
+		return uBalance >= MIN_LIQUIDITY && totalAssets() >= MIN_LIQUIDITY;
 	}
 
 	// used for estimates only

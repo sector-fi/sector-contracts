@@ -27,8 +27,8 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 	// string TEST_STRATEGY = "USDC_IMX_AVAX";
 
 	// optimism
-	// string TEST_STRATEGY = "LLP_ETH-USDC_Tarot-Velo_optimism";
-	string TEST_STRATEGY = "LLP_USDC-ETH_Tarot-Velo_optimism";
+	string TEST_STRATEGY = "LLP_ETH-USDC_Tarot-Velo_optimism";
+	// string TEST_STRATEGY = "LLP_USDC-ETH_Tarot-Velo_optimism";
 	// string TEST_STRATEGY = "LLP_ETH-USDC-Tarot_Velo";
 	// string TEST_STRATEGY = "LLP_USDC-OP-Tarot_Velo";
 	// string TEST_STRATEGY = "LLP_USDC-VELO_Tarot_Velo";

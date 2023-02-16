@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
 
-import { Accounting } from "./Accounting.sol";
 import { SectorErrors } from "../interfaces/SectorErrors.sol";
 import { EpochType } from "../interfaces/Structs.sol";
 import { FixedPointMathLib } from "../libraries/FixedPointMathLib.sol";
@@ -13,7 +12,7 @@ struct WithdrawRecord {
 	uint256 shares;
 }
 
-abstract contract BatchedWithdrawEpoch is Accounting, SectorErrors {
+abstract contract BatchedWithdrawEpoch is SectorErrors {
 	using FixedPointMathLib for uint256;
 
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
@@ -71,7 +70,7 @@ abstract contract BatchedWithdrawEpoch is Accounting, SectorErrors {
 		shares = withdrawRecord.shares;
 
 		// actual amount out is the smaller of currentValue and redeemValue
-		amountOut = (shares * epochExchangeRate[withdrawRecord.epoch]) / EX_MULTIPLIER;
+		amountOut = shares.mulDivDown(epochExchangeRate[withdrawRecord.epoch], EX_MULTIPLIER);
 
 		// update total pending redeem
 		pendingRedeem -= shares;
@@ -89,7 +88,7 @@ abstract contract BatchedWithdrawEpoch is Accounting, SectorErrors {
 	function _processRedeem(uint256 amountTokenOut) internal {
 		if (requestedRedeem == 0) return;
 		// store current epoch exchange rate
-		epochExchangeRate[epoch] = (EX_MULTIPLIER * amountTokenOut) / requestedRedeem;
+		epochExchangeRate[epoch] = amountTokenOut.mulDivDown(EX_MULTIPLIER, requestedRedeem);
 
 		pendingRedeem += requestedRedeem;
 		pendingWithdrawU += amountTokenOut;

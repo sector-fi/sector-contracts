@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.16;
 
-import { SCYBase, Accounting, IERC20, ERC20, IERC20Metadata, SafeERC20 } from "./SCYBase.sol";
+import { SCYBase, IERC20, ERC20, IERC20Metadata, SafeERC20 } from "./SCYBase.sol";
 import { IMX } from "../../strategies/imx/IMX.sol";
 import { Auth } from "../../common/Auth.sol";
 import { SafeETH } from "../../libraries/SafeETH.sol";
@@ -215,14 +215,14 @@ contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 		uint256 yeildTokenRedeem = convertToAssets(requestedRedeem);
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
-		uint256 shareOfReserves = (uBalance * requestedRedeem) / (_totalSupply);
+		uint256 shareOfReserves = uBalance.mulDivDown(requestedRedeem, _totalSupply);
 
-		uint256 stratTvl = strategy.getAndUpdateTvl();
 		/// @dev redeem may actually return MORE underlying than requested
 		/// but amountTokenOut is equivalent to requestedRedeem shares
-		uint256 amountTokenOut = stratTvl == 0
+		uint256 amountTokenOut = yeildTokenRedeem < MIN_LIQUIDITY
 			? 0
 			: strategy.redeem(address(this), yeildTokenRedeem);
+
 		emit WithdrawFromStrategy(msg.sender, amountTokenOut);
 
 		amountTokenOut += shareOfReserves;
@@ -391,7 +391,10 @@ contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 		// we need to subtract pendingReedem because it is not included in totalAssets
 		// pendingRedeem should allways be smaller than totalSupply
 		uint256 supply = totalSupply() - pendingRedeem;
-		return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
+		uint256 _totalAssets = totalAssets();
+		// when _totalAssets < MIN_LIQUIDITY, treat it as 0
+		if (_totalAssets < MIN_LIQUIDITY || supply == 0) return assets;
+		return assets.mulDivDown(supply, _totalAssets);
 	}
 
 	function assetInfo()
@@ -477,10 +480,6 @@ contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 		uint256 amount
 	) internal override(BatchedWithdrawEpoch, ERC20) {
 		super._spendAllowance(owner, spender, amount);
-	}
-
-	function totalSupply() public view override(Accounting, SCYBase) returns (uint256) {
-		return ERC20.totalSupply();
 	}
 
 	/// @dev used to compute slippage on withdraw
