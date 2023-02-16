@@ -127,13 +127,13 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 
 		// if we have any float in the contract we cannot do deposit accounting
 		uint256 _totalAssets = totalAssets();
-		if (uBalance > 0 && _totalAssets > 0) revert DepositsPaused();
+		if (uBalance >= MIN_LIQUIDITY && _totalAssets >= MIN_LIQUIDITY) revert DepositsPaused();
 
 		if (token == NATIVE) _depositNative();
 
 		// if the strategy is active, we can deposit dirictly into strategy
 		// if not, we deposit into the vault for a future strategy deposit
-		if (_totalAssets > 0) {
+		if (_totalAssets >= MIN_LIQUIDITY) {
 			underlying.safeTransfer(address(strategy), amount);
 			uint256 yieldTokenAdded = strategy.deposit(amount);
 			// don't include newly minted shares and pendingRedeem in the calculation
@@ -216,14 +216,14 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		uint256 yeildTokenRedeem = convertToAssets(requestedRedeem);
 
 		// vault may hold float of underlying, in this case, add a share of reserves to withdrawal
-		uint256 shareOfReserves = (uBalance * requestedRedeem) / (_totalSupply);
+		uint256 shareOfReserves = uBalance.mulDivDown(requestedRedeem, _totalSupply);
 
-		uint256 stratTvl = strategy.getAndUpdateTvl();
 		/// @dev redeem may actually return MORE underlying than requested
 		/// but amountTokenOut is equivalent to requestedRedeem shares
-		uint256 amountTokenOut = stratTvl == 0
+		uint256 amountTokenOut = yeildTokenRedeem < MIN_LIQUIDITY
 			? 0
 			: strategy.redeem(address(this), yeildTokenRedeem);
+
 		emit WithdrawFromStrategy(msg.sender, amountTokenOut);
 
 		amountTokenOut += shareOfReserves;
@@ -385,6 +385,7 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		// we need to subtract pendingReedem because it is not included in totalAssets
 		// pendingRedeem should allways be smaller than totalSupply
 		uint256 supply = totalSupply() - pendingRedeem;
+
 		return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
 	}
 
@@ -392,7 +393,10 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		// we need to subtract pendingReedem because it is not included in totalAssets
 		// pendingRedeem should allways be smaller than totalSupply
 		uint256 supply = totalSupply() - pendingRedeem;
-		return supply == 0 ? assets : assets.mulDivDown(supply, totalAssets());
+		uint256 _totalAssets = totalAssets();
+		// when _totalAssets < MIN_LIQUIDITY, treat it as 0
+		if (_totalAssets < MIN_LIQUIDITY || supply == 0) return assets;
+		return assets.mulDivDown(supply, _totalAssets);
 	}
 
 	function assetInfo()

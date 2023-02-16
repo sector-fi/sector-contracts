@@ -169,6 +169,9 @@ contract SCYVault is SCYBase {
 		}
 
 		_burn(msg.sender, sharesToRedeem);
+		// edge case if total supply is MIN_LIQUIDITY
+		// re-enable deposits by setting uBalance to 0
+		if (_totalSupply - sharesToRedeem <= MIN_LIQUIDITY) uBalance = 0;
 	}
 
 	/// @notice harvest strategy

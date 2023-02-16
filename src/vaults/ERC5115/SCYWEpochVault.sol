@@ -124,13 +124,15 @@ contract SCYWEpochVault is SCYBase, BatchedWithdrawEpoch {
 
 		// if we have any float in the contract we cannot do deposit accounting
 		uint256 _totalAssets = totalAssets();
-		if (uBalance > MIN_LIQUIDITY && _totalAssets > MIN_LIQUIDITY) revert DepositsPaused();
+		if (uBalance >= MIN_LIQUIDITY && _totalAssets >= MIN_LIQUIDITY) revert DepositsPaused();
 
+		// TODO should we handle this logic inside strategy.deposit?
+		// this may be useful when a given strategy only accepts NATIVE tokens
 		if (token == NATIVE) _depositNative();
 
 		// if the strategy is active, we can deposit dirictly into strategy
 		// if not, we deposit into the vault for a future strategy deposit
-		if (_totalAssets > MIN_LIQUIDITY) {
+		if (_totalAssets >= MIN_LIQUIDITY) {
 			underlying.safeTransfer(address(strategy), amount);
 			uint256 yieldTokenAdded = strategy.deposit(amount);
 			// don't include newly minted shares and pendingRedeem in the calculation
