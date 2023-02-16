@@ -162,6 +162,7 @@ abstract contract AggregatorWEpochVaultCommon is SectorTest, SCYWEpochVaultUtils
 		uint256 pendingWithdraw = vault.convertToAssets(vault.requestedRedeem());
 		uint256 withdrawShares = (pendingWithdraw * strategy1.exchangeRateUnderlying()) / 1e18;
 
+		console.log(pendingWithdraw);
 		withdrawFromStrat(strategy1, withdrawShares);
 
 		vm.prank(user1);

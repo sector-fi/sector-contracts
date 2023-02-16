@@ -117,7 +117,7 @@ contract SCYVault is SCYBase {
 	) internal override isInitialized returns (uint256 sharesOut) {
 		if (vaultTvl + amount > getMaxTvl()) revert MaxTvlReached();
 		// if we have any float in the contract we cannot do deposit accounting
-		if (uBalance >= MIN_LIQUIDITY && totalAssets() >= MIN_LIQUIDITY) revert DepositsPaused();
+		if (uBalance >= MIN_LIQUIDITY) revert DepositsPaused();
 		if (token == NATIVE) _depositNative();
 		uint256 yieldTokenAdded = strategy.deposit(amount);
 		sharesOut = toSharesAfterDeposit(yieldTokenAdded);
@@ -169,6 +169,9 @@ contract SCYVault is SCYBase {
 		}
 
 		_burn(msg.sender, sharesToRedeem);
+		// edge case if total supply is MIN_LIQUIDITY
+		// re-enable deposits by setting uBalance to 0
+		if (_totalSupply - sharesToRedeem <= MIN_LIQUIDITY) uBalance = 0;
 	}
 
 	/// @notice harvest strategy
@@ -333,7 +336,7 @@ contract SCYVault is SCYBase {
 	}
 
 	function isPaused() public view returns (bool) {
-		return uBalance >= MIN_LIQUIDITY && totalAssets() >= MIN_LIQUIDITY;
+		return uBalance >= MIN_LIQUIDITY;
 	}
 
 	// used for estimates only

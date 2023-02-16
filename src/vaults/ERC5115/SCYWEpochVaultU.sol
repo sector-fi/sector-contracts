@@ -17,7 +17,7 @@ import { SCYVaultConfig } from "../../interfaces/ERC5115/ISCYVault.sol";
 import { AuthConfig } from "../../common/Auth.sol";
 import { FeeConfig } from "../../common/Fees.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 	using SafeERC20 for IERC20;
@@ -127,13 +127,13 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 
 		// if we have any float in the contract we cannot do deposit accounting
 		uint256 _totalAssets = totalAssets();
-		if (uBalance > 0 && _totalAssets > 0) revert DepositsPaused();
+		if (uBalance >= MIN_LIQUIDITY && _totalAssets >= MIN_LIQUIDITY) revert DepositsPaused();
 
 		if (token == NATIVE) _depositNative();
 
 		// if the strategy is active, we can deposit dirictly into strategy
 		// if not, we deposit into the vault for a future strategy deposit
-		if (_totalAssets > 0) {
+		if (_totalAssets >= MIN_LIQUIDITY) {
 			underlying.safeTransfer(address(strategy), amount);
 			uint256 yieldTokenAdded = strategy.deposit(amount);
 			// don't include newly minted shares and pendingRedeem in the calculation
@@ -385,6 +385,7 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 		// we need to subtract pendingReedem because it is not included in totalAssets
 		// pendingRedeem should allways be smaller than totalSupply
 		uint256 supply = totalSupply() - pendingRedeem;
+
 		return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
 	}
 

@@ -14,7 +14,7 @@ import { FeesU } from "../../common/FeesU.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract SCYBaseU is
 	Initializable,
@@ -152,6 +152,7 @@ abstract contract SCYBaseU is
 	function convertToShares(uint256 assets) public view virtual returns (uint256) {
 		uint256 supply = totalSupply();
 		uint256 _totalAssets = totalAssets();
+		console.log("_totalAssets", _totalAssets);
 		// when _totalAssets < MIN_LIQUIDITY, treat it as 0
 		if (_totalAssets < MIN_LIQUIDITY || supply == 0) return assets;
 		return assets.mulDivDown(supply, _totalAssets);
