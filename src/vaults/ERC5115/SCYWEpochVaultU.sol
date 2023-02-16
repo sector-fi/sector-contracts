@@ -154,6 +154,7 @@ contract SCYWEpochVaultU is SCYBaseU, BatchedWithdrawEpoch {
 	) internal override returns (uint256 amountTokenOut, uint256 amountToTransfer) {
 		uint256 sharesToRedeem;
 		(amountTokenOut, sharesToRedeem) = _redeem(msg.sender);
+		// this ensures that we emit the correct amount in the redeem event
 		if (sharesToRedeem != expectedShares) revert InvalidSharesOut();
 		_burn(address(this), sharesToRedeem);
 
