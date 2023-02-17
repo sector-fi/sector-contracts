@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { AggregatorVaultU, RedeemParams, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorVaultU.sol";
-import { SectorFactory, UpgradeableBeacon } from "../../SectorFactory.sol";
+import { SectorFactory, SectorBeacon } from "../../SectorFactory.sol";
 import { AggregatorVaultCommon, AggregatorVault } from "./AggregatorVaultCommon.sol";
 
 import "hardhat/console.sol";
@@ -13,7 +13,7 @@ contract AggregatorVaultUTest is AggregatorVaultCommon {
 
 	function setupFactory(string memory _vaultType) public {
 		AggregatorVaultU vaultImp = new AggregatorVaultU();
-		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
+		SectorBeacon beacon = new SectorBeacon(address(vaultImp));
 		factory = new SectorFactory();
 		factory.addVaultType(_vaultType, address(beacon));
 	}

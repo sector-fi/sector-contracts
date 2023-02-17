@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { AggregatorWEpochVaultU, RedeemParams, AuthConfig, FeeConfig } from "vaults/sectorVaults/AggregatorWEpochVaultU.sol";
-import { SectorFactory, UpgradeableBeacon } from "../../SectorFactory.sol";
+import { SectorFactory, SectorBeacon } from "../../SectorFactory.sol";
 import { AggregatorWEpochVaultCommon, AggregatorWEpochVault } from "./AggregatorWEpochVaultCommon.sol";
 
 import "hardhat/console.sol";
@@ -13,7 +13,7 @@ contract AggregatorVaultUTest is AggregatorWEpochVaultCommon {
 
 	function setupFactory(string memory _vaultType) public {
 		AggregatorWEpochVaultU vaultImp = new AggregatorWEpochVaultU();
-		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
+		SectorBeacon beacon = new SectorBeacon(address(vaultImp));
 		factory = new SectorFactory();
 		factory.addVaultType(_vaultType, address(beacon));
 	}

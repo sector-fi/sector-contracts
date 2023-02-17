@@ -14,7 +14,7 @@ import { SCYWEpochVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYWEpochV
 import { SCYWEpochVaultU } from "vaults/ERC5115/SCYWEpochVaultU.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 
-import { SectorFactory, UpgradeableBeacon } from "../../SectorFactory.sol";
+import { SectorFactory, SectorBeacon } from "../../SectorFactory.sol";
 import { ISCYVault } from "interfaces/ERC5115/ISCYVault.sol";
 import "../../SectorBeaconProxy.sol";
 
@@ -36,7 +36,7 @@ contract SCYWEpochVaultUtils is SectorTest {
 	function setupFactory() public {
 		factory = new SectorFactory();
 		SCYWEpochVaultU vaultImp = new SCYWEpochVaultU();
-		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
+		SectorBeacon beacon = new SectorBeacon(address(vaultImp));
 		factory.addVaultType(vaultType, address(beacon));
 	}
 

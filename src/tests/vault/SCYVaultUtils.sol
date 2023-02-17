@@ -13,7 +13,7 @@ import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultU } from "vaults/ERC5115/SCYVaultU.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 
-import { SectorFactory, UpgradeableBeacon } from "../../SectorFactory.sol";
+import { SectorFactory, SectorBeacon } from "../../SectorFactory.sol";
 import { ISCYVault } from "interfaces/ERC5115/ISCYVault.sol";
 
 import "../../SectorBeaconProxy.sol";
@@ -32,7 +32,7 @@ contract SCYVaultUtils is SectorTest {
 	function setupFactory() public {
 		factory = new SectorFactory();
 		SCYVaultU vaultImp = new SCYVaultU();
-		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
+		SectorBeacon beacon = new SectorBeacon(address(vaultImp));
 		factory.addVaultType(vaultType, address(beacon));
 	}
 

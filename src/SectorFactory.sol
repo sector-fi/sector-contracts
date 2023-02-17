@@ -4,14 +4,15 @@ pragma solidity 0.8.16;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { BytesLib } from "./libraries/BytesLib.sol";
 import { BeaconProxy, Address } from "@openzeppelin/contracts/proxy/beacon/BeaconProxy.sol";
-import { UpgradeableBeacon } from "@openzeppelin/contracts/proxy/beacon/UpgradeableBeacon.sol";
+import { OwnableTransfer } from "./common/OwnableTransfer.sol";
+import { SectorBeacon } from "./SectorBeacon.sol";
 
 // import "hardhat/console.sol";
 
 /// @title Scion Vault Factory
 /// @author 0x0scion (based on Rari Vault Factory)
 /// @notice Upgradable beacon factory which enables deploying a deterministic Vault for ERC20 token.
-contract SectorFactory is Ownable {
+contract SectorFactory is OwnableTransfer {
 	using BytesLib for address;
 	using BytesLib for bytes32;
 
@@ -24,6 +25,8 @@ contract SectorFactory is Ownable {
 
 	/// @notice Creates a Vault factory.
 	constructor() Ownable() {}
+
+	/// @notice ownership transfer
 
 	/// @notice Upgrades are handled seprately via beacon
 	mapping(string => address) public beacons;
@@ -42,7 +45,7 @@ contract SectorFactory is Ownable {
 	}
 
 	function implementation(string calldata _vaultType) external view returns (address) {
-		return UpgradeableBeacon(beacons[_vaultType]).implementation();
+		return SectorBeacon(beacons[_vaultType]).implementation();
 	}
 
 	/*///////////////////////////////////////////////////////////////

@@ -17,7 +17,7 @@ import { SCYVault } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultU } from "vaults/ERC5115/SCYVaultU.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 import { FeeConfig } from "../../../common/Fees.sol";
-import { SectorFactory, UpgradeableBeacon } from "../../../SectorFactory.sol";
+import { SectorFactory, SectorBeacon } from "../../../SectorFactory.sol";
 import { SCYWEpochVaultU } from "vaults/ERC5115/SCYWEpochVaultU.sol";
 
 import "hardhat/console.sol";
@@ -61,7 +61,7 @@ abstract contract SCYStratUtils is SectorTest {
 	) public returns (ISCYVault) {
 		SectorFactory factory = new SectorFactory();
 		SCYVaultU vaultImp = new SCYVaultU();
-		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
+		SectorBeacon beacon = new SectorBeacon(address(vaultImp));
 		factory.addVaultType("SCYVault", address(beacon));
 		bytes memory data = abi.encodeWithSelector(
 			SCYVaultU.initialize.selector,
@@ -79,7 +79,7 @@ abstract contract SCYStratUtils is SectorTest {
 	) public returns (ISCYVault) {
 		SectorFactory factory = new SectorFactory();
 		SCYWEpochVaultU vaultImp = new SCYWEpochVaultU();
-		UpgradeableBeacon beacon = new UpgradeableBeacon(address(vaultImp));
+		SectorBeacon beacon = new SectorBeacon(address(vaultImp));
 		factory.addVaultType("SCYWEpochVault", address(beacon));
 		bytes memory data = abi.encodeWithSelector(
 			SCYVaultU.initialize.selector,
