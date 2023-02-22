@@ -210,6 +210,18 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 		assertApproxEqRel(balance, actualBalance, .01e18);
 	}
 
+	function testSlippageEdge() public {
+		uint256 amount = getAmnt();
+
+		deal(address(underlying), user1, amount);
+		uint256 shares = vault.underlyingToShares(amount);
+
+		uint256 actualShares = getEpochVault(vault).getDepositAmnt(amount);
+		console.log("shares actual", shares, actualShares);
+		console.log("d slippage", (10000 * (shares - actualShares)) / shares);
+		assertApproxEqRel(shares, actualShares, .01e18);
+	}
+
 	function testLeveragedHarvest() public {
 		deposit(user1, 142857e6);
 		adjustLeverage(800);

@@ -28,11 +28,12 @@ export const levConvex = [
     convexRewardPool: '0xbEf6108D1F6B85c4c9AA3975e15904Bb3DFcA980',
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
-    coinId: 1, // curve token index
+    coinId: 1, // curve token index of underlying
     underlying: tokens.mainnet.USDC,
+    riskAsset: tokens.mainnet.sUSD,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
-    farmTokens: defaultRewardTokens,
+    farmTokens: [...defaultRewardTokens],
     chain: 'mainnet',
   },
   {
@@ -44,9 +45,10 @@ export const levConvex = [
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
     coinId: 1, // curve token index
     underlying: tokens.mainnet.USDC,
+    riskAsset: tokens.mainnet.FRAX,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
-    farmTokens: defaultRewardTokens,
+    farmTokens: [...defaultRewardTokens],
     chain: 'mainnet',
   },
   {
@@ -58,9 +60,10 @@ export const levConvex = [
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
     underlying: tokens.mainnet.USDC,
+    riskAsset: tokens.mainnet.gUSD,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
-    farmTokens: defaultRewardTokens,
+    farmTokens: [...defaultRewardTokens],
     chain: 'mainnet',
   },
 
@@ -73,9 +76,10 @@ export const levConvex = [
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
     underlying: tokens.mainnet.USDC,
+    riskAsset: tokens.mainnet.lUSD,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
-    farmTokens: defaultRewardTokens,
+    farmTokens: [...defaultRewardTokens],
     chain: 'mainnet',
   },
   {
@@ -87,9 +91,10 @@ export const levConvex = [
     creditFacade: '0x61fbb350e39cc7bF22C01A469cf03085774184aa',
     convexBooster: '0xB548DaCb7e5d61BF47A026903904680564855B4E',
     underlying: tokens.mainnet.USDC,
+    riskAsset: tokens.mainnet.FRAX,
     leverageFactor: 500,
     farmRouter: addrs.mainnet.UniswapV3Router,
-    farmTokens: defaultRewardTokens,
+    farmTokens: [...defaultRewardTokens],
     chain: 'mainnet',
   },
 ];

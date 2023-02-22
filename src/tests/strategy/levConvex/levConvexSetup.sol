@@ -50,8 +50,10 @@ contract levConvexSetup is SCYStratUtils {
 		address b_convexRewardPool;
 		address c_creditFacade;
 		address d_convexBooster;
-		uint16 e_coinId; // curve token index
-		address f_underlying;
+		uint16 e1_coinId; // curve token index
+		uint16 e2_riskId; // curve token index
+		address f1_underlying;
+		address f2_riskAsset;
 		uint16 g_leverageFactor;
 		address h_farmRouter;
 		address[] i_farmTokens;
@@ -76,8 +78,8 @@ contract levConvexSetup is SCYStratUtils {
 		_config.convexRewardPool = stratJson.b_convexRewardPool;
 		_config.creditFacade = stratJson.c_creditFacade;
 		_config.convexBooster = stratJson.d_convexBooster;
-		_config.coinId = stratJson.e_coinId;
-		_config.underlying = stratJson.f_underlying;
+		_config.coinId = stratJson.e1_coinId;
+		_config.underlying = stratJson.f1_underlying;
 		_config.leverageFactor = stratJson.g_leverageFactor;
 		_config.farmRouter = stratJson.h_farmRouter;
 
