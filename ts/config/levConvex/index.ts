@@ -1,5 +1,5 @@
 import { ethers, getNamedAccounts, network } from 'hardhat';
-import { ICurveV1Adapter } from '../../../typechain';
+import { ERC20__factory, ICurveV1Adapter } from '../../../typechain';
 import { levConvex } from './config';
 import { chainToEnv, getUniswapV3Path, addStratToConfig } from '../utils';
 import { constants } from 'ethers';
@@ -63,8 +63,6 @@ const addStrategy = async (strategy) => {
     const rewardToken = await rewardsPool.rewardToken();
     console.log('extraRewardsAddr: ', extraRewardsAddr);
     console.log('found reward token: ', rewardToken);
-    console.log(strategy.name, rewardToken);
-    console.log(strategy.name, strategy.farmTokens);
     strategy.farmTokens.push(rewardToken);
   }
   console.log(strategy.name, strategy.farmTokens);
@@ -84,6 +82,13 @@ const addStrategy = async (strategy) => {
   }
   console.log(strategy.name, strategy.harvestPaths);
 
+  const riskToken = await ethers.getContractAt(
+    'ERC20',
+    strategy.riskAsset,
+    deployer
+  );
+  const riskDecimals = await riskToken.decimals();
+
   const config = {
     a1_curveAdapter: strategy.curveAdapter,
     a2_curveAdapterDeposit:
@@ -96,6 +101,7 @@ const addStrategy = async (strategy) => {
     e2_riskId: riskId, // curve token index
     f1_underlying: strategy.underlying,
     f2_riskAsset: strategy.riskAsset,
+    f3_riskAssetDecimals: riskDecimals,
     g_leverageFactor: strategy.leverageFactor,
     h_farmRouter: strategy.farmRouter,
     i_farmTokens: strategy.farmTokens,

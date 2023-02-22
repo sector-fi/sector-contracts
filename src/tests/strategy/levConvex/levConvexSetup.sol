@@ -54,6 +54,7 @@ contract levConvexSetup is SCYStratUtils {
 		uint16 e2_riskId; // curve token index
 		address f1_underlying;
 		address f2_riskAsset;
+		uint256 f3_riskAssetDecimals;
 		uint16 g_leverageFactor;
 		address h_farmRouter;
 		address[] i_farmTokens;

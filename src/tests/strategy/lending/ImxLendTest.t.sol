@@ -14,6 +14,7 @@ import { UnitTestVault } from "../common/UnitTestVault.sol";
 
 import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
+import { AggregatorVault } from "vaults/SectorVaults/AggregatorVault.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -106,4 +107,12 @@ contract ImxLendTest is IntegrationTest, UnitTestVault {
 	function noRebalance() public override {}
 
 	function adjustPrice(uint256 fraction) public override {}
+
+	function testAggHarvest() public {
+		AggregatorVault v = AggregatorVault(payable(0x91c9b2E4e79B3F89cEd5bf62FB5f2608362694B9));
+		uint256 tvl = v.getTvl();
+		console.log("tvl", tvl);
+		vm.prank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
+		v.harvest(tvl, tvl / 100);
+	}
 }

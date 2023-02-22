@@ -20,6 +20,7 @@
     "e2_riskId": 0,
     "f1_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "f2_riskAsset": "0x853d955aCEf822Db058eb8505911ED77F175b99e",
+    "f3_riskAssetDecimals": 18,
     "g_leverageFactor": 500,
     "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "i_farmTokens": [
@@ -46,6 +47,7 @@
     "e2_riskId": 0,
     "f1_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "f2_riskAsset": "0x056Fd409E1d7A124BD7017459dFEa2F387b6d5Cd",
+    "f3_riskAssetDecimals": 2,
     "g_leverageFactor": 500,
     "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "i_farmTokens": [
@@ -72,6 +74,7 @@
     "e2_riskId": 3,
     "f1_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "f2_riskAsset": "0x57Ab1ec28D129707052df4dF418D58a2D46d5f51",
+    "f3_riskAssetDecimals": 18,
     "g_leverageFactor": 500,
     "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "i_farmTokens": [
@@ -100,6 +103,7 @@
     "e2_riskId": 0,
     "f1_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "f2_riskAsset": "0x853d955aCEf822Db058eb8505911ED77F175b99e",
+    "f3_riskAssetDecimals": 18,
     "g_leverageFactor": 500,
     "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "i_farmTokens": [
@@ -112,7 +116,7 @@
       "0xd533a949740bb3306d119cc777fa900ba034cd52002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
       "0x4e3fbd56cd56c3e72c1403e103b45db9da5b9d2b002710c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
       "0xba3335588d9403515223f109edc4eb7269a9ab5d002710a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-      "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0000bb8a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+      "0x3432b6a60d23ca0dfca7761b7ab56459d9c964d0000bb8c02aaa39b223fe8d0a0e5c4f27ead9083c756cc20001f4a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
     ],
     "k_is3crv": true,
     "x_chain": "ETH"
@@ -128,6 +132,7 @@
     "e2_riskId": 0,
     "f1_underlying": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     "f2_riskAsset": "0x5f98805A4E8be255a32880FDeC7F6728C6568bA0",
+    "f3_riskAssetDecimals": 18,
     "g_leverageFactor": 500,
     "h_farmRouter": "0xE592427A0AEce92De3Edee1F18E0157C05861564",
     "i_farmTokens": [
