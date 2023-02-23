@@ -1,5 +1,5 @@
 import { ethers, getNamedAccounts, network } from 'hardhat';
-import { IIMXFactory, IVaultToken } from '../../../typechain';
+import { ERC20__factory, IIMXFactory, IVaultToken } from '../../../typechain';
 import { imx } from './config';
 import { chainToEnv, addStratToConfig, StratType } from '../utils';
 
@@ -37,13 +37,13 @@ const addIMXStrategy = async (strategy) => {
   console.log(strategy.name, factory.address);
   // console.log(strategy.underlying, token1, token0);
 
+  const shortAddr =
+    strategy.underlying.toLowerCase() == token0.toLowerCase() ? token1 : token0;
+
   const config = {
     a1_underlying: strategy.underlying,
     a2_acceptsNativeToken: !!strategy.acceptsNativeToken,
-    b_short:
-      strategy.underlying.toLowerCase() == token0.toLowerCase()
-        ? token1
-        : token0,
+    b_short: shortAddr,
     c0_uniPair: await poolToken.underlying(),
     c1_pairRouter: strategy.pairRouter,
     d_poolToken: collateral,
@@ -53,8 +53,18 @@ const addIMXStrategy = async (strategy) => {
     x_chain: chainToEnv[strategy.chain],
   };
 
+  const singer = await ethers.getSigner(deployer);
+  const underlying = await ERC20__factory.connect(strategy.underlying, singer);
+  const short = await ERC20__factory.connect(shortAddr, singer);
+
+  // additional export data for frontend
+  const exportConfig = {
+    underlyingDec: await underlying.decimals(),
+    shortDec: await short.decimals(),
+  };
+
   strategy.type = StratType.LLP;
-  await addStratToConfig(strategy.name, config, strategy);
+  await addStratToConfig(strategy.name, config, strategy, exportConfig);
 };
 
 main().catch((error) => {

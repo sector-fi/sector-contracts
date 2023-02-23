@@ -5,6 +5,7 @@ import { encodeRouteToPath } from '@uniswap/v3-sdk';
 import fs from 'fs/promises';
 
 export const CONFIG_PATH = './ts/config/strategies.json';
+export const EXPORT_PATH = './ts/config/strategiesExport.json';
 
 export const tokens = {
   mainnet: {
@@ -82,8 +83,23 @@ export const getUniswapV3Path = async (token0: string, token1: string) => {
   return path;
 };
 
-export const addStratToConfig = async (key: string, data, stratConfig) => {
-  const filePath = CONFIG_PATH;
+export const addStratToConfig = async (
+  key: string,
+  data,
+  stratConfig,
+  additionalData = {}
+) => {
+  _addStratToConfig(key, data, stratConfig, CONFIG_PATH);
+  // we export a separate json with extra data for the frontend
+  _addStratToConfig(
+    key,
+    { ...data, ...additionalData },
+    stratConfig,
+    EXPORT_PATH
+  );
+};
+
+const _addStratToConfig = async (key: string, data, stratConfig, filePath) => {
   const jsonString: any = await fs.readFile(filePath, {
     encoding: 'utf8',
   });
