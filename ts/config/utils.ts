@@ -31,6 +31,8 @@ export const tokens = {
     USDC: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
     ETH: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
     XCAL: '0xd2568acCD10A4C98e87c44E9920360031ad89fCB',
+    STG: '0x6694340fc020c5E6B96567843da2df01b2CE1eb6',
+    SGETH: '0x82CbeCF39bEe528B5476FE6d1550af59a9dB6Fc0',
   },
 };
 
@@ -89,9 +91,9 @@ export const addStratToConfig = async (
   stratConfig,
   additionalData = {}
 ) => {
-  _addStratToConfig(key, data, stratConfig, CONFIG_PATH);
+  await _addStratToConfig(key, data, stratConfig, CONFIG_PATH);
   // we export a separate json with extra data for the frontend
-  _addStratToConfig(
+  await _addStratToConfig(
     key,
     { ...data, ...additionalData },
     stratConfig,

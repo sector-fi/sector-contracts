@@ -1,16 +1,15 @@
-import { genStratName, StratType } from '../../utils';
+import { genStratName, StratType, tokens } from '../../utils';
 
 const stargateRouters = {
   arbitrum: '0x53Bf833A5d6c4ddA888F69c22C88C9f356a41614',
 };
 
+const factory = {
+  arbitrum: '0x55bDb4164D28FBaF0898e0eF14a589ac09Ac9970',
+};
+
 const farms = {
   arbitrum: '0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176',
-};
-const tokens = {
-  STG: '0x6694340fc020c5E6B96567843da2df01b2CE1eb6',
-  ETH: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-  USDC: '0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8',
 };
 
 const uniswapRouter = {
@@ -24,9 +23,22 @@ export const stargate = [
     type: 'Stargate',
     poolId: 1, // get this from interface?
     name: genStratName(type, 'USDC', [], ['Stargate'], 'arbitrum'),
-    underlying: tokens.USDC,
+    underlying: tokens.arbitrum.USDC,
     strategy: stargateRouters['arbitrum'],
     farm: farms['arbitrum'],
+    farmRouter: uniswapRouter['arbitrum'],
+    chain: 'arbitrum',
+  },
+  {
+    type: 'Stargate',
+    // have to iterate through getPool in factory to get the right one...
+    poolId: 13, // get this from interface?
+    name: genStratName(type, 'ETH', [], ['Stargate'], 'arbitrum'),
+    underlying: tokens.arbitrum.SGETH,
+    acceptsNativeToken: true,
+    strategy: stargateRouters['arbitrum'],
+    farm: farms['arbitrum'],
+    farmOutput: tokens.arbitrum.ETH,
     farmRouter: uniswapRouter['arbitrum'],
     chain: 'arbitrum',
   },

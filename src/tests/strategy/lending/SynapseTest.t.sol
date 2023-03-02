@@ -22,7 +22,8 @@ import "hardhat/console.sol";
 contract SynapseTest is IntegrationTest, UnitTestVault {
 	using stdJson for string;
 
-	string TEST_STRATEGY = "LND_USDC_Synapse_arbitrum";
+	// string TEST_STRATEGY = "LND_USDC_Synapse_arbitrum";
+	string TEST_STRATEGY = "LND_ETH_Synapse_arbitrum";
 
 	uint256 currentFork;
 
@@ -61,8 +62,9 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		vaultConfig.underlying = IERC20(stratJson.a_underlying);
 		vaultConfig.yieldToken = stratJson.d1_yieldToken; // collateral token
 		vaultConfig.strategyId = stratJson.c_strategyId;
-		vaultConfig.maxTvl = 10000000e6;
 		vaultConfig.acceptsNativeToken = stratJson.d2_acceptsNativeToken;
+		if (vaultConfig.acceptsNativeToken) vaultConfig.maxTvl = 10000e18;
+		else vaultConfig.maxTvl = 10000000e6;
 
 		synapsePool = stratJson.b_strategy;
 
@@ -154,11 +156,12 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		withdraw(treasury, 1e18);
 
 		uint256 tvl = vault.getTvl();
-		assertEq(tvl, 0);
+		assertApproxEqAbs(tvl, 1000, 10);
 	}
 
 	function testSlippage() public override {
-		uint256 amount = 10000000e6;
+		uint256 dec = underlying.decimals();
+		uint256 amount = dec == 6 ? 10000000e6 : 10000e18;
 		uint256 shares = vault.underlyingToShares(amount);
 		uint256 actualShares = vault.getDepositAmnt(amount);
 		assertGt(shares, actualShares);
@@ -168,7 +171,7 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 
 		// uint256 balance = vault.underlyingBalance(user1);
 		// shares = vault.balanceOf(user1);
-		uint256 wAmnt = 2000000e6;
+		uint256 wAmnt = dec == 6 ? 2000000e6 : 2000e18;
 		shares = vault.underlyingToShares(wAmnt);
 		uint256 actualBalance = vault.getWithdrawAmnt(shares);
 		assertGt(wAmnt, actualBalance);

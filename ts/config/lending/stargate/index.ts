@@ -59,7 +59,10 @@ const addStrategy = async (strategy) => {
   }
   if (i != farmId) throw new Error('farmId not found');
 
-  const path = await getUniswapV3Path(farmToken, strategy.underlying);
+  const path = await getUniswapV3Path(
+    farmToken,
+    strategy.farmOutput || strategy.underlying
+  );
 
   const config = {
     a_underlying: strategy.underlying,

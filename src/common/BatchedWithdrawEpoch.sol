@@ -88,13 +88,16 @@ abstract contract BatchedWithdrawEpoch is SectorErrors {
 	function _processRedeem(uint256 amountTokenOut) internal {
 		if (requestedRedeem == 0) return;
 		// store current epoch exchange rate
-		epochExchangeRate[epoch] = amountTokenOut.mulDivDown(EX_MULTIPLIER, requestedRedeem);
+		uint256 exchangeRate = amountTokenOut.mulDivDown(EX_MULTIPLIER, requestedRedeem);
+		epochExchangeRate[epoch] = exchangeRate;
 
 		pendingRedeem += requestedRedeem;
 		pendingWithdrawU += amountTokenOut;
 		requestedRedeem = 0;
 		// advance epoch
 		++epoch;
+
+		emit ProcessRedeem(epoch, exchangeRate);
 	}
 
 	function cancelRedeem() public virtual {
@@ -138,6 +141,8 @@ abstract contract BatchedWithdrawEpoch is SectorErrors {
 		address spender,
 		uint256 amount
 	) internal virtual;
+
+	event ProcessRedeem(uint256 epoch, uint256 exchangeRate);
 
 	error RedeemRequestExists();
 	error CannotCancelProccesedRedeem();
