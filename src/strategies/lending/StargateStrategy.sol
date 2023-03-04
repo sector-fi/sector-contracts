@@ -9,6 +9,7 @@ import { IStargatePool } from "../../interfaces/stargate/IStargatePool.sol";
 import { StarChefFarm, FarmConfig } from "../../strategies/adapters/StarChefFarm.sol";
 import { StratAuthLight } from "../../common/StratAuthLight.sol";
 import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
 
@@ -37,11 +38,13 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 		IERC20(stargatePool).safeApprove(address(farm), type(uint256).max);
 	}
 
-	function recieve() external payable {}
+	receive() external payable {}
 
 	function deposit(uint256 amount) public onlyVault returns (uint256) {
 		uint256 lp = (amount * 1e18) / stargatePool.amountLPtoLD(1e18);
 		stargateRouter.addLiquidity(pId, amount, address(this));
+		uint256 balance = address(this).balance;
+		if (balance > 0) IWETH(address(underlying)).deposit{ value: balance }();
 		_depositIntoFarm(lp);
 		return lp;
 	}
