@@ -24,9 +24,9 @@ contract ImxLendTest is IntegrationTest, UnitTestVault {
 	using stdJson for string;
 
 	// string TEST_STRATEGY = "LND_USDC-ETH_Tarot_optimism";
-	string TEST_STRATEGY = "LND_ETH-USDC_Tarot_optimism";
+	// string TEST_STRATEGY = "LND_ETH-USDC_Tarot_optimism";
 
-	// string TEST_STRATEGY = "LND_USDC-ETH_Tarot_arbitrum";
+	string TEST_STRATEGY = "LND_USDC-ETH_Tarot_arbitrum";
 	// string TEST_STRATEGY = "LND_ETH-USDC_Tarot_arbitrum";
 
 	SCYVaultConfig vaultConfig;
@@ -108,11 +108,21 @@ contract ImxLendTest is IntegrationTest, UnitTestVault {
 
 	function adjustPrice(uint256 fraction) public override {}
 
-	function testAggHarvest() public {
-		AggregatorVault v = AggregatorVault(payable(0x91c9b2E4e79B3F89cEd5bf62FB5f2608362694B9));
-		uint256 tvl = v.getTvl();
-		console.log("tvl", tvl);
-		vm.prank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
-		v.harvest(tvl, tvl / 100);
-	}
+	// function testAggHarvest() public {
+	// 	AggregatorVault v = AggregatorVault(payable(0x91c9b2E4e79B3F89cEd5bf62FB5f2608362694B9));
+	// 	uint256 tvl = v.getTvl();
+	// 	console.log("tvl", tvl);
+	// 	vm.prank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
+	// 	v.harvest(tvl, tvl / 100);
+	// }
+
+	// function testDeplyedVault() public {
+	// 	AggregatorVault dvault = AggregatorVault(
+	// 		payable(0x6dC873656fCde76dFAe75146D9B2B4b6697a0594)
+	// 	);
+	// 	uint256 pendingWithdraw = dvault.convertToAssets(dvault.pendingRedeem());
+	// 	uint256 float = dvault.floatAmnt();
+	// 	console.log("float", float, pendingWithdraw);
+	// 	uint256 totalFloat = dvault.getFloat();
+	// }
 }
