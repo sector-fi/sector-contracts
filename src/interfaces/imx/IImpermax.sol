@@ -65,6 +65,8 @@ interface IBorrowable {
 	function totalBalance() external view returns (uint256);
 
 	function borrowTracker() external view returns (address);
+
+	function borrowRate() external view returns (uint256);
 }
 
 interface ICollateral {
