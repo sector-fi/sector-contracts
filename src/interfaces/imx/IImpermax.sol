@@ -67,6 +67,8 @@ interface IBorrowable {
 	function borrowTracker() external view returns (address);
 
 	function borrowRate() external view returns (uint256);
+
+	function kinkUtilizationRate() external view returns (uint256);
 }
 
 interface ICollateral {
