@@ -60,6 +60,8 @@ contract AggregatorVault is SectorBase {
 		lastHarvestTimestamp = block.timestamp;
 	}
 
+	/// @notice This is only an approximation - doesn't take
+	/// into account the amount of non-vault deposits in the strategies
 	function getMaxTvl() external view returns (uint256) {
 		uint256 startMaxTvl;
 		for (uint256 i; i < strategyIndex.length; ++i) {
@@ -253,7 +255,9 @@ contract AggregatorVault is SectorBase {
 	}
 
 	function getFloat() public view returns (uint256) {
-		return floatAmnt - convertToAssets(pendingRedeem);
+		uint256 _float = floatAmnt;
+		uint256 _pendingWithdraw = convertToAssets(pendingRedeem);
+		return _float > _pendingWithdraw ? _float - _pendingWithdraw : 0;
 	}
 
 	/// INTERFACE UTILS

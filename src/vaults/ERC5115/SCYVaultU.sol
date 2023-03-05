@@ -84,7 +84,7 @@ contract SCYVaultU is SCYBaseU {
 		return min(maxTvl, strategy.getMaxTvl());
 	}
 
-	function setMaxTvl(uint256 _maxTvl) public onlyRole(GUARDIAN) {
+	function setMaxTvl(uint256 _maxTvl) public onlyRole(MANAGER) {
 		maxTvl = _maxTvl;
 		emit MaxTvlUpdated(min(maxTvl, strategy.getMaxTvl()));
 	}
