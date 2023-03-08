@@ -90,7 +90,8 @@ abstract contract ERC4626U is
 		nonReentrant
 		returns (uint256 shares)
 	{
-		if (totalAssets() + assets > maxTvl) revert MaxTvlReached();
+		// if (totalAssets() + assets > maxTvl) revert MaxTvlReached();
+		if (maxDeposit(receiver) < assets) revert MaxTvlReached();
 
 		// This check is no longer necessary because we use MIN_LIQUIDITY
 		// Check for rounding error since we round down in previewDeposit.
@@ -123,7 +124,8 @@ abstract contract ERC4626U is
 		returns (uint256 assets)
 	{
 		assets = previewMint(shares); // No need to check for rounding error, previewMint rounds up.
-		if (totalAssets() + assets > maxTvl) revert MaxTvlReached();
+		// if (totalAssets() + assets > maxTvl) revert MaxTvlReached();
+		if (maxDeposit(receiver) < assets) revert MaxTvlReached();
 
 		// Need to transfer before minting or ERC777s could reenter.
 		if (useNativeAsset && msg.value == assets) IWETH(address(asset)).deposit{ value: assets }();
@@ -212,10 +214,7 @@ abstract contract ERC4626U is
 		emit MaxTvlUpdated(_maxTvl);
 	}
 
-	function maxDeposit(address) public view override returns (uint256) {
-		uint256 _totalAssets = totalAssets();
-		return _totalAssets > maxTvl ? 0 : maxTvl - _totalAssets;
-	}
+	function maxDeposit(address) public view virtual returns (uint256) {}
 
 	function maxMint(address) public view override returns (uint256) {
 		return convertToShares(maxDeposit(address(0)));

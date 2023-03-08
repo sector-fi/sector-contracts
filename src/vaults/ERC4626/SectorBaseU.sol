@@ -196,7 +196,6 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 	function afterDeposit(uint256 assets, uint256) internal override {
 		if (block.timestamp - lastHarvestTimestamp > harvestInterval)
 			revert EmergencyRedeemEnabled();
-
 		floatAmnt += assets;
 	}
 

@@ -23,7 +23,8 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 	using stdJson for string;
 
 	// string TEST_STRATEGY = "LND_USDC_Stargate_arbitrum";
-	string TEST_STRATEGY = "LND_ETH_Stargate_arbitrum";
+	// string TEST_STRATEGY = "LND_ETH_Stargate_arbitrum";
+	string TEST_STRATEGY = "LND_USDC_Stargate_optimism";
 
 	uint256 currentFork;
 
