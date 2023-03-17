@@ -270,6 +270,12 @@ contract SCYVault is SCYBase {
 	}
 
 	/// @notice slippage is computed in shares
+	/// minAmountOut should be computed like so:
+	// uint256 uBalance = vault.uBalance();
+	// uint256 tvl = vault.getTvl();
+	// uint256 sharesOut = vault.underlyingToShares(underlyingAmount);
+	// uint256 stratTvl = tvl - (uBalance - underlyingAmount);
+	// uint256 minAmountShares = (sharesOut * tvl) / stratTvl;
 	function depositIntoStrategy(uint256 underlyingAmount, uint256 minAmountOut)
 		public
 		onlyRole(GUARDIAN)
@@ -284,6 +290,9 @@ contract SCYVault is SCYBase {
 	}
 
 	/// @notice slippage is computed in underlying
+	// 	uint256 tvl = vault.getTvl();
+	// 	uint256 uBalance = vault.uBalance();
+	// 	uint256 shares = (tvl * vault.underlyingToShares(wAmnt)) / (tvl - uBalance);
 	function withdrawFromStrategy(uint256 shares, uint256 minAmountOut) public onlyRole(GUARDIAN) {
 		uint256 yieldTokenAmnt = convertToAssets(shares);
 		uint256 underlyingWithdrawn = strategy.redeem(address(this), yieldTokenAmnt);
