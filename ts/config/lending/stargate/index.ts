@@ -12,6 +12,7 @@ import {
   addStratToConfig,
   StratType,
   chainToEnv,
+  tokens,
 } from '../../utils';
 
 export const main = async () => {
@@ -45,7 +46,7 @@ const addStrategy = async (strategy) => {
     deployer
   );
 
-  const farmToken = await farm.stargate();
+  const farmToken = getFarmToknen(strategy.chain);
 
   const allPools = await farm.poolLength();
   let farmId;
@@ -59,6 +60,7 @@ const addStrategy = async (strategy) => {
   }
   if (i != farmId) throw new Error('farmId not found');
 
+  console.log('get path', strategy.name, farmToken, strategy.underlying);
   const path = await getUniswapV3Path(
     farmToken,
     strategy.farmOutput || strategy.underlying
@@ -78,4 +80,15 @@ const addStrategy = async (strategy) => {
     x_chain: chainToEnv[strategy.chain],
   };
   await addStratToConfig(strategy.name, config, strategy);
+};
+
+const getFarmToknen = (chain) => {
+  switch (chain) {
+    case 'arbitrum':
+      return tokens['arbitrum'].STG;
+    case 'optimism':
+      return tokens['optimism'].OP;
+    default:
+      throw new Error('missing stargate rewards token');
+  }
 };
