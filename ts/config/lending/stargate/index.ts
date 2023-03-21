@@ -72,6 +72,7 @@ const addStrategy = async (strategy) => {
     c_strategyId: strategy.poolId,
     d1_yieldToken: pool.address,
     d2_acceptsNativeToken: !!strategy.acceptsNativeToken,
+    d3_stargateEth: strategy.stargateEth || ethers.constants.AddressZero,
     e_farmId: farmId,
     f1_farm: strategy.farm,
     f2_farmToken: farmToken,
