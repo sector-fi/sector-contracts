@@ -58,7 +58,7 @@ contract AggregatorVaultU is SectorBaseU {
 		lastHarvestTimestamp = block.timestamp;
 	}
 
-	function maxDeposit(address) public view override returns (uint256) {
+	function maxDeposit(address) public view virtual override returns (uint256) {
 		uint256 capacity1;
 		for (uint256 i; i < strategyIndex.length; ++i) {
 			IVaultStrategy strategy = IVaultStrategy(strategyIndex[i]);

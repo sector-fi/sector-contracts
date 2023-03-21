@@ -330,6 +330,7 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 
 	function testDepositRedeemNative() public {
 		vault = deployAggVault(true);
+		vault.addStrategy(strategy1);
 		sectDeposit(vault, owner, mLp);
 
 		uint256 amnt = 1000e18;
@@ -612,11 +613,14 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 		vault.setMaxTvl(10e18);
 		s1.setMaxTvl(1e18);
 		s2.setMaxTvl(2e18);
-		// s3.setMaxTvl(2e18); // maxTvl will be 0 because there is no strategy
+		s3.setMaxTvl(0); // maxTvl will be 0 because there is no strategy
+
+		uint256 s1Tvl = s1.getTvl();
+		uint256 s2Tvl = s2.getTvl();
 
 		uint256 maxStratTvl = vault.getMaxTvl();
 		uint256 maxTvl = vault.maxTvl();
-		assertEq(maxStratTvl, 3e18, "max strat tvl");
+		assertEq(maxStratTvl, 3e18 - s1Tvl - s2Tvl, "max strat tvl");
 		assertEq(maxTvl, 10e18, "max tvl");
 	}
 
@@ -690,7 +694,7 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 		mVault.deposit(amnt, self);
 
 		// mint should fail
-		uint shares = vault.convertToAssets(amnt);
+		uint256 shares = vault.convertToAssets(amnt);
 		vm.expectRevert(SectorErrors.MaxTvlReached.selector);
 		mVault.mint(shares, self);
 
