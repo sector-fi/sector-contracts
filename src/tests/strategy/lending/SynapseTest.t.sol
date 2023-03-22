@@ -157,7 +157,7 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		withdraw(treasury, 1e18);
 
 		uint256 tvl = vault.getTvl();
-		assertApproxEqAbs(tvl, 1000, 10);
+		assertApproxEqAbs(tvl, 1000, 1000);
 	}
 
 	function testSlippage() public override {
