@@ -22,8 +22,8 @@ import "hardhat/console.sol";
 contract SynapseTest is IntegrationTest, UnitTestVault {
 	using stdJson for string;
 
-	// string TEST_STRATEGY = "LND_USDC_Synapse_arbitrum";
-	string TEST_STRATEGY = "LND_ETH_Synapse_arbitrum";
+	string TEST_STRATEGY = "LND_USDC_Synapse_arbitrum";
+	// string TEST_STRATEGY = "LND_ETH_Synapse_arbitrum";
 
 	// string TEST_STRATEGY = "LND_USDC_Synapse_optimism";
 
