@@ -58,13 +58,31 @@ contract AggregatorVaultU is SectorBaseU {
 		lastHarvestTimestamp = block.timestamp;
 	}
 
-	function getMaxTvl() external view returns (uint256) {
-		uint256 startMaxTvl;
+	function maxDeposit(address) public view virtual override returns (uint256) {
+		uint256 capacity1;
 		for (uint256 i; i < strategyIndex.length; ++i) {
 			IVaultStrategy strategy = IVaultStrategy(strategyIndex[i]);
-			startMaxTvl += strategy.getMaxTvl();
+			uint256 _startMaxTvl = strategy.getMaxTvl();
+			uint256 sTvl = strategy.getTvl();
+			if (sTvl < _startMaxTvl) capacity1 += (_startMaxTvl - sTvl);
 		}
-		return maxTvl < startMaxTvl ? maxTvl : startMaxTvl;
+		uint256 _totalAssets = totalAssets();
+		uint256 capacity2 = _totalAssets > maxTvl ? 0 : maxTvl - _totalAssets;
+		return capacity1 > capacity2 ? capacity2 : capacity1;
+	}
+
+	function getMaxTvl() external view returns (uint256) {
+		uint256 capacity;
+		uint256 tvl;
+		for (uint256 i; i < strategyIndex.length; ++i) {
+			IVaultStrategy strategy = IVaultStrategy(strategyIndex[i]);
+			uint256 _startMaxTvl = strategy.getMaxTvl();
+			uint256 sTvl = strategy.getTvl();
+			if (sTvl < _startMaxTvl) capacity += (_startMaxTvl - sTvl);
+			tvl += strategy.underlyingBalance(address(this));
+		}
+		uint256 _tmpMax = capacity + tvl;
+		return maxTvl > _tmpMax ? _tmpMax : maxTvl;
 	}
 
 	function addStrategy(IVaultStrategy strategy) public onlyOwner {

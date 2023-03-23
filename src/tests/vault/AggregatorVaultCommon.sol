@@ -45,15 +45,18 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 		strategy2 = IVaultStrategy(address(s2));
 		strategy3 = IVaultStrategy(address(s3));
 
+		vault.addStrategy(strategy1);
+		vault.addStrategy(strategy2);
+		vault.addStrategy(strategy3);
+
+		// add startegy to s3 so that deposits don't fail because of maxTVL
+		s3.addStrategy(strategy1);
+
 		// lock min liquidity
 		sectDeposit(vault, owner, mLp);
 		scyDeposit(s1, owner, mLp);
 		scyDeposit(s2, owner, mLp);
 		sectDeposit(s3, owner, mLp);
-
-		vault.addStrategy(strategy1);
-		vault.addStrategy(strategy2);
-		vault.addStrategy(strategy3);
 	}
 
 	function testAddRemoveStrat() public {
@@ -327,6 +330,7 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 
 	function testDepositRedeemNative() public {
 		vault = deployAggVault(true);
+		vault.addStrategy(strategy1);
 		sectDeposit(vault, owner, mLp);
 
 		uint256 amnt = 1000e18;
@@ -609,11 +613,14 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 		vault.setMaxTvl(10e18);
 		s1.setMaxTvl(1e18);
 		s2.setMaxTvl(2e18);
-		// s3.setMaxTvl(2e18); // maxTvl will be 0 because there is no strategy
+		s3.setMaxTvl(0); // maxTvl will be 0 because there is no strategy
+
+		uint256 s1Tvl = s1.getTvl();
+		uint256 s2Tvl = s2.getTvl();
 
 		uint256 maxStratTvl = vault.getMaxTvl();
 		uint256 maxTvl = vault.maxTvl();
-		assertEq(maxStratTvl, 3e18, "max strat tvl");
+		assertEq(maxStratTvl, 3e18 - s1Tvl - s2Tvl, "max strat tvl");
 		assertEq(maxTvl, 10e18, "max tvl");
 	}
 
@@ -666,5 +673,32 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 		vault.addStrategy(strategy1);
 		vault.addStrategy(strategy2);
 		vault.harvest(0, 0);
+	}
+
+	function testGetAggTvl() public {
+		AggregatorVault mVault = deployAggVault(false);
+		SCYVault s = setUpSCYVault(address(underlying));
+		IVaultStrategy ss = IVaultStrategy(address(s));
+		mVault.addStrategy(ss);
+		s.setMaxTvl(2e18);
+		mVault.setMaxTvl(2e18);
+		scyDeposit(s, owner, 1e18);
+		uint256 maxTvl = mVault.getMaxTvl();
+		assertEq(maxTvl, 1e18, "max tvl");
+
+		uint256 amnt = 1e18 + 1;
+		underlying.approve(address(mVault), amnt);
+		underlying.mint(self, amnt);
+		// deposit should fail
+		vm.expectRevert(SectorErrors.MaxTvlReached.selector);
+		mVault.deposit(amnt, self);
+
+		// mint should fail
+		uint256 shares = vault.convertToAssets(amnt);
+		vm.expectRevert(SectorErrors.MaxTvlReached.selector);
+		mVault.mint(shares, self);
+
+		// deposit should work
+		sectDeposit(mVault, self, 1e18);
 	}
 }

@@ -5,6 +5,7 @@ import { SectorTest } from "../utils/SectorTest.sol";
 import { SCYVaultUtils } from "./SCYVaultUtils.sol";
 import { WETH } from "../mocks/WETH.sol";
 import { SectorBase, SectorVault, RedeemParams, DepositParams, AuthConfig, FeeConfig } from "../../vaults/sectorVaults/SectorVault.sol";
+import { IVaultStrategy } from "vaults/sectorVaults/AggregatorVault.sol";
 import { MockERC20, IERC20 } from "../mocks/MockERC20.sol";
 import { Endpoint } from "../mocks/MockEndpoint.sol";
 import { SectorXVault, Request } from "../../vaults/sectorVaults/SectorXVault.sol";
@@ -98,6 +99,9 @@ contract SectorXVaultTest is SectorXVaultSetup, SCYVaultUtils {
 			vaults[i].managePostman(postmanId, chainId, address(postmanLz));
 			vaults[i].managePostman(postmanId, anotherChainId, address(postmanLz));
 			vaults[i].addVault(address(xVault), chainId, 1, true);
+
+			IVaultStrategy strategy1 = IVaultStrategy(address(setUpSCYVault(address(underlying))));
+			vaults[i].addStrategy(strategy1);
 
 			// Add min liquidity
 			depositVault(manager, mLp, payable(vaults[i]));

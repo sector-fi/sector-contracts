@@ -229,4 +229,32 @@ abstract contract SCYVaultCommon is SectorTest, SCYVaultUtils {
 		vault.redeem(user2, amount, NATIVE, 0);
 		vm.stopPrank();
 	}
+
+	function testStratWDwithUbalance() public {
+		uint256 amnt = 100e6;
+		scyDeposit(vault, user1, amnt);
+
+		// withdraw half
+		uint256 withdrawShares = vault.totalSupply() / 2;
+		uint256 minUnderlyingOut = vault.sharesToUnderlying(withdrawShares);
+		vault.withdrawFromStrategy(withdrawShares, minUnderlyingOut);
+
+		// withdraw 1/4
+		uint256 wAmnt = amnt / 4;
+		uint256 tvl = vault.getTvl();
+		uint256 uBalance = vault.uBalance();
+		uint256 shares = (tvl * vault.underlyingToShares(wAmnt)) / (tvl - uBalance);
+		vault.withdrawFromStrategy(shares, (wAmnt * 999) / 1000);
+
+		assertApproxEqRel(vault.uBalance(), (amnt * 3) / 4, .001e18, "vault uBalance");
+
+		uBalance = vault.uBalance();
+		uint256 depositAmnt = uBalance / 3;
+		tvl = vault.getTvl();
+		uint256 sharesOut = vault.underlyingToShares(depositAmnt);
+		uint256 minAmountShares = (sharesOut * tvl) / (tvl - uBalance + depositAmnt);
+		vault.depositIntoStrategy(depositAmnt, (minAmountShares * 999) / 1000);
+
+		assertApproxEqRel(vault.uBalance(), uBalance - depositAmnt, .001e18, "vault uBalance");
+	}
 }

@@ -43,15 +43,18 @@ abstract contract AggregatorWEpochVaultCommon is SectorTest, SCYWEpochVaultUtils
 
 		vault = deployAggVault(false);
 
+		vault.addStrategy(strategy1);
+		vault.addStrategy(strategy2);
+		vault.addStrategy(strategy3);
+
+		// add startegy to s3 so that deposits don't fail because of maxTVL
+		s3.addStrategy(strategy1);
+
 		// lock min liquidity
 		sectDeposit(vault, owner, mLp);
 		scyDeposit(s1, owner, mLp);
 		scyDeposit(s2, owner, mLp);
 		sectDeposit(s3, owner, mLp);
-
-		vault.addStrategy(strategy1);
-		vault.addStrategy(strategy2);
-		vault.addStrategy(strategy3);
 	}
 
 	receive() external payable {}
@@ -329,7 +332,7 @@ abstract contract AggregatorWEpochVaultCommon is SectorTest, SCYWEpochVaultUtils
 
 	function testDepositRedeemNative() public {
 		vault = deployAggVault(true);
-
+		vault.addStrategy(strategy1);
 		sectDeposit(vault, owner, mLp);
 
 		uint256 amnt = 1000e18;
@@ -669,11 +672,14 @@ abstract contract AggregatorWEpochVaultCommon is SectorTest, SCYWEpochVaultUtils
 		vault.setMaxTvl(10e18);
 		s1.setMaxTvl(1e18);
 		s2.setMaxTvl(2e18);
-		// s3.setMaxTvl(2e18); // maxTvl will be 0 because there is no strategy
+		s3.setMaxTvl(0);
+
+		uint256 s1Tvl = s1.getTvl();
+		uint256 s2Tvl = s2.getTvl();
 
 		uint256 maxStratTvl = vault.getMaxTvl();
 		uint256 maxTvl = vault.maxTvl();
-		assertEq(maxStratTvl, 3e18, "max strat tvl");
+		assertEq(maxStratTvl, 3e18 - s1Tvl - s2Tvl, "max strat tvl");
 		assertEq(maxTvl, 10e18, "max tvl");
 	}
 }

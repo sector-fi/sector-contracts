@@ -7,7 +7,7 @@ import { AggregatorWEpochVaultCommon, AggregatorWEpochVault } from "./Aggregator
 
 import "hardhat/console.sol";
 
-contract AggregatorVaultUTest is AggregatorWEpochVaultCommon {
+contract AggregatorWEpochVaultTest is AggregatorWEpochVaultCommon {
 	SectorFactory factory;
 	string vaultType = "AggregatorVaultWEpoch";
 
