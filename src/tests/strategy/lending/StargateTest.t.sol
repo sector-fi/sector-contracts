@@ -5,7 +5,7 @@ import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import { HarvestSwapParams } from "interfaces/Structs.sol";
-import { StargateStrategy, FarmConfig } from "strategies/lending/StargateStrategy.sol";
+import { StargateStrategy, FarmConfig, IStargatePool } from "strategies/lending/StargateStrategy.sol";
 import { StargateETHStrategy } from "strategies/lending/StargateETHStrategy.sol";
 
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -161,6 +161,14 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 	function noRebalance() public override {}
 
 	function adjustPrice(uint256 fraction) public override {}
+
+	function testStratMaxTvl() public {
+		uint256 maxTvl = strategy.getMaxTvl();
+		IStargatePool pool = strategy.stargatePool();
+		uint256 uBlance = pool.totalLiquidity();
+		console.log("maxTvl", maxTvl);
+		assertEq(maxTvl, uBlance / 5);
+	}
 
 	// function testDeploymentHarvest() public {
 	// 	// SCYVault dStrat = SCYVault(payable(0x596777F4a395e4e4dE3501858bE9719859C2F64D));

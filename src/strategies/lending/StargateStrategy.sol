@@ -87,7 +87,7 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 	}
 
 	function getMaxTvl() external view returns (uint256) {
-		return IERC20(stargatePool).totalSupply() / 4; // 25% of total deposits
+		return stargatePool.totalLiquidity() / 5; // 20% of total deposits
 	}
 
 	function collateralToUnderlying() external view returns (uint256) {

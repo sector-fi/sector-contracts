@@ -10,7 +10,7 @@ import { IStarchef } from "interfaces/stargate/IStarchef.sol";
 import { IntegrationTest } from "../common/IntegrationTest.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 
-import { SynapseStrategy, FarmConfig } from "strategies/lending/SynapseStrategy.sol";
+import { SynapseStrategy, FarmConfig, ISynapseSwap } from "strategies/lending/SynapseStrategy.sol";
 import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 import { Accounting } from "../../../common/Accounting.sol";
@@ -180,6 +180,14 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		uint256 actualBalance = vault.getWithdrawAmnt(shares);
 		assertGt(wAmnt, actualBalance);
 		console.log("w slippage", (10000 * (wAmnt - actualBalance)) / wAmnt);
+	}
+
+	function testStratMaxTvl() public {
+		uint256 maxTvl = strategy.getMaxTvl();
+		ISynapseSwap pool = strategy.synapsePool();
+		uint256 uBlance = pool.getTokenBalance(strategy.coinId());
+		console.log("maxTvl", maxTvl);
+		assertEq(maxTvl, uBlance / 4);
 	}
 
 	// function testDeployWithdraw() public {
