@@ -17,6 +17,8 @@ import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 
+import { AggregatorVaultU } from "vaults/SectorVaults/AggregatorVaultU.sol";
+
 import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
@@ -201,5 +203,13 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 	// 	// (uint256[] memory harvestAmnts, ) = dStrat.harvest(dStrat.getTvl(), 0, params1, params2);
 	// 	// vm.stopPrank();
 	// 	// assertGt(harvestAmnts[0], 0);
+	// }
+
+	// function testVaultDep() public {
+	// 	AggregatorVaultU aVault = AggregatorVaultU(
+	// 		payable(0xbe2Be6a2DAcf9dCC76903756ee8e085B1C5a2c30)
+	// 	);
+	// 	uint256 pricePerShare = aVault.sharesToUnderlying(1e18);
+	// 	console.log("pricePerShare", pricePerShare);
 	// }
 }
