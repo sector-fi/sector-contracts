@@ -19,15 +19,15 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 
 	uint256 public totalChildHoldings;
 	uint256 public floatAmnt; // amount of underlying tracked in vault
-	uint256 public maxHarvestInterval; // emergency redeem is enabled after this time
+	uint256 public harvestInterval; // emergency redeem is enabled after this time
 
 	constructor() {
 		lastHarvestTimestamp = block.timestamp;
 	}
 
-	function setMaxHarvestInterval(uint256 maxHarvestInterval_) public onlyOwner {
-		maxHarvestInterval = maxHarvestInterval_;
-		emit SetMaxHarvestInterval(maxHarvestInterval);
+	function setHarvestInterval(uint256 harvestInterval_) public onlyOwner {
+		harvestInterval = harvestInterval_;
+		emit SetHarvestInterval(harvestInterval);
 	}
 
 	function withdraw(
@@ -178,14 +178,33 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 	}
 
 	/// OVERRIDES
-	function decimals() public view override(ERC20, ERC4626) returns (uint8) {
+	function decimals() public view override returns (uint8) {
 		return asset.decimals();
 	}
 
-	function afterDeposit(uint256 assets, uint256) internal override {
-		if (block.timestamp - lastHarvestTimestamp > maxHarvestInterval)
-			revert EmergencyRedeemEnabled();
+	function _transfer(
+		address sender,
+		address recipient,
+		uint256 amount
+	) internal override(BatchedWithdraw, ERC20) {
+		super._transfer(sender, recipient, amount);
+	}
 
+	function _spendAllowance(
+		address owner,
+		address spender,
+		uint256 amount
+	) internal override(BatchedWithdraw, ERC20) {
+		super._spendAllowance(owner, spender, amount);
+	}
+
+	function totalSupply() public view override(Accounting, ERC4626) returns (uint256) {
+		return super.totalSupply();
+	}
+
+	function afterDeposit(uint256 assets, uint256) internal override {
+		if (block.timestamp - lastHarvestTimestamp > harvestInterval)
+			revert EmergencyRedeemEnabled();
 		floatAmnt += assets;
 	}
 
@@ -208,7 +227,7 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 		uint256 sharesFees,
 		uint256 tvl
 	);
-	event SetMaxHarvestInterval(uint256 maxHarvestInterval);
+	event SetHarvestInterval(uint256 harvestInterval);
 
 	error RecentHarvest();
 	error MaxRedeemNotZero();

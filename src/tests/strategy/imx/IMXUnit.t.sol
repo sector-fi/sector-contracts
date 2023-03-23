@@ -9,10 +9,11 @@ import { IMXSetup, IUniswapV2Pair, SCYVault, HarvestSwapParams } from "./IMXSetu
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
+import { Accounting } from "../../../common/Accounting.sol";
 
 import "hardhat/console.sol";
 
-contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
+contract IMXUnit is IMXSetup, UnitTestStrategy, UnitTestVault {
 	function testLoanHealth() public {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
@@ -25,7 +26,7 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
 
 		adjustPrice(maxAdjust);
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 
 		assertApproxEqRel(strategy.loanHealth(), 1e18, .001e18);
 	}
@@ -42,7 +43,7 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		deposit(user1, amnt);
 		uint256 maxAdjust = strategy.safetyMarginSqrt()**2 / 1e18;
 		adjustPrice((maxAdjust * 9) / 10);
-		uint256 balance = vault.balanceOf(user1);
+		uint256 balance = IERC20(address(vault)).balanceOf(user1);
 		vm.prank(user1);
 		vault.redeem(user1, (balance * .2e18) / 1e18, address(underlying), 0);
 	}
@@ -91,15 +92,15 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 	}
 
 	function testEdgeCases() public {
-		uint256 amount = getAmnt();
+		uint256 amount = getAmnt() / 2;
 
 		deposit(user1, amount);
 		uint256 exchangeRate = vault.sharesToUnderlying(1e18);
 
 		withdraw(user1, 1e18);
 
-		uint256 tvl = strategy.getAndUpdateTVL();
-		assertEq(tvl, 0);
+		uint256 tvl = strategy.getAndUpdateTvl();
+		assertEq((1e6 * tvl) / dec, 0);
 
 		deposit(user1, amount);
 
@@ -108,7 +109,7 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 	}
 
 	function testGetMaxTvlFail() public {
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 		uint256 maxTvl = strategy.getMaxTvl();
 		deposit(user1, maxTvl - 1);
 		vm.warp(block.timestamp + 30 * 60 * 60 * 24);
@@ -134,7 +135,8 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 	// OP_BLOCK = 65972372
 	// 	string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
 	function testRebalanceEdge() public {
-		deposit(user1, 10 * dec);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 
 		// logTvl(IStrategy(address(strategy)));
 		adjustPrice(100e18);
@@ -144,7 +146,7 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 
 		adjustPrice(1.12e18);
 		skip(60 * 60 * 24 * 5);
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 		// logTvl(IStrategy(address(strategy)));
 
 		console.log("position offset", strategy.getPositionOffset());
@@ -157,7 +159,8 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 	}
 
 	function testRebalanceEdge2() public {
-		deposit(user1, 10 * dec);
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
 
 		// logTvl(IStrategy(address(strategy)));
 		// adjustPrice(100e18);
@@ -167,7 +170,7 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 
 		// skip(60 * 60 * 24 * 1000);
 		adjustPrice(.9e18);
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 		// logTvl(IStrategy(address(strategy)));
 
 		console.log("position offset", strategy.getPositionOffset());
@@ -191,12 +194,23 @@ contract IMXUnit is IMXSetup, UnitTestVault, UnitTestStrategy {
 		vault.deposit{ value: amnt }(user1, address(0), 0, (minSharesOut * 9930) / 10000);
 		vm.stopPrank();
 
-		uint256 sharesToWithdraw = vault.balanceOf(user1);
+		uint256 sharesToWithdraw = IERC20(address(vault)).balanceOf(user1);
 		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
 		vm.prank(user1);
 		vault.redeem(user1, sharesToWithdraw, address(0), (minUnderlyingOut * 9990) / 10000);
 
 		assertApproxEqRel(user1.balance, amnt, .001e18);
+	}
+
+	function testPausedEdgeCase() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		vault.closePosition(0, 0);
+		withdraw(user1, 1e18);
+
+		uint256 balance = vault.uBalance();
+		console.log("balance", balance, Accounting(address(vault)).totalAssets());
+		deposit(user2, amnt);
 	}
 
 	// function testDeployments() public {

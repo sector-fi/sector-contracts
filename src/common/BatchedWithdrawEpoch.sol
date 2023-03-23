@@ -1,13 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IWETH } from "../interfaces/uniswap/IWETH.sol";
-import { SafeETH } from "../libraries/SafeETH.sol";
-import { Accounting } from "./Accounting.sol";
 import { SectorErrors } from "../interfaces/SectorErrors.sol";
 import { EpochType } from "../interfaces/Structs.sol";
+import { FixedPointMathLib } from "../libraries/FixedPointMathLib.sol";
 
 // import "hardhat/console.sol";
 
@@ -16,10 +12,12 @@ struct WithdrawRecord {
 	uint256 shares;
 }
 
-abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
-	using SafeERC20 for ERC20;
+abstract contract BatchedWithdrawEpoch is SectorErrors {
+	using FixedPointMathLib for uint256;
 
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
+
+	uint256 constant EX_MULTIPLIER = 1e36;
 
 	uint256 public epoch;
 	uint256 public pendingRedeem; // pending shares
@@ -72,7 +70,7 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
 		shares = withdrawRecord.shares;
 
 		// actual amount out is the smaller of currentValue and redeemValue
-		amountOut = (shares * epochExchangeRate[withdrawRecord.epoch]) / 1e18;
+		amountOut = shares.mulDivDown(epochExchangeRate[withdrawRecord.epoch], EX_MULTIPLIER);
 
 		// update total pending redeem
 		pendingRedeem -= shares;
@@ -88,14 +86,18 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
 	/// @dev ensure that we we have enought funds to process withdrawals
 	/// before calling this method
 	function _processRedeem(uint256 amountTokenOut) internal {
+		if (requestedRedeem == 0) return;
 		// store current epoch exchange rate
-		epochExchangeRate[epoch] = (1e18 * amountTokenOut) / requestedRedeem;
+		uint256 exchangeRate = amountTokenOut.mulDivDown(EX_MULTIPLIER, requestedRedeem);
+		epochExchangeRate[epoch] = exchangeRate;
 
 		pendingRedeem += requestedRedeem;
 		pendingWithdrawU += amountTokenOut;
 		requestedRedeem = 0;
 		// advance epoch
 		++epoch;
+
+		emit ProcessRedeem(epoch, exchangeRate);
 	}
 
 	function cancelRedeem() public virtual {
@@ -126,8 +128,26 @@ abstract contract BatchedWithdrawEpoch is ERC20, Accounting, SectorErrors {
 		return withdrawLedger[user].shares;
 	}
 
+	/// VIRTUAL ERC20 METHODS
+
+	function _transfer(
+		address sender,
+		address recipient,
+		uint256 amount
+	) internal virtual;
+
+	function _spendAllowance(
+		address owner,
+		address spender,
+		uint256 amount
+	) internal virtual;
+
+	event ProcessRedeem(uint256 epoch, uint256 exchangeRate);
+
 	error RedeemRequestExists();
 	error CannotCancelProccesedRedeem();
 	error NotNativeAsset();
 	error NotReady();
+
+	uint256[50] private __gap;
 }

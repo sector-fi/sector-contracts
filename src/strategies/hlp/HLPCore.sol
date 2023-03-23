@@ -13,12 +13,22 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuar
 import { Auth } from "../../common/Auth.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { StratAuth } from "../../common/StratAuth.sol";
+import { ISCYVault } from "../../interfaces/ERC5115/ISCYVault.sol";
 import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
+import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 
 // import "hardhat/console.sol";
 
 // @custom: alphabetize dependencies to avoid linearization conflicts
-abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFarm {
+abstract contract HLPCore is
+	SectorErrors,
+	StratAuth,
+	ReentrancyGuard,
+	IBase,
+	ILending,
+	IUniFarm,
+	ISCYStrategy
+{
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
 	using FixedPointMathLib for uint256;
@@ -60,7 +70,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 
 	// checks if deposits are paused on the parent SCYVault
 	modifier isPaused() {
-		if (ISCYStrategy(vault).getMaxTvl() != 0) revert NotPaused();
+		if (ISCYVault(vault).getMaxTvl() != 0) revert NotPaused();
 		_;
 	}
 
@@ -79,11 +89,11 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		_;
 	}
 
-	function __HedgedLP_init_(
+	constructor(
 		address underlying_,
 		address short_,
 		address _vault
-	) internal initializer {
+	) {
 		_underlying = IERC20(underlying_);
 		_short = IERC20(short_);
 
@@ -96,11 +106,6 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		emit SetMaxDefaultPriceMismatch(maxDefaultPriceMismatch);
 		emit SetRebalanceThreshold(rebalanceThreshold);
 		emit SetSafeCollateralRaio(_safeCollateralRatio);
-
-		// TODO should we add a revoke aprovals methods?
-		_addLendingApprovals();
-		_addFarmApprovals();
-		isInitialized = true;
 	}
 
 	function safeCollateralRatio() public view override returns (uint256) {
@@ -151,7 +156,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		return _short;
 	}
 
-	function underlying() public view override returns (IERC20) {
+	function underlying() public view virtual override(IBase, ISCYStrategy) returns (IERC20) {
 		return _underlying;
 	}
 
@@ -210,7 +215,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	/// @notice decreases position based to desired LP amount
 	/// @dev ** does not rebalance remaining portfolio
 	/// @param removeLp amount of lp amount to remove
-	function redeem(uint256 removeLp, address recipient)
+	function redeem(address recipient, uint256 removeLp)
 		public
 		onlyVault
 		returns (uint256 amountTokenOut)
@@ -267,7 +272,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	// ** does not rebalance remaining portfolio
 	function _increasePosition(uint256 underlyingAmnt) internal {
 		if (underlyingAmnt < MIN_LIQUIDITY) revert MinLiquidity(); // avoid imprecision
-		uint256 tvl = getAndUpdateTVL() - underlyingAmnt;
+		uint256 tvl = getAndUpdateTvl() - underlyingAmnt;
 
 		uint256 collateralBalance = _updateAndGetCollateralBalance();
 		uint256 shortPosition = _updateAndGetBorrowBalance();
@@ -333,7 +338,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		nonReentrant
 	{
 		// call this first to ensure we use an updated borrowBalance when computing offset
-		uint256 tvl = getAndUpdateTVL();
+		uint256 tvl = getAndUpdateTvl();
 		uint256 positionOffset = getPositionOffset();
 
 		if (positionOffset < rebalanceThreshold) revert RebalanceThreshold();
@@ -532,7 +537,7 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		return _oraclePriceOfShort(_maxBorrow());
 	}
 
-	function getAndUpdateTVL() public returns (uint256 tvl) {
+	function getAndUpdateTvl() public returns (uint256 tvl) {
 		uint256 collateralBalance = _updateAndGetCollateralBalance();
 		uint256 shortPosition = _updateAndGetBorrowBalance();
 		uint256 borrowBalance = _shortToUnderlying(shortPosition);
@@ -548,6 +553,10 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	// but it's not necessary with latestvault updates
 	function balanceOfUnderlying() public view returns (uint256 assets) {
 		(assets, , , , , ) = getTVL();
+	}
+
+	function getTvl() public view returns (uint256 tvl) {
+		(tvl, , , , , ) = getTVL();
 	}
 
 	function getTotalTVL() public view returns (uint256 tvl) {
@@ -586,10 +595,6 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 		return _getLPBalances();
 	}
 
-	function getLiquidity() public view returns (uint256) {
-		return _getLiquidity();
-	}
-
 	function getPositionOffset() public view returns (uint256 positionOffset) {
 		(, uint256 shortLp) = _getLPBalances();
 		uint256 borrowBalance = _getBorrowBalance();
@@ -613,11 +618,27 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	}
 
 	// used to estimate the expected return of lp tokens for first deposit
-	function collateralToUnderlying() external view returns (uint256) {
+	function collateralToUnderlying() public view returns (uint256) {
 		(uint256 uR, uint256 sR, ) = pair().getReserves();
 		(uR, sR) = address(_underlying) == pair().token0() ? (uR, sR) : (sR, uR);
 		uint256 lp = pair().totalSupply();
 		return (1e18 * (uR * _getLiquidity(1e18))) / lp / _totalToLp(1e18);
+	}
+
+	function getLpToken() public view returns (address) {
+		return address(pair());
+	}
+
+	function getLpBalance() public view returns (uint256) {
+		return _getLiquidity();
+	}
+
+	function getWithdrawAmnt(uint256 lpTokens) public view returns (uint256) {
+		return (lpTokens * collateralToUnderlying()) / 1e18;
+	}
+
+	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
+		return (uAmnt * 1e18) / collateralToUnderlying();
 	}
 
 	// UTILS
@@ -639,5 +660,4 @@ abstract contract HLPCore is StratAuth, ReentrancyGuard, IBase, ILending, IUniFa
 	error NotPaused();
 	error RebalanceThreshold();
 	error NonZeroFloat();
-	error MinLiquidity();
 }

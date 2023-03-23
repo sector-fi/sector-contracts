@@ -23,7 +23,7 @@ abstract contract FeesU is AuthU {
 	/// @notice address where all fees are sent to
 	address public treasury;
 
-	function __INIT_FEES_(FeeConfig memory feeConfig) public onlyInitializing {
+	function __Fees_init(FeeConfig memory feeConfig) public onlyInitializing {
 		treasury = feeConfig.treasury;
 		performanceFee = feeConfig.performanceFee;
 		managementFee = feeConfig.managementFee;

@@ -15,7 +15,7 @@ import { SectorErrors } from "interfaces/SectorErrors.sol";
 
 import "hardhat/console.sol";
 
-contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
+abstract contract AggregatorWEpochVaultCommon is SectorTest, SCYWEpochVaultUtils {
 	SCYWEpochVault s1;
 	SCYWEpochVault s2;
 	AggregatorWEpochVault s3;
@@ -28,34 +28,20 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 	AggregatorWEpochVault vault;
 
-	function setUp() public {
+	function deployAggVault(bool) public virtual returns (AggregatorWEpochVault);
+
+	function setUpCommonTest() public {
 		underlying = new WETH();
 
 		s1 = setUpSCYVault(address(underlying));
 		s2 = setUpSCYVault(address(underlying));
-		s3 = new AggregatorWEpochVault(
-			underlying,
-			"SECT_VAULT",
-			"SECT_VAULT",
-			false,
-			type(uint256).max,
-			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
-		);
+		s3 = deployAggVault(false);
 
 		strategy1 = IVaultStrategy(address(s1));
 		strategy2 = IVaultStrategy(address(s2));
 		strategy3 = IVaultStrategy(address(s3));
 
-		vault = new AggregatorWEpochVault(
-			underlying,
-			"SECT_VAULT",
-			"SECT_VAULT",
-			false,
-			type(uint256).max,
-			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
-		);
+		vault = deployAggVault(false);
 
 		// lock min liquidity
 		sectDeposit(vault, owner, mLp);
@@ -123,7 +109,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.mint(address(s1.yieldToken()), 10e18); // 10% profit
+		underlying.mint(s1.yieldToken(), 10e18); // 10% profit
 
 		sectInitRedeem(vault, user1, 1e18 / 4);
 
@@ -147,7 +133,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.burn(address(strategy1.strategy()), 10e18); // 10% loss
+		underlying.burn(s1.yieldToken(), 10e18); // 10% loss
 
 		sectInitRedeem(vault, user1, 1e18 / 4);
 
@@ -168,7 +154,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 
 		// funds deposited
 		depositToStrat(strategy1, amnt);
-		underlying.mint(address(s1.yieldToken()), 10e18 + (mLp) / 10); // 10% profit
+		underlying.mint(s1.yieldToken(), 10e18 + (mLp) / 10); // 10% profit
 
 		sectHarvest(vault);
 		sectInitRedeem(vault, user1, 1e18);
@@ -176,6 +162,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		uint256 pendingWithdraw = vault.convertToAssets(vault.requestedRedeem());
 		uint256 withdrawShares = (pendingWithdraw * strategy1.exchangeRateUnderlying()) / 1e18;
 
+		console.log(pendingWithdraw);
 		withdrawFromStrat(strategy1, withdrawShares);
 
 		vm.prank(user1);
@@ -341,15 +328,8 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 	}
 
 	function testDepositRedeemNative() public {
-		vault = new AggregatorWEpochVault(
-			underlying,
-			"SECT_VAULT",
-			"SECT_VAULT",
-			true,
-			type(uint256).max,
-			AuthConfig(owner, guardian, manager),
-			FeeConfig(treasury, DEFAULT_PERFORMANCE_FEE, DEAFAULT_MANAGEMENT_FEE)
-		);
+		vault = deployAggVault(true);
+
 		sectDeposit(vault, owner, mLp);
 
 		uint256 amnt = 1000e18;
@@ -380,7 +360,7 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		depositToStrat(strategy1, amnt);
 		sectInitRedeem(vault, user1, 1e18);
 
-		MockERC20(underlying).burn(address(strategy1.strategy()), amnt / 10);
+		MockERC20(underlying).burn(s1.yieldToken(), amnt / 10);
 
 		uint256 shares = IERC20(address(strategy1)).balanceOf(address(vault));
 		withdrawFromStrat(strategy1, shares);
@@ -526,8 +506,12 @@ contract AggregatorWEpochVaultTest is SectorTest, SCYWEpochVaultUtils {
 		requestRedeemFromStrategy(strategy, fract);
 		processRedeem(strategy);
 
+		uint256 withdrawShares = BatchedWithdrawEpoch(address(strategy)).getRequestedShares(
+			address(vault)
+		);
+
 		RedeemParams[] memory rParams = new RedeemParams[](1);
-		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), amount, 0));
+		rParams[0] = (RedeemParams(strategy, strategy.vaultType(), withdrawShares, 0));
 		vault.withdrawFromStrategies(rParams);
 	}
 

@@ -3,20 +3,23 @@ pragma solidity 0.8.16;
 
 import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { levConvexSetup, SCYStratUtils } from "./levConvexSetup.sol";
+import { levConvexSetup, SCYStratUtils, HarvestSwapParams } from "./levConvexSetup.sol";
 import { SCYWEpochVault } from "vaults/ERC5115/SCYWEpochVault.sol";
+import { StratAuthTest } from "../common/StratAuthTest.sol";
 import { SectorErrors } from "interfaces/SectorErrors.sol";
+import { levConvexBase } from "strategies/gearbox/levConvex.sol";
+import { EAction } from "interfaces/Structs.sol";
 
 import "hardhat/console.sol";
 
-contract levConvexUnit is levConvexSetup {
-	// function getAmnt() public view override(levConvexSetup, SCYStratUtils) returns (uint256) {
-	// 	return levConvexSetup.getAmnt();
-	// }
+contract levConvexUnit is levConvexSetup, StratAuthTest {
+	function getAmnt() public view override(levConvexSetup, SCYStratUtils) returns (uint256) {
+		return levConvexSetup.getAmnt();
+	}
 
-	// function deposit(address user, uint256 amnt) public override(levConvexSetup, SCYStratUtils) {
-	// 	levConvexSetup.deposit(user, amnt);
-	// }
+	function deposit(address user, uint256 amnt) public override(levConvexSetup, SCYStratUtils) {
+		levConvexSetup.deposit(user, amnt);
+	}
 
 	function testDepositLevConvex() public {
 		uint256 amnt = getAmnt();
@@ -57,7 +60,7 @@ contract levConvexUnit is levConvexSetup {
 	}
 
 	function adjustLeverage(uint16 targetLev) public returns (uint256 tvl, uint256 maxDelta) {
-		tvl = strategy.getTotalTVL();
+		tvl = strategy.getTvl();
 		maxDelta = (tvl * 1) / 1000;
 		strategy.adjustLeverage(tvl, maxDelta, targetLev);
 	}
@@ -103,7 +106,7 @@ contract levConvexUnit is levConvexSetup {
 	function testWithdrawMoreThanBalance() public {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
-		uint256 balance = vault.balanceOf(user1);
+		uint256 balance = IERC20(address(vault)).balanceOf(user1);
 		vm.prank(user1);
 		vm.expectRevert("ERC20: transfer amount exceeds balance");
 		getEpochVault(vault).requestRedeem(balance + 1);
@@ -150,7 +153,7 @@ contract levConvexUnit is levConvexSetup {
 	function testManagerWithdraw() public {
 		uint256 amnt = getAmnt();
 		deposit(user1, amnt);
-		uint256 shares = vault.totalSupply();
+		uint256 shares = IERC20(address(vault)).totalSupply();
 		vm.prank(guardian);
 
 		vault.withdrawFromStrategy(shares, 0);
@@ -173,33 +176,50 @@ contract levConvexUnit is levConvexSetup {
 
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
 
-		uint256 balance = vault.balanceOf(user1);
+		uint256 balance = IERC20(address(vault)).balanceOf(user1);
 		vm.prank(user1);
 		getEpochVault(vault).requestRedeem(balance);
 
-		uint256 shares = SCYWEpochVault(payable(vault)).requestedRedeem();
+		uint256 shares = getEpochVault(vault).requestedRedeem();
 		uint256 minAmountOut = vault.sharesToUnderlying(shares);
-		SCYWEpochVault(payable(vault)).processRedeem((minAmountOut * 9990) / 10000);
+		getEpochVault(vault).processRedeem((minAmountOut * 9990) / 10000);
 		redeemShares(user1, shares);
 		harvest();
+		assertApproxEqAbs(vault.uBalance(), underlying.balanceOf(address(vault)), 1);
+	}
+
+	function testLpToken() public virtual {
+		assertEq(vault.yieldToken(), vault.strategy().getLpToken());
 	}
 
 	function testSlippage() public {
 		uint256 amount = getAmnt();
 		deposit(user2, amount);
 		uint256 shares = vault.underlyingToShares(amount);
-		uint256 actualShares = SCYWEpochVault(payable(vault)).getDepositAmnt(amount);
+		uint256 actualShares = getEpochVault(vault).getDepositAmnt(amount);
 		console.log("d slippage", (10000 * (shares - actualShares)) / shares);
 		assertGt(shares, actualShares);
 		deposit(user1, amount);
-		assertApproxEqRel(vault.balanceOf(user1), actualShares, .01e18);
+		assertApproxEqRel(IERC20(address(vault)).balanceOf(user1), actualShares, .01e18);
 
 		uint256 balance = vault.underlyingBalance(user1);
-		shares = vault.balanceOf(user1);
-		uint256 actualBalance = SCYWEpochVault(payable(vault)).getWithdrawAmnt(shares);
+		shares = IERC20(address(vault)).balanceOf(user1);
+		uint256 actualBalance = getEpochVault(vault).getWithdrawAmnt(shares);
 		assertGt(actualBalance, balance);
 		console.log("w slippage", (10000 * (actualBalance - balance)) / actualBalance);
 		assertApproxEqRel(balance, actualBalance, .01e18);
+	}
+
+	function testSlippageEdge() public {
+		uint256 amount = getAmnt();
+
+		deal(address(underlying), user1, amount);
+		uint256 shares = vault.underlyingToShares(amount);
+
+		uint256 actualShares = getEpochVault(vault).getDepositAmnt(amount);
+		console.log("shares actual", shares, actualShares);
+		console.log("d slippage", (10000 * (shares - actualShares)) / shares);
+		assertApproxEqRel(shares, actualShares, .01e18);
 	}
 
 	function testLeveragedHarvest() public {
@@ -212,11 +232,11 @@ contract levConvexUnit is levConvexSetup {
 	function testProcessedRedeemState() public {
 		uint256 amnt = 20000e6;
 		deposit(user1, amnt);
-		uint256 shares = vault.balanceOf(user1) / 2;
+		uint256 shares = IERC20(address(vault)).balanceOf(user1) / 2;
 		vm.prank(user1);
 		getEpochVault(vault).requestRedeem(shares);
 		uint256 minAmountOut = vault.sharesToUnderlying(shares);
-		SCYWEpochVault(payable(vault)).processRedeem((minAmountOut * 9990) / 10000);
+		getEpochVault(vault).processRedeem((minAmountOut * 9990) / 10000);
 
 		assertEq(vault.getStrategyTvl(), 0);
 		uint256 tvl = vault.getTvl();
@@ -231,7 +251,7 @@ contract levConvexUnit is levConvexSetup {
 	function testWithdrawFromStrategyState() public {
 		uint256 amnt = 20000e6;
 		deposit(user1, amnt);
-		uint256 shares = vault.balanceOf(user1) / 2;
+		uint256 shares = IERC20(address(vault)).balanceOf(user1) / 2;
 
 		vault.withdrawFromStrategy(shares, 0);
 
@@ -243,5 +263,79 @@ contract levConvexUnit is levConvexSetup {
 		vm.prank(user1);
 		vm.expectRevert(SectorErrors.ZeroAmount.selector);
 		vault.deposit(user1, address(underlying), 0, 0);
+	}
+
+	function testHarvestGear() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		address GEAR = 0xBa3335588D9403515223F109EdC4eB7269a9Ab5D;
+		deal(GEAR, address(strategy), 10000e18);
+
+		HarvestSwapParams[] memory params1 = getHarvestParams();
+
+		strategy.getAndUpdateTvl();
+		uint256 tvl = vault.getTvl();
+
+		levConvexBase(address(strategy)).harvestOwnTokens(params1);
+
+		uint256 newTvl = vault.getTvl();
+		assertGt(newTvl, tvl, "tvl should increase");
+	}
+
+	function testHarvestGearClosedPosition() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		vault.closePosition(0, 0);
+
+		address GEAR = 0xBa3335588D9403515223F109EdC4eB7269a9Ab5D;
+		deal(GEAR, address(strategy), 10000e18);
+
+		HarvestSwapParams[] memory params1 = getHarvestParams();
+
+		vm.expectRevert(levConvexBase.NotPaused.selector);
+		levConvexBase(address(strategy)).harvestOwnTokens(params1);
+	}
+
+	function testHarvestGearWhenPaused() public {
+		uint256 amnt = getAmnt();
+		deposit(user1, amnt);
+		vault.closePosition(0, 0);
+		vault.pause();
+
+		address GEAR = 0xBa3335588D9403515223F109EdC4eB7269a9Ab5D;
+		deal(GEAR, address(strategy), 10000e18);
+		uint256 tvl = vault.getTvl();
+
+		HarvestSwapParams[] memory params1 = getHarvestParams();
+		levConvexBase(address(strategy)).harvestOwnTokens(params1);
+
+		uint256 newTvl = vault.getTvl();
+		assertGt(newTvl, tvl, "tvl should increase");
+
+		vault.closePosition(0, 0);
+		assertApproxEqAbs(vault.uBalance(), underlying.balanceOf(address(vault)), 1);
+	}
+
+	function testEmergencyStrategyAction() public {
+		address GEAR = 0xBa3335588D9403515223F109EdC4eB7269a9Ab5D;
+		uint256 amnt = 10000e18;
+		deal(GEAR, address(strategy), 10000e18);
+
+		EAction[] memory strategyActions = new EAction[](1);
+		bytes memory callData = abi.encodeWithSignature("transfer(address,uint256)", self, amnt);
+		strategyActions[0] = EAction(address(GEAR), 0, callData);
+
+		strategy.emergencyAction(strategyActions);
+		assertEq(IERC20(GEAR).balanceOf(self), amnt);
+		assertEq(IERC20(GEAR).balanceOf(address(strategy)), 0);
+	}
+
+	function testDepositDeployed() public {
+		SCYWEpochVault dvault = SCYWEpochVault(payable(0x814d8A046049b25BEd644d0534c9db050Fc33456));
+		address u = 0x157875C30F83729Ce9c1E7A1568ec00250237862;
+		vm.startPrank(u);
+		underlying.approve(address(dvault), 100e6);
+		dvault.deposit(u, address(underlying), 100e6, 0);
+		vm.stopPrank();
 	}
 }

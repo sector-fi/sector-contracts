@@ -20,18 +20,19 @@ abstract contract MasterChefFarm is IUniFarm {
 	IUniswapV2Pair private _pair;
 	uint256 private _farmId;
 
-	function __MasterChefFarm_init_(
+	constructor(
 		address pair_,
 		address farm_,
 		address router_,
 		address farmToken_,
 		uint256 farmPid_
-	) internal initializer {
+	) {
 		_farm = IMasterChef(farm_);
 		_router = IUniswapV2Router01(router_);
 		_farmToken = IERC20(farmToken_);
 		_pair = IUniswapV2Pair(pair_);
 		_farmId = farmPid_;
+		_addFarmApprovals();
 	}
 
 	// assumption that _router and _farm are trusted

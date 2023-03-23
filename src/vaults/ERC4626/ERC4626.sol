@@ -6,12 +6,13 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { IERC4626 } from "../../interfaces/ERC4626/IERC4626.sol";
 import { Accounting } from "../../common/Accounting.sol";
-import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 import { Fees, FeeConfig } from "../../common/Fees.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
+import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
 
 // import "hardhat/console.sol";
 
@@ -24,6 +25,8 @@ abstract contract ERC4626 is
 	Fees,
 	IERC4626,
 	ReentrancyGuard,
+	ERC20Permit,
+	Pausable,
 	SectorErrors
 {
 	using SafeERC20 for ERC20;
@@ -42,7 +45,7 @@ abstract contract ERC4626 is
 
 	ERC20 immutable asset;
 	// flag that allows the vault to consume native asset
-	bool public useNativeAsset;
+	bool public immutable useNativeAsset;
 	uint256 public maxTvl;
 
 	constructor(
@@ -50,7 +53,7 @@ abstract contract ERC4626 is
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset
-	) ERC20(_name, _symbol) {
+	) ERC20(_name, _symbol) ERC20Permit(_name) {
 		useNativeAsset = _useNativeAsset;
 		asset = _asset;
 	}
@@ -168,6 +171,25 @@ abstract contract ERC4626 is
 		asset.safeTransfer(receiver, assets);
 	}
 
+	function previewDeposit(uint256 assets) public view virtual returns (uint256) {
+		return convertToShares(assets);
+	}
+
+	function previewMint(uint256 shares) public view virtual returns (uint256) {
+		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+
+		return supply == 0 ? shares : shares.mulDivUp(totalAssets(), supply);
+	}
+
+	function previewWithdraw(uint256 assets) public view virtual returns (uint256) {
+		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+		return supply == 0 ? assets : assets.mulDivUp(supply, totalAssets());
+	}
+
+	function previewRedeem(uint256 shares) public view virtual returns (uint256) {
+		return convertToAssets(shares);
+	}
+
 	/*//////////////////////////////////////////////////////////////
                      DEPOSIT/WITHDRAWAL LIMIT LOGIC
     //////////////////////////////////////////////////////////////*/
@@ -203,4 +225,28 @@ abstract contract ERC4626 is
 	function afterDeposit(uint256 assets, uint256 shares) internal virtual {}
 
 	event MaxTvlUpdated(uint256 maxTvl);
+
+	/// ERC20 overrides
+
+	function totalSupply() public view virtual override(Accounting, ERC20) returns (uint256) {
+		return ERC20.totalSupply();
+	}
+
+	/// PAUSABLE
+
+	function pause() public onlyRole(GUARDIAN) {
+		_pause();
+	}
+
+	function unpause() public onlyRole(GUARDIAN) {
+		_unpause();
+	}
+
+	function _beforeTokenTransfer(
+		address from,
+		address to,
+		uint256 amount
+	) internal override whenNotPaused {
+		super._beforeTokenTransfer(from, to, amount);
+	}
 }

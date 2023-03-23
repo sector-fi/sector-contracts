@@ -29,12 +29,9 @@ contract AggregatorVault is SectorBase {
 	using FixedPointMathLib for uint256;
 	using SafeERC20 for ERC20;
 
-	/// if vaults accepts native asset we set asset to address 0;
-	address internal constant NATIVE = address(0);
-
 	// resonable amount to not go over gas limit when doing emergencyWithdraw
 	// in reality can go up to 200
-	uint8 MAX_STRATS = 100;
+	uint8 constant MAX_STRATS = 100;
 
 	mapping(IVaultStrategy => bool) public strategyExists;
 	address[] public strategyIndex;
@@ -44,7 +41,7 @@ contract AggregatorVault is SectorBase {
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset,
-		uint256 _maxHarvestInterval,
+		uint256 _harvestInterval,
 		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig
@@ -57,13 +54,17 @@ contract AggregatorVault is SectorBase {
 		maxTvl = _maxTvl;
 		emit MaxTvlUpdated(_maxTvl);
 
-		maxHarvestInterval = _maxHarvestInterval;
-		emit SetMaxHarvestInterval(_maxHarvestInterval);
+		harvestInterval = _harvestInterval;
+		emit SetHarvestInterval(_harvestInterval);
+
+		lastHarvestTimestamp = block.timestamp;
 	}
 
+	/// @notice This is only an approximation - doesn't take
+	/// into account the amount of non-vault deposits in the strategies
 	function getMaxTvl() external view returns (uint256) {
 		uint256 startMaxTvl;
-		for (uint256 i = 0; i < strategyIndex.length; i++) {
+		for (uint256 i; i < strategyIndex.length; ++i) {
 			IVaultStrategy strategy = IVaultStrategy(strategyIndex[i]);
 			startMaxTvl += strategy.getMaxTvl();
 		}
@@ -76,8 +77,8 @@ contract AggregatorVault is SectorBase {
 
 		/// make sure underlying matches
 		if (address(strategy.underlying()) != address(asset)) revert WrongUnderlying();
-
 		if (strategy.epochType() != epochType) revert WrongEpochType();
+
 		strategyExists[strategy] = true;
 		strategyIndex.push(address(strategy));
 		emit AddStrategy(address(strategy));
@@ -193,7 +194,7 @@ contract AggregatorVault is SectorBase {
 	/// a portion of the float amount + a portion of all the strategy shares the vault holds
 	/// deposits are paused when we are in the emergency redeem state
 	function emergencyRedeem() public nonReentrant {
-		if (block.timestamp - lastHarvestTimestamp < maxHarvestInterval) revert RecentHarvest();
+		if (block.timestamp - lastHarvestTimestamp < harvestInterval) revert RecentHarvest();
 		uint256 shares = balanceOf(msg.sender);
 		if (shares == 0) return;
 
@@ -206,7 +207,7 @@ contract AggregatorVault is SectorBase {
 
 		if (floatAmnt > pendingWithdraw) {
 			uint256 availableFloat = floatAmnt - pendingWithdraw;
-			uint256 underlyingShare = (availableFloat * shares) / adjustedSupply;
+			uint256 underlyingShare = availableFloat.mulDivDown(shares, adjustedSupply);
 			beforeWithdraw(underlyingShare, 0);
 			asset.safeTransfer(msg.sender, underlyingShare);
 		}
@@ -217,13 +218,13 @@ contract AggregatorVault is SectorBase {
 		for (uint256 i; i < l; ++i) {
 			ERC20 stratToken = ERC20(strategyIndex[i]);
 			uint256 balance = stratToken.balanceOf(address(this));
-			uint256 userShares = (shares * balance) / adjustedSupply;
+			uint256 userShares = shares.mulDivDown(balance, adjustedSupply);
 			if (userShares == 0) continue;
 			stratToken.safeTransfer(msg.sender, userShares);
 		}
 
 		// reduce the amount of totalChildHoldings
-		totalChildHoldings -= (shares * totalChildHoldings) / adjustedSupply;
+		totalChildHoldings -= shares.mulDivDown(totalChildHoldings, adjustedSupply);
 
 		_burn(msg.sender, shares);
 	}
@@ -254,7 +255,9 @@ contract AggregatorVault is SectorBase {
 	}
 
 	function getFloat() public view returns (uint256) {
-		return floatAmnt - convertToAssets(pendingRedeem);
+		uint256 _float = floatAmnt;
+		uint256 _pendingWithdraw = convertToAssets(pendingRedeem);
+		return _float > _pendingWithdraw ? _float - _pendingWithdraw : 0;
 	}
 
 	/// INTERFACE UTILS

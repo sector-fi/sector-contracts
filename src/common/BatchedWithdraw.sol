@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
 
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { IWETH } from "../interfaces/uniswap/IWETH.sol";
-import { SafeETH } from "../libraries/SafeETH.sol";
 import { Accounting } from "./Accounting.sol";
 import { SectorErrors } from "../interfaces/SectorErrors.sol";
 import { EpochType } from "../interfaces/Structs.sol";
+import { FixedPointMathLib } from "../libraries/FixedPointMathLib.sol";
 
 // import "hardhat/console.sol";
 
@@ -17,8 +14,8 @@ struct WithdrawRecord {
 	uint256 value; // this the current value (also max withdraw value)
 }
 
-abstract contract BatchedWithdraw is ERC20, Accounting, SectorErrors {
-	using SafeERC20 for ERC20;
+abstract contract BatchedWithdraw is Accounting, SectorErrors {
+	using FixedPointMathLib for uint256;
 
 	event RequestWithdraw(address indexed caller, address indexed owner, uint256 shares);
 
@@ -119,8 +116,22 @@ abstract contract BatchedWithdraw is ERC20, Accounting, SectorErrors {
 		uint256 currentValue = convertToAssets(shares);
 
 		if (currentValue < redeemValue) return 0;
-		return (1e18 * (currentValue - redeemValue)) / redeemValue;
+		return (currentValue - redeemValue).mulDivDown(1e18, redeemValue);
 	}
+
+	/// VIRTUAL ERC20 METHODS
+
+	function _transfer(
+		address sender,
+		address recipient,
+		uint256 amount
+	) internal virtual;
+
+	function _spendAllowance(
+		address owner,
+		address spender,
+		uint256 amount
+	) internal virtual;
 
 	/// UTILS
 	function redeemIsReady(address user) external view returns (bool) {
@@ -135,4 +146,6 @@ abstract contract BatchedWithdraw is ERC20, Accounting, SectorErrors {
 	error NotReady();
 	error CannotCancelProccesedRedeem();
 	error NotNativeAsset();
+
+	uint256[50] private __gap;
 }

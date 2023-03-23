@@ -5,12 +5,19 @@ import {
   IStargateFactory,
   IStargatePool,
   IStarchef,
-} from '../../../typechain';
-import { stargate } from './stargateConfigs';
-import { getUniswapV3Path, addStratToConfig } from '../utils';
+} from '../../../../typechain';
+import { stargate } from './config';
+import {
+  getUniswapV3Path,
+  addStratToConfig,
+  StratType,
+  chainToEnv,
+  tokens,
+} from '../../utils';
 
-const main = async () => {
-  stargate.filter((s) => s.chain == network.name).forEach(addStrategy);
+export const main = async () => {
+  const strategies = stargate.filter((s) => s.chain == network.name);
+  for (const strategy of strategies) await addStrategy(strategy);
 };
 
 const addStrategy = async (strategy) => {
@@ -39,7 +46,7 @@ const addStrategy = async (strategy) => {
     deployer
   );
 
-  const farmToken = await farm.stargate();
+  const farmToken = getFarmToknen(strategy.chain);
 
   const allPools = await farm.poolLength();
   let farmId;
@@ -53,24 +60,35 @@ const addStrategy = async (strategy) => {
   }
   if (i != farmId) throw new Error('farmId not found');
 
-  const path = await getUniswapV3Path(farmToken, strategy.underlying);
+  console.log('get path', strategy.name, farmToken, strategy.underlying);
+  const path = await getUniswapV3Path(
+    farmToken,
+    strategy.farmOutput || strategy.underlying
+  );
 
   const config = {
     a_underlying: strategy.underlying,
     b_strategy: strategy.strategy,
     c_strategyId: strategy.poolId,
-    d_yieldToken: pool.address,
+    d1_yieldToken: pool.address,
+    d2_acceptsNativeToken: !!strategy.acceptsNativeToken,
     e_farmId: farmId,
     f1_farm: strategy.farm,
     f2_farmToken: farmToken,
     g_farmRouter: strategy.farmRouter,
     h_harvestPath: path,
-    x_chain: 'ARBITRUM',
+    x_chain: chainToEnv[strategy.chain],
   };
   await addStratToConfig(strategy.name, config, strategy);
 };
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+const getFarmToknen = (chain) => {
+  switch (chain) {
+    case 'arbitrum':
+      return tokens['arbitrum'].STG;
+    case 'optimism':
+      return tokens['optimism'].OP;
+    default:
+      throw new Error('missing stargate rewards token');
+  }
+};

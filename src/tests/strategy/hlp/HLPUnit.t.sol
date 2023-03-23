@@ -7,18 +7,18 @@ import { MockERC20 } from "../../mocks/MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeETH } from "libraries/SafeETH.sol";
 import { IStrategy } from "interfaces/IStrategy.sol";
-import { HLPSetup, SCYVault } from "./HLPSetup.sol";
+import { HLPSetup, SCYVault, HLPCore } from "./HLPSetup.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { SectorErrors } from "interfaces/SectorErrors.sol";
+import { AggregatorVault } from "vaults/sectorVaults/AggregatorVault.sol";
 
 import "hardhat/console.sol";
 
-contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
+contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	/// INIT
 
 	function testShouldInit() public override {
-		// assertTrue(strategy.isInitialized());
 		assertEq(strategy.vault(), address(vault));
 		assertEq(vault.getFloatingAmount(address(underlying)), 0);
 		assertEq(strategy.decimals(), underlying.decimals());
@@ -219,7 +219,7 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 		vault.closePosition(0, offset);
 	}
 
-	function testSlippage() public {
+	function testRebalanceSlippage() public {
 		deposit(self, dec);
 
 		// this creates a price offset
@@ -299,8 +299,40 @@ contract HLPUnit is HLPSetup, UnitTestVault, UnitTestStrategy {
 	}
 
 	// function testDeployedHarvest() public {
-	// 	SCYVault dvault = SCYVault(payable(0xb2e0ff67be42A569f6B1f50a5a43E5fD0952E58a));
+	// 	SCYVault dvault = SCYVault(payable(0x615C884C42C3bca1B93d6E28f7D416916d9F4bf8));
+	// 	HLPCore _strategy = HLPCore(payable(address(dvault.strategy())));
+	// 	// vm.prank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
+	// 	// strategy.rebalance(0);
 	// 	// vm.warp(block.timestamp + 1 * 60 * 60 * 24);
-	// 	harvest(dvault);
+
+	// 	harvestParams.min = 0;
+	// 	harvestParams.deadline = block.timestamp + 1;
+
+	// 	harvestLendParams.min = 0;
+	// 	harvestLendParams.deadline = block.timestamp + 1;
+
+	// 	// _strategy.getAndUpdateTvl();
+	// 	uint256 tvl = _strategy.getTotalTVL();
+
+	// 	HarvestSwapParams[] memory farmParams = new HarvestSwapParams[](1);
+	// 	farmParams[0] = harvestParams;
+
+	// 	HarvestSwapParams[] memory lendParams = new HarvestSwapParams[](1);
+	// 	lendParams[0] = harvestLendParams;
+
+	// 	uint256 vaultTvl = dvault.getTvl();
+
+	// 	vm.prank(0x6DdF9DA4C37DF97CB2458F85050E09994Cbb9C2A);
+	// 	(uint256[] memory harvestAmnts, uint256[] memory harvestLendAmnts) = dvault.harvest(
+	// 		vaultTvl,
+	// 		vaultTvl / 10,
+	// 		farmParams,
+	// 		lendParams
+	// 	);
+
+	// 	uint256 newTvl = _strategy.getTotalTVL();
+	// 	assertGt(harvestAmnts[0], 0);
+	// 	assertGt(harvestLendAmnts[0], 0);
+	// 	assertGt(newTvl, tvl);
 	// }
 }

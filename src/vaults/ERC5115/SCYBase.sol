@@ -6,9 +6,11 @@ import { ISuperComposableYield } from "../../interfaces/ERC5115/ISuperComposable
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20MetadataUpgradeable as IERC20Metadata } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
-import { Accounting } from "../../common/Accounting.sol";
-import { ERC20Permit, EIP712 } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
+import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
+import { Fees } from "../../common/Fees.sol";
+import { Pausable } from "@openzeppelin/contracts/security/Pausable.sol";
+import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
 // import "hardhat/console.sol";
 
@@ -16,11 +18,13 @@ abstract contract SCYBase is
 	ISuperComposableYield,
 	ReentrancyGuard,
 	ERC20,
-	Accounting,
+	Fees,
 	ERC20Permit,
+	Pausable,
 	SectorErrors
 {
 	using SafeERC20 for IERC20;
+	using FixedPointMathLib for uint256;
 
 	address internal constant NATIVE = address(0);
 	uint256 internal constant ONE = 1e18;
@@ -117,18 +121,31 @@ abstract contract SCYBase is
 	) internal virtual returns (uint256 amountTokenOut, uint256 tokensToTransfer);
 
 	/*///////////////////////////////////////////////////////////////
-                               EXCHANGE-RATE
-    //////////////////////////////////////////////////////////////*/
+										Accounting
+		//////////////////////////////////////////////////////////////*/
 
-	/**
-	 * @dev See {ISuperComposableYield-exchangeRateCurrent}
-	 */
-	function exchangeRateCurrent() external virtual override returns (uint256 res);
+	function totalAssets() public view virtual returns (uint256);
 
-	/**
-	 * @dev See {ISuperComposableYield-exchangeRateStored}
-	 */
-	function exchangeRateStored() external view virtual override returns (uint256 res);
+	function toSharesAfterDeposit(uint256 assets) public view virtual returns (uint256) {
+		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+		uint256 _totalAssets = totalAssets() - assets;
+		// when _totalAssets < MIN_LIQUIDITY, treat it as 0
+		if (_totalAssets < MIN_LIQUIDITY || supply == 0) return assets;
+		return assets.mulDivDown(supply, _totalAssets);
+	}
+
+	function convertToShares(uint256 assets) public view virtual returns (uint256) {
+		uint256 supply = totalSupply();
+		uint256 _totalAssets = totalAssets();
+		// when _totalAssets < MIN_LIQUIDITY, treat it as 0
+		if (_totalAssets < MIN_LIQUIDITY || supply == 0) return assets;
+		return assets.mulDivDown(supply, _totalAssets);
+	}
+
+	function convertToAssets(uint256 shares) public view virtual returns (uint256) {
+		uint256 supply = totalSupply(); // Saves an extra SLOAD if totalSupply is non-zero.
+		return supply == 0 ? shares : shares.mulDivDown(totalAssets(), supply);
+	}
 
 	// VIRTUALS
 	function getFloatingAmount(address token) public view virtual returns (uint256);
@@ -155,17 +172,26 @@ abstract contract SCYBase is
 		uint256 amount
 	) internal virtual;
 
-	function _selfBalance(address token) internal view virtual returns (uint256);
-
 	function _depositNative() internal virtual;
 
-	// OVERRIDES
-	function totalSupply() public view virtual override(ERC20, IERC20) returns (uint256) {
-		return ERC20.totalSupply();
+	function sendERC20ToStrategy() public view virtual returns (bool) {
+		return true;
 	}
 
-	function sendERC20ToStrategy() public view virtual returns (bool) {
-		return false;
+	function pause() public onlyRole(GUARDIAN) {
+		_pause();
+	}
+
+	function unpause() public onlyRole(GUARDIAN) {
+		_unpause();
+	}
+
+	function _beforeTokenTransfer(
+		address from,
+		address to,
+		uint256 amount
+	) internal override whenNotPaused {
+		super._beforeTokenTransfer(from, to, amount);
 	}
 
 	error CantPullEth();

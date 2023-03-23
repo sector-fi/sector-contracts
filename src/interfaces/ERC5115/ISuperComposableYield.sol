@@ -23,9 +23,9 @@
 
 pragma solidity 0.8.16;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ISCYStrategy } from "./ISCYStrategy.sol";
+import { ISCYVault } from "./ISCYVault.sol";
 
-interface ISuperComposableYield is ISCYStrategy {
+interface ISuperComposableYield is ISCYVault {
 	/// @dev Emitted whenever the exchangeRate is updated
 	event ExchangeRateUpdated(uint256 oldExchangeRate, uint256 newExchangeRate);
 
@@ -112,24 +112,6 @@ interface ISuperComposableYield is ISCYStrategy {
 		address tokenOut,
 		uint256 minTokenOut
 	) external returns (uint256 amountTokenOut);
-
-	/**
-     * @notice exchangeRateCurrent * scyBalance / 1e18 must return the asset balance of the account
-     * @notice vice-versa, if a user uses some amount of tokens equivalent to X asset, the amount of scy
-     he can mint must be X * exchangeRateCurrent / 1e18
-     * @dev SCYUtils's assetToScy & scyToAsset should be used instead of raw multiplication
-     & division
-     *
-     * May emit a {NewExchangeRate} event
-     */
-	function exchangeRateCurrent() external returns (uint256 res);
-
-	/**
-	 * @notice returns the previously updated and stored shares exchange rate
-	 * @dev the returned value may be outdated if exchangeRateCurrent() was not called for a
-	 * extended period of time
-	 */
-	function exchangeRateStored() external view returns (uint256 res);
 
 	/**
 	 * @notice returns the address of the underlying yield token

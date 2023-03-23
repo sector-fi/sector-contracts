@@ -9,11 +9,19 @@ import { IBaseRewardPool } from "../../interfaces/gearbox/adapters/IBaseRewardPo
 import { IBooster } from "../../interfaces/gearbox/adapters/IBooster.sol";
 import { LevConvexConfig } from "./ILevConvex.sol";
 import { levConvexBase } from "./levConvexBase.sol";
+import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 
 // import "hardhat/console.sol";
 
 contract levConvex3Crv is levConvexBase {
-	uint256 threeId = 1;
+	using FixedPointMathLib for uint256;
+
+	// these constants are specific to this contract
+	ICurveV1Adapter public constant threePoolAdapter =
+		ICurveV1Adapter(0xbd871de345b2408f48C1B249a1dac7E0D7D4F8f9);
+
+	// this is the ID of the THREE POOL coin in the COIN-threePool
+	uint256 constant threeId = 1;
 
 	constructor(AuthConfig memory authConfig, LevConvexConfig memory config)
 		levConvexBase(authConfig, config)
@@ -151,7 +159,6 @@ contract levConvex3Crv is levConvexBase {
 			)
 		});
 
-		// console.log("lp", IERC20(0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490).balanceOf(credAcc));
 		creditFacade.openCreditAccountMulticall(borrowAmnt, address(this), calls, 0);
 		credAcc = creditManager.getCreditAccountOrRevert(address(this));
 	}
@@ -165,8 +172,7 @@ contract levConvex3Crv is levConvexBase {
 			int128(uint128(coinId))
 		);
 		uint256 currentLeverage = getLeverage();
-		if (currentLeverage == 0) return (100 * underlyingAmnt) / (leverageFactor + 100);
-		return (100 * underlyingAmnt) / currentLeverage;
+		return underlyingAmnt.mulDivDown(100, currentLeverage);
 	}
 
 	function getTotalAssets() public view override returns (uint256 totalAssets) {
@@ -182,13 +188,14 @@ contract levConvex3Crv is levConvexBase {
 	function getWithdrawAmnt(uint256 lpAmnt) public view returns (uint256) {
 		uint256 threePoolLp = curveAdapter.calc_withdraw_one_coin(lpAmnt, int128(uint128(threeId)));
 		return
-			(100 * threePoolAdapter.calc_withdraw_one_coin(threePoolLp, int128(uint128(coinId)))) /
-			(leverageFactor + 100);
+			threePoolAdapter
+				.calc_withdraw_one_coin(threePoolLp, int128(uint128(coinId)))
+				.mulDivDown(100, getLeverage());
 	}
 
 	/// @dev used to estimate slippage
 	function getDepositAmnt(uint256 uAmnt) public view returns (uint256) {
-		uint256 amnt = (uAmnt * (leverageFactor + 100)) / 100;
+		uint256 amnt = (uAmnt * getLeverage()) / 100;
 		uint256 threePoolLp = threePoolAdapter.calc_add_one_coin(amnt, int128(uint128(coinId)));
 		return curveAdapter.calc_add_one_coin(threePoolLp, int128(uint128(threeId)));
 	}

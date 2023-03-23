@@ -21,18 +21,19 @@ abstract contract MiniChefFarm is IUniFarm {
 	IUniswapV2Pair private _pair;
 	uint256 private _farmId;
 
-	function __MiniChefFarm_init_(
+	constructor(
 		address pair_,
 		address farm_,
 		address router_,
 		address farmToken_,
 		uint256 farmPid_
-	) internal initializer {
+	) {
 		_farm = IMiniChefV2(farm_);
 		_router = IUniswapV2Router01(router_);
 		_farmToken = IERC20(farmToken_);
 		_pair = IUniswapV2Pair(pair_);
 		_farmId = farmPid_;
+		_addFarmApprovals();
 	}
 
 	function _addFarmApprovals() internal override {

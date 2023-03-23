@@ -21,6 +21,12 @@ abstract contract SectorBaseWEpoch is BatchedWithdrawEpoch, ERC4626 {
 	uint256 public totalChildHoldings;
 	uint256 public floatAmnt; // amount of underlying tracked in vault
 	uint256 public lastHarvestTimestamp;
+	uint256 public harvestInterval; // emergency redeem is enabled after this time
+
+	function setHarvestInterval(uint256 harvestInterval_) public onlyOwner {
+		harvestInterval = harvestInterval_;
+		emit SetHarvestInterval(harvestInterval);
+	}
 
 	constructor() {
 		lastHarvestTimestamp = block.timestamp;
@@ -123,7 +129,7 @@ abstract contract SectorBaseWEpoch is BatchedWithdrawEpoch, ERC4626 {
 	/// this action to be malicious
 	function emergencyAction(EAction[] calldata actions) public payable onlyOwner {
 		uint256 l = actions.length;
-		for (uint256 i = 0; i < l; i++) {
+		for (uint256 i; i < l; ++i) {
 			address target = actions[i].target;
 			bytes memory data = actions[i].data;
 			(bool success, ) = target.call{ value: actions[i].value }(data);
@@ -143,7 +149,7 @@ abstract contract SectorBaseWEpoch is BatchedWithdrawEpoch, ERC4626 {
 		if (delta > maxDelta) revert SlippageExceeded();
 	}
 
-	function totalAssets() public view virtual override(Accounting, ERC4626) returns (uint256) {
+	function totalAssets() public view virtual override returns (uint256) {
 		return floatAmnt + totalChildHoldings;
 	}
 
@@ -169,8 +175,20 @@ abstract contract SectorBaseWEpoch is BatchedWithdrawEpoch, ERC4626 {
 	}
 
 	/// OVERRIDES
-	function decimals() public view override(ERC20, ERC4626) returns (uint8) {
-		return asset.decimals();
+	function _transfer(
+		address sender,
+		address recipient,
+		uint256 amount
+	) internal override(BatchedWithdrawEpoch, ERC20) {
+		super._transfer(sender, recipient, amount);
+	}
+
+	function _spendAllowance(
+		address owner,
+		address spender,
+		uint256 amount
+	) internal override(BatchedWithdrawEpoch, ERC20) {
+		super._spendAllowance(owner, spender, amount);
 	}
 
 	function afterDeposit(uint256 assets, uint256) internal override {
@@ -193,6 +211,7 @@ abstract contract SectorBaseWEpoch is BatchedWithdrawEpoch, ERC4626 {
 		uint256 sharesFees,
 		uint256 tvl
 	);
+	event SetHarvestInterval(uint256 harvestInterval);
 
 	error RecentHarvest();
 	error MaxRedeemNotZero();

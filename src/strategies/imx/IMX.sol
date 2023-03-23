@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { IMXCore } from "./IMXCore.sol";
+import { IMXCore, IBase, IERC20 } from "./IMXCore.sol";
 import { IMXFarm } from "./IMXFarm.sol";
 import { IMXConfig } from "../../interfaces/Structs.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
@@ -19,9 +19,7 @@ contract IMX is IMXCore, IMXFarm {
 			config.farmToken
 		)
 		IMXCore(config.vault, config.underlying, config.short)
-	{
-		isInitialized = true;
-	}
+	{}
 
 	function tarotBorrow(
 		address a,
@@ -38,5 +36,9 @@ contract IMX is IMXCore, IMXFarm {
 		bytes calldata data
 	) external {
 		impermaxRedeem(a, redeemAmount, data);
+	}
+
+	function underlying() public view override(IBase, IMXCore) returns (IERC20) {
+		return super.underlying();
 	}
 }

@@ -21,7 +21,7 @@ contract SectorVault is AggregatorVault, XChainIntegrator {
 		string memory _name,
 		string memory _symbol,
 		bool _useNativeAsset,
-		uint256 _maxHarvestInterval,
+		uint256 _harvestInterval,
 		uint256 _maxTvl,
 		AuthConfig memory authConfig,
 		FeeConfig memory feeConfig,
@@ -32,7 +32,7 @@ contract SectorVault is AggregatorVault, XChainIntegrator {
 			_name,
 			_symbol,
 			_useNativeAsset,
-			_maxHarvestInterval,
+			_harvestInterval,
 			_maxTvl,
 			authConfig,
 			feeConfig

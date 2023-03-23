@@ -1,10 +1,16 @@
 import { ethers, getNamedAccounts, network } from 'hardhat';
-import { ISynapseSwap, ISynapseMiniChef2 } from '../../../typechain';
-import { strategies } from './synapseConfigs';
-import { getUniswapV3Path, addStratToConfig } from '../utils';
+import { ISynapseSwap, ISynapseMiniChef2 } from '../../../../typechain';
+import { strategies } from './config';
+import {
+  getUniswapV3Path,
+  addStratToConfig,
+  StratType,
+  chainToEnv,
+} from '../../utils';
 
-const main = async () => {
-  strategies.filter((s) => s.chain == network.name).forEach(addStrategy);
+export const main = async () => {
+  const strats = strategies.filter((s) => s.chain == network.name);
+  for (const strategy of strats) await addStrategy(strategy);
 };
 
 const addStrategy = async (strategy) => {
@@ -37,6 +43,7 @@ const addStrategy = async (strategy) => {
   }
   if (i != farmId) throw new Error('farmId not found');
 
+  console.log('get path', strategy.name, farmToken, strategy.underlying);
   const path = await getUniswapV3Path(farmToken, strategy.underlying);
   const tokenId = await pool.getTokenIndex(strategy.underlying);
 
@@ -44,18 +51,15 @@ const addStrategy = async (strategy) => {
     a_underlying: strategy.underlying,
     b_strategy: strategy.strategy,
     c_strategyId: tokenId,
-    d_yieldToken: lpToken,
+    d1_yieldToken: lpToken,
+    d2_acceptsNativeToken: !!strategy.acceptsNativeToken,
     e_farmId: farmId,
     f1_farm: strategy.farm,
     f2_farmToken: farmToken,
     g_farmRouter: strategy.farmRouter,
     h_harvestPath: path,
-    x_chain: 'ARBITRUM',
+    x_chain: chainToEnv[strategy.chain],
   };
+
   await addStratToConfig(strategy.name, config, strategy);
 };
-
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});

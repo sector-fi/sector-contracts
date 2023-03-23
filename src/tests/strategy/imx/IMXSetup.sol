@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX_License_Identifier: MIT
 pragma solidity 0.8.16;
 
 import { ICollateral } from "interfaces/imx/IImpermax.sol";
@@ -7,11 +7,13 @@ import { PriceUtils, UniUtils, IUniswapV2Pair } from "../../utils/PriceUtils.sol
 
 import { SectorTest } from "../../utils/SectorTest.sol";
 import { IMXConfig, HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYVault, IMXVault, Strategy, AuthConfig, FeeConfig } from "strategies/imx/IMXVault.sol";
 import { IMX, IMXCore } from "strategies/imx/IMX.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { SCYStratUtils } from "../common/SCYStratUtils.sol";
 import { UniswapMixin } from "../common/UniswapMixin.sol";
+
+import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
+import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -22,24 +24,26 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 	using stdJson for string;
 
 	// avalanche
-	// string TEST_STRATEGY = "USDC-IMX-AVAX";
+	// string TEST_STRATEGY = "USDC_IMX_AVAX";
 
 	// optimism
-	string TEST_STRATEGY = "USDC-ETH-Tarot-Velo";
-	// string TEST_STRATEGY = "USDC-TAROT-Tarot-Velo";
-	// string TEST_STRATEGY = "ETH-USDC-Tarot-Velo";
-	// string TEST_STRATEGY = "USDC-OP-Tarot-Velo";
-	// string TEST_STRATEGY = "USDC-VELO-Tarot-Velo";
+	string TEST_STRATEGY = "LLP_ETH-USDC_Tarot-Velo_optimism";
+	// string TEST_STRATEGY = "LLP_USDC-ETH_Tarot-Velo_optimism";
+	// string TEST_STRATEGY = "LLP_ETH-USDC-Tarot_Velo";
+	// string TEST_STRATEGY = "LLP_USDC-OP-Tarot_Velo";
+	// string TEST_STRATEGY = "LLP_USDC-VELO_Tarot_Velo";
 
 	// arbitrum
-	// string TEST_STRATEGY = "USDC-ETH-Tarot-Xcal";
-	// string TEST_STRATEGY = "USDC-XCAL-Tarot-Xcal";
+	// string TEST_STRATEGY = "LLP_USDC-ETH_Tarot-Xcal_arbitrum";
+	// string TEST_STRATEGY = "LLP_ETH-USDC_Tarot-Xcal_arbitrum";
+
+	// string TEST_STRATEGY = "LLP_USDC-XCAL_Tarot_Xcal";
 
 	uint256 currentFork;
 
 	IMX strategy;
 
-	Strategy strategyConfig;
+	SCYVaultConfig vaultConfig;
 	IMXConfig config;
 
 	struct IMXConfigJSON {
@@ -74,7 +78,7 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 		_config.farmRouter = stratJson.f_farmRouter;
 
 		harvestParams.path = stratJson.h_harvestPath;
-		strategyConfig.acceptsNativeToken = stratJson.a2_acceptsNativeToken;
+		vaultConfig.acceptsNativeToken = stratJson.a2_acceptsNativeToken;
 
 		string memory RPC_URL = vm.envString(string.concat(stratJson.x_chain, "_RPC_URL"));
 		uint256 BLOCK = vm.envUint(string.concat(stratJson.x_chain, "_BLOCK"));
@@ -90,11 +94,11 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 		underlying = IERC20(config.underlying);
 
 		/// todo should be able to do this via address and mixin
-		strategyConfig.symbol = "TST";
-		strategyConfig.name = "TEST";
-		strategyConfig.yieldToken = config.poolToken;
-		strategyConfig.underlying = IERC20(config.underlying);
-		strategyConfig.maxTvl = type(uint128).max;
+		vaultConfig.symbol = "TST";
+		vaultConfig.name = "TEST";
+		vaultConfig.yieldToken = config.poolToken;
+		vaultConfig.underlying = IERC20(config.underlying);
+		vaultConfig.maxTvl = type(uint128).max;
 
 		AuthConfig memory authConfig = AuthConfig({
 			owner: owner,
@@ -102,7 +106,7 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 			guardian: guardian
 		});
 
-		vault = SCYVault(new IMXVault(authConfig, FeeConfig(treasury, .1e18, 0), strategyConfig));
+		vault = deploySCYVault(authConfig, FeeConfig(treasury, .1e18, 0), vaultConfig);
 
 		mLp = vault.MIN_LIQUIDITY();
 		config.vault = address(vault);
@@ -152,7 +156,7 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 		params1[0].deadline = block.timestamp + 1;
 		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
 
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 		uint256 tvl = strategy.getTotalTVL();
 		uint256 vaultTvl = vault.getTvl();
 		(uint256[] memory harvestAmnts, ) = vault.harvest(

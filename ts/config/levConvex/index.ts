@@ -1,11 +1,11 @@
 import { ethers, getNamedAccounts, network } from 'hardhat';
-import { ICurveV1Adapter } from '../../../typechain';
+import { ERC20__factory, ICurveV1Adapter } from '../../../typechain';
 import { levConvex } from './config';
 import { chainToEnv, getUniswapV3Path, addStratToConfig } from '../utils';
 import { constants } from 'ethers';
 
 const main = async () => {
-  levConvex.filter((s) => s.chain === network.name).forEach(addStrategy);
+  for (const strategy of levConvex) await addStrategy(strategy);
 };
 
 const addStrategy = async (strategy) => {
@@ -27,18 +27,18 @@ const addStrategy = async (strategy) => {
   }
 
   // metaPool mean 3crv
-  const nCoins = 4;
+  const nCoins = strategy.is3crv ? 3 : (await curveAdapter.nCoins()).toNumber();
 
   let coinId;
+  let riskId = strategy.is3crv ? 0 : null;
   for (let i = 0; i < nCoins; i++) {
+    console.log(curveAdapter.address, nCoins, i);
     const [coin] = await (metapool || curveAdapter).functions['coins(uint256)'](
       i
     );
     console.log(strategy.name, nCoins, coin, strategy.underlying);
-    if (coin === strategy.underlying) {
-      coinId = i;
-      break;
-    }
+    if (coin === strategy.underlying) coinId = i;
+    if (coin == strategy.riskAsset) riskId = i;
   }
   if (coinId == null)
     throw new Error(`${strategy.name} coin not found in curve pool`);
@@ -61,19 +61,33 @@ const addStrategy = async (strategy) => {
       deployer
     );
     const rewardToken = await rewardsPool.rewardToken();
+    console.log('extraRewardsAddr: ', extraRewardsAddr);
     console.log('found reward token: ', rewardToken);
     strategy.farmTokens.push(rewardToken);
   }
+  console.log(strategy.name, strategy.farmTokens);
 
   strategy.harvestPaths = [];
   for (let j = 0; j < strategy.farmTokens.length; j++) {
-    const path = await getUniswapV3Path(
-      strategy.farmTokens[j],
-      strategy.underlying
-    );
-    strategy.harvestPaths.push(path);
+    try {
+      const path = await getUniswapV3Path(
+        strategy.farmTokens[j],
+        strategy.underlying
+      );
+      strategy.harvestPaths.push(path);
+    } catch (e) {
+      console.log('could not get path for ', strategy.farmTokens[j]);
+      console.log(e);
+    }
   }
-  console.log(strategy.harvestPaths);
+  console.log(strategy.name, strategy.harvestPaths);
+
+  const riskToken = await ethers.getContractAt(
+    'ERC20',
+    strategy.riskAsset,
+    deployer
+  );
+  const riskDecimals = await riskToken.decimals();
 
   const config = {
     a1_curveAdapter: strategy.curveAdapter,
@@ -83,8 +97,11 @@ const addStrategy = async (strategy) => {
     b_convexRewardPool: strategy.convexRewardPool,
     c_creditFacade: strategy.creditFacade,
     d_convexBooster: strategy.convexBooster,
-    e_coinId: coinId, // curve token index
-    f_underlying: strategy.underlying,
+    e1_coinId: coinId, // curve token index
+    e2_riskId: riskId, // curve token index
+    f1_underlying: strategy.underlying,
+    f2_riskAsset: strategy.riskAsset,
+    f3_riskAssetDecimals: riskDecimals,
     g_leverageFactor: strategy.leverageFactor,
     h_farmRouter: strategy.farmRouter,
     i_farmTokens: strategy.farmTokens,

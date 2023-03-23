@@ -31,7 +31,7 @@ contract AuthU is AccessControlUpgradeable {
 	/// security no undefined constructor
 	constructor() {}
 
-	function __Auth_init_(AuthConfig memory authConfig) public onlyInitializing {
+	function __Auth_init(AuthConfig memory authConfig) public onlyInitializing {
 		/// Set up the roles
 		// owner can manage all roles
 		owner = authConfig.owner;
@@ -78,4 +78,6 @@ contract AuthU is AccessControlUpgradeable {
 
 		emit OwnershipTransferred(oldOwner, newOwner);
 	}
+
+	uint256[50] private __gap;
 }

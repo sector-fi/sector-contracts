@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX_License_Identifier: MIT
 pragma solidity 0.8.16;
 
 import { ICollateral } from "interfaces/imx/IImpermax.sol";
@@ -6,7 +6,6 @@ import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.so
 import { PriceUtils, UniUtils, IUniswapV2Pair } from "../../utils/PriceUtils.sol";
 
 import { HarvestSwapParams } from "interfaces/Structs.sol";
-import { SCYWEpochVault, levConvexVault, Strategy, AuthConfig, FeeConfig } from "strategies/gearbox/levConvexVault.sol";
 import { levConvex } from "strategies/gearbox/levConvex.sol";
 import { levConvex3Crv } from "strategies/gearbox/levConvex3Crv.sol";
 
@@ -16,6 +15,9 @@ import { IDegenNFT } from "interfaces/gearbox/IDegenNFT.sol";
 import { ICreditFacade } from "interfaces/gearbox/ICreditFacade.sol";
 import { LevConvexConfig } from "strategies/gearbox/ILevConvex.sol";
 
+import { SCYWEpochVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYWEpochVault.sol";
+import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
+
 import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
@@ -24,19 +26,19 @@ contract levConvexSetup is SCYStratUtils {
 	using UniUtils for IUniswapV2Pair;
 	using stdJson for string;
 
-	string TEST_STRATEGY = "USDC-sUSD-levConvex"; // year fees/slippage 3.19%
-	// string TEST_STRATEGY = "USDC-FRAXUSDC-levConvex"; // year fees/slippage 4.28%
+	string TEST_STRATEGY = "LCVX_USDC-sUSD_Gearbox_mainnet"; // year fees/slippage 3.19%
+	// string TEST_STRATEGY = "LCVX_USDC-FRAX_Gearbox_mainnet"; // year fees/slippage 4.28%
 
 	// 3pool strats
-	// string TEST_STRATEGY = "USDC-gUSD-levConvex"; // year fees/slippage 4.10%
-	// string TEST_STRATEGY = "USDC-FRAX3CRV-levConvex"; // year fees/slippage 4.49%
-	// string TEST_STRATEGY = "USDC-lUSD-levConvex"; // year fees/slippage 1.33%
+	// string TEST_STRATEGY = "LCVX_USDC-gUSD-3Crv_Gearbox_mainnet"; // year fees/slippage 4.10%
+	// string TEST_STRATEGY = "LCVX_USDC-FRAX-3Crv_Gearbox_mainnet"; // year fees/slippage 4.49%
+	// string TEST_STRATEGY = "LCVX_USDC-lUSD-3Crv_Gearbox_mainnet"; // year fees/slippage 1.33%
 
 	uint256 currentFork;
 
 	levConvex strategy;
 
-	Strategy strategyConfig;
+	SCYVaultConfig vaultConfig;
 
 	bytes[] harvestPaths;
 	bool is3crv;
@@ -48,8 +50,11 @@ contract levConvexSetup is SCYStratUtils {
 		address b_convexRewardPool;
 		address c_creditFacade;
 		address d_convexBooster;
-		uint16 e_coinId; // curve token index
-		address f_underlying;
+		uint16 e1_coinId; // curve token index
+		uint16 e2_riskId; // curve token index
+		address f1_underlying;
+		address f2_riskAsset;
+		uint256 f3_riskAssetDecimals;
 		uint16 g_leverageFactor;
 		address h_farmRouter;
 		address[] i_farmTokens;
@@ -74,14 +79,14 @@ contract levConvexSetup is SCYStratUtils {
 		_config.convexRewardPool = stratJson.b_convexRewardPool;
 		_config.creditFacade = stratJson.c_creditFacade;
 		_config.convexBooster = stratJson.d_convexBooster;
-		_config.coinId = stratJson.e_coinId;
-		_config.underlying = stratJson.f_underlying;
+		_config.coinId = stratJson.e1_coinId;
+		_config.underlying = stratJson.f1_underlying;
 		_config.leverageFactor = stratJson.g_leverageFactor;
 		_config.farmRouter = stratJson.h_farmRouter;
 
 		is3crv = stratJson.k_is3crv;
 		harvestPaths = stratJson.j_harvestPaths;
-		strategyConfig.acceptsNativeToken = stratJson.a3_acceptsNativeToken;
+		vaultConfig.acceptsNativeToken = stratJson.a3_acceptsNativeToken;
 
 		string memory RPC_URL = vm.envString(string.concat(stratJson.x_chain, "_RPC_URL"));
 		uint256 BLOCK = vm.envUint(string.concat(stratJson.x_chain, "_BLOCK"));
@@ -97,13 +102,13 @@ contract levConvexSetup is SCYStratUtils {
 		underlying = IERC20(config.underlying);
 
 		/// todo should be able to do this via address and mixin
-		strategyConfig.symbol = "TST";
-		strategyConfig.name = "TEST";
-		strategyConfig.yieldToken = config.convexRewardPool;
-		strategyConfig.underlying = underlying;
+		vaultConfig.symbol = "TST";
+		vaultConfig.name = "TEST";
+		vaultConfig.yieldToken = config.convexRewardPool;
+		vaultConfig.underlying = underlying;
 
 		uint256 maxTvl = 1000000e6;
-		strategyConfig.maxTvl = uint128(maxTvl);
+		vaultConfig.maxTvl = uint128(maxTvl);
 
 		AuthConfig memory authConfig = AuthConfig({
 			owner: owner,
@@ -111,9 +116,7 @@ contract levConvexSetup is SCYStratUtils {
 			guardian: guardian
 		});
 
-		vault = SCYWEpochVault(
-			new levConvexVault(authConfig, FeeConfig(treasury, .1e18, 0), strategyConfig)
-		);
+		vault = deploySCYWEpochVault(authConfig, FeeConfig(treasury, .1e18, 0), vaultConfig);
 
 		mLp = vault.MIN_LIQUIDITY();
 
@@ -153,17 +156,11 @@ contract levConvexSetup is SCYStratUtils {
 		vm.warp(block.timestamp + 1 * 60 * 60 * 24);
 
 		uint256 l = harvestPaths.length;
-		HarvestSwapParams[] memory params1 = new HarvestSwapParams[](l);
 
-		for (uint256 i; i < l; ++i) {
-			params1[i].min = 0;
-			params1[i].deadline = block.timestamp + 1;
-			params1[i].pathData = harvestPaths[i];
-		}
-
+		HarvestSwapParams[] memory params1 = getHarvestParams();
 		HarvestSwapParams[] memory params2 = new HarvestSwapParams[](0);
 
-		strategy.getAndUpdateTVL();
+		strategy.getAndUpdateTvl();
 		uint256 tvl = vault.getTvl();
 		uint256 vaultTvl = vault.getTvl();
 		(uint256[] memory harvestAmnts, ) = vault.harvest(
@@ -186,6 +183,19 @@ contract levConvexSetup is SCYStratUtils {
 		assertGt(newTvl, tvl, "tvl should increase");
 
 		// assertEq(underlying.balanceOf(strategy.credAcc()), 0);
+	}
+
+	function getHarvestParams() public view returns (HarvestSwapParams[] memory) {
+		uint256 l = harvestPaths.length;
+		HarvestSwapParams[] memory params = new HarvestSwapParams[](l);
+
+		for (uint256 i; i < l; ++i) {
+			params[i].min = 0;
+			params[i].deadline = block.timestamp + 1;
+			params[i].pathData = harvestPaths[i];
+		}
+
+		return params;
 	}
 
 	function rebalance() public override {}
@@ -213,14 +223,14 @@ contract levConvexSetup is SCYStratUtils {
 		deal(address(underlying), user, amount);
 		uint256 minSharesOut = (vault.underlyingToShares(amount) * 9950) / 10000;
 
-		uint256 startShares = vault.balanceOf(user);
+		uint256 startShares = IERC20(address(vault)).balanceOf(user);
 
 		vm.startPrank(user);
 		underlying.approve(address(vault), amount);
 		vault.deposit(user, address(underlying), amount, minSharesOut);
 		vm.stopPrank();
 
-		uint256 stratTvl = strategy.getTotalTVL();
+		uint256 stratTvl = strategy.getTvl();
 		if (stratTvl == 0) {
 			vm.prank(manager);
 			vault.depositIntoStrategy(vault.uBalance(), minSharesOut);
@@ -230,7 +240,7 @@ contract levConvexSetup is SCYStratUtils {
 		uint256 endAccBalance = vault.underlyingBalance(user);
 
 		assertApproxEqRel(
-			vault.balanceOf(user) - startShares,
+			IERC20(address(vault)).balanceOf(user) - startShares,
 			minSharesOut,
 			.01e18,
 			"min estimate should be close"
