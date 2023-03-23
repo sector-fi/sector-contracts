@@ -24,7 +24,9 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 
 	string TEST_STRATEGY = "LND_USDC_Stargate_arbitrum";
 	// string TEST_STRATEGY = "LND_ETH_Stargate_arbitrum";
+
 	// string TEST_STRATEGY = "LND_USDC_Stargate_optimism";
+	// string TEST_STRATEGY = "LND_ETH_Stargate_optimism";
 
 	uint256 currentFork;
 
@@ -117,7 +119,6 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 	function rebalance() public override {}
 
 	function harvest() public override {
-		// if (!strategy.harvestIsEnabled()) return;
 		skip(7 * 60 * 60 * 24);
 		vm.roll(block.number + 1000);
 
@@ -131,8 +132,8 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 		(uint256[] memory harvestAmnts, ) = vault.harvest(vault.getTvl(), 0, params1, params2);
 		uint256 newTvl = vault.getTvl();
 
-		assertGt(harvestAmnts[0], 0);
-		assertGt(newTvl, tvl);
+		assertGt(harvestAmnts[0], 0, "harvestAmnts should be > than 0");
+		assertGt(newTvl, tvl, "tvl should increase");
 	}
 
 	function noRebalance() public override {}

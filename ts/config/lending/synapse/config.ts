@@ -34,16 +34,16 @@ export const strategies = [
     farmRouter: uniswapRouter['arbitrum'],
     chain: 'arbitrum',
   },
-  {
-    type: 'Synapse',
-    name: genStratName(type, 'USDC', [], ['Synapse'], 'optimism'),
-    underlying: tokens.optimism.USDC,
-    // SwapFlashloan contract
-    strategy: '0xF44938b0125A6662f9536281aD2CD6c499F22004',
-    farm: farms['optimism'],
-    farmRouter: uniswapRouter['optimism'],
-    chain: 'optimism',
-  },
+  // {
+  //   type: 'Synapse',
+  //   name: genStratName(type, 'USDC', [], ['Synapse'], 'optimism'),
+  //   underlying: tokens.optimism.USDC,
+  //   // SwapFlashloan contract
+  //   strategy: '0xF44938b0125A6662f9536281aD2CD6c499F22004',
+  //   farm: farms['optimism'],
+  //   farmRouter: uniswapRouter['optimism'],
+  //   chain: 'optimism',
+  // },
   // {
   //   type: 'Synapse',
   //   name: genStratName(type, 'ETH', [], ['Synapse'], 'optimism'),

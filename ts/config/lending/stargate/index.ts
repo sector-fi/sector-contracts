@@ -46,7 +46,7 @@ const addStrategy = async (strategy) => {
     deployer
   );
 
-  const farmToken = tokens[strategy.chain].STG;
+  const farmToken = getFarmToknen(strategy.chain);
 
   const allPools = await farm.poolLength();
   let farmId;
@@ -80,4 +80,15 @@ const addStrategy = async (strategy) => {
     x_chain: chainToEnv[strategy.chain],
   };
   await addStratToConfig(strategy.name, config, strategy);
+};
+
+const getFarmToknen = (chain) => {
+  switch (chain) {
+    case 'arbitrum':
+      return tokens['arbitrum'].STG;
+    case 'optimism':
+      return tokens['optimism'].OP;
+    default:
+      throw new Error('missing stargate rewards token');
+  }
 };
