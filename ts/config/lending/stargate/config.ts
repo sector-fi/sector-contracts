@@ -33,19 +33,20 @@ export const stargate = [
     farmRouter: uniswapRouter['arbitrum'],
     chain: 'arbitrum',
   },
-  // {
-  //   type: 'Stargate',
-  //   // have to iterate through getPool in factory to get the right one...
-  //   poolId: 13, // get this from interface?
-  //   name: genStratName(type, 'ETH', [], ['Stargate'], 'arbitrum'),
-  //   underlying: tokens.arbitrum.SGETH,
-  //   acceptsNativeToken: true,
-  //   strategy: stargateRouters['arbitrum'],
-  //   farm: farms['arbitrum'],
-  //   farmOutput: tokens.arbitrum.ETH,
-  //   farmRouter: uniswapRouter['arbitrum'],
-  //   chain: 'arbitrum',
-  // },
+  {
+    type: 'Stargate',
+    // have to iterate through getPool in factory to get the right one...
+    poolId: 13, // get this from interface?
+    name: genStratName(type, 'ETH', [], ['Stargate'], 'arbitrum'),
+    underlying: tokens.arbitrum.ETH,
+    stargateEth: tokens.arbitrum.SGETH,
+    acceptsNativeToken: true,
+    strategy: stargateRouters['arbitrum'],
+    farm: farms['arbitrum'],
+    farmOutput: tokens.arbitrum.ETH,
+    farmRouter: uniswapRouter['arbitrum'],
+    chain: 'arbitrum',
+  },
   {
     type: 'Stargate',
     // have to iterate through getPool in factory to get the right one...
@@ -57,16 +58,17 @@ export const stargate = [
     farmRouter: uniswapRouter['optimism'],
     chain: 'optimism',
   },
-  // {
-  //   type: 'Stargate',
-  //   // have to iterate through getPool in factory to get the right one...
-  //   poolId: 13, // get this from interface?
-  //   name: genStratName(type, 'ETH', [], ['Stargate'], 'optimism'),
-  //   underlying: tokens.optimism.ETH,
-  //   acceptsNativeToken: true,
-  //   strategy: stargateRouters['optimism'],
-  //   farm: farms['optimism'],
-  //   farmRouter: uniswapRouter['optimism'],
-  //   chain: 'optimism',
-  // },
+  {
+    type: 'Stargate',
+    // have to iterate through getPool in factory to get the right one...
+    poolId: 13, // get this from interface?
+    name: genStratName(type, 'ETH', [], ['Stargate'], 'optimism'),
+    underlying: tokens.optimism.ETH,
+    stargateEth: tokens.optimism.SGETH,
+    acceptsNativeToken: true,
+    strategy: stargateRouters['optimism'],
+    farm: farms['optimism'],
+    farmRouter: uniswapRouter['optimism'],
+    chain: 'optimism',
+  },
 ];

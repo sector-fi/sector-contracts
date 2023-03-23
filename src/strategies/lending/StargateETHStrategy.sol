@@ -13,13 +13,20 @@ import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
 
-// This strategy assumes that sharedDecimans and localDecimals are the same
-contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
+/// @title StargateETHStrategy
+/// @notice this contract is a modified version of StargateStrategy
+/// the changes are needed because Stargate ETH pools use a custom stgETH wrapper / instead of WETH
+/// this wrapper automatically unwraps ETH on transfer
+/// because SCYVaults interact with strategies using WETH and not native ETH, the current strategy
+/// needs to unrap ETH and wrap it into stgETH before depositing into the pool
+/// and wrap ETH into WETH after redeeming from the pool (calling instantRedeemLocal)
+contract StargateETHStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 	using SafeERC20 for IERC20;
 
 	IStargatePool public stargatePool;
 	IStargateRouter public stargateRouter;
 	IERC20 public underlying;
+	IWETH public stargateETH;
 	uint16 pId;
 
 	constructor(
@@ -27,24 +34,32 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 		address _stargatePool,
 		address _stargateRouter,
 		uint16 _pId,
+		address _underlying,
+		address _stargateETH,
 		FarmConfig memory _farmConfig
 	) StarChefFarm(_farmConfig) {
 		vault = _vault;
 		pId = _pId;
+		stargateETH = IWETH(_stargateETH);
 		stargatePool = IStargatePool(_stargatePool);
 		stargateRouter = IStargateRouter(_stargateRouter);
-		underlying = IERC20(stargatePool.token());
-		underlying.safeApprove(_stargateRouter, type(uint256).max);
+		underlying = IERC20(_underlying);
+		IERC20(address(stargateETH)).safeApprove(_stargateRouter, type(uint256).max);
 		IERC20(stargatePool).safeApprove(address(farm), type(uint256).max);
 	}
 
 	receive() external payable {}
 
 	function deposit(uint256 amount) public onlyVault returns (uint256) {
-		uint256 lp = (amount * 1e18) / stargatePool.amountLPtoLD(1e18);
+		// need to unwrap from WETH and wrap into stgETH first
+		IWETH(address(underlying)).withdraw(amount);
+		stargateETH.deposit{ value: amount }();
 		stargateRouter.addLiquidity(pId, amount, address(this));
+		// TODO not sure why this is needed
 		uint256 balance = address(this).balance;
 		if (balance > 0) IWETH(address(underlying)).deposit{ value: balance }();
+
+		uint256 lp = stargatePool.balanceOf(address(this));
 		_depositIntoFarm(lp);
 		return lp;
 	}
@@ -56,7 +71,12 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 	{
 		if (amount == 0) return 0;
 		_withdrawFromFarm(amount);
-		amountOut = stargateRouter.instantRedeemLocal(pId, amount, recipient);
+
+		// this is ugly but we have to do this to support the expected SCYVault flow
+		// because SCYVault expects the strategy to send WETH, not ETH
+		amountOut = stargateRouter.instantRedeemLocal(pId, amount, address(this));
+		IWETH(address(underlying)).deposit{ value: amountOut }();
+		underlying.safeTransfer(recipient, amountOut);
 	}
 
 	function harvest(HarvestSwapParams[] calldata params, HarvestSwapParams[] calldata)
@@ -83,7 +103,10 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 	function closePosition(uint256) public onlyVault returns (uint256) {
 		(uint256 balance, ) = farm.userInfo(farmId, address(this));
 		_withdrawFromFarm(balance);
-		return stargateRouter.instantRedeemLocal(pId, balance, address(vault));
+		uint256 amountOut = stargateRouter.instantRedeemLocal(pId, balance, address(this));
+		IWETH(address(underlying)).deposit{ value: amountOut }();
+		underlying.safeTransfer(address(vault), amountOut);
+		return amountOut;
 	}
 
 	function getMaxTvl() external view returns (uint256) {
