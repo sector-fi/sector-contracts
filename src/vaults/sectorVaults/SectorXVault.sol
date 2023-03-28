@@ -52,6 +52,19 @@ contract SectorXVault is SectorBase, XChainIntegrator {
 		emit SetHarvestInterval(_harvestInterval);
 	}
 
+	function getTvl() public view returns (uint256) {
+		return totalChildHoldings + floatAmnt;
+	}
+
+	function maxDeposit(address) public view override returns (uint256) {
+		uint256 tvl = getTvl();
+		return tvl < maxTvl ? maxTvl - tvl : 0;
+	}
+
+	function getMaxTvl() external view returns (uint256) {
+		return maxTvl;
+	}
+
 	/*/////////////////////////////////////////////////////
 					Cross Vault Interface
 	/////////////////////////////////////////////////////*/

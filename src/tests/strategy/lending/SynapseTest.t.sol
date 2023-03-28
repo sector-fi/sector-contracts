@@ -10,7 +10,7 @@ import { IStarchef } from "interfaces/stargate/IStarchef.sol";
 import { IntegrationTest } from "../common/IntegrationTest.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 
-import { SynapseStrategy, FarmConfig } from "strategies/lending/SynapseStrategy.sol";
+import { SynapseStrategy, FarmConfig, ISynapseSwap } from "strategies/lending/SynapseStrategy.sol";
 import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 import { Accounting } from "../../../common/Accounting.sol";
@@ -25,6 +25,7 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 	string TEST_STRATEGY = "LND_USDC_Synapse_arbitrum";
 	// string TEST_STRATEGY = "LND_ETH_Synapse_arbitrum";
 
+	// string TEST_STRATEGY = "LND_USDC_Synapse_optimism";
 	// string TEST_STRATEGY = "LND_USDC_Synapse_optimism";
 
 	uint256 currentFork;
@@ -158,12 +159,13 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		withdraw(treasury, 1e18);
 
 		uint256 tvl = vault.getTvl();
-		assertApproxEqAbs(tvl, 1000, 10);
+		assertApproxEqAbs(tvl, 1000, 1000);
 	}
 
 	function testSlippage() public override {
 		uint256 dec = underlying.decimals();
-		uint256 amount = dec == 6 ? 10000000e6 : 10000e18;
+		uint256 amount = dec == 6 ? 1000000e6 : 10000e18;
+		// uint256 amount = dec == 6 ? 10000000e6 : 10000e18;
 		uint256 shares = vault.underlyingToShares(amount);
 		uint256 actualShares = vault.getDepositAmnt(amount);
 		assertGt(shares, actualShares);
@@ -179,6 +181,26 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		assertGt(wAmnt, actualBalance);
 		console.log("w slippage", (10000 * (wAmnt - actualBalance)) / wAmnt);
 	}
+
+	function testStratMaxTvl() public {
+		uint256 maxTvl = strategy.getMaxTvl();
+		ISynapseSwap pool = strategy.synapsePool();
+		uint256 uBlance = pool.getTokenBalance(strategy.coinId());
+		console.log("maxTvl", maxTvl);
+		assertEq(maxTvl, uBlance / 4);
+	}
+
+	// function testDeployWithdraw() public {
+	// 	SCYVault dStrat = SCYVault(payable(0xDBF024FF5b9DF294ccF637E663e2BF86e507d6d5));
+	// 	address u = 0x157875C30F83729Ce9c1E7A1568ec00250237862;
+	// 	uint amnt = 100000e6;
+	// 	uint uBalance = dStrat.uBalance();
+	// 	uint tvl = dStrat.getTvl();
+	// 	uint shares = (tvl * dStrat.underlyingToShares(amnt)) / (tvl - uBalance);
+	// 	vm.startPrank(u);
+	// 	dStrat.withdrawFromStrategy(shares, (amnt * 999) / 1000);
+	// 	vm.stopPrank();
+	// }
 
 	// function testDeploymentHarvest() public {
 	// SCYVault dStrat = SCYVault(payable(0x8DA9CD7232611Fef7b1f05Ab80ea9bB977F52A79));

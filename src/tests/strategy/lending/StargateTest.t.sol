@@ -5,7 +5,9 @@ import { ICollateral } from "interfaces/imx/IImpermax.sol";
 import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
 
 import { HarvestSwapParams } from "interfaces/Structs.sol";
-import { StargateStrategy, FarmConfig } from "strategies/lending/StargateStrategy.sol";
+import { StargateStrategy, FarmConfig, IStargatePool } from "strategies/lending/StargateStrategy.sol";
+import { StargateETHStrategy } from "strategies/lending/StargateETHStrategy.sol";
+
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IStarchef } from "interfaces/stargate/IStarchef.sol";
 
@@ -14,6 +16,8 @@ import { UnitTestVault } from "../common/UnitTestVault.sol";
 
 import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
+
+import { AggregatorVaultU } from "vaults/SectorVaults/AggregatorVaultU.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -35,6 +39,7 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 
 	StargateStrategy strategy;
 	address stargateRouter;
+	address stargateETH;
 
 	struct StargateConfigJSON {
 		address a_underlying;
@@ -42,6 +47,7 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 		uint16 c_strategyId;
 		address d1_yieldToken;
 		bool d2_acceptsNativeToken;
+		address d3_stargateETH;
 		uint16 e_farmId;
 		address f1_farm;
 		address f2_farmToken;
@@ -68,6 +74,7 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 		vaultConfig.acceptsNativeToken = stratJson.d2_acceptsNativeToken;
 
 		stargateRouter = stratJson.b_strategy;
+		stargateETH = stratJson.d3_stargateETH;
 
 		farmConfig = FarmConfig({
 			farmId: stratJson.e_farmId,
@@ -100,13 +107,28 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 			vaultConfig
 		);
 
-		strategy = new StargateStrategy(
-			address(vault),
-			vaultConfig.yieldToken,
-			stargateRouter,
-			vaultConfig.strategyId,
-			farmConfig
-		);
+		if (stargateETH == address(0))
+			strategy = new StargateStrategy(
+				address(vault),
+				vaultConfig.yieldToken,
+				stargateRouter,
+				vaultConfig.strategyId,
+				farmConfig
+			);
+		else
+			strategy = StargateStrategy(
+				payable(
+					new StargateETHStrategy(
+						address(vault),
+						vaultConfig.yieldToken,
+						stargateRouter,
+						vaultConfig.strategyId,
+						address(underlying),
+						stargateETH,
+						farmConfig
+					)
+				)
+			);
 
 		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);
@@ -139,6 +161,14 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 	function noRebalance() public override {}
 
 	function adjustPrice(uint256 fraction) public override {}
+
+	function testStratMaxTvl() public {
+		uint256 maxTvl = strategy.getMaxTvl();
+		IStargatePool pool = strategy.stargatePool();
+		uint256 uBlance = pool.totalLiquidity();
+		console.log("maxTvl", maxTvl);
+		assertEq(maxTvl, uBlance / 5);
+	}
 
 	// function testDeploymentHarvest() public {
 	// 	// SCYVault dStrat = SCYVault(payable(0x596777F4a395e4e4dE3501858bE9719859C2F64D));
@@ -181,5 +211,13 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 	// 	// (uint256[] memory harvestAmnts, ) = dStrat.harvest(dStrat.getTvl(), 0, params1, params2);
 	// 	// vm.stopPrank();
 	// 	// assertGt(harvestAmnts[0], 0);
+	// }
+
+	// function testVaultDep() public {
+	// 	AggregatorVaultU aVault = AggregatorVaultU(
+	// 		payable(0xbe2Be6a2DAcf9dCC76903756ee8e085B1C5a2c30)
+	// 	);
+	// 	uint256 pricePerShare = aVault.sharesToUnderlying(1e18);
+	// 	console.log("pricePerShare", pricePerShare);
 	// }
 }
