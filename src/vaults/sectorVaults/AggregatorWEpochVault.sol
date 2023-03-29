@@ -60,7 +60,7 @@ contract AggregatorWEpochVault is SectorBaseWEpoch {
 		lastHarvestTimestamp = block.timestamp;
 	}
 
-	function maxDeposit(address) public view override returns (uint256) {
+	function maxDeposit(address) public view virtual override returns (uint256) {
 		uint256 capacity1;
 		for (uint256 i; i < strategyIndex.length; ++i) {
 			IVaultStrategy strategy = IVaultStrategy(strategyIndex[i]);
@@ -69,6 +69,11 @@ contract AggregatorWEpochVault is SectorBaseWEpoch {
 			if (sTvl < _startMaxTvl) capacity1 += (_startMaxTvl - sTvl);
 		}
 		uint256 _totalAssets = totalAssets();
+		uint256 pendingWithdraw = convertToAssets(pendingRedeem);
+		/// check capacity against current floatAmount - pendingWithdraw
+		/// if pendingWithdraw is greater than floatAmnt something is wrong
+		uint256 _float = floatAmnt - pendingWithdraw;
+		capacity1 = capacity1 > _float ? capacity1 - _float : 0;
 		uint256 capacity2 = _totalAssets > maxTvl ? 0 : maxTvl - _totalAssets;
 		return capacity1 > capacity2 ? capacity2 : capacity1;
 	}
