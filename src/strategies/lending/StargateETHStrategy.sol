@@ -55,10 +55,6 @@ contract StargateETHStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 		IWETH(address(underlying)).withdraw(amount);
 		stargateETH.deposit{ value: amount }();
 		stargateRouter.addLiquidity(pId, amount, address(this));
-		// TODO not sure why this is needed
-		uint256 balance = address(this).balance;
-		if (balance > 0) IWETH(address(underlying)).deposit{ value: balance }();
-
 		uint256 lp = stargatePool.balanceOf(address(this));
 		_depositIntoFarm(lp);
 		return lp;
