@@ -41,10 +41,8 @@ contract StargateStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 	receive() external payable {}
 
 	function deposit(uint256 amount) public onlyVault returns (uint256) {
-		uint256 lp = (amount * 1e18) / stargatePool.amountLPtoLD(1e18);
 		stargateRouter.addLiquidity(pId, amount, address(this));
-		uint256 balance = address(this).balance;
-		if (balance > 0) IWETH(address(underlying)).deposit{ value: balance }();
+		uint256 lp = stargatePool.balanceOf(address(this));
 		_depositIntoFarm(lp);
 		return lp;
 	}

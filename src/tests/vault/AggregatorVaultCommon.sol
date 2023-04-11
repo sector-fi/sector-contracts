@@ -701,4 +701,29 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 		// deposit should work
 		sectDeposit(mVault, self, 1e18);
 	}
+
+	function testMaxDeposit() public {
+		uint256 vaultTvl = vault.getTvl();
+
+		vault.setMaxTvl(10e18);
+		s1.setMaxTvl(1e18);
+		s2.setMaxTvl(2e18);
+		s3.setMaxTvl(0); // maxTvl will be 0 because there is no strategy
+
+		uint256 s1Tvl = s1.getTvl();
+		uint256 s2Tvl = s2.getTvl();
+
+		uint256 floatAmnt = 1e18;
+		sectDeposit(vault, user1, floatAmnt);
+
+		uint256 maxDeposit = vault.maxDeposit(user1);
+		assertEq(maxDeposit, 3e18 - vaultTvl - floatAmnt - s1Tvl - s2Tvl, "max deposit");
+
+		/// if we have pending withdraw max deposit should go up
+		sectInitRedeem(vault, user1, .5e18);
+		sectHarvest(vault);
+
+		maxDeposit = vault.maxDeposit(user1);
+		assertEq(maxDeposit, 3e18 - vaultTvl - floatAmnt / 2 - s1Tvl - s2Tvl, "max deposit");
+	}
 }
