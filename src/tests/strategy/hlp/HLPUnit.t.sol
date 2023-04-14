@@ -115,8 +115,10 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 
 	function testRebalanceLendFuzz(uint256 fuzz) public {
 		uint256 priceAdjust = bound(fuzz, 1.1e18, 2e18);
-
+		skip(1);
 		deposit(self, dec);
+		skip(1);
+
 		uint256 rebThresh = strategy.rebalanceThreshold();
 
 		adjustPrice(priceAdjust);
@@ -127,10 +129,13 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 			strategy.rebalanceLoan();
 			assertGt(strategy.loanHealth(), minLoanHealth);
 		}
+		skip(1);
+
 		// skip if we don't need to rebalance
 		if (strategy.getPositionOffset() <= rebThresh) return;
 		strategy.rebalance(priceSlippageParam());
 		assertApproxEqAbs(strategy.getPositionOffset(), 0, 11);
+		skip(1);
 
 		// put price back
 		adjustPrice(1e36 / priceAdjust);
@@ -204,7 +209,7 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	function testMaxPriceOffset() public {
 		deposit(self, dec);
 
-		moveUniswapPrice(uniPair, address(underlying), short, 0.7e18);
+		moveUniswapPrice(address(uniPair), address(underlying), short, 0.7e18);
 
 		uint256 offset = priceSlippageParam();
 		vm.prank(manager);
@@ -223,7 +228,7 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		deposit(self, dec);
 
 		// this creates a price offset
-		moveUniswapPrice(uniPair, address(underlying), short, 0.7e18);
+		moveUniswapPrice(address(uniPair), address(underlying), short, 0.7e18);
 
 		vm.prank(address(1));
 		vm.expectRevert("HLP: PRICE_MISMATCH");
@@ -283,7 +288,8 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	}
 
 	function testClosePositionEdge() public {
-		address short = address(0x98878B06940aE243284CA214f92Bb71a2b032B8A);
+		skip(1);
+		address short = address(strategy.short());
 		uint256 amount = 1000e6;
 
 		deal(address(underlying), user2, amount);
@@ -292,7 +298,9 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		vault.deposit(user2, address(underlying), amount, amount);
 		vm.stopPrank();
 
+		skip(1);
 		harvest();
+		skip(1);
 
 		deal(short, address(strategy), 14368479712190599);
 		vault.closePosition(0, strategy.getPriceOffset());

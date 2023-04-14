@@ -241,13 +241,11 @@ abstract contract HLPCore is
 		uint256 shortPosition = _updateAndGetBorrowBalance();
 
 		uint256 totalLp = _getLiquidity();
-		if (removeLp > totalLp) removeLp = totalLp;
+		/// rounding issues can occur if we leave dust
+		if (removeLp + MIN_LIQUIDITY >= totalLp) removeLp = totalLp;
 
 		uint256 redeemAmnt = collateralBalance.mulDivDown(removeLp, totalLp);
 		uint256 repayAmnt = shortPosition.mulDivUp(removeLp, totalLp);
-
-		// TODO do we need this?
-		// uint256 shortBalance = _short.balanceOf(address(this));
 
 		// remove lp
 		(, uint256 sLp) = _removeLp(removeLp);
@@ -613,6 +611,7 @@ abstract contract HLPCore is
 	function getPriceOffset() public view returns (uint256 offset) {
 		uint256 minPrice = _shortToUnderlying(1e18);
 		uint256 maxPrice = _oraclePriceOfShort(1e18);
+		// console.log("oracle | dex", maxPrice, minPrice);
 		(minPrice, maxPrice) = maxPrice > minPrice ? (minPrice, maxPrice) : (maxPrice, minPrice);
 		offset = ((maxPrice - minPrice) * BPS_ADJUST) / maxPrice;
 	}

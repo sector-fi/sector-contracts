@@ -1,14 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.16;
 
-import { ICompound } from "strategies/mixins/ICompound.sol";
-import { ICompPriceOracle } from "interfaces/compound/ICompPriceOracle.sol";
-import { ISimpleUniswapOracle } from "interfaces/uniswap/ISimpleUniswapOracle.sol";
-
 import { HLPConfig, HarvestSwapParams, NativeToken } from "interfaces/Structs.sol";
 import { HLPCore } from "strategies/hlp/HLPCore.sol";
 import { IERC20Metadata as IERC20 } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
 
 import { SCYStratUtils } from "../common/SCYStratUtils.sol";
 import { UniswapMixin } from "../common/UniswapMixin.sol";
@@ -17,6 +12,9 @@ import { SCYVault, AuthConfig, FeeConfig, Auth } from "vaults/ERC5115/SCYVault.s
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 import { ISCYVault } from "interfaces/ERC5115/ISCYVault.sol";
 
+import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
+import { VeloAave } from "strategies/hlp/VeloAave.sol";
+
 import "forge-std/StdJson.sol";
 
 import "hardhat/console.sol";
@@ -24,8 +22,10 @@ import "hardhat/console.sol";
 contract HLPSetup is SCYStratUtils, UniswapMixin {
 	using stdJson for string;
 
-	string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
+	// string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
+	string TEST_STRATEGY = "HLP_USDC-ETH_Velo_optimism";
 
+	string lenderType;
 	uint256 currentFork;
 
 	HLPCore strategy;
@@ -49,6 +49,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		address l2_lendRewardToken;
 		address[] l3_lendRewardPath;
 		address l4_lendRewardRouter;
+		string l5_lenderType;
 		uint256 n_nativeToken;
 		string o_contract;
 		string x_chain;
@@ -82,6 +83,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		harvestParams.path = stratJson.h_harvestPath;
 		harvestLendParams.path = stratJson.l3_lendRewardPath;
 		contractType = stratJson.o_contract;
+		lenderType = stratJson.l5_lenderType;
 
 		string memory RPC_URL = vm.envString(string.concat(stratJson.x_chain, "_RPC_URL"));
 		uint256 BLOCK = vm.envUint(string.concat(stratJson.x_chain, "_BLOCK"));
@@ -116,6 +118,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 
 		if (compare(contractType, "MasterChefCompMulti"))
 			strategy = new MasterChefCompMulti(authConfig, config);
+		if (compare(contractType, "VeloAave")) strategy = new VeloAave(authConfig, config);
 
 		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);
@@ -129,6 +132,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		uint256 priceOffset = strategy.getPriceOffset();
 		strategy.rebalance(priceOffset);
 		assertApproxEqAbs(strategy.getPositionOffset(), 0, 2, "position offset after rebalance");
+		skip(1);
 	}
 
 	function harvest() public override {
@@ -167,7 +171,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 
 		uint256 newTvl = _strategy.getTotalTVL();
 		assertGt(harvestAmnts[0], 0);
-		assertGt(harvestLendAmnts[0], 0);
+		if (!compare(lenderType, "aave")) assertGt(harvestLendAmnts[0], 0);
 		assertGt(newTvl, tvl);
 	}
 
@@ -179,26 +183,13 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 	}
 
 	function adjustPrice(uint256 fraction) public override {
-		ICompPriceOracle oracle = ICompound(address(strategy)).oracle();
-		address cToken = address(ICompound(address(strategy)).cTokenBorrow());
-		uint256 price = oracle.getUnderlyingPrice(cToken);
-		moveHlpPrice(
-			config.uniPair,
-			cToken,
-			config.underlying,
-			config.short,
-			address(oracle),
-			fraction
-		);
-		uint256 newPrice = oracle.getUnderlyingPrice(cToken);
-		assertApproxEqRel(newPrice, (price * fraction) / 1e18, .001e18);
+		moveUniswapPrice(config.uniPair, config.underlying, config.short, fraction);
+		adjustOraclePrice(fraction);
 	}
 
 	function adjustOraclePrice(uint256 fraction) public {
-		ICompPriceOracle oracle = ICompound(address(strategy)).oracle();
-		address cToken = address(ICompound(address(strategy)).cTokenBorrow());
-		uint256 price = (fraction * oracle.getUnderlyingPrice(cToken)) / 1e18;
-		mockHlpOraclePrice(address(oracle), cToken, price);
+		if (compare(lenderType, "compound")) adjustCompoundOraclePrice(fraction, address(strategy));
+		if (compare(lenderType, "aave")) adjustAaveOraclePrice(fraction, address(strategy));
 	}
 
 	function compare(string memory str1, string memory str2) public pure returns (bool) {

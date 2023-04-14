@@ -42,8 +42,8 @@ abstract contract MiniChefFarm is IUniFarm {
 		_farmToken.safeApprove(address(_router), type(uint256).max);
 	}
 
-	function farmRouter() public view override returns (IUniswapV2Router01) {
-		return _router;
+	function farmRouter() public view override returns (address) {
+		return address(_router);
 	}
 
 	function pair() public view override returns (IUniswapV2Pair) {
