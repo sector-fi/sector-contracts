@@ -110,7 +110,7 @@ abstract contract SCYStratUtils is SectorTest {
 	}
 
 	function deposit(address user, uint256 amount) public virtual {
-		skip(1);
+		skip(3);
 		uint256 startTvl = vault.getAndUpdateTvl();
 		uint256 startAccBalance = vault.underlyingBalance(user);
 		deal(address(underlying), user, amount);
@@ -144,7 +144,7 @@ abstract contract SCYStratUtils is SectorTest {
 
 		// this is necessary for stETH strategy (so closing account doesn't happen in same block)
 		vm.roll(block.number + 1);
-		skip(1);
+		skip(3);
 	}
 
 	function withdrawAmnt(address user, uint256 amnt) public {

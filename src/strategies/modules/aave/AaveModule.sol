@@ -146,6 +146,12 @@ abstract contract AaveModule is ILending {
 	}
 
 	function _maxBorrow() internal view virtual override returns (uint256) {
-		return short().balanceOf(address(cTokenBorrow()));
+		uint256 sDec = IERC20Metadata(address(short())).decimals();
+		uint256 maxBorrow = short().balanceOf(address(cTokenBorrow()));
+		(uint256 borrowCap, ) = comptroller().getConfiguration(address(short())).getCaps();
+		borrowCap = borrowCap * (10**sDec);
+		uint256 borrowBalance = _debtToken.totalSupply();
+		uint256 maxBorrowCap = borrowCap - borrowBalance;
+		return maxBorrow > maxBorrowCap ? maxBorrowCap : maxBorrow;
 	}
 }
