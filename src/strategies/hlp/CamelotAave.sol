@@ -5,18 +5,24 @@ import { HLPConfig } from "../../interfaces/Structs.sol";
 import { HLPCore, IBase, IERC20 } from "./HLPCore.sol";
 import { AaveModule } from "../modules/aave/AaveModule.sol";
 import { AaveFarm } from "../modules/aave/AaveFarm.sol";
-import { VeloFarm } from "../modules/velo/VeloFarm.sol";
+import { CamelotFarm } from "../modules/camelot/CamelotFarm.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 
 // import "hardhat/console.sol";
 
-/// @title VeloAave
-/// @notice HLP Strategy using Velo exchange and Aaave money market
-contract VeloAave is HLPCore, AaveModule, AaveFarm, VeloFarm {
+/// @title SolidlyAave
+/// @notice HLP Strategy using Solidly exchange and Aaave money market
+contract CamelotAave is HLPCore, AaveModule, AaveFarm, CamelotFarm {
 	// HLPCore should  be intialized last
 	constructor(AuthConfig memory authConfig, HLPConfig memory config)
 		Auth(authConfig)
-		VeloFarm(config.uniPair, config.uniFarm, config.farmRouter, config.farmToken, config.farmId)
+		CamelotFarm(
+			config.uniPair,
+			config.uniFarm,
+			config.farmRouter,
+			config.farmToken,
+			config.farmId
+		)
 		AaveModule(config.comptroller, config.cTokenLend, config.cTokenBorrow)
 		AaveFarm(config.lendRewardRouter, config.lendRewardToken)
 		HLPCore(config.underlying, config.short, config.vault)

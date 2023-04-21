@@ -3,8 +3,8 @@ pragma solidity 0.8.16;
 
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { IVeloGauge } from "./interfaces/IVeloGauge.sol";
-import { IVeloRouter } from "./interfaces/IVeloRouter.sol";
+import { ISolidlyGauge } from "./interfaces/ISolidlyGauge.sol";
+import { ISolidlyRouter } from "./interfaces/ISolidlyRouter.sol";
 
 import { IUniswapV2Pair } from "../../../interfaces/uniswap/IUniswapV2Pair.sol";
 
@@ -13,11 +13,11 @@ import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract VeloFarm is IUniFarm {
+abstract contract SolidlyFarm is IUniFarm {
 	using SafeERC20 for IERC20;
 
-	IVeloGauge private _farm;
-	IVeloRouter private _router;
+	ISolidlyGauge private _farm;
+	ISolidlyRouter private _router;
 	IERC20 private _farmToken;
 	IUniswapV2Pair private _pair;
 	uint256 private _farmId;
@@ -29,8 +29,8 @@ abstract contract VeloFarm is IUniFarm {
 		address farmToken_,
 		uint256 farmPid_
 	) {
-		_farm = IVeloGauge(farm_);
-		_router = IVeloRouter(router_);
+		_farm = ISolidlyGauge(farm_);
+		_router = ISolidlyRouter(router_);
 		_farmToken = IERC20(farmToken_);
 		_pair = IUniswapV2Pair(pair_);
 		_farmId = farmPid_;
