@@ -21,5 +21,5 @@ abstract contract IUniFarm is IBase, IUniLp, IFarmable {
 
 	function _addFarmApprovals() internal virtual;
 
-	function farmRouter() public view virtual returns (IUniswapV2Router01);
+	function farmRouter() public view virtual returns (address);
 }

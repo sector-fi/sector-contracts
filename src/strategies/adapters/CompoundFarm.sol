@@ -20,8 +20,8 @@ abstract contract CompoundFarm is ICompound, IFarmable {
 		_farmToken.safeApprove(address(_router), type(uint256).max);
 	}
 
-	function lendFarmRouter() public view override returns (IUniswapV2Router01) {
-		return _router;
+	function lendFarmRouter() public view override returns (address) {
+		return address(_router);
 	}
 
 	function _harvestLending(HarvestSwapParams[] calldata swapParams)

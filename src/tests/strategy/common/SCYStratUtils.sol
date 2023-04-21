@@ -99,15 +99,18 @@ abstract contract SCYStratUtils is SectorTest {
 		uint256 amnt,
 		bytes4 err
 	) public {
+		skip(1);
 		deal(address(underlying), user, amnt);
 		vm.startPrank(user);
 		underlying.approve(address(vault), amnt);
 		vm.expectRevert(err);
 		vault.deposit(user, address(underlying), amnt, 0);
 		vm.stopPrank();
+		skip(1);
 	}
 
 	function deposit(address user, uint256 amount) public virtual {
+		skip(3);
 		uint256 startTvl = vault.getAndUpdateTvl();
 		uint256 startAccBalance = vault.underlyingBalance(user);
 		deal(address(underlying), user, amount);
@@ -141,6 +144,7 @@ abstract contract SCYStratUtils is SectorTest {
 
 		// this is necessary for stETH strategy (so closing account doesn't happen in same block)
 		vm.roll(block.number + 1);
+		skip(3);
 	}
 
 	function withdrawAmnt(address user, uint256 amnt) public {
@@ -151,6 +155,7 @@ abstract contract SCYStratUtils is SectorTest {
 	}
 
 	function withdraw(address user, uint256 fraction) public {
+		skip(1);
 		uint256 sharesToWithdraw = (IERC20(address(vault)).balanceOf(user) * fraction) / 1e18;
 		uint256 minUnderlyingOut = vault.sharesToUnderlying(sharesToWithdraw);
 		vm.prank(user);
@@ -160,6 +165,7 @@ abstract contract SCYStratUtils is SectorTest {
 			address(underlying),
 			(minUnderlyingOut * 9990) / 10000
 		);
+		skip(1);
 	}
 
 	function withdrawEpoch(address user, uint256 fraction) public {
@@ -239,6 +245,8 @@ abstract contract SCYStratUtils is SectorTest {
 
 		assertEq(IERC20(address(vault)).balanceOf(user), 0, "account shares");
 		assertEq(vault.underlyingBalance(user), 0, "account value");
+
+		skip(1);
 	}
 
 	function logTvl(IStrategy _strategy) internal view {

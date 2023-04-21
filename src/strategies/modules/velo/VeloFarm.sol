@@ -3,19 +3,21 @@ pragma solidity 0.8.16;
 
 import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import { IMasterChef } from "../../interfaces/uniswap/IStakingRewards.sol";
-import { IUniswapV2Pair } from "../../interfaces/uniswap/IUniswapV2Pair.sol";
+import { IVeloGauge } from "./interfaces/IVeloGauge.sol";
+import { IVeloRouter } from "./interfaces/IVeloRouter.sol";
 
-import { IUniFarm, IUniswapV2Router01, HarvestSwapParams } from "../mixins/IUniFarm.sol";
-import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
+import { IUniswapV2Pair } from "../../../interfaces/uniswap/IUniswapV2Pair.sol";
+
+import { IUniFarm, IUniswapV2Router01, HarvestSwapParams } from "../../mixins/IUniFarm.sol";
+import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract MasterChefFarm is IUniFarm {
+abstract contract VeloFarm is IUniFarm {
 	using SafeERC20 for IERC20;
 
-	IMasterChef private _farm;
-	IUniswapV2Router01 private _router;
+	IVeloGauge private _farm;
+	IVeloRouter private _router;
 	IERC20 private _farmToken;
 	IUniswapV2Pair private _pair;
 	uint256 private _farmId;
@@ -27,8 +29,8 @@ abstract contract MasterChefFarm is IUniFarm {
 		address farmToken_,
 		uint256 farmPid_
 	) {
-		_farm = IMasterChef(farm_);
-		_router = IUniswapV2Router01(router_);
+		_farm = IVeloGauge(farm_);
+		_router = IVeloRouter(router_);
 		_farmToken = IERC20(farmToken_);
 		_pair = IUniswapV2Pair(pair_);
 		_farmId = farmPid_;
@@ -51,11 +53,11 @@ abstract contract MasterChefFarm is IUniFarm {
 	}
 
 	function _withdrawFromFarm(uint256 amount) internal override {
-		_farm.withdraw(_farmId, amount);
+		_farm.withdraw(amount);
 	}
 
 	function _depositIntoFarm(uint256 amount) internal override {
-		_farm.deposit(_farmId, amount);
+		_farm.deposit(amount, 0);
 	}
 
 	function _harvestFarm(HarvestSwapParams[] calldata swapParams)
@@ -63,11 +65,20 @@ abstract contract MasterChefFarm is IUniFarm {
 		override
 		returns (uint256[] memory harvested)
 	{
-		_farm.deposit(_farmId, 0);
+		address[] memory tokens = new address[](1);
+		tokens[0] = address(_farmToken);
+		_farm.getReward(address(this), tokens);
 		uint256 farmHarvest = _farmToken.balanceOf(address(this));
 		if (farmHarvest == 0) return harvested;
 
-		uint256[] memory amounts = _swap(_router, swapParams[0], address(_farmToken), farmHarvest);
+		uint256[] memory amounts = swapExactTokensForTokens(
+			address(_farmToken),
+			address(underlying()),
+			farmHarvest,
+			swapParams[0].min
+		);
+
+		// _swap(_router, swapParams[0], address(_farmToken), farmHarvest);
 		harvested = new uint256[](1);
 		harvested[0] = amounts[amounts.length - 1];
 		emit HarvestedToken(address(_farmToken), harvested[0]);
@@ -81,7 +92,7 @@ abstract contract MasterChefFarm is IUniFarm {
 	}
 
 	function _getFarmLp() internal view override returns (uint256) {
-		(uint256 lp, ) = _farm.userInfo(_farmId, address(this));
+		uint256 lp = _farm.balanceOf(address(this));
 		return lp;
 	}
 
@@ -94,5 +105,23 @@ abstract contract MasterChefFarm is IUniFarm {
 		uint256 farmLp = _getFarmLp();
 		uint256 poolLp = _pair.balanceOf(address(this));
 		return farmLp + poolLp;
+	}
+
+	function swapExactTokensForTokens(
+		address tokenIn,
+		address tokenOut,
+		uint256 amount,
+		uint256 amountOutMin
+	) internal returns (uint256[] memory amounts) {
+		return
+			_router.swapExactTokensForTokensSimple(
+				amount,
+				amountOutMin,
+				tokenIn,
+				tokenOut,
+				false,
+				address(this),
+				block.timestamp
+			);
 	}
 }

@@ -54,12 +54,7 @@ contract IMXUnit is IMXSetup, UnitTestStrategy, UnitTestVault {
 		adjustPrice(1e18); // set oracle equal to current price
 
 		// only move uniswap price, not oracle
-		moveUniswapPrice(
-			IUniswapV2Pair(config.uniPair),
-			address(config.underlying),
-			config.short,
-			.8e18
-		);
+		moveUniswapPrice(config.uniPair, address(config.underlying), config.short, .8e18);
 
 		(uint256 expectedPrice, uint256 maxDelta) = getSlippageParams(10); // .1%;
 

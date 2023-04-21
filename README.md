@@ -22,12 +22,6 @@ foundry tests:
 yarn test
 ```
 
-hardhat integrations tests:
-
-```
-yarn test:hardhat
-```
-
 ## Coverage
 
 see coverage stats:

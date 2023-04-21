@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import { IClaimReward } from "../../interfaces/compound/IClaimReward.sol";
-import { CompoundFarm, HarvestSwapParams } from "./CompoundFarm.sol";
+import { CompoundFarm, HarvestSwapParams, IUniswapV2Router01 } from "./CompoundFarm.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
@@ -21,7 +21,7 @@ abstract contract CompMultiFarm is CompoundFarm {
 
 		if (farmHarvest > 0) {
 			uint256[] memory amounts = _swap(
-				lendFarmRouter(),
+				IUniswapV2Router01(lendFarmRouter()),
 				swapParams[0],
 				address(_farmToken),
 				farmHarvest

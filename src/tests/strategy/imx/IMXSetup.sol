@@ -194,6 +194,11 @@ contract IMXSetup is SectorTest, SCYStratUtils, UniswapMixin {
 		// move both
 		adjustPrice(fraction);
 		// undo uniswap move
-		moveUniswapPrice(uniPair, config.underlying, config.short, (1e18 * 1e18) / fraction);
+		moveUniswapPrice(
+			address(uniPair),
+			config.underlying,
+			config.short,
+			(1e18 * 1e18) / fraction
+		);
 	}
 }
