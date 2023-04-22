@@ -5,7 +5,8 @@ import { IBorrowable, ICollateral, ImpermaxChef } from "../../interfaces/imx/IIm
 
 import { IBase, HarvestSwapParams } from "./IBase.sol";
 import { IUniLp, IUniswapV2Pair, SafeERC20, IERC20 } from "./IUniLp.sol";
-import { IFarmable, IUniswapV2Router01 } from "./IFarmable.sol";
+import { IFarmable } from "./IFarmable.sol";
+import { IUniswapV2Router01 } from "../../interfaces/uniswap/IUniswapV2Router01.sol";
 
 abstract contract IIMXFarm is IBase, IFarmable, IUniLp {
 	function loanHealth() public view virtual returns (uint256);

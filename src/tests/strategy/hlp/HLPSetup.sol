@@ -24,9 +24,9 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 	using stdJson for string;
 
 	// string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
-	// string TEST_STRATEGY = "HLP_USDC-ETH_Velo_optimism";
+	string TEST_STRATEGY = "HLP_USDC-ETH_Velo_optimism";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Xcal_arbitrum";
-	string TEST_STRATEGY = "HLP_USDC-ETH_Camelot_arbitrum";
+	// string TEST_STRATEGY = "HLP_USDC-ETH_Camelot_arbitrum";
 
 	string lenderType;
 	uint256 currentFork;

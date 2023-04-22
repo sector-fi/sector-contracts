@@ -12,7 +12,7 @@ import { INFTHandler } from "./interfaces/INFTHandler.sol";
 
 import { IUniswapV2Pair } from "../../../interfaces/uniswap/IUniswapV2Pair.sol";
 
-import { IUniFarm, IUniswapV2Router01, HarvestSwapParams } from "../../mixins/IUniFarm.sol";
+import { IUniFarm, HarvestSwapParams } from "../../mixins/IUniFarm.sol";
 import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
@@ -94,6 +94,9 @@ abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
 		/// simple redeem xGrail immediately
 		xGrailToken.redeem(xGrailToken.balanceOf(address(this)), xGrailToken.minRedeemDuration());
 
+		// TODO finailize finished redeems
+
+		_validatePath(address(_farmToken), swapParams[0].path);
 		_router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
 			farmHarvest,
 			swapParams[0].min,

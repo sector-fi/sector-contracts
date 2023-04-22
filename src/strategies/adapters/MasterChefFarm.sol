@@ -6,7 +6,8 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IMasterChef } from "../../interfaces/uniswap/IStakingRewards.sol";
 import { IUniswapV2Pair } from "../../interfaces/uniswap/IUniswapV2Pair.sol";
 
-import { IUniFarm, IUniswapV2Router01, HarvestSwapParams } from "../mixins/IUniFarm.sol";
+import { IUniswapV2Router01 } from "../../interfaces/uniswap/IUniswapV2Router01.sol";
+import { IUniFarm, HarvestSwapParams } from "../mixins/IUniFarm.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
@@ -67,7 +68,17 @@ abstract contract MasterChefFarm is IUniFarm {
 		uint256 farmHarvest = _farmToken.balanceOf(address(this));
 		if (farmHarvest == 0) return harvested;
 
-		uint256[] memory amounts = _swap(_router, swapParams[0], address(_farmToken), farmHarvest);
+		HarvestSwapParams memory swapParam = swapParams[0];
+		_validatePath(address(_farmToken), swapParam.path);
+
+		uint256[] memory amounts = _router.swapExactTokensForTokens(
+			harvested[0],
+			swapParam.min,
+			swapParam.path, // optimal route determined externally
+			address(this),
+			swapParam.deadline
+		);
+
 		harvested = new uint256[](1);
 		harvested[0] = amounts[amounts.length - 1];
 		emit HarvestedToken(address(_farmToken), harvested[0]);
