@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import { IBase, HarvestSwapParams } from "./IBase.sol";
 import { IUniLp, SafeERC20, IERC20 } from "./IUniLp.sol";
-import { IFarmable, IUniswapV2Router01 } from "./IFarmable.sol";
+import { IFarmable } from "./IFarmable.sol";
 
 // import "hardhat/console.sol";
 

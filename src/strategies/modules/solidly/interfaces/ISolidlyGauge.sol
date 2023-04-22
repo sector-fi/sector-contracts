@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.16;
 
-interface IVeloGauge {
+interface ISolidlyGauge {
 	function notifyRewardAmount(address token, uint256 amount) external;
 
 	function getReward(address account, address[] calldata tokens) external;

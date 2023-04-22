@@ -20,12 +20,17 @@ abstract contract CompMultiFarm is CompoundFarm {
 		uint256 farmHarvest = _farmToken.balanceOf(address(this));
 
 		if (farmHarvest > 0) {
-			uint256[] memory amounts = _swap(
-				IUniswapV2Router01(lendFarmRouter()),
-				swapParams[0],
-				address(_farmToken),
-				farmHarvest
-			);
+			HarvestSwapParams memory swapParam = swapParams[0];
+			_validatePath(address(_farmToken), swapParam.path);
+
+			uint256[] memory amounts = IUniswapV2Router01(lendFarmRouter())
+				.swapExactTokensForTokens(
+					harvested[0],
+					swapParam.min,
+					swapParam.path, // optimal route determined externally
+					address(this),
+					swapParam.deadline
+				);
 			harvested = new uint256[](1);
 			harvested[0] = amounts[amounts.length - 1];
 			emit HarvestedToken(address(_farmToken), harvested[0]);
