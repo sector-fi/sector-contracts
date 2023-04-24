@@ -72,7 +72,7 @@ abstract contract MasterChefFarm is IUniFarm {
 		_validatePath(address(_farmToken), swapParam.path);
 
 		uint256[] memory amounts = _router.swapExactTokensForTokens(
-			harvested[0],
+			farmHarvest,
 			swapParam.min,
 			swapParam.path, // optimal route determined externally
 			address(this),

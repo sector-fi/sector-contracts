@@ -74,17 +74,19 @@ abstract contract HLPCore is
 		_;
 	}
 
+	/// @notice check current dex price against oracle price and ensure that its within maxSlippage
+	/// @dev this may prevent keeper bots from executing the tx in the case of
+	/// a sudden price spike on a CEX
 	modifier checkPrice(uint256 maxSlippage) {
-		if (maxSlippage == 0)
-			maxSlippage = maxDefaultPriceMismatch;
+		if (maxSlippage == 0) maxSlippage = maxDefaultPriceMismatch;
+		else if (hasRole(GUARDIAN, msg.sender) || msg.sender == vault) {
+			// guradian and vault don't have limits for maxSlippage
+		} else if (hasRole(MANAGER, msg.sender)) {
 			// manager accounts cannot set maxSlippage bigger than maxPriceOffset
-		else
-			require(
-				maxSlippage <= maxPriceOffset ||
-					hasRole(GUARDIAN, msg.sender) ||
-					msg.sender == vault,
-				"HLP: MAX_MISMATCH"
-			);
+			require(maxSlippage <= maxPriceOffset, "HLP: MAX_MISMATCH");
+		}
+		// all other users can set maxSlippage up to maxAllowedMismatch
+		else maxSlippage = maxDefaultPriceMismatch;
 		require(getPriceOffset() <= maxSlippage, "HLP: PRICE_MISMATCH");
 		_;
 	}
@@ -160,12 +162,13 @@ abstract contract HLPCore is
 		return _underlying;
 	}
 
-	// public method that anyone can call if loan health falls below minLoanHealth
-	// this method will succeed only when loanHealth is below minimum
+	/// @notice public method that anyone can call if loan health falls below minLoanHealth
+	/// @dev this method will succeed only when loanHealth is below minimum
+	/// if price difference between dex and oracle is too large, this method will revert
 	function rebalanceLoan() public nonReentrant {
 		// limit offset to maxPriceOffset manager to prevent misuse
 		if (hasRole(GUARDIAN, msg.sender)) {} else if (hasRole(MANAGER, msg.sender))
-			require(getPriceOffset() <= maxPriceOffset, "HLP: MAX_MISMATCH");
+			require(getPriceOffset() <= maxPriceOffset, "HLP: PRICE_MISMATCH");
 			// public methods need more protection agains griefing
 			// NOTE: this may prevent gelato bots from executing the tx in the case of
 			// a sudden price spike on a CEX
@@ -325,16 +328,16 @@ abstract contract HLPCore is
 		if (lendingParams.length != 0) lendHarvest = _harvestLending(lendingParams);
 
 		// compound our lp position
-		_increasePosition(underlying().balanceOf(address(this)));
+		uint256 balance = underlying().balanceOf(address(this));
+		if (balance > MIN_LIQUIDITY) _increasePosition(underlying().balanceOf(address(this)));
 		emit Harvest(startTvl);
 	}
 
-	function rebalance(uint256 maxSlippage)
-		external
-		onlyRole(MANAGER)
-		checkPrice(maxSlippage)
-		nonReentrant
-	{
+	/// @notice public keeper rebalance method
+	/// @dev this
+	/// if price difference between dex and oracle is too large, this method will revert
+	/// if called by a keeper or non manager or non-guardian account
+	function rebalance(uint256 maxSlippage) external checkPrice(maxSlippage) nonReentrant {
 		// call this first to ensure we use an updated borrowBalance when computing offset
 		uint256 tvl = getAndUpdateTvl();
 		uint256 positionOffset = getPositionOffset();
@@ -445,6 +448,10 @@ abstract contract HLPCore is
 
 		// borrow funds or repay loan
 		if (targetBorrow > currentBorrow) {
+			// if we have loose short balance we need to trade it for underlying
+			uint256 shortBal = short().balanceOf(address(this));
+			if (shortBal > 0) _tradeExact(0, shortBal, address(_short), address(_underlying));
+
 			// remove extra lp (we may need to remove more in order to add more collateral)
 			_decreaseULpTo(
 				_needUnderlying(targetUnderlyingLP, targetCollateral) > 0 ? 0 : targetUnderlyingLP

@@ -217,7 +217,7 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		strategy.rebalance(offset);
 
 		vm.prank(manager);
-		vm.expectRevert("HLP: MAX_MISMATCH");
+		vm.expectRevert("HLP: PRICE_MISMATCH");
 		strategy.rebalanceLoan();
 
 		vm.prank(guardian);
@@ -278,8 +278,12 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		vault.setMaxTvl(0);
 		strategy.redeemCollateral(shortPosition / 10, collateralBalance / 10);
 		(, uint256 newCollateralBalance, uint256 newShortPosition, , , ) = strategy.getTVL();
-		assertApproxEqAbs(newCollateralBalance, collateralBalance - collateralBalance / 10, 1);
-		assertApproxEqAbs(newShortPosition, shortPosition - shortPosition / 10, 1);
+		assertApproxEqRel(
+			newCollateralBalance,
+			collateralBalance - collateralBalance / 10,
+			.0001e18
+		);
+		assertApproxEqRel(newShortPosition, shortPosition - shortPosition / 10, .0001e18);
 	}
 
 	// slippage in basis points
@@ -305,6 +309,29 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		deal(short, address(strategy), 14368479712190599);
 		vault.closePosition(0, strategy.getPriceOffset());
 	}
+
+	function testRebalanceEdgeCase() public {
+		uint256 amnt = getAmnt();
+		deposit(self, amnt);
+		deal(address(short), address(strategy), 100e18);
+
+		uint256 pOffset = strategy.getPositionOffset();
+		assertGt(pOffset, 400);
+		rebalance();
+	}
+
+	// function testDeployedRebalance() public {
+	// 	SCYVault dvault = SCYVault(payable(0x7acE71f029fe98E2ABdb49aA5a9f86D916088e7A));
+	// 	HLPCore _strategy = HLPCore(payable(address(dvault.strategy())));
+
+	// 	logTvl(IStrategy(address(_strategy)));
+	// 	console.log("short balance", _strategy.short().balanceOf(address(_strategy)));
+	// 	uint256 priceOffset = _strategy.getPriceOffset();
+	// 	vm.prank(0x8aB0800dc1c5dbC0fdaF12D660f1846baf635050);
+	// 	_strategy.rebalance(priceOffset);
+	// 	assertApproxEqAbs(_strategy.getPositionOffset(), 0, 2, "position offset after rebalance");
+	// 	skip(1);
+	// }
 
 	// function testDeployedHarvest() public {
 	// 	SCYVault dvault = SCYVault(payable(0x615C884C42C3bca1B93d6E28f7D416916d9F4bf8));

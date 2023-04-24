@@ -25,7 +25,7 @@ abstract contract CompMultiFarm is CompoundFarm {
 
 			uint256[] memory amounts = IUniswapV2Router01(lendFarmRouter())
 				.swapExactTokensForTokens(
-					harvested[0],
+					farmHarvest,
 					swapParam.min,
 					swapParam.path, // optimal route determined externally
 					address(this),
