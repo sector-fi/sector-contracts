@@ -29,6 +29,12 @@ abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
 	uint256 public positionId;
 	IXGrailToken public xGrailToken;
 
+	uint256 public constant WEEK = 7 days;
+	// index where the redeem array starts in chronolgical order
+	// when we finalize redeem first index will need to be incremented by 1
+	uint16 public firstIndex = 0;
+	uint16 public lastIndex = 0;
+
 	constructor(
 		address pair_,
 		address farm_,
@@ -80,6 +86,7 @@ abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
 		override
 		returns (uint256[] memory harvested)
 	{
+		// uint256 totalPending = _farm.pendingRewards(positionId);
 		_farm.harvestPosition(positionId);
 		uint256 farmHarvest = _farmToken.balanceOf(address(this));
 		if (farmHarvest == 0) return harvested;
@@ -90,6 +97,19 @@ abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
 		// 3. initiate redeem of any extra xGrail
 		// 4. finalize redeem of any vested xGrail
 		// 5. handle dividends?
+
+		uint256 l = xGrailToken.getUserRedeemsLength(address(this));
+		(uint256 xGrail, , uint256 endTime, uint256 timestamp, , ) = xGrailToken.getUserRedeem(
+			address(this),
+			l - 1
+		);
+		/// unlock | unlock xGrail in weekly batches
+		if (timestamp + WEEK < block.timestamp) {
+			xGrailToken.redeem(
+				xGrailToken.balanceOf(address(this)),
+				xGrailToken.maxRedeemDuration()
+			);
+		}
 
 		/// simple redeem xGrail immediately
 		xGrailToken.redeem(xGrailToken.balanceOf(address(this)), xGrailToken.minRedeemDuration());
