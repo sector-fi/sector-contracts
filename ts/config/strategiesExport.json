@@ -276,7 +276,9 @@
   },
   "_list_Stargate": [
     "LND_USDC_Stargate_arbitrum",
-    "LND_USDC_Stargate_optimism"
+    "LND_USDC_Stargate_optimism",
+    "LND_ETH_Stargate_arbitrum",
+    "LND_ETH_Stargate_optimism"
   ],
   "_list_Synapse": ["LND_USDC_Synapse_arbitrum", "LND_ETH_Synapse_arbitrum"],
   "LND_USDC-ETH_Tarot_optimism": {
