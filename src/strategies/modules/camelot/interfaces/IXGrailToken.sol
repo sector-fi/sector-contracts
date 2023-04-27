@@ -36,4 +36,18 @@ interface IXGrailToken is IERC20 {
 			address dividendsContract,
 			uint256 dividendsAllocation
 		);
+
+	function allocate(
+		address userAddress,
+		uint256 amount,
+		bytes calldata usageData
+	) external;
+
+	function deallocate(
+		address userAddress,
+		uint256 amount,
+		bytes calldata usageData
+	) external;
+
+	function approveUsage(address usage, uint256 amount) external;
 }

@@ -12,6 +12,8 @@ import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { SectorErrors } from "interfaces/SectorErrors.sol";
 import { AggregatorVault } from "vaults/sectorVaults/AggregatorVault.sol";
+import { INFTPool } from "strategies/modules/camelot/interfaces/INFTPool.sol";
+import { CamelotFarm } from "strategies/modules/camelot/CamelotFarm.sol";
 
 import "hardhat/console.sol";
 
