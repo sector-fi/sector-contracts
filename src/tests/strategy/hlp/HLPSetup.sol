@@ -15,6 +15,7 @@ import { ISCYVault } from "interfaces/ERC5115/ISCYVault.sol";
 import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
 import { SolidlyAave } from "strategies/hlp/SolidlyAave.sol";
 import { CamelotAave } from "strategies/hlp/CamelotAave.sol";
+import { MiniChefAave } from "strategies/hlp/MiniChefAave.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -23,10 +24,11 @@ import "hardhat/console.sol";
 contract HLPSetup is SCYStratUtils, UniswapMixin {
 	using stdJson for string;
 
-	string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
+	// string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Velo_optimism";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Xcal_arbitrum";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Camelot_arbitrum";
+	string TEST_STRATEGY = "HLP_USDC-ETH_Sushi_arbitrum";
 
 	string lenderType;
 	uint256 currentFork;
@@ -123,6 +125,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 			strategy = new MasterChefCompMulti(authConfig, config);
 		if (compare(contractType, "SolidlyAave")) strategy = new SolidlyAave(authConfig, config);
 		if (compare(contractType, "CamelotAave")) strategy = new CamelotAave(authConfig, config);
+		if (compare(contractType, "MiniChefAave")) strategy = new MiniChefAave(authConfig, config);
 
 		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);

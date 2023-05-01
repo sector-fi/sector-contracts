@@ -397,7 +397,8 @@
     "HLP_USDC-ETH_Velo_optimism",
     "HLP_USDC-ETH_Velo_arbitrum",
     "HLP_USDC-ETH_Xcal_arbitrum",
-    "HLP_USDC-ETH_Camelot_arbitrum"
+    "HLP_USDC-ETH_Camelot_arbitrum",
+    "HLP_USDC-ETH_Sushi_arbitrum"
   ],
   "HLP_USDC-ETH_Velo_arbitrum": {
     "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
@@ -473,6 +474,32 @@
     "l5_lenderType": "aave",
     "n_nativeToken": 2,
     "o_contract": "CamelotAave",
+    "x_chain": "ARBITRUM",
+    "underlyingDec": 6,
+    "shortDec": 18
+  },
+  "HLP_USDC-ETH_Sushi_arbitrum": {
+    "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
+    "b_short": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+    "c_uniPair": "0x905dfcd5649217c42684f23958568e533c711aa3",
+    "d1_cTokenLend": "0x625E7708f30cA75bfd92586e17077590C60eb4cD",
+    "d2_cTokenBorrow": "0xe50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8",
+    "e1_farmToken": "0xd4d42F0b6DEF4CE0383636770eF773390d85c61A",
+    "e2_farmId": 0,
+    "e3_uniFarm": "0xF4d73326C13a4Fc5FD7A064217e12780e9Bd62c3",
+    "f_farmRouter": "0x1b02dA8Cb0d097eB8D57A175b88c7D8b47997506",
+    "h_harvestPath": [
+      "0xd4d42F0b6DEF4CE0383636770eF773390d85c61A",
+      "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
+      "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8"
+    ],
+    "l1_comptroller": "0x794a61358D6845594F94dc1DB02A252b5b4814aD",
+    "l2_lendRewardToken": "0x0000000000000000000000000000000000000000",
+    "l3_lendRewardPath": [],
+    "l4_lendRewardRouter": "0x0000000000000000000000000000000000000000",
+    "l5_lenderType": "aave",
+    "n_nativeToken": 2,
+    "o_contract": "MiniChefAave",
     "x_chain": "ARBITRUM",
     "underlyingDec": 6,
     "shortDec": 18
