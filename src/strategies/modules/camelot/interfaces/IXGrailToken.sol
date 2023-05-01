@@ -9,6 +9,13 @@ interface IXGrailToken is IERC20 {
 		view
 		returns (uint256 allocation);
 
+	function getUsageApproval(address userAddress, address usageAddress)
+		external
+		view
+		returns (uint256);
+
+	function grailToken() external view returns (address);
+
 	function allocateFromUsage(address userAddress, uint256 amount) external;
 
 	function convertTo(uint256 amount, address to) external;
@@ -37,6 +44,11 @@ interface IXGrailToken is IERC20 {
 			uint256 dividendsAllocation
 		);
 
+	function getXGrailBalance(address userAddress)
+		external
+		view
+		returns (uint256 allocatedAmount, uint256 redeemingAmount);
+
 	function allocate(
 		address userAddress,
 		uint256 amount,
@@ -50,4 +62,6 @@ interface IXGrailToken is IERC20 {
 	) external;
 
 	function approveUsage(address usage, uint256 amount) external;
+
+	function usagesDeallocationFee(address usage) external view returns (uint256);
 }

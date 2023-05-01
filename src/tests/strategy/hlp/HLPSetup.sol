@@ -15,6 +15,7 @@ import { ISCYVault } from "interfaces/ERC5115/ISCYVault.sol";
 import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
 import { SolidlyAave } from "strategies/hlp/SolidlyAave.sol";
 import { CamelotAave } from "strategies/hlp/CamelotAave.sol";
+import { sectGrail } from "strategies/modules/camelot/sectGrail.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -27,6 +28,8 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Velo_optimism";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Xcal_arbitrum";
 	string TEST_STRATEGY = "HLP_USDC-ETH_Camelot_arbitrum";
+
+	address xGrail = 0x3CAaE25Ee616f2C8E13C74dA0813402eae3F496b;
 
 	string lenderType;
 	uint256 currentFork;
@@ -122,7 +125,16 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		if (compare(contractType, "MasterChefCompMulti"))
 			strategy = new MasterChefCompMulti(authConfig, config);
 		if (compare(contractType, "SolidlyAave")) strategy = new SolidlyAave(authConfig, config);
-		if (compare(contractType, "CamelotAave")) strategy = new CamelotAave(authConfig, config);
+		if (compare(contractType, "CamelotAave")) {
+			sectGrail sGrail = new sectGrail();
+			sGrail.initialize(xGrail);
+			// we pass sGrail as the uniPair and pull uniPair out of farm params
+			address lpToken = config.uniPair;
+			config.uniPair = address(sGrail);
+			strategy = new CamelotAave(authConfig, config);
+			// tests use this
+			config.uniPair = lpToken;
+		}
 
 		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);

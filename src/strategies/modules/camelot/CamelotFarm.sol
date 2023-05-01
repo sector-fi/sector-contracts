@@ -14,11 +14,10 @@ import { IUniswapV2Pair } from "../../../interfaces/uniswap/IUniswapV2Pair.sol";
 
 import { IUniFarm, HarvestSwapParams } from "../../mixins/IUniFarm.sol";
 import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
-import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
+abstract contract CamelotFarm is IUniFarm, INFTHandler {
 	using SafeERC20 for IERC20;
 
 	INFTPool private _farm;
