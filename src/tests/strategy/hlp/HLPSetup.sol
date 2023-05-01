@@ -24,10 +24,10 @@ import "hardhat/console.sol";
 contract HLPSetup is SCYStratUtils, UniswapMixin {
 	using stdJson for string;
 
-	// string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
+	string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Velo_optimism";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Xcal_arbitrum";
-	string TEST_STRATEGY = "HLP_USDC-ETH_Camelot_arbitrum";
+	// string TEST_STRATEGY = "HLP_USDC-ETH_Camelot_arbitrum";
 
 	address xGrail = 0x3CAaE25Ee616f2C8E13C74dA0813402eae3F496b;
 
@@ -60,6 +60,12 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		string o_contract;
 		string x_chain;
 	}
+
+	function getStrategy() public view virtual returns (string memory) {
+		return TEST_STRATEGY;
+	}
+
+	function setupHook() public virtual {}
 
 	// TODO we can return a full array for a given chain
 	// and test all strats...
@@ -99,7 +105,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 	}
 
 	function setUp() public {
-		config = getConfig(TEST_STRATEGY);
+		config = getConfig(getStrategy());
 
 		// TODO use JSON
 		underlying = IERC20(config.underlying);
@@ -142,6 +148,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		configureUtils(config.underlying, address(strategy));
 		configureUniswapMixin(config.uniPair, config.short);
 		// deposit(mLp);
+		setupHook();
 	}
 
 	function rebalance() public override {

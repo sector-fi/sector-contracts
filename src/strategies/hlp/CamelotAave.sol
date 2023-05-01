@@ -11,8 +11,8 @@ import { Auth, AuthConfig } from "../../common/Auth.sol";
 
 // import "hardhat/console.sol";
 
-/// @title SolidlyAave
-/// @notice HLP Strategy using Solidly exchange and Aaave money market
+/// @title CamelotAave
+/// @notice HLP Strategy using Camelot exchange and Aaave money market
 contract CamelotAave is HLPCore, AaveModule, AaveFarm, CamelotSectGrailFarm {
 	// HLPCore should  be intialized last
 	constructor(AuthConfig memory authConfig, HLPConfig memory config)
