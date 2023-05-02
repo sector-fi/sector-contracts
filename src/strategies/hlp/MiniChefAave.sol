@@ -10,8 +10,8 @@ import { Auth, AuthConfig } from "../../common/Auth.sol";
 
 // import "hardhat/console.sol";
 
-/// @title SolidlyAave
-/// @notice HLP Strategy using Solidly exchange and Aaave money market
+/// @title MiniChefAave
+/// @notice HLP Strategy using Sushi's MasterChef2 and Aaave money market
 contract MiniChefAave is HLPCore, AaveModule, AaveFarm, MiniChefFarm {
 	// HLPCore should  be intialized last
 	constructor(AuthConfig memory authConfig, HLPConfig memory config)

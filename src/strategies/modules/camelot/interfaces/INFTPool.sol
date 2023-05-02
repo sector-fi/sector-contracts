@@ -47,6 +47,10 @@ interface INFTPool is IERC721 {
 
 	function lastTokenId() external view returns (uint256);
 
+	function yieldBooster() external view returns (address);
+
+	function pendingRewards(uint256 tokenId) external view returns (uint256);
+
 	function createPosition(uint256 amount, uint256 lockDuration) external;
 
 	function addToPosition(uint256 tokenId, uint256 amount) external;
@@ -54,4 +58,6 @@ interface INFTPool is IERC721 {
 	function withdrawFromPosition(uint256 tokenId, uint256 amount) external;
 
 	function harvestPosition(uint256 tokenId) external;
+
+	function harvestPositionTo(uint256 tokenId, address to) external;
 }

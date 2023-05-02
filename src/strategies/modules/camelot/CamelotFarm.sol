@@ -14,11 +14,15 @@ import { IUniswapV2Pair } from "../../../interfaces/uniswap/IUniswapV2Pair.sol";
 
 import { IUniFarm, HarvestSwapParams } from "../../mixins/IUniFarm.sol";
 import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
-import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 // import "hardhat/console.sol";
 
-abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
+/// @title Camelot Farm Module
+/// @notice This is a simple farm module that self-manages xGrail rewards
+/// the disadvantage is that this makes it harder to move/re-allocate xGrail
+/// to a different contract if the strategy is depricated or redeployed
+/// this farm module is depreated in favor of CamelotSectGrailFarm
+abstract contract CamelotFarm is IUniFarm, INFTHandler {
 	using SafeERC20 for IERC20;
 
 	INFTPool private _farm;
@@ -28,6 +32,7 @@ abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
 	uint256 private _farmId;
 	uint256 public positionId;
 	IXGrailToken public xGrailToken;
+	address public yieldBooster;
 
 	constructor(
 		address pair_,
@@ -43,6 +48,7 @@ abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
 		_farmId = farmPid_;
 		(, , address _xGrailToken, , , , , ) = _farm.getPoolInfo();
 		xGrailToken = IXGrailToken(_xGrailToken);
+		yieldBooster = _farm.yieldBooster();
 		_addFarmApprovals();
 	}
 
@@ -51,6 +57,7 @@ abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
 		IERC20(address(_pair)).safeApprove(address(_farm), type(uint256).max);
 		if (_farmToken.allowance(address(this), address(_router)) == 0)
 			_farmToken.safeApprove(address(_router), type(uint256).max);
+		xGrailToken.approveUsage(yieldBooster, type(uint256).max);
 	}
 
 	function farmRouter() public view override returns (address) {
@@ -61,8 +68,15 @@ abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
 		return _pair;
 	}
 
+	function farm() public view returns (address) {
+		return address(_farm);
+	}
+
 	function _withdrawFromFarm(uint256 amount) internal override {
 		_farm.withdrawFromPosition(positionId, amount);
+		// note: when full balance is removed from position, the position gets deleted
+		// xGrail get deallocated from a deleted position
+		// if the position has been delted, reset the positionId to 0
 		if (!_farm.exists(positionId)) positionId = 0;
 	}
 
@@ -70,6 +84,12 @@ abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
 		if (positionId == 0) {
 			positionId = _farm.lastTokenId() + 1;
 			_farm.createPosition(amount, 0);
+			uint256 xGrail = xGrailToken.balanceOf(address(this));
+			/// when creating a new position, allocate the full xGrail ballance to the farm
+			if (xGrail > 0) {
+				bytes memory usageData = abi.encode(_farm, positionId);
+				xGrailToken.allocate(yieldBooster, xGrail, usageData);
+			}
 		} else {
 			_farm.addToPosition(positionId, amount);
 		}
@@ -85,16 +105,12 @@ abstract contract CamelotFarm is IUniFarm, IERC721Receiver {
 		if (farmHarvest == 0) return harvested;
 
 		// TODO
-		// 1. compute how much is needed for max boost
-		// 2. use xGrail to boost LP
-		// 3. initiate redeem of any extra xGrail
-		// 4. finalize redeem of any vested xGrail
-		// 5. handle dividends?
+		// owner methods to redeem or re-allocate xGrail?
+		// can also use the emergencyAction method to execute...
 
-		/// simple redeem xGrail immediately
-		xGrailToken.redeem(xGrailToken.balanceOf(address(this)), xGrailToken.minRedeemDuration());
-
-		// TODO finailize finished redeems
+		/// allocate all xGrail to the farm
+		bytes memory usageData = abi.encode(_farm, positionId);
+		xGrailToken.allocate(yieldBooster, xGrailToken.balanceOf(address(this)), usageData);
 
 		_validatePath(address(_farmToken), swapParams[0].path);
 		_router.swapExactTokensForTokensSupportingFeeOnTransferTokens(

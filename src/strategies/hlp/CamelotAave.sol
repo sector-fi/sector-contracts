@@ -6,17 +6,18 @@ import { HLPCore, IBase, IERC20 } from "./HLPCore.sol";
 import { AaveModule } from "../modules/aave/AaveModule.sol";
 import { AaveFarm } from "../modules/aave/AaveFarm.sol";
 import { CamelotFarm } from "../modules/camelot/CamelotFarm.sol";
+import { CamelotSectGrailFarm } from "../modules/camelot/CamelotSectGrailFarm.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 
 // import "hardhat/console.sol";
 
-/// @title SolidlyAave
-/// @notice HLP Strategy using Solidly exchange and Aaave money market
-contract CamelotAave is HLPCore, AaveModule, AaveFarm, CamelotFarm {
+/// @title CamelotAave
+/// @notice HLP Strategy using Camelot exchange and Aaave money market
+contract CamelotAave is HLPCore, AaveModule, AaveFarm, CamelotSectGrailFarm {
 	// HLPCore should  be intialized last
 	constructor(AuthConfig memory authConfig, HLPConfig memory config)
 		Auth(authConfig)
-		CamelotFarm(
+		CamelotSectGrailFarm(
 			config.uniPair,
 			config.uniFarm,
 			config.farmRouter,

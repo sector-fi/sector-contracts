@@ -15,7 +15,9 @@ import { ISCYVault } from "interfaces/ERC5115/ISCYVault.sol";
 import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
 import { SolidlyAave } from "strategies/hlp/SolidlyAave.sol";
 import { CamelotAave } from "strategies/hlp/CamelotAave.sol";
+import { sectGrail } from "strategies/modules/camelot/sectGrail.sol";
 import { MiniChefAave } from "strategies/hlp/MiniChefAave.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -27,8 +29,10 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 	// string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Velo_optimism";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Xcal_arbitrum";
-	// string TEST_STRATEGY = "HLP_USDC-ETH_Camelot_arbitrum";
-	string TEST_STRATEGY = "HLP_USDC-ETH_Sushi_arbitrum";
+	string TEST_STRATEGY = "HLP_USDC-ETH_Camelot_arbitrum";
+	// string TEST_STRATEGY = "HLP_USDC-ETH_Sushi_arbitrum";
+
+	address xGrail = 0x3CAaE25Ee616f2C8E13C74dA0813402eae3F496b;
 
 	string lenderType;
 	uint256 currentFork;
@@ -59,6 +63,12 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		string o_contract;
 		string x_chain;
 	}
+
+	function getStrategy() public view virtual returns (string memory) {
+		return TEST_STRATEGY;
+	}
+
+	function setupHook() public virtual {}
 
 	// TODO we can return a full array for a given chain
 	// and test all strats...
@@ -98,7 +108,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 	}
 
 	function setUp() public {
-		config = getConfig(TEST_STRATEGY);
+		config = getConfig(getStrategy());
 
 		// TODO use JSON
 		underlying = IERC20(config.underlying);
@@ -124,7 +134,23 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		if (compare(contractType, "MasterChefCompMulti"))
 			strategy = new MasterChefCompMulti(authConfig, config);
 		if (compare(contractType, "SolidlyAave")) strategy = new SolidlyAave(authConfig, config);
-		if (compare(contractType, "CamelotAave")) strategy = new CamelotAave(authConfig, config);
+		if (compare(contractType, "CamelotAave")) {
+			sectGrail sGrailLogic = new sectGrail();
+			sectGrail sGrail = sectGrail(
+				address(
+					new ERC1967Proxy(
+						address(sGrailLogic),
+						abi.encodeWithSelector(sectGrail.initialize.selector, xGrail)
+					)
+				)
+			);
+			// we pass sGrail as the uniPair and pull uniPair out of farm params
+			address lpToken = config.uniPair;
+			config.uniPair = address(sGrail);
+			strategy = new CamelotAave(authConfig, config);
+			// tests use this
+			config.uniPair = lpToken;
+		}
 		if (compare(contractType, "MiniChefAave")) strategy = new MiniChefAave(authConfig, config);
 
 		vault.initStrategy(address(strategy));
@@ -133,6 +159,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		configureUtils(config.underlying, address(strategy));
 		configureUniswapMixin(config.uniPair, config.short);
 		// deposit(mLp);
+		setupHook();
 	}
 
 	function rebalance() public override {
