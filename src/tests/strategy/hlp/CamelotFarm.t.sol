@@ -19,12 +19,14 @@ contract CamelotFarmTest is HLPSetup {
 	INFTPool farm;
 	ISectGrail sectGrail;
 	IXGrailToken xGrailToken;
+	IERC20 grailToken;
 
 	function setupHook() public override {
 		cFarm = CamelotSectGrailFarm(address(strategy));
 		farm = INFTPool(cFarm.farm());
 		sectGrail = cFarm.sectGrail();
 		xGrailToken = sectGrail.xGrailToken();
+		grailToken = IERC20(sectGrail.grailToken());
 	}
 
 	function testCamelotFarm() public {
@@ -114,5 +116,34 @@ contract CamelotFarmTest is HLPSetup {
 		address[] memory tokens = new address[](1);
 		tokens[0] = address(xGrailToken);
 		sectGrail.harvestFarm(farm, positionId, tokens);
+	}
+
+	function testDeposit() public {
+		if (!compare(contractType, "CamelotAave")) return;
+		uint256 amnt = getAmnt();
+		deposit(self, amnt);
+		uint256 positionId = cFarm.positionId();
+		uint256 lpAmount = sectGrail.getFarmLp(farm, positionId);
+		address lpToken = address(cFarm.pair());
+
+		deal(lpToken, self, lpAmount);
+		IERC20(lpToken).approve(address(sectGrail), lpAmount);
+		positionId = sectGrail.depositIntoFarm(farm, lpAmount, 0, lpToken);
+
+		skip(15 days);
+		harvest();
+
+		address[] memory tokens = new address[](1);
+		tokens[0] = address(grailToken);
+		sectGrail.harvestFarm(farm, positionId, tokens);
+
+		uint256 allocation1 = sectGrail.getAllocations(address(strategy));
+		uint256 allocation2 = sectGrail.getAllocations(address(self));
+		assertApproxEqRel(
+			allocation1,
+			allocation2,
+			.0001e18,
+			"allocation1 should be equal to allocation2"
+		);
 	}
 }

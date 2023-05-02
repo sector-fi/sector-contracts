@@ -3,9 +3,12 @@ pragma solidity 0.8.16;
 
 import { INFTPool } from "./INFTPool.sol";
 import { IXGrailToken } from "./IXGrailToken.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface ISectGrail {
 	function xGrailToken() external view returns (IXGrailToken);
+
+	function grailToken() external view returns (IERC20);
 
 	function depositIntoFarm(
 		INFTPool _farm,

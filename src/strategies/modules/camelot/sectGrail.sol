@@ -8,6 +8,8 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { INFTPool } from "./interfaces/INFTPool.sol";
 import { INFTHandler } from "./interfaces/INFTHandler.sol";
 import { ISectGrail } from "./interfaces/IsectGrail.sol";
+import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 
 // import "hardhat/console.sol";
 
@@ -17,8 +19,16 @@ import { ISectGrail } from "./interfaces/IsectGrail.sol";
 /// xGrail: https://arbiscan.io/address/0x3CAaE25Ee616f2C8E13C74dA0813402eae3F496b//
 /// USDC-ETH NFTPool: https://arbiscan.io/address/0x6bc938aba940fb828d39daa23a94dfc522120c11
 /// YieldBooster: https://arbiscan.io/address/0xD27c373950E7466C53e5Cd6eE3F70b240dC0B1B1#code
-contract sectGrail is ISectGrail, ERC20Upgradeable, INFTHandler {
+contract sectGrail is
+	ISectGrail,
+	ERC20Upgradeable,
+	INFTHandler,
+	ERC20PermitUpgradeable,
+	ReentrancyGuardUpgradeable
+{
 	using SafeERC20 for IERC20;
+
+	uint256[200] __pre_gap; // gap for upgrade safety allows to add inhertiance items
 
 	mapping(address => uint256) public allocations;
 	mapping(uint256 => address) public positionOwners;
@@ -28,19 +38,25 @@ contract sectGrail is ISectGrail, ERC20Upgradeable, INFTHandler {
 		_;
 	}
 
-	constructor() {}
+	/// @custom:oz-upgrades-unsafe-allow constructor
+	constructor() {
+		_disableInitializers();
+	}
 
 	IXGrailToken public xGrailToken;
 	IERC20 public grailToken;
 
-	// TODO hardcode xGrail address?
+	// TODO is it better to hardcode xGrail address?
 	function initialize(address _xGrail) public initializer {
 		__ERC20_init("sectGRAIL", "sectGRAIL");
 		xGrailToken = IXGrailToken(_xGrail);
 		grailToken = IERC20(xGrailToken.grailToken());
 	}
 
-	function mint(address to) public returns (uint256) {
+	/// @notice convert xGrail in the contract to sectGrail
+	/// @dev we include allocated xGrail and check against totalSupply of sectGrail
+	/// any extra amount can be minted to the user
+	function _mintFromBalance(address to) internal returns (uint256) {
 		(uint256 allocated, ) = xGrailToken.getXGrailBalance(address(this));
 
 		// dont include redeems - redeems should be burned
@@ -49,12 +65,13 @@ contract sectGrail is ISectGrail, ERC20Upgradeable, INFTHandler {
 		return amount;
 	}
 
+	/// @notice deposit lp tokens into a Camelot farm
 	function depositIntoFarm(
 		INFTPool _farm,
 		uint256 amount,
 		uint256 positionId,
 		address lp
-	) external returns (uint256) {
+	) external nonReentrant returns (uint256) {
 		IERC20(lp).safeTransferFrom(msg.sender, address(this), amount);
 
 		if (IERC20(lp).allowance(address(this), address(_farm)) < amount)
@@ -74,12 +91,13 @@ contract sectGrail is ISectGrail, ERC20Upgradeable, INFTHandler {
 		return positionId;
 	}
 
+	/// @notice withdraw lp tokens from a Camelot farm
 	function withdrawFromFarm(
 		INFTPool _farm,
 		uint256 amount,
 		uint256 positionId,
 		address lp
-	) external onlyPositionOwner(positionId) returns (uint256) {
+	) external nonReentrant onlyPositionOwner(positionId) returns (uint256) {
 		address usageAddress = _farm.yieldBooster();
 		uint256 xGrailAllocation = xGrailToken.usageAllocations(address(this), usageAddress);
 		_farm.withdrawFromPosition(positionId, amount);
@@ -104,17 +122,18 @@ contract sectGrail is ISectGrail, ERC20Upgradeable, INFTHandler {
 		IERC20(lp).safeTransfer(msg.sender, amount);
 		uint256 grailBalance = grailToken.balanceOf(address(this));
 		if (grailBalance > 0) grailToken.safeTransfer(msg.sender, grailBalance);
-		mint(msg.sender);
+		_mintFromBalance(msg.sender);
 
 		emit WithdrawFromFarm(msg.sender, address(_farm), positionId, amount);
 		return positionId;
 	}
 
+	/// @notice harvest camelot farm and allocate xGrail to the position
 	function harvestFarm(
 		INFTPool _farm,
 		uint256 positionId,
 		address[] memory tokens
-	) external onlyPositionOwner(positionId) returns (uint256[] memory harvested) {
+	) external nonReentrant onlyPositionOwner(positionId) returns (uint256[] memory harvested) {
 		_farm.harvestPosition(positionId);
 		harvested = new uint256[](tokens.length);
 		for (uint256 i = 0; i < tokens.length; i++) {
@@ -125,11 +144,12 @@ contract sectGrail is ISectGrail, ERC20Upgradeable, INFTHandler {
 
 		/// allocate all xGrail to the farm
 		bytes memory usageData = abi.encode(_farm, positionId);
-		mint(msg.sender);
+		_mintFromBalance(msg.sender);
 		allocate(_farm.yieldBooster(), type(uint256).max, usageData);
 		emit HarvestFarm(msg.sender, address(_farm), positionId, harvested);
 	}
 
+	/// @notice get lp tokens staked in a Camelot farm
 	function getFarmLp(INFTPool _farm, uint256 positionId) public view returns (uint256) {
 		if (positionId == 0) return 0;
 		(uint256 lp, , , , , , , ) = _farm.getStakingPosition(positionId);
@@ -186,10 +206,12 @@ contract sectGrail is ISectGrail, ERC20Upgradeable, INFTHandler {
 
 	/// VEIW FUNCTIONS
 
+	/// @notice get the total amount of xGrail allocated by a user
 	function getAllocations(address user) external view returns (uint256) {
 		return allocations[user];
 	}
 
+	/// @notice get the total amount of xGrail that can be allocated by a user
 	function getNonAllocatedBalance(address user) external view returns (uint256) {
 		return balanceOf(user) - allocations[user];
 	}

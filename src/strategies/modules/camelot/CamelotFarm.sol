@@ -17,6 +17,11 @@ import { IWETH } from "../../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
 
+/// @title Camelot Farm Module
+/// @notice This is a simple farm module that self-manages xGrail rewards
+/// the disadvantage is that this makes it harder to move/re-allocate xGrail
+/// to a different contract if the strategy is depricated or redeployed
+/// this farm module is depreated in favor of CamelotSectGrailFarm
 abstract contract CamelotFarm is IUniFarm, INFTHandler {
 	using SafeERC20 for IERC20;
 
