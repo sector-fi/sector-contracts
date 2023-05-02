@@ -6,6 +6,7 @@ import { HLPSetup, SCYVault, HLPCore } from "./HLPSetup.sol";
 import { CamelotFarm, IXGrailToken, INFTPool } from "strategies/modules/camelot/CamelotFarm.sol";
 import { CamelotSectGrailFarm, ISectGrail } from "strategies/modules/camelot/CamelotSectGrailFarm.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { sectGrail as SectGrail } from "strategies/modules/camelot/sectGrail.sol";
 
 import "hardhat/console.sol";
 
@@ -80,10 +81,38 @@ contract CamelotFarmTest is HLPSetup {
 		deposit(self, amnt);
 		harvest();
 		uint256 allocated = sectGrail.getAllocations(address(strategy));
+
+		vm.expectRevert(SectGrail.CannotTransferAllocatedTokens.selector);
+		cFarm.transferSectGrail(self, allocated);
+
 		cFarm.deallocateSectGrail(allocated);
 		uint256 balance = IERC20(address(sectGrail)).balanceOf(address(strategy));
 		cFarm.transferSectGrail(self, balance);
 		allocated = sectGrail.getAllocations(address(strategy));
 		assertEq(allocated, 0, "allocated should be 0");
+	}
+
+	function testNotPositionOwner() public {
+		if (!compare(contractType, "CamelotAave")) return;
+		uint256 amnt = getAmnt();
+		deposit(self, amnt);
+		harvest();
+
+		uint256 positionId = cFarm.positionId();
+		uint256 lpAmount = sectGrail.getFarmLp(farm, positionId);
+		address lpToken = address(cFarm.pair());
+
+		vm.expectRevert(SectGrail.NotPositionOwner.selector);
+		sectGrail.withdrawFromFarm(farm, lpAmount, positionId, lpToken);
+
+		deal(lpToken, self, lpAmount);
+		IERC20(lpToken).approve(address(sectGrail), lpAmount);
+		vm.expectRevert(SectGrail.NotPositionOwner.selector);
+		sectGrail.depositIntoFarm(farm, lpAmount, positionId, lpToken);
+
+		vm.expectRevert(SectGrail.NotPositionOwner.selector);
+		address[] memory tokens = new address[](1);
+		tokens[0] = address(xGrailToken);
+		sectGrail.harvestFarm(farm, positionId, tokens);
 	}
 }

@@ -16,6 +16,7 @@ import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
 import { SolidlyAave } from "strategies/hlp/SolidlyAave.sol";
 import { CamelotAave } from "strategies/hlp/CamelotAave.sol";
 import { sectGrail } from "strategies/modules/camelot/sectGrail.sol";
+import { MiniChefAave } from "strategies/hlp/MiniChefAave.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -24,10 +25,11 @@ import "hardhat/console.sol";
 contract HLPSetup is SCYStratUtils, UniswapMixin {
 	using stdJson for string;
 
-	string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
+	// string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Velo_optimism";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Xcal_arbitrum";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Camelot_arbitrum";
+	string TEST_STRATEGY = "HLP_USDC-ETH_Sushi_arbitrum";
 
 	address xGrail = 0x3CAaE25Ee616f2C8E13C74dA0813402eae3F496b;
 
@@ -141,6 +143,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 			// tests use this
 			config.uniPair = lpToken;
 		}
+		if (compare(contractType, "MiniChefAave")) strategy = new MiniChefAave(authConfig, config);
 
 		vault.initStrategy(address(strategy));
 		underlying.approve(address(vault), type(uint256).max);
