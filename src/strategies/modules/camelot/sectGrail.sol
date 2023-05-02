@@ -48,7 +48,7 @@ contract sectGrail is
 
 	// TODO is it better to hardcode xGrail address?
 	function initialize(address _xGrail) public initializer {
-		__ERC20_init("sectGRAIL", "sectGRAIL");
+		__ERC20_init("liquid wrapper for xGrail", "sectGRAIL");
 		xGrailToken = IXGrailToken(_xGrail);
 		grailToken = IERC20(xGrailToken.grailToken());
 	}
