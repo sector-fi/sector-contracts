@@ -27,6 +27,10 @@ contract CamelotFarmTest is HLPSetup {
 		sectGrail = cFarm.sectGrail();
 		xGrailToken = sectGrail.xGrailToken();
 		grailToken = IERC20(sectGrail.grailToken());
+
+		// whitelist farm and yieldBooster
+		sectGrail.updateWhitelist(address(farm), true);
+		sectGrail.updateWhitelist(farm.yieldBooster(), true);
 	}
 
 	function testCamelotFarm() public {

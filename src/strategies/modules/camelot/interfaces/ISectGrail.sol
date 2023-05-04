@@ -10,6 +10,10 @@ interface ISectGrail {
 
 	function grailToken() external view returns (IERC20);
 
+	function whitelist(address contractAddr) external view returns (bool);
+
+	function updateWhitelist(address contractAddr, bool isWhitelisted) external;
+
 	function depositIntoFarm(
 		INFTPool _farm,
 		uint256 amount,
@@ -86,4 +90,6 @@ interface ISectGrail {
 		uint256 amount,
 		bytes usageData
 	);
+
+	event UpdateWhitelist(address indexed contractAddr, bool isWhitelisted);
 }

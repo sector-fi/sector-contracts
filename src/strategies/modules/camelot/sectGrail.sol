@@ -10,6 +10,7 @@ import { INFTHandler } from "./interfaces/INFTHandler.sol";
 import { ISectGrail } from "./interfaces/IsectGrail.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
+import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 // import "hardhat/console.sol";
 
@@ -24,17 +25,24 @@ contract sectGrail is
 	ERC20Upgradeable,
 	INFTHandler,
 	ERC20PermitUpgradeable,
-	ReentrancyGuardUpgradeable
+	ReentrancyGuardUpgradeable,
+	OwnableUpgradeable
 {
 	using SafeERC20 for IERC20;
 
 	uint256[200] __pre_gap; // gap for upgrade safety allows to add inhertiance items
 
 	mapping(address => uint256) public allocations;
-	mapping(uint256 => address) public positionOwners;
+	mapping(address => mapping(uint256 => address)) public positionOwners;
+	mapping(address => bool) public whitelist;
 
-	modifier onlyPositionOwner(uint256 positionId) {
-		if (positionOwners[positionId] != msg.sender) revert NotPositionOwner();
+	modifier onlyPositionOwner(address farm, uint256 positionId) {
+		if (positionOwners[farm][positionId] != msg.sender) revert NotPositionOwner();
+		_;
+	}
+
+	modifier onlyWhitelisted(address _address) {
+		if (!whitelist[_address]) revert NotWhitelisted();
 		_;
 	}
 
@@ -48,9 +56,16 @@ contract sectGrail is
 
 	// TODO is it better to hardcode xGrail address?
 	function initialize(address _xGrail) public initializer {
+		__Ownable_init();
 		__ERC20_init("liquid wrapper for xGrail", "sectGRAIL");
 		xGrailToken = IXGrailToken(_xGrail);
 		grailToken = IERC20(xGrailToken.grailToken());
+	}
+
+	/// @notice whitelist an address to be used as farm or usage address
+	function updateWhitelist(address _address, bool _whitelist) external onlyOwner {
+		whitelist[_address] = _whitelist;
+		emit UpdateWhitelist(_address, _whitelist);
 	}
 
 	/// @notice convert xGrail in the contract to sectGrail
@@ -71,7 +86,7 @@ contract sectGrail is
 		uint256 amount,
 		uint256 positionId,
 		address lp
-	) external nonReentrant returns (uint256) {
+	) external nonReentrant onlyWhitelisted(address(_farm)) returns (uint256) {
 		IERC20(lp).safeTransferFrom(msg.sender, address(this), amount);
 
 		if (IERC20(lp).allowance(address(this), address(_farm)) < amount)
@@ -81,9 +96,9 @@ contract sectGrail is
 		if (positionId == 0) {
 			positionId = _farm.lastTokenId() + 1;
 			_farm.createPosition(amount, 0);
-			positionOwners[positionId] = msg.sender;
+			positionOwners[address(_farm)][positionId] = msg.sender;
 		} else {
-			if (positionOwners[positionId] != msg.sender) revert NotPositionOwner();
+			if (positionOwners[address(_farm)][positionId] != msg.sender) revert NotPositionOwner();
 			_farm.addToPosition(positionId, amount);
 		}
 
@@ -97,7 +112,13 @@ contract sectGrail is
 		uint256 amount,
 		uint256 positionId,
 		address lp
-	) external nonReentrant onlyPositionOwner(positionId) returns (uint256) {
+	)
+		external
+		nonReentrant
+		onlyPositionOwner(address(_farm), positionId)
+		onlyWhitelisted(address(_farm))
+		returns (uint256)
+	{
 		address usageAddress = _farm.yieldBooster();
 		uint256 xGrailAllocation = xGrailToken.usageAllocations(address(this), usageAddress);
 		_farm.withdrawFromPosition(positionId, amount);
@@ -133,7 +154,13 @@ contract sectGrail is
 		INFTPool _farm,
 		uint256 positionId,
 		address[] memory tokens
-	) external nonReentrant onlyPositionOwner(positionId) returns (uint256[] memory harvested) {
+	)
+		external
+		nonReentrant
+		onlyPositionOwner(address(_farm), positionId)
+		onlyWhitelisted(address(_farm))
+		returns (uint256[] memory harvested)
+	{
 		_farm.harvestPosition(positionId);
 		harvested = new uint256[](tokens.length);
 		for (uint256 i = 0; i < tokens.length; i++) {
@@ -161,7 +188,7 @@ contract sectGrail is
 		address usageAddress,
 		uint256 amount,
 		bytes memory usageData
-	) public {
+	) public onlyWhitelisted(usageAddress) {
 		uint256 allocated = allocations[msg.sender];
 		uint256 available = balanceOf(msg.sender) - allocated;
 		amount = amount > available ? available : amount;
@@ -170,8 +197,8 @@ contract sectGrail is
 		if (xGrailToken.getUsageApproval(address(this), usageAddress) < amount)
 			xGrailToken.approveUsage(usageAddress, type(uint256).max);
 
-		xGrailToken.allocate(usageAddress, amount, usageData);
 		allocations[msg.sender] = allocated + amount;
+		xGrailToken.allocate(usageAddress, amount, usageData);
 		emit Allocate(msg.sender, usageAddress, amount, usageData);
 	}
 
@@ -180,7 +207,7 @@ contract sectGrail is
 		address usageAddress,
 		uint256 amount,
 		bytes memory usageData
-	) public {
+	) public onlyWhitelisted(usageAddress) {
 		xGrailToken.deallocate(usageAddress, amount, usageData);
 		allocations[msg.sender] = allocations[msg.sender] - amount;
 
@@ -265,4 +292,5 @@ contract sectGrail is
 	error CannotTransferAllocatedTokens();
 	error InsufficientBalance();
 	error NotPositionOwner();
+	error NotWhitelisted();
 }

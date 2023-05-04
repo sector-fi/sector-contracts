@@ -51,12 +51,16 @@ abstract contract CamelotSectGrailFarm is StratAuth, IUniFarm {
 	///////
 
 	function transferSectGrail(address to, uint256 amount) external onlyOwner {
+		if (to == address(0)) revert ZeroAddress();
 		IERC20(address(sectGrail)).safeTransfer(to, amount);
+		emit TransferSectGrail(to, amount);
 	}
 
 	function deallocateSectGrail(uint256 amount) external onlyOwner {
 		bytes memory usageData = abi.encode(_farm, positionId);
-		sectGrail.deallocate(_farm.yieldBooster(), amount, usageData);
+		address yieldBooster = _farm.yieldBooster();
+		sectGrail.deallocate(yieldBooster, amount, usageData);
+		emit DeallocateSectGrail(yieldBooster, amount);
 	}
 
 	// assumption that _router and _farm are trusted
@@ -132,4 +136,9 @@ abstract contract CamelotSectGrailFarm is StratAuth, IUniFarm {
 		uint256 poolLp = _pair.balanceOf(address(this));
 		return farmLp + poolLp;
 	}
+
+	error ZeroAddress();
+
+	event TransferSectGrail(address to, uint256 amount);
+	event DeallocateSectGrail(address yieldBooster, uint256 amount);
 }
