@@ -57,6 +57,7 @@ contract sectGrail is
 	// TODO is it better to hardcode xGrail address?
 	function initialize(address _xGrail) public initializer {
 		__Ownable_init();
+		__ReentrancyGuard_init();
 		__ERC20_init("liquid wrapper for xGrail", "sectGRAIL");
 		xGrailToken = IXGrailToken(_xGrail);
 		grailToken = IERC20(xGrailToken.grailToken());
@@ -169,14 +170,18 @@ contract sectGrail is
 			if (harvested[i] > 0) token.safeTransfer(msg.sender, harvested[i]);
 		}
 
-		/// allocate all xGrail to the farm
+		// allocate all xGrail to the farm
 		bytes memory usageData = abi.encode(_farm, positionId);
 		_mintFromBalance(msg.sender);
-		allocate(_farm.yieldBooster(), type(uint256).max, usageData);
+		// if farm is whitelisted, we don't need to check if yield booster is whitelisted
+		_allocate(_farm.yieldBooster(), type(uint256).max, usageData);
 		emit HarvestFarm(msg.sender, address(_farm), positionId, harvested);
 	}
 
 	/// @notice get lp tokens staked in a Camelot farm
+	/// @param _farm address of the Camelot farm
+	/// @param positionId id of the position
+	/// @return amount of lp tokens staked in the farm
 	function getFarmLp(INFTPool _farm, uint256 positionId) public view returns (uint256) {
 		if (positionId == 0) return 0;
 		(uint256 lp, , , , , , , ) = _farm.getStakingPosition(positionId);
@@ -184,11 +189,27 @@ contract sectGrail is
 	}
 
 	/// @notice allocate xGrail to a usage contract
+	/// @param usageAddress address of the usage contract
+	/// @param amount amount of xGrail to allocate
+	/// @param usageData data to pass to the usage contract
 	function allocate(
 		address usageAddress,
 		uint256 amount,
 		bytes memory usageData
-	) public onlyWhitelisted(usageAddress) {
+	) public nonReentrant onlyWhitelisted(usageAddress) {
+		_allocate(usageAddress, amount, usageData);
+	}
+
+	/// @notice internal allocate method
+	/// @dev usageAddress address needs to be validated
+	/// @param usageAddress address of the usage contract
+	/// @param amount amount of xGrail to allocate
+	/// @param usageData data to pass to the usage contract
+	function _allocate(
+		address usageAddress,
+		uint256 amount,
+		bytes memory usageData
+	) internal {
 		uint256 allocated = allocations[msg.sender];
 		uint256 available = balanceOf(msg.sender) - allocated;
 		amount = amount > available ? available : amount;
@@ -207,7 +228,7 @@ contract sectGrail is
 		address usageAddress,
 		uint256 amount,
 		bytes memory usageData
-	) public onlyWhitelisted(usageAddress) {
+	) public nonReentrant onlyWhitelisted(usageAddress) {
 		xGrailToken.deallocate(usageAddress, amount, usageData);
 		allocations[msg.sender] = allocations[msg.sender] - amount;
 

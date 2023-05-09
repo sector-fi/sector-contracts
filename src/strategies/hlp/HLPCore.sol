@@ -328,8 +328,7 @@ abstract contract HLPCore is
 		if (lendingParams.length != 0) lendHarvest = _harvestLending(lendingParams);
 
 		// compound our lp position
-		uint256 balance = underlying().balanceOf(address(this));
-		if (balance > MIN_LIQUIDITY) _increasePosition(underlying().balanceOf(address(this)));
+		_increasePosition(underlying().balanceOf(address(this)));
 		emit Harvest(startTvl);
 	}
 
