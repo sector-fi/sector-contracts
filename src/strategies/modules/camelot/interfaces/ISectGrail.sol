@@ -28,11 +28,9 @@ interface ISectGrail {
 		address lp
 	) external returns (uint256);
 
-	function harvestFarm(
-		INFTPool _farm,
-		uint256 positionId,
-		address[] memory tokens
-	) external returns (uint256[] memory harvested);
+	function harvestFarm(INFTPool _farm, uint256 positionId)
+		external
+		returns (uint256[] memory harvested);
 
 	function allocate(
 		address usageAddress,

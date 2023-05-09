@@ -117,9 +117,7 @@ contract CamelotFarmTest is HLPSetup {
 		sectGrail.depositIntoFarm(farm, lpAmount, positionId, lpToken);
 
 		vm.expectRevert(SectGrail.NotPositionOwner.selector);
-		address[] memory tokens = new address[](1);
-		tokens[0] = address(xGrailToken);
-		sectGrail.harvestFarm(farm, positionId, tokens);
+		sectGrail.harvestFarm(farm, positionId);
 	}
 
 	function testDeposit() public {
@@ -137,9 +135,7 @@ contract CamelotFarmTest is HLPSetup {
 		skip(15 days);
 		harvest();
 
-		address[] memory tokens = new address[](1);
-		tokens[0] = address(grailToken);
-		sectGrail.harvestFarm(farm, positionId, tokens);
+		sectGrail.harvestFarm(farm, positionId);
 
 		uint256 allocation1 = sectGrail.getAllocations(address(strategy));
 		uint256 allocation2 = sectGrail.getAllocations(address(self));

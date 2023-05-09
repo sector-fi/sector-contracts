@@ -152,11 +152,7 @@ contract sectGrail is
 	}
 
 	/// @notice harvest camelot farm and allocate xGrail to the position
-	function harvestFarm(
-		INFTPool _farm,
-		uint256 positionId,
-		address[] memory tokens
-	)
+	function harvestFarm(INFTPool _farm, uint256 positionId)
 		external
 		nonReentrant
 		onlyPositionOwner(address(_farm), positionId)
@@ -164,12 +160,9 @@ contract sectGrail is
 		returns (uint256[] memory harvested)
 	{
 		_farm.harvestPosition(positionId);
-		harvested = new uint256[](tokens.length);
-		for (uint256 i = 0; i < tokens.length; i++) {
-			IERC20 token = IERC20(tokens[i]);
-			harvested[i] = token.balanceOf(address(this));
-			if (harvested[i] > 0) token.safeTransfer(msg.sender, harvested[i]);
-		}
+		harvested = new uint256[](1);
+		harvested[0] = grailToken.balanceOf(address(this));
+		if (harvested[0] > 0) grailToken.safeTransfer(msg.sender, harvested[0]);
 
 		// allocate all xGrail to the farm
 		bytes memory usageData = abi.encode(_farm, positionId);
