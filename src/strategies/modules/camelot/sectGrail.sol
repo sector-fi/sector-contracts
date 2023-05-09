@@ -139,6 +139,7 @@ contract sectGrail is
 			// burn the deallocation fee worth of sectGrail from user
 			_burn(msg.sender, deallocationFeeAmount);
 			positionId = 0;
+			positionOwners[address(_farm)][positionId] = address(0);
 		}
 
 		IERC20(lp).safeTransfer(msg.sender, amount);
