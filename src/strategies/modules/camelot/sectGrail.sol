@@ -134,6 +134,11 @@ contract sectGrail is
 
 			allocations[msg.sender] -= allocationChange;
 			// subtract deallocation fee amount
+			// this is a fee that is charged when xGrail gets deallocated,
+			// the deallocation fee gets subtracted from the user’s xGrail balance
+			// (in this case for secGrail) since we want to maintain a 1-1 mapping
+			// we also have to burn the equivalent amount of sectGrail from the
+			// user responsible for the deallocation
 			uint256 deallocationFeeAmount = (allocationChange *
 				xGrailToken.usagesDeallocationFee(usageAddress)) / 10000;
 			// burn the deallocation fee worth of sectGrail from user
@@ -226,7 +231,12 @@ contract sectGrail is
 		xGrailToken.deallocate(usageAddress, amount, usageData);
 		allocations[msg.sender] = allocations[msg.sender] - amount;
 
-		/// burn deallocation fee sectGrail
+		// burn deallocation fee sectGrail
+		// this is a fee that is charged when xGrail gets deallocated,
+		// the deallocation fee gets subtracted from the user’s xGrail balance
+		// (in this case for secGrail) since we want to maintain a 1-1 mapping
+		// we also have to burn the equivalent amount of sectGrail from the
+		// user responsible for the deallocation
 		uint256 deallocationFeeAmount = (amount * xGrailToken.usagesDeallocationFee(usageAddress)) /
 			10000;
 		_burn(msg.sender, deallocationFeeAmount);
