@@ -143,8 +143,8 @@ contract sectGrail is
 				xGrailToken.usagesDeallocationFee(usageAddress)) / 10000;
 			// burn the deallocation fee worth of sectGrail from user
 			_burn(msg.sender, deallocationFeeAmount);
-			positionId = 0;
 			positionOwners[address(_farm)][positionId] = address(0);
+			positionId = 0;
 		}
 
 		IERC20(lp).safeTransfer(msg.sender, amount);
