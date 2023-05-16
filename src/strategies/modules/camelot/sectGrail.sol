@@ -11,6 +11,7 @@ import { ISectGrail } from "./interfaces/IsectGrail.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 // import "hardhat/console.sol";
 
@@ -26,7 +27,8 @@ contract sectGrail is
 	INFTHandler,
 	ERC20PermitUpgradeable,
 	ReentrancyGuardUpgradeable,
-	OwnableUpgradeable
+	OwnableUpgradeable,
+	PausableUpgradeable
 {
 	using SafeERC20 for IERC20;
 
@@ -58,16 +60,34 @@ contract sectGrail is
 	function initialize(address _xGrail) public initializer {
 		__Ownable_init();
 		__ReentrancyGuard_init();
+		__Pausable_init();
 		__ERC20_init("liquid wrapper for xGrail", "sectGRAIL");
 		xGrailToken = IXGrailToken(_xGrail);
 		grailToken = IERC20(xGrailToken.grailToken());
 	}
+
+	/////////////////////////
+	/// Oner methods
+	/////////////////////////
 
 	/// @notice whitelist an address to be used as farm or usage address
 	function updateWhitelist(address _address, bool _whitelist) external onlyOwner {
 		whitelist[_address] = _whitelist;
 		emit UpdateWhitelist(_address, _whitelist);
 	}
+
+	/// PAUSABLE
+	function pause() public onlyOwner {
+		_pause();
+	}
+
+	function unpause() public onlyOwner {
+		_unpause();
+	}
+
+	/////////////////////////
+	/// State methods
+	/////////////////////////
 
 	/// @notice convert xGrail in the contract to sectGrail
 	/// @dev we include allocated xGrail and check against totalSupply of sectGrail
@@ -87,7 +107,7 @@ contract sectGrail is
 		uint256 amount,
 		uint256 positionId,
 		address lp
-	) external nonReentrant onlyWhitelisted(address(_farm)) returns (uint256) {
+	) external nonReentrant whenNotPaused onlyWhitelisted(address(_farm)) returns (uint256) {
 		IERC20(lp).safeTransferFrom(msg.sender, address(this), amount);
 
 		if (IERC20(lp).allowance(address(this), address(_farm)) < amount)
@@ -116,6 +136,7 @@ contract sectGrail is
 	)
 		external
 		nonReentrant
+		whenNotPaused
 		onlyPositionOwner(address(_farm), positionId)
 		onlyWhitelisted(address(_farm))
 		returns (uint256)
@@ -160,6 +181,7 @@ contract sectGrail is
 	function harvestFarm(INFTPool _farm, uint256 positionId)
 		external
 		nonReentrant
+		whenNotPaused
 		onlyPositionOwner(address(_farm), positionId)
 		onlyWhitelisted(address(_farm))
 		returns (uint256[] memory harvested)
@@ -195,7 +217,7 @@ contract sectGrail is
 		address usageAddress,
 		uint256 amount,
 		bytes memory usageData
-	) public nonReentrant onlyWhitelisted(usageAddress) {
+	) public nonReentrant whenNotPaused onlyWhitelisted(usageAddress) {
 		_allocate(usageAddress, amount, usageData);
 	}
 
@@ -227,7 +249,7 @@ contract sectGrail is
 		address usageAddress,
 		uint256 amount,
 		bytes memory usageData
-	) public nonReentrant onlyWhitelisted(usageAddress) {
+	) public nonReentrant whenNotPaused onlyWhitelisted(usageAddress) {
 		xGrailToken.deallocate(usageAddress, amount, usageData);
 		allocations[msg.sender] = allocations[msg.sender] - amount;
 
