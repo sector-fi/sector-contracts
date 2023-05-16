@@ -100,13 +100,12 @@ abstract contract CamelotSectGrailFarm is StratAuth, IUniFarm {
 		override
 		returns (uint256[] memory harvested)
 	{
-		harvested = sectGrail.harvestFarm(_farm, positionId);
-
-		if (harvested[0] == 0) return harvested;
+		uint256[] memory farmedTokens = sectGrail.harvestFarm(_farm, positionId);
+		if (farmedTokens[0] == 0) return harvested;
 
 		_validatePath(address(_farmToken), swapParams[0].path);
 		_router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-			harvested[0],
+			farmedTokens[0],
 			swapParams[0].min,
 			swapParams[0].path,
 			address(this),
