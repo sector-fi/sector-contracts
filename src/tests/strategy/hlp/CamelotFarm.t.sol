@@ -124,18 +124,18 @@ contract CamelotFarmTest is HLPSetup {
 		if (!compare(contractType, "CamelotAave")) return;
 		uint256 amnt = getAmnt();
 		deposit(self, amnt);
-		uint256 positionId = cFarm.positionId();
-		uint256 lpAmount = sectGrail.getFarmLp(farm, positionId);
+		uint256 cFarmPositionId = cFarm.positionId();
+		uint256 lpAmount = sectGrail.getFarmLp(farm, cFarmPositionId);
 		address lpToken = address(cFarm.pair());
 
 		deal(lpToken, self, lpAmount);
 		IERC20(lpToken).approve(address(sectGrail), lpAmount);
-		positionId = sectGrail.depositIntoFarm(farm, lpAmount, 0, lpToken);
+		uint256 selfPositionId = sectGrail.depositIntoFarm(farm, lpAmount, 0, lpToken);
 
 		skip(15 days);
 		harvest();
 
-		sectGrail.harvestFarm(farm, positionId);
+		sectGrail.harvestFarm(farm, selfPositionId);
 
 		uint256 allocation1 = sectGrail.getAllocations(address(strategy));
 		uint256 allocation2 = sectGrail.getAllocations(address(self));
@@ -145,5 +145,13 @@ contract CamelotFarmTest is HLPSetup {
 			.0001e18,
 			"allocation1 should be equal to allocation2"
 		);
+
+		sectGrail.deallocateFromPosition(farm, allocation2, selfPositionId);
+
+		uint256 afterDeallocate = sectGrail.getAllocations(self);
+		assertEq(afterDeallocate, 0, "afterDeallocate should be 0");
+
+		vm.expectRevert(SectGrail.NotPositionOwner.selector);
+		sectGrail.deallocateFromPosition(farm, allocation1, cFarmPositionId);
 	}
 }

@@ -38,10 +38,10 @@ interface ISectGrail {
 		bytes memory usageData
 	) external;
 
-	function deallocate(
-		address usageAddress,
+	function deallocateFromPosition(
+		INFTPool _farm,
 		uint256 amount,
-		bytes memory usageData
+		uint256 positionId
 	) external;
 
 	function getFarmLp(INFTPool _farm, uint256 positionId) external view returns (uint256);

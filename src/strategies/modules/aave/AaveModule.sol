@@ -36,6 +36,9 @@ abstract contract AaveModule is ILending {
 	IPool private _comptroller;
 	IAaveOracle private _oracle;
 
+	uint16 public uDec;
+	uint16 public sDec;
+
 	constructor(
 		address comptroller_,
 		address cTokenLend_,
@@ -52,6 +55,9 @@ abstract contract AaveModule is ILending {
 		DataTypes.ReserveData memory reserveData = _comptroller.getReserveData(address(short()));
 		_debtToken = IAToken(reserveData.variableDebtTokenAddress);
 		_addLendingApprovals();
+
+		uDec = IERC20Metadata(address(underlying())).decimals();
+		sDec = IERC20Metadata(address(short())).decimals();
 	}
 
 	function _addLendingApprovals() internal override {
@@ -127,9 +133,6 @@ abstract contract AaveModule is ILending {
 	}
 
 	function _oraclePriceOfShort(uint256 amount) internal view override returns (uint256) {
-		uint256 uDec = IERC20Metadata(address(underlying())).decimals();
-		uint256 sDec = IERC20Metadata(address(short())).decimals();
-
 		return
 			((amount * oracle().getAssetPrice(address(short()))) * (10**uDec)) /
 			oracle().getAssetPrice(address(underlying())) /
@@ -137,8 +140,6 @@ abstract contract AaveModule is ILending {
 	}
 
 	function _oraclePriceOfUnderlying(uint256 amount) internal view override returns (uint256) {
-		uint256 uDec = IERC20Metadata(address(underlying())).decimals();
-		uint256 sDec = IERC20Metadata(address(short())).decimals();
 		return
 			((amount * oracle().getAssetPrice(address(underlying()))) * (10**sDec)) /
 			oracle().getAssetPrice(address(short())) /
@@ -146,7 +147,6 @@ abstract contract AaveModule is ILending {
 	}
 
 	function _maxBorrow() internal view virtual override returns (uint256) {
-		uint256 sDec = IERC20Metadata(address(short())).decimals();
 		uint256 maxBorrow = short().balanceOf(address(cTokenBorrow()));
 		(uint256 borrowCap, ) = comptroller().getConfiguration(address(short())).getCaps();
 		borrowCap = borrowCap * (10**sDec);

@@ -245,11 +245,19 @@ contract sectGrail is
 	}
 
 	/// @notice deallocate xGrail from a usage contract
-	function deallocate(
-		address usageAddress,
+	function deallocateFromPosition(
+		INFTPool _farm,
 		uint256 amount,
-		bytes memory usageData
-	) public nonReentrant whenNotPaused onlyWhitelisted(usageAddress) {
+		uint256 positionId
+	)
+		public
+		nonReentrant
+		whenNotPaused
+		onlyWhitelisted(address(_farm))
+		onlyPositionOwner(address(_farm), positionId)
+	{
+		bytes memory usageData = abi.encode(_farm, positionId);
+		address usageAddress = _farm.yieldBooster();
 		xGrailToken.deallocate(usageAddress, amount, usageData);
 		allocations[msg.sender] = allocations[msg.sender] - amount;
 
