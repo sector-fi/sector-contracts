@@ -18,6 +18,9 @@ import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
 
 import { AggregatorVaultU } from "vaults/SectorVaults/AggregatorVaultU.sol";
+import { EAction } from "interfaces/Structs.sol";
+import { StratAuthLight } from "../../../common/StratAuthLight.sol";
+import { IStargateRouter, lzTxObj } from "interfaces/stargate/IStargateRouter.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -168,6 +171,105 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 		uint256 uBlance = pool.totalLiquidity();
 		console.log("maxTvl", maxTvl);
 		assertEq(maxTvl, uBlance / 5);
+	}
+
+	function testEmergencyRedeemRemote() public {
+		uint256 amnt = getAmnt();
+		deposit(amnt);
+
+		uint256 lpBalance = strategy.getLpBalance();
+		address farm = address(strategy.farm());
+		uint16 farmId = strategy.farmId();
+
+		// create the strategy action to remove LP from farm
+
+		bytes memory callData = abi.encodeWithSelector(
+			IStarchef.withdraw.selector,
+			farmId,
+			lpBalance
+		);
+
+		EAction[] memory strategyActions = new EAction[](1);
+		strategyActions[0] = EAction(farm, 0, callData);
+
+		// create vault actions to
+		// 1. call emergencyAction on strategy
+		// 2. call redeemLocal on strategy
+
+		bytes memory callData0 = abi.encodeWithSelector(
+			StratAuthLight.emergencyAction.selector,
+			strategyActions
+		);
+
+		lzTxObj memory _lzTxObj = lzTxObj(0, 0, "0x");
+
+		// bytes memory callData1 = abi.encodeWithSelector(
+		// 	StargateStrategy.redeemLocal.selector,
+		// 	101, // _dstChainId
+		// 	1, // _srcPoolId
+		// 	1, // n _dstPoolId
+		// 	address(vault), // _refundAddress
+		// 	lpBalance, // _amountLP
+		// 	0, // _minAmountLD
+		// 	abi.encodePacked(address(vault)), // _to
+		// 	_lzTxObj
+		// );
+
+		EAction[] memory vaultActions = new EAction[](1);
+		vaultActions[0] = EAction(address(strategy), 0, callData0);
+		// vaultActions[1] = EAction(address(strategy), 0, callData1);
+
+		SCYVault(payable(address(vault))).emergencyAction(vaultActions);
+
+		uint256 finalStratLp = strategy.getLpBalance();
+		assertEq(finalStratLp, 0, "strat lp should be 0");
+	}
+
+	// test that we can update vault's uBalance after reciept of funds
+	function testEmergencyRedeemRemote2() public {
+		uint256 amnt = getAmnt();
+		deposit(amnt);
+		skip(1);
+		vm.roll(block.number + 1);
+
+		// withdraw(self, 1e18);
+
+		uint256 lpBalance = strategy.getLpBalance();
+		address farm = address(strategy.farm());
+		uint16 farmId = strategy.farmId();
+
+		EAction[] memory strategyActions = new EAction[](2);
+		bytes memory callData = abi.encodeWithSelector(
+			IStarchef.withdraw.selector,
+			farmId,
+			lpBalance
+		);
+		strategyActions[0] = EAction(farm, 0, callData);
+
+		bytes memory callData1 = abi.encodeWithSelector(
+			IStargateRouter.instantRedeemLocal.selector,
+			vaultConfig.strategyId,
+			lpBalance, // _amountLP
+			address(vault)
+		);
+		strategyActions[1] = EAction(stargateRouter, 0, callData1);
+
+		EAction[] memory vaultActions = new EAction[](1);
+
+		bytes memory callDataV = abi.encodeWithSelector(
+			StratAuthLight.emergencyAction.selector,
+			strategyActions
+		);
+
+		vaultActions[0] = EAction(address(strategy), 0, callDataV);
+
+		SCYVault(payable(address(vault))).emergencyAction(vaultActions);
+
+		uint256 finalStratLp = strategy.getLpBalance();
+		assertEq(finalStratLp, 0, "strat lp should be 0");
+
+		vault.withdrawFromStrategy(0, 0);
+		assertApproxEqAbs(vault.uBalance(), amnt, 1, "vault uBalance should be amnt");
 	}
 
 	// function testDeploymentHarvest() public {
