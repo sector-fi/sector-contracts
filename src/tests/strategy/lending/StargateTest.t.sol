@@ -201,8 +201,7 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 			strategyActions
 		);
 
-		lzTxObj memory _lzTxObj = lzTxObj(0, 0, "0x");
-
+		// lzTxObj memory _lzTxObj = lzTxObj(0, 0, "0x");
 		// bytes memory callData1 = abi.encodeWithSelector(
 		// 	StargateStrategy.redeemLocal.selector,
 		// 	101, // _dstChainId
