@@ -40,8 +40,8 @@ abstract contract MiniChefFarm is IUniFarm {
 
 	function _addFarmApprovals() internal override {
 		// farm approvals
-		IERC20(address(_pair)).safeApprove(address(_farm), type(uint256).max);
-		_farmToken.safeApprove(address(_router), type(uint256).max);
+		IERC20(address(_pair)).safeIncreaseAllowance(address(_farm), type(uint256).max);
+		_farmToken.safeIncreaseAllowance(address(_router), type(uint256).max);
 	}
 
 	function farmRouter() public view override returns (address) {

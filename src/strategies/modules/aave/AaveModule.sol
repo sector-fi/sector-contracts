@@ -62,8 +62,8 @@ abstract contract AaveModule is ILending {
 
 	function _addLendingApprovals() internal override {
 		// ensure USDC approval - assume we trust USDC
-		underlying().safeApprove(address(_comptroller), type(uint256).max);
-		short().safeApprove(address(_comptroller), type(uint256).max);
+		underlying().safeIncreaseAllowance(address(_comptroller), type(uint256).max);
+		short().safeIncreaseAllowance(address(_comptroller), type(uint256).max);
 	}
 
 	/// @dev aToken

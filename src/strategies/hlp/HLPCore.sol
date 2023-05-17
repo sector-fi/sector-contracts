@@ -101,7 +101,7 @@ abstract contract HLPCore is
 
 		vault = _vault;
 
-		_underlying.safeApprove(address(this), type(uint256).max);
+		_underlying.safeIncreaseAllowance(address(this), type(uint256).max);
 
 		// emit default settings events
 		emit setMinLoanHealth(minLoanHealth);

@@ -19,7 +19,7 @@ abstract contract CompoundFarm is ICompound, IFarmable {
 	constructor(address router_, address token_) {
 		_farmToken = IERC20(token_);
 		_router = IUniswapV2Router01(router_);
-		_farmToken.safeApprove(address(_router), type(uint256).max);
+		_farmToken.safeIncreaseAllowance(address(_router), type(uint256).max);
 	}
 
 	function lendFarmRouter() public view override returns (address) {

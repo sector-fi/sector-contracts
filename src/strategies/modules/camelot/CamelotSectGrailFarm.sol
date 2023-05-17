@@ -57,15 +57,15 @@ abstract contract CamelotSectGrailFarm is StratAuth, IUniFarm {
 	}
 
 	function deallocateSectGrail(uint256 amount) external onlyOwner {
-		sectGrail.deallocateFromPosition(_farm, amount, positionId);
+		sectGrail.deallocateFromPosition(_farm, positionId, amount);
 		emit DeallocateSectGrail(positionId, amount);
 	}
 
 	// assumption that _router and _farm are trusted
 	function _addFarmApprovals() internal override {
-		IERC20(address(_pair)).safeApprove(address(sectGrail), type(uint256).max);
+		IERC20(address(_pair)).safeIncreaseAllowance(address(sectGrail), type(uint256).max);
 		if (_farmToken.allowance(address(this), address(_router)) == 0)
-			_farmToken.safeApprove(address(_router), type(uint256).max);
+			_farmToken.safeIncreaseAllowance(address(_router), type(uint256).max);
 	}
 
 	function farmRouter() public view override returns (address) {
@@ -81,16 +81,13 @@ abstract contract CamelotSectGrailFarm is StratAuth, IUniFarm {
 	}
 
 	function _withdrawFromFarm(uint256 amount) internal override {
-		positionId = sectGrail.withdrawFromFarm(_farm, amount, positionId, address(_pair));
+		positionId = sectGrail.withdrawFromFarm(_farm, positionId, amount);
 	}
 
 	function _depositIntoFarm(uint256 amount) internal override {
-		positionId = sectGrail.depositIntoFarm(_farm, amount, positionId, address(_pair));
+		positionId = sectGrail.depositIntoFarm(_farm, positionId, amount);
 		uint256 nonAllocated = sectGrail.getNonAllocatedBalance(address(this));
-		if (nonAllocated > 0) {
-			bytes memory usageData = abi.encode(_farm, positionId);
-			sectGrail.allocate(_farm.yieldBooster(), nonAllocated, usageData);
-		}
+		if (nonAllocated > 0) sectGrail.allocateToPosition(_farm, positionId, nonAllocated);
 	}
 
 	function _harvestFarm(HarvestSwapParams[] calldata swapParams)

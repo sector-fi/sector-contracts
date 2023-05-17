@@ -7,7 +7,7 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 
 import { INFTPool } from "./interfaces/INFTPool.sol";
 import { INFTHandler } from "./interfaces/INFTHandler.sol";
-import { ISectGrail } from "./interfaces/IsectGrail.sol";
+import { ISectGrail } from "./interfaces/ISectGrail.sol";
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { ERC20PermitUpgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -104,14 +104,14 @@ contract sectGrail is
 	/// @notice deposit lp tokens into a Camelot farm
 	function depositIntoFarm(
 		INFTPool _farm,
-		uint256 amount,
 		uint256 positionId,
-		address lp
+		uint256 amount
 	) external nonReentrant whenNotPaused onlyWhitelisted(address(_farm)) returns (uint256) {
+		(address lp, , , , , , , ) = _farm.getPoolInfo();
 		IERC20(lp).safeTransferFrom(msg.sender, address(this), amount);
 
 		if (IERC20(lp).allowance(address(this), address(_farm)) < amount)
-			IERC20(lp).safeApprove(address(_farm), type(uint256).max);
+			IERC20(lp).safeIncreaseAllowance(address(_farm), type(uint256).max);
 
 		// positionId = 0 means that position does not exist yet
 		if (positionId == 0) {
@@ -130,9 +130,8 @@ contract sectGrail is
 	/// @notice withdraw lp tokens from a Camelot farm
 	function withdrawFromFarm(
 		INFTPool _farm,
-		uint256 amount,
 		uint256 positionId,
-		address lp
+		uint256 amount
 	)
 		external
 		nonReentrant
@@ -168,6 +167,7 @@ contract sectGrail is
 			positionId = 0;
 		}
 
+		(address lp, , , , , , , ) = _farm.getPoolInfo();
 		IERC20(lp).safeTransfer(msg.sender, amount);
 		uint256 grailBalance = grailToken.balanceOf(address(this));
 		if (grailBalance > 0) grailToken.safeTransfer(msg.sender, grailBalance);
@@ -209,15 +209,23 @@ contract sectGrail is
 		return lp;
 	}
 
-	/// @notice allocate xGrail to a usage contract
-	/// @param usageAddress address of the usage contract
+	/// @notice allocate xGrail to a farm position
+	/// @param _farm address of the farm contract
 	/// @param amount amount of xGrail to allocate
-	/// @param usageData data to pass to the usage contract
-	function allocate(
-		address usageAddress,
-		uint256 amount,
-		bytes memory usageData
-	) public nonReentrant whenNotPaused onlyWhitelisted(usageAddress) {
+	/// @param positionId id of the position
+	function allocateToPosition(
+		INFTPool _farm,
+		uint256 positionId,
+		uint256 amount
+	)
+		public
+		nonReentrant
+		whenNotPaused
+		onlyWhitelisted(address(_farm))
+		onlyPositionOwner(address(_farm), positionId)
+	{
+		bytes memory usageData = abi.encode(_farm, positionId);
+		address usageAddress = _farm.yieldBooster();
 		_allocate(usageAddress, amount, usageData);
 	}
 
@@ -247,8 +255,8 @@ contract sectGrail is
 	/// @notice deallocate xGrail from a usage contract
 	function deallocateFromPosition(
 		INFTPool _farm,
-		uint256 amount,
-		uint256 positionId
+		uint256 positionId,
+		uint256 amount
 	)
 		public
 		nonReentrant
@@ -258,8 +266,8 @@ contract sectGrail is
 	{
 		bytes memory usageData = abi.encode(_farm, positionId);
 		address usageAddress = _farm.yieldBooster();
-		xGrailToken.deallocate(usageAddress, amount, usageData);
 		allocations[msg.sender] = allocations[msg.sender] - amount;
+		xGrailToken.deallocate(usageAddress, amount, usageData);
 
 		// burn deallocation fee sectGrail
 		// this is a fee that is charged when xGrail gets deallocated,

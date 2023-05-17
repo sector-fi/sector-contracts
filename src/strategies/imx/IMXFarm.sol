@@ -49,7 +49,7 @@ abstract contract IMXFarm is IIMXFarm {
 		_farmRouter = IUniswapV2Router01(farmRouter_);
 
 		// necessary farm approvals
-		_farmToken.safeApprove(address(farmRouter_), type(uint256).max);
+		_farmToken.safeIncreaseAllowance(address(farmRouter_), type(uint256).max);
 	}
 
 	function impermaxChef() public view override returns (ImpermaxChef) {

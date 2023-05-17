@@ -152,7 +152,6 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 
 			// whitelist farm and yieldBooster
 			sGrail.updateWhitelist(config.uniFarm, true);
-			sGrail.updateWhitelist(INFTPool(config.uniFarm).yieldBooster(), true);
 
 			// tests use this
 			config.uniPair = lpToken;

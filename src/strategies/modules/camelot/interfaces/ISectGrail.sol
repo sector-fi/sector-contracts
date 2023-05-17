@@ -16,32 +16,30 @@ interface ISectGrail {
 
 	function depositIntoFarm(
 		INFTPool _farm,
-		uint256 amount,
 		uint256 positionId,
-		address lp
+		uint256 amount
 	) external returns (uint256);
 
 	function withdrawFromFarm(
 		INFTPool _farm,
-		uint256 amount,
 		uint256 positionId,
-		address lp
+		uint256 amount
 	) external returns (uint256);
 
 	function harvestFarm(INFTPool _farm, uint256 positionId)
 		external
 		returns (uint256[] memory harvested);
 
-	function allocate(
-		address usageAddress,
-		uint256 amount,
-		bytes memory usageData
+	function allocateToPosition(
+		INFTPool _farm,
+		uint256 positionId,
+		uint256 amount
 	) external;
 
 	function deallocateFromPosition(
 		INFTPool _farm,
-		uint256 amount,
-		uint256 positionId
+		uint256 positionId,
+		uint256 amount
 	) external;
 
 	function getFarmLp(INFTPool _farm, uint256 positionId) external view returns (uint256);
