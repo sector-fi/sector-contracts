@@ -1,5 +1,11 @@
 {
-  "_list_HLP": ["HLP_USDC-MOVR_Solar-Well_moonriver"],
+  "_list_HLP": [
+    "HLP_USDC-MOVR_Solar-Well_moonriver",
+    "HLP_USDC-ETH_Xcal-Aave_arbitrum",
+    "HLP_USDC-ETH_Camelot-Aave_arbitrum",
+    "HLP_USDC-ETH_Sushi-Aave_arbitrum",
+    "HLP_USDC-ETH_Velo-Aave_optimism"
+  ],
   "_list_LCVX": [
     "LCVX_USDC-gUSD-3Crv_Gearbox_mainnet",
     "LCVX_USDC-FRAX_Gearbox_mainnet",
@@ -377,18 +383,11 @@
     "l4_lendRewardRouter": "0x0000000000000000000000000000000000000000",
     "l5_lenderType": "aave",
     "n_nativeToken": 2,
-    "o_contract": "VeloAave",
+    "o_contract": "SolidlyAave",
     "x_chain": "OP",
     "underlyingDec": 6,
     "shortDec": 18
   },
-  "_list_undefined": [
-    "HLP_USDC-ETH_Velo_optimism",
-    "HLP_USDC-ETH_Xcal_arbitrum",
-    "HLP_USDC-ETH_Camelot_arbitrum",
-    "HLP_USDC-ETH_Sushi_arbitrum"
-  ],
-
   "HLP_USDC-ETH_Xcal-Aave_arbitrum": {
     "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
     "b_short": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",

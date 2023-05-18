@@ -33,6 +33,7 @@ export const strategies = [
     nativeToken: 2,
     lenderType: 'aave',
     chain: 'optimism',
+    type,
   },
   {
     name: genStratName(type, 'USDC', ['ETH'], ['Xcal', 'Aave'], 'arbitrum'),
@@ -63,6 +64,7 @@ export const strategies = [
     nativeToken: 2,
     lenderType: 'aave',
     chain: 'arbitrum',
+    type,
   },
   {
     name: genStratName(type, 'USDC', ['ETH'], ['Camelot', 'Aave'], 'arbitrum'),
@@ -93,6 +95,7 @@ export const strategies = [
     nativeToken: 2,
     lenderType: 'aave',
     chain: 'arbitrum',
+    type,
   },
   {
     name: genStratName(type, 'USDC', ['ETH'], ['Sushi', 'Aave'], 'arbitrum'),
@@ -123,5 +126,6 @@ export const strategies = [
     nativeToken: 2,
     lenderType: 'aave',
     chain: 'arbitrum',
+    type,
   },
 ];
