@@ -5,7 +5,7 @@ const type = StratType.HLP;
 
 export const strategies = [
   {
-    name: genStratName(type, 'USDC', ['ETH'], ['Velo'], 'optimism'),
+    name: genStratName(type, 'USDC', ['ETH'], ['Velo', 'Aave'], 'optimism'),
     contract: 'SolidlyAave',
     underlying: tokens.optimism.USDC,
     short: tokens.optimism.ETH,
@@ -35,7 +35,7 @@ export const strategies = [
     chain: 'optimism',
   },
   {
-    name: genStratName(type, 'USDC', ['ETH'], ['Xcal'], 'arbitrum'),
+    name: genStratName(type, 'USDC', ['ETH'], ['Xcal', 'Aave'], 'arbitrum'),
     contract: 'SolidlyAave',
     underlying: tokens.arbitrum.USDC,
     short: tokens.arbitrum.ETH,
@@ -65,7 +65,7 @@ export const strategies = [
     chain: 'arbitrum',
   },
   {
-    name: genStratName(type, 'USDC', ['ETH'], ['Camelot'], 'arbitrum'),
+    name: genStratName(type, 'USDC', ['ETH'], ['Camelot', 'Aave'], 'arbitrum'),
     contract: 'CamelotAave',
     underlying: tokens.arbitrum.USDC,
     short: tokens.arbitrum.ETH,
@@ -95,7 +95,7 @@ export const strategies = [
     chain: 'arbitrum',
   },
   {
-    name: genStratName(type, 'USDC', ['ETH'], ['Sushi'], 'arbitrum'),
+    name: genStratName(type, 'USDC', ['ETH'], ['Sushi', 'Aave'], 'arbitrum'),
     contract: 'MiniChefAave',
     underlying: tokens.arbitrum.USDC,
     short: tokens.arbitrum.ETH,

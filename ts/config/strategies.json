@@ -348,7 +348,7 @@
     "h_harvestPath": "0x42000000000000000000000000000000000000420001f44200000000000000000000000000000000000006",
     "x_chain": "OP"
   },
-  "HLP_USDC-ETH_Velo_optimism": {
+  "HLP_USDC-ETH_Velo-Aave_optimism": {
     "a_underlying": "0x7F5c764cBc14f9669B88837ca1490cCa17c31607",
     "b_short": "0x4200000000000000000000000000000000000006",
     "c_uniPair": "0x79c912FEF520be002c2B6e57EC4324e260f38E50",
@@ -373,12 +373,12 @@
     "x_chain": "OP"
   },
   "_list_undefined": [
-    "HLP_USDC-ETH_Velo_optimism",
-    "HLP_USDC-ETH_Xcal_arbitrum",
-    "HLP_USDC-ETH_Camelot_arbitrum",
-    "HLP_USDC-ETH_Sushi_arbitrum"
+    "HLP_USDC-ETH_Velo-Aave_optimism",
+    "HLP_USDC-ETH_Xcal-Aave_arbitrum",
+    "HLP_USDC-ETH_Camelot-Aave_arbitrum",
+    "HLP_USDC-ETH_Sushi-Aave_arbitrum"
   ],
-  "HLP_USDC-ETH_Xcal_arbitrum": {
+  "HLP_USDC-ETH_Xcal-Aave_arbitrum": {
     "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
     "b_short": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
     "c_uniPair": "0x3C94d5ABcF49a2980d55721c35093210699c1493",
@@ -402,7 +402,7 @@
     "o_contract": "SolidlyAave",
     "x_chain": "ARBITRUM"
   },
-  "HLP_USDC-ETH_Camelot_arbitrum": {
+  "HLP_USDC-ETH_Camelot-Aave_arbitrum": {
     "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
     "b_short": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
     "c_uniPair": "0x84652bb2539513BAf36e225c930Fdd8eaa63CE27",
@@ -426,7 +426,7 @@
     "o_contract": "CamelotAave",
     "x_chain": "ARBITRUM"
   },
-  "HLP_USDC-ETH_Sushi_arbitrum": {
+  "HLP_USDC-ETH_Sushi-Aave_arbitrum": {
     "a_underlying": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8",
     "b_short": "0x82aF49447D8a07e3bd95BD0d56f35241523fBab1",
     "c_uniPair": "0x905dfcd5649217c42684f23958568e533c711aa3",
