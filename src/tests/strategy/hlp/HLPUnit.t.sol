@@ -322,6 +322,61 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		rebalance();
 	}
 
+	function testPerformUpkeep() public {
+		uint256 amnt = getAmnt();
+		deposit(self, amnt);
+		bytes memory checkData;
+		(bool performUpkeep, bytes memory performData) = strategy.checkUpkeep(checkData);
+		assertEq(performUpkeep, false);
+		assertEq(performData.length, 0);
+
+		adjustPrice(1.1e18);
+		// test small oracle offset of 2% to ensure manager can call rebalance
+		adjustOraclePrice(1.02e18);
+
+		(performUpkeep, performData) = strategy.checkUpkeep(checkData);
+		assertEq(performUpkeep, true);
+		uint8 action = abi.decode(performData, (uint8));
+		assertEq(action, strategy.REBALANCE());
+		assertEq(performUpkeep, true);
+
+		vm.prank(user1);
+		vm.expectRevert("HLP: PRICE_MISMATCH");
+		strategy.performUpkeep(performData);
+
+		vm.prank(manager);
+		strategy.performUpkeep(performData);
+		assertEq(strategy.getPositionOffset(), 0);
+
+		adjustOraclePrice(1.1e18);
+		(performUpkeep, performData) = strategy.checkUpkeep(checkData);
+		assertEq(performUpkeep, true);
+		action = abi.decode(performData, (uint8));
+		assertEq(action, strategy.REBALANCE_LOAN());
+
+		skip(1);
+		vm.prank(user1);
+		vm.expectRevert("HLP: PRICE_MISMATCH");
+		strategy.performUpkeep(performData);
+
+		vm.prank(manager);
+		strategy.performUpkeep(performData);
+		assertGt(strategy.loanHealth(), 1.25e18);
+		vm.stopPrank();
+	}
+
+	function testRebalancePublic() public {
+		adjustOraclePrice(1.014e18);
+		vm.startPrank(user1);
+		uint256 priceOffset = strategy.getPriceOffset();
+		vm.expectRevert("HLP: PRICE_MISMATCH");
+		strategy.rebalance(priceOffset);
+
+		vm.expectRevert("HLP: PRICE_MISMATCH");
+		strategy.rebalanceLoan();
+		vm.stopPrank();
+	}
+
 	// function testDeployedRebalance() public {
 	// 	SCYVault dvault = SCYVault(payable(0x7acE71f029fe98E2ABdb49aA5a9f86D916088e7A));
 	// 	HLPCore _strategy = HLPCore(payable(address(dvault.strategy())));
