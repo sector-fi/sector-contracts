@@ -136,6 +136,9 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 			strategy = new MasterChefCompMulti(authConfig, config);
 		if (compare(contractType, "SolidlyAave")) strategy = new SolidlyAave(authConfig, config);
 		if (compare(contractType, "CamelotAave")) {
+			vm.expectRevert("SectGrail address must be passed in");
+			new CamelotAave(authConfig, config);
+
 			sectGrail sGrailLogic = new sectGrail();
 			sectGrail sGrail = sectGrail(
 				address(

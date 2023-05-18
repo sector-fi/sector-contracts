@@ -44,6 +44,10 @@ abstract contract CamelotSectGrailFarm is StratAuth, IUniFarm {
 		(address pair_, , , , , , , ) = _farm.getPoolInfo();
 		_pair = IUniswapV2Pair(pair_);
 		_addFarmApprovals();
+		// ensure we have passed in sectGrail and not pair address
+		if (address(sectGrail) == address(_pair)) {
+			revert("SectGrail address must be passed in");
+		}
 	}
 
 	///////

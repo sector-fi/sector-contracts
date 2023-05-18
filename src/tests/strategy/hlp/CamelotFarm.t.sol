@@ -12,7 +12,7 @@ import "hardhat/console.sol";
 
 contract CamelotFarmTest is HLPSetup {
 	function getStrategy() public pure override returns (string memory) {
-		return "HLP_USDC-ETH_Camelot_arbitrum";
+		return "HLP_USDC-ETH_Camelot-Aave_arbitrum";
 	}
 
 	CamelotSectGrailFarm cFarm;
