@@ -54,9 +54,9 @@ abstract contract CamelotFarm is IUniFarm, INFTHandler {
 
 	// assumption that _router and _farm are trusted
 	function _addFarmApprovals() internal override {
-		IERC20(address(_pair)).safeApprove(address(_farm), type(uint256).max);
+		IERC20(address(_pair)).safeIncreaseAllowance(address(_farm), type(uint256).max);
 		if (_farmToken.allowance(address(this), address(_router)) == 0)
-			_farmToken.safeApprove(address(_router), type(uint256).max);
+			_farmToken.safeIncreaseAllowance(address(_router), type(uint256).max);
 		xGrailToken.approveUsage(yieldBooster, type(uint256).max);
 	}
 

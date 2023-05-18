@@ -18,6 +18,7 @@ import { CamelotAave } from "strategies/hlp/CamelotAave.sol";
 import { sectGrail } from "strategies/modules/camelot/sectGrail.sol";
 import { MiniChefAave } from "strategies/hlp/MiniChefAave.sol";
 import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { INFTPool } from "strategies/modules/camelot/CamelotFarm.sol";
 
 import "forge-std/StdJson.sol";
 
@@ -148,6 +149,10 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 			address lpToken = config.uniPair;
 			config.uniPair = address(sGrail);
 			strategy = new CamelotAave(authConfig, config);
+
+			// whitelist farm and yieldBooster
+			sGrail.updateWhitelist(config.uniFarm, true);
+
 			// tests use this
 			config.uniPair = lpToken;
 		}

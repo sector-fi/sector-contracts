@@ -30,7 +30,7 @@ abstract contract MiniChef2Farm {
 		farmRouter = ISwapRouter(farmConfig.router);
 		farmToken = IERC20(farmConfig.farmToken);
 		farmId = farmConfig.farmId;
-		farmToken.safeApprove(address(farmRouter), type(uint256).max);
+		farmToken.safeIncreaseAllowance(address(farmRouter), type(uint256).max);
 	}
 
 	function _withdrawFromFarm(uint256 amount) internal {

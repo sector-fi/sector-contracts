@@ -223,7 +223,7 @@ abstract contract levConvexBase is StratAuth, ISCYStrategy {
 			uint256 harvested = token.balanceOf(address(this));
 			if (harvested == 0) continue;
 			if (token.allowance(address(this), address(farmRouter)) < harvested)
-				token.safeApprove(address(farmRouter), type(uint256).max);
+				token.safeIncreaseAllowance(address(farmRouter), type(uint256).max);
 			ISwapRouter.ExactInputParams memory params = ISwapRouter.ExactInputParams({
 				path: swapParams[i].pathData,
 				recipient: address(this),

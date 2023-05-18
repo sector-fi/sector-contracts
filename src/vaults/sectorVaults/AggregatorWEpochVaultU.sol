@@ -148,7 +148,7 @@ contract AggregatorWEpochVaultU is SectorBaseWEpochU {
 				// process deposit
 				strategy.deposit(address(this), address(asset), 0, param.minSharesOut);
 			} else if (param.vaultType == VaultType.Aggregator) {
-				asset.safeApprove(address(strategy), amountIn);
+				asset.safeIncreaseAllowance(address(strategy), amountIn);
 				strategy.deposit(amountIn, address(this));
 			}
 			totalChildHoldings += amountIn;

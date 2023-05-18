@@ -44,8 +44,8 @@ contract StargateETHStrategy is StarChefFarm, StratAuthLight, ISCYStrategy {
 		stargatePool = IStargatePool(_stargatePool);
 		stargateRouter = IStargateRouter(_stargateRouter);
 		underlying = IERC20(_underlying);
-		IERC20(address(stargateETH)).safeApprove(_stargateRouter, type(uint256).max);
-		IERC20(stargatePool).safeApprove(address(farm), type(uint256).max);
+		IERC20(address(stargateETH)).safeIncreaseAllowance(_stargateRouter, type(uint256).max);
+		IERC20(stargatePool).safeIncreaseAllowance(address(farm), type(uint256).max);
 	}
 
 	receive() external payable {}

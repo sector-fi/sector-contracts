@@ -74,8 +74,6 @@ abstract contract IMXCore is ReentrancyGuard, StratAuth, IBase, IIMXFarm, ISCYSt
 		_underlying = IERC20(underlying_);
 		_short = IERC20(short_);
 
-		// _underlying.safeApprove(vault, type(uint256).max);
-
 		// init default params
 		// deployer is not owner so we set these manually
 

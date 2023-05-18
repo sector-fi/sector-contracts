@@ -19,7 +19,7 @@ abstract contract CompoundFarm is ICompound, IFarmable {
 	constructor(address router_, address token_) {
 		_farmToken = IERC20(token_);
 		_router = IUniswapV2Router01(router_);
-		_farmToken.safeApprove(address(_router), type(uint256).max);
+		_farmToken.safeIncreaseAllowance(address(_router), type(uint256).max);
 	}
 
 	function lendFarmRouter() public view override returns (address) {
@@ -38,9 +38,8 @@ abstract contract CompoundFarm is ICompound, IFarmable {
 		cTokens[1] = cTokenBorrow();
 		comptroller().claimComp(address(this), cTokens);
 
-		harvested = new uint256[](1);
-		harvested[0] = _farmToken.balanceOf(address(this));
-		if (harvested[0] == 0) return harvested;
+		uint256 farmHarvest = _farmToken.balanceOf(address(this));
+		if (farmHarvest == 0) return harvested;
 
 		HarvestSwapParams memory swapParam = swapParams[0];
 		_validatePath(address(_farmToken), swapParam.path);
@@ -52,6 +51,8 @@ abstract contract CompoundFarm is ICompound, IFarmable {
 			address(this),
 			swapParam.deadline
 		);
+
+		harvested = new uint256[](1);
 		harvested[0] = amounts[amounts.length - 1];
 		emit HarvestedToken(address(_farmToken), harvested[0]);
 	}

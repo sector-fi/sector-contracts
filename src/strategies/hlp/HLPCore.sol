@@ -16,6 +16,7 @@ import { StratAuth } from "../../common/StratAuth.sol";
 import { ISCYVault } from "../../interfaces/ERC5115/ISCYVault.sol";
 import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
+import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
 // import "hardhat/console.sol";
 
@@ -27,7 +28,8 @@ abstract contract HLPCore is
 	IBase,
 	ILending,
 	IUniFarm,
-	ISCYStrategy
+	ISCYStrategy,
+	AutomationCompatibleInterface
 {
 	using UniUtils for IUniswapV2Pair;
 	using SafeERC20 for IERC20;
@@ -46,6 +48,9 @@ abstract contract HLPCore is
 	event SetRebalanceThreshold(uint256 rebalanceThreshold);
 	event SetMaxTvl(uint256 maxTvl);
 	event SetSafeCollateralRaio(uint256 collateralRatio);
+
+	uint8 public constant REBALANCE_LOAN = 1;
+	uint8 public constant REBALANCE = 2;
 
 	uint256 constant MIN_LIQUIDITY = 1000;
 	uint256 public constant maxPriceOffset = 2000; // maximum offset for rebalanceLoan & manager  methods 20%
@@ -101,7 +106,7 @@ abstract contract HLPCore is
 
 		vault = _vault;
 
-		_underlying.safeApprove(address(this), type(uint256).max);
+		_underlying.safeIncreaseAllowance(address(this), type(uint256).max);
 
 		// emit default settings events
 		emit setMinLoanHealth(minLoanHealth);
@@ -328,16 +333,34 @@ abstract contract HLPCore is
 		if (lendingParams.length != 0) lendHarvest = _harvestLending(lendingParams);
 
 		// compound our lp position
-		uint256 balance = underlying().balanceOf(address(this));
-		if (balance > MIN_LIQUIDITY) _increasePosition(underlying().balanceOf(address(this)));
+		_increasePosition(underlying().balanceOf(address(this)));
 		emit Harvest(startTvl);
+	}
+
+	function checkUpkeep(
+		bytes calldata /* checkData */
+	) external view override returns (bool upkeepNeeded, bytes memory performData) {
+		if (getPositionOffset() >= rebalanceThreshold) {
+			// using getPriceOffset here allows us to add the chainlink keeper as Manager
+			performData = abi.encode(REBALANCE, getPriceOffset());
+			upkeepNeeded = true;
+		} else if (loanHealth() <= minLoanHealth) {
+			performData = abi.encode(REBALANCE_LOAN, 0);
+			upkeepNeeded = true;
+		}
+	}
+
+	function performUpkeep(bytes calldata performData) external override {
+		(uint8 action, uint256 priceOffset) = abi.decode(performData, (uint8, uint256));
+		if (action == REBALANCE) rebalance(priceOffset);
+		else if (action == REBALANCE_LOAN) rebalanceLoan();
 	}
 
 	/// @notice public keeper rebalance method
 	/// @dev this
 	/// if price difference between dex and oracle is too large, this method will revert
 	/// if called by a keeper or non manager or non-guardian account
-	function rebalance(uint256 maxSlippage) external checkPrice(maxSlippage) nonReentrant {
+	function rebalance(uint256 maxSlippage) public checkPrice(maxSlippage) nonReentrant {
 		// call this first to ensure we use an updated borrowBalance when computing offset
 		uint256 tvl = getAndUpdateTvl();
 		uint256 positionOffset = getPositionOffset();

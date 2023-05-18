@@ -10,36 +10,36 @@ interface ISectGrail {
 
 	function grailToken() external view returns (IERC20);
 
+	function whitelist(address contractAddr) external view returns (bool);
+
+	function updateWhitelist(address contractAddr, bool isWhitelisted) external;
+
 	function depositIntoFarm(
 		INFTPool _farm,
-		uint256 amount,
 		uint256 positionId,
-		address lp
+		uint256 amount
 	) external returns (uint256);
 
 	function withdrawFromFarm(
 		INFTPool _farm,
-		uint256 amount,
 		uint256 positionId,
-		address lp
+		uint256 amount
 	) external returns (uint256);
 
-	function harvestFarm(
+	function harvestFarm(INFTPool _farm, uint256 positionId)
+		external
+		returns (uint256[] memory harvested);
+
+	function allocateToPosition(
 		INFTPool _farm,
 		uint256 positionId,
-		address[] memory tokens
-	) external returns (uint256[] memory harvested);
-
-	function allocate(
-		address usageAddress,
-		uint256 amount,
-		bytes memory usageData
+		uint256 amount
 	) external;
 
-	function deallocate(
-		address usageAddress,
-		uint256 amount,
-		bytes memory usageData
+	function deallocateFromPosition(
+		INFTPool _farm,
+		uint256 positionId,
+		uint256 amount
 	) external;
 
 	function getFarmLp(INFTPool _farm, uint256 positionId) external view returns (uint256);
@@ -86,4 +86,6 @@ interface ISectGrail {
 		uint256 amount,
 		bytes usageData
 	);
+
+	event UpdateWhitelist(address indexed contractAddr, bool isWhitelisted);
 }

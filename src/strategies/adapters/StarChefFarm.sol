@@ -31,7 +31,7 @@ abstract contract StarChefFarm {
 		farmId = farmConfig.farmId;
 		farmRouter = ISwapRouter(farmConfig.router);
 		farmToken = IERC20(farmConfig.farmToken);
-		farmToken.safeApprove(address(farmRouter), type(uint256).max);
+		farmToken.safeIncreaseAllowance(address(farmRouter), type(uint256).max);
 	}
 
 	function _withdrawFromFarm(uint256 amount) internal {

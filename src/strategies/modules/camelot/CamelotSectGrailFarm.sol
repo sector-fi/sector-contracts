@@ -51,19 +51,21 @@ abstract contract CamelotSectGrailFarm is StratAuth, IUniFarm {
 	///////
 
 	function transferSectGrail(address to, uint256 amount) external onlyOwner {
+		if (to == address(0)) revert ZeroAddress();
 		IERC20(address(sectGrail)).safeTransfer(to, amount);
+		emit TransferSectGrail(to, amount);
 	}
 
 	function deallocateSectGrail(uint256 amount) external onlyOwner {
-		bytes memory usageData = abi.encode(_farm, positionId);
-		sectGrail.deallocate(_farm.yieldBooster(), amount, usageData);
+		sectGrail.deallocateFromPosition(_farm, positionId, amount);
+		emit DeallocateSectGrail(positionId, amount);
 	}
 
 	// assumption that _router and _farm are trusted
 	function _addFarmApprovals() internal override {
-		IERC20(address(_pair)).safeApprove(address(sectGrail), type(uint256).max);
+		IERC20(address(_pair)).safeIncreaseAllowance(address(sectGrail), type(uint256).max);
 		if (_farmToken.allowance(address(this), address(_router)) == 0)
-			_farmToken.safeApprove(address(_router), type(uint256).max);
+			_farmToken.safeIncreaseAllowance(address(_router), type(uint256).max);
 	}
 
 	function farmRouter() public view override returns (address) {
@@ -79,16 +81,13 @@ abstract contract CamelotSectGrailFarm is StratAuth, IUniFarm {
 	}
 
 	function _withdrawFromFarm(uint256 amount) internal override {
-		positionId = sectGrail.withdrawFromFarm(_farm, amount, positionId, address(_pair));
+		positionId = sectGrail.withdrawFromFarm(_farm, positionId, amount);
 	}
 
 	function _depositIntoFarm(uint256 amount) internal override {
-		positionId = sectGrail.depositIntoFarm(_farm, amount, positionId, address(_pair));
+		positionId = sectGrail.depositIntoFarm(_farm, positionId, amount);
 		uint256 nonAllocated = sectGrail.getNonAllocatedBalance(address(this));
-		if (nonAllocated > 0) {
-			bytes memory usageData = abi.encode(_farm, positionId);
-			sectGrail.allocate(_farm.yieldBooster(), nonAllocated, usageData);
-		}
+		if (nonAllocated > 0) sectGrail.allocateToPosition(_farm, positionId, nonAllocated);
 	}
 
 	function _harvestFarm(HarvestSwapParams[] calldata swapParams)
@@ -96,15 +95,12 @@ abstract contract CamelotSectGrailFarm is StratAuth, IUniFarm {
 		override
 		returns (uint256[] memory harvested)
 	{
-		address[] memory tokens = new address[](1);
-		tokens[0] = address(_farmToken);
-		harvested = sectGrail.harvestFarm(_farm, positionId, tokens);
-
-		if (harvested[0] == 0) return harvested;
+		uint256[] memory farmedTokens = sectGrail.harvestFarm(_farm, positionId);
+		if (farmedTokens[0] == 0) return harvested;
 
 		_validatePath(address(_farmToken), swapParams[0].path);
 		_router.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-			harvested[0],
+			farmedTokens[0],
 			swapParams[0].min,
 			swapParams[0].path,
 			address(this),
@@ -132,4 +128,9 @@ abstract contract CamelotSectGrailFarm is StratAuth, IUniFarm {
 		uint256 poolLp = _pair.balanceOf(address(this));
 		return farmLp + poolLp;
 	}
+
+	error ZeroAddress();
+
+	event TransferSectGrail(address to, uint256 amount);
+	event DeallocateSectGrail(uint256 positionId, uint256 amount);
 }
