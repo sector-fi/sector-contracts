@@ -36,8 +36,8 @@ abstract contract AaveModule is ILending {
 	IPool private _comptroller;
 	IAaveOracle private _oracle;
 
-	uint16 public uDec;
-	uint16 public sDec;
+	uint8 public uDec;
+	uint8 public sDec;
 
 	constructor(
 		address comptroller_,
