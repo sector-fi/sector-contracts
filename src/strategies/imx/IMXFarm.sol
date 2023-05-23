@@ -49,7 +49,7 @@ abstract contract IMXFarm is IIMXFarm {
 		_farmRouter = IUniswapV2Router01(farmRouter_);
 
 		// necessary farm approvals
-		_farmToken.safeApprove(address(farmRouter_), type(uint256).max);
+		_farmToken.safeIncreaseAllowance(address(farmRouter_), type(uint256).max);
 	}
 
 	function impermaxChef() public view override returns (ImpermaxChef) {
@@ -309,12 +309,16 @@ abstract contract IMXFarm is IIMXFarm {
 		harvested = _farmToken.balanceOf(address(this));
 		if (harvested == 0) return (harvested, amountOut);
 
-		uint256[] memory amounts = _swap(
-			_farmRouter,
-			harvestParams,
-			address(_farmToken),
-			harvested
+		_validatePath(address(_farmToken), harvestParams.path);
+
+		uint256[] memory amounts = _farmRouter.swapExactTokensForTokens(
+			harvested,
+			harvestParams.min,
+			harvestParams.path, // optimal route determined externally
+			address(this),
+			harvestParams.deadline
 		);
+
 		amountOut = amounts[amounts.length - 1];
 		emit HarvestedToken(address(_farmToken), harvested);
 	}

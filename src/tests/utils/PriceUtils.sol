@@ -7,7 +7,9 @@ import { UniUtils, IUniswapV2Pair } from "../../libraries/UniUtils.sol";
 import { FixedPointMathLib } from "../../libraries/FixedPointMathLib.sol";
 import { ISimpleUniswapOracle } from "../../interfaces/uniswap/ISimpleUniswapOracle.sol";
 import { UQ112x112 } from "../utils/UQ112x112.sol";
-import { ICompPriceOracle } from "interfaces/compound/ICompPriceOracle.sol";
+
+import { ICompound, ICompPriceOracle, IBase } from "strategies/mixins/ICompound.sol";
+import { AaveModule, IAaveOracle } from "strategies/modules/aave/AaveModule.sol";
 
 import "hardhat/console.sol";
 
@@ -60,11 +62,12 @@ abstract contract PriceUtils is Test {
 	}
 
 	function moveUniswapPrice(
-		IUniswapV2Pair pair,
+		address pair_,
 		address underlying,
 		address short,
 		uint256 fraction
 	) internal {
+		IUniswapV2Pair pair = IUniswapV2Pair(pair_);
 		uint256 adjustUnderlying;
 		(uint256 underlyingR, ) = pair._getPairReserves(underlying, short);
 		if (fraction < 1e18) {
@@ -95,18 +98,6 @@ abstract contract PriceUtils is Test {
 		);
 	}
 
-	function mockHlpOraclePrice(
-		address oracle,
-		address cToken,
-		uint256 price
-	) public {
-		vm.mockCall(
-			oracle,
-			abi.encodeWithSelector(ICompPriceOracle.getUnderlyingPrice.selector, cToken),
-			abi.encode(price)
-		);
-	}
-
 	function moveImxPrice(
 		address _pair,
 		address stakedToken,
@@ -115,25 +106,44 @@ abstract contract PriceUtils is Test {
 		address oracle,
 		uint256 fraction
 	) public {
-		IUniswapV2Pair pair = IUniswapV2Pair(_pair);
-		(uint112 r0, uint112 r1, ) = IUniswapV2Pair(stakedToken).getReserves();
-		moveUniswapPrice(pair, underlying, short, fraction);
+		// IUniswapV2Pair pair = IUniswapV2Pair(_pair);
+		// (uint112 r0, uint112 r1, ) = IUniswapV2Pair(stakedToken).getReserves();
+		moveUniswapPrice(_pair, underlying, short, fraction);
 		(uint112 reserve0, uint112 reserve1, ) = IUniswapV2Pair(stakedToken).getReserves();
 		uint224 price = uint112(reserve1).encode().uqdiv(uint112(reserve0));
 		mockImxOraclePrice(oracle, stakedToken, price);
 	}
 
-	function moveHlpPrice(
-		address _pair,
-		address cToken,
-		address underlying,
-		address short,
-		address oracle,
-		uint256 fraction
-	) public {
-		IUniswapV2Pair pair = IUniswapV2Pair(_pair);
-		moveUniswapPrice(pair, underlying, short, fraction);
-		uint256 price = (fraction * ICompPriceOracle(oracle).getUnderlyingPrice(cToken)) / 1e18;
-		mockHlpOraclePrice(oracle, cToken, price);
+	function adjustCompoundOraclePrice(uint256 fraction, address strategy) public {
+		ICompPriceOracle oracle = ICompound(address(strategy)).oracle();
+		address cToken = address(ICompound(address(strategy)).cTokenBorrow());
+
+		uint256 price = (fraction * oracle.getUnderlyingPrice(cToken)) / 1e18;
+
+		vm.mockCall(
+			address(oracle),
+			abi.encodeWithSelector(ICompPriceOracle.getUnderlyingPrice.selector, cToken),
+			abi.encode(price)
+		);
+
+		uint256 newPrice = oracle.getUnderlyingPrice(cToken);
+		assertApproxEqRel(newPrice, price, .001e18);
+	}
+
+	function adjustAaveOraclePrice(uint256 fraction, address strategy) public {
+		IAaveOracle oracle = AaveModule(address(strategy)).oracle();
+
+		address short = address(IBase(address(strategy)).short());
+
+		uint256 price = (fraction * oracle.getAssetPrice(short)) / 1e18;
+
+		vm.mockCall(
+			address(oracle),
+			abi.encodeWithSelector(IAaveOracle.getAssetPrice.selector, short),
+			abi.encode(price)
+		);
+
+		uint256 newPrice = oracle.getAssetPrice(short);
+		assertApproxEqRel(newPrice, price, .001e18);
 	}
 }

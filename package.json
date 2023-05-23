@@ -16,10 +16,12 @@
     "slither": "slither ./src --solc-remaps '@openzeppelin=node_modules/@openzeppelin' --exclude ./packages/contracts/src/test",
     "imx": "hardhat run ts/config/imx/index.ts",
     "lending": "hardhat run ts/config/lending/index.ts",
+    "hlp": "hardhat run ts/config/hlp/index.ts",
     "levConvex": "hardhat run ts/config/levConvex/index.ts"
   },
   "dependencies": {
     "@anders-t/ethers-ledger": "^1.0.2",
+    "@chainlink/contracts": "^0.6.1",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
     "@openzeppelin/contracts": "^4.7.3",

@@ -34,8 +34,8 @@ abstract contract Compound is ICompound {
 
 	function _addLendingApprovals() internal override {
 		// ensure USDC approval - assume we trust USDC
-		underlying().safeApprove(address(_cTokenLend), type(uint256).max);
-		short().safeApprove(address(_cTokenBorrow), type(uint256).max);
+		underlying().safeIncreaseAllowance(address(_cTokenLend), type(uint256).max);
+		short().safeIncreaseAllowance(address(_cTokenBorrow), type(uint256).max);
 	}
 
 	function cTokenLend() public view override returns (ICTokenErc20) {

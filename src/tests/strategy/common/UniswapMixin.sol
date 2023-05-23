@@ -22,6 +22,6 @@ abstract contract UniswapMixin is PriceUtils, SCYStratUtils {
 
 	function moveUniPrice(uint256 fraction) public virtual {
 		if (address(uniPair) == address(0)) return;
-		moveUniswapPrice(uniPair, address(underlying), short, fraction);
+		moveUniswapPrice(address(uniPair), address(underlying), short, fraction);
 	}
 }

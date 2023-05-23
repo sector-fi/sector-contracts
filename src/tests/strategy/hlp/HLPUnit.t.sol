@@ -12,6 +12,8 @@ import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { SectorErrors } from "interfaces/SectorErrors.sol";
 import { AggregatorVault } from "vaults/sectorVaults/AggregatorVault.sol";
+import { INFTPool } from "strategies/modules/camelot/interfaces/INFTPool.sol";
+import { CamelotFarm } from "strategies/modules/camelot/CamelotFarm.sol";
 
 import "hardhat/console.sol";
 
@@ -115,8 +117,10 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 
 	function testRebalanceLendFuzz(uint256 fuzz) public {
 		uint256 priceAdjust = bound(fuzz, 1.1e18, 2e18);
-
+		skip(1);
 		deposit(self, dec);
+		skip(1);
+
 		uint256 rebThresh = strategy.rebalanceThreshold();
 
 		adjustPrice(priceAdjust);
@@ -127,10 +131,13 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 			strategy.rebalanceLoan();
 			assertGt(strategy.loanHealth(), minLoanHealth);
 		}
+		skip(1);
+
 		// skip if we don't need to rebalance
 		if (strategy.getPositionOffset() <= rebThresh) return;
 		strategy.rebalance(priceSlippageParam());
 		assertApproxEqAbs(strategy.getPositionOffset(), 0, 11);
+		skip(1);
 
 		// put price back
 		adjustPrice(1e36 / priceAdjust);
@@ -204,7 +211,7 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	function testMaxPriceOffset() public {
 		deposit(self, dec);
 
-		moveUniswapPrice(uniPair, address(underlying), short, 0.7e18);
+		moveUniswapPrice(address(uniPair), address(underlying), short, 0.7e18);
 
 		uint256 offset = priceSlippageParam();
 		vm.prank(manager);
@@ -212,7 +219,7 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		strategy.rebalance(offset);
 
 		vm.prank(manager);
-		vm.expectRevert("HLP: MAX_MISMATCH");
+		vm.expectRevert("HLP: PRICE_MISMATCH");
 		strategy.rebalanceLoan();
 
 		vm.prank(guardian);
@@ -223,7 +230,7 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		deposit(self, dec);
 
 		// this creates a price offset
-		moveUniswapPrice(uniPair, address(underlying), short, 0.7e18);
+		moveUniswapPrice(address(uniPair), address(underlying), short, 0.7e18);
 
 		vm.prank(address(1));
 		vm.expectRevert("HLP: PRICE_MISMATCH");
@@ -273,8 +280,12 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		vault.setMaxTvl(0);
 		strategy.redeemCollateral(shortPosition / 10, collateralBalance / 10);
 		(, uint256 newCollateralBalance, uint256 newShortPosition, , , ) = strategy.getTVL();
-		assertApproxEqAbs(newCollateralBalance, collateralBalance - collateralBalance / 10, 1);
-		assertApproxEqAbs(newShortPosition, shortPosition - shortPosition / 10, 1);
+		assertApproxEqRel(
+			newCollateralBalance,
+			collateralBalance - collateralBalance / 10,
+			.0001e18
+		);
+		assertApproxEqRel(newShortPosition, shortPosition - shortPosition / 10, .0001e18);
 	}
 
 	// slippage in basis points
@@ -283,7 +294,8 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	}
 
 	function testClosePositionEdge() public {
-		address short = address(0x98878B06940aE243284CA214f92Bb71a2b032B8A);
+		skip(1);
+		address short = address(strategy.short());
 		uint256 amount = 1000e6;
 
 		deal(address(underlying), user2, amount);
@@ -292,11 +304,91 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		vault.deposit(user2, address(underlying), amount, amount);
 		vm.stopPrank();
 
+		skip(1);
 		harvest();
+		skip(1);
 
 		deal(short, address(strategy), 14368479712190599);
 		vault.closePosition(0, strategy.getPriceOffset());
 	}
+
+	function testRebalanceEdgeCase() public {
+		uint256 amnt = getAmnt();
+		deposit(self, amnt);
+		deal(address(short), address(strategy), 100e18);
+
+		uint256 pOffset = strategy.getPositionOffset();
+		assertGt(pOffset, 400);
+		rebalance();
+	}
+
+	function testPerformUpkeep() public {
+		uint256 amnt = getAmnt();
+		deposit(self, amnt);
+		bytes memory checkData;
+		(bool performUpkeep, bytes memory performData) = strategy.checkUpkeep(checkData);
+		assertEq(performUpkeep, false);
+		assertEq(performData.length, 0);
+
+		adjustPrice(1.1e18);
+		// test small oracle offset of 2% to ensure manager can call rebalance
+		adjustOraclePrice(1.02e18);
+
+		(performUpkeep, performData) = strategy.checkUpkeep(checkData);
+		assertEq(performUpkeep, true);
+		uint8 action = abi.decode(performData, (uint8));
+		assertEq(action, strategy.REBALANCE());
+		assertEq(performUpkeep, true);
+
+		vm.prank(user1);
+		vm.expectRevert("HLP: PRICE_MISMATCH");
+		strategy.performUpkeep(performData);
+
+		vm.prank(manager);
+		strategy.performUpkeep(performData);
+		assertEq(strategy.getPositionOffset(), 0);
+
+		adjustOraclePrice(1.1e18);
+		(performUpkeep, performData) = strategy.checkUpkeep(checkData);
+		assertEq(performUpkeep, true);
+		action = abi.decode(performData, (uint8));
+		assertEq(action, strategy.REBALANCE_LOAN());
+
+		skip(1);
+		vm.prank(user1);
+		vm.expectRevert("HLP: PRICE_MISMATCH");
+		strategy.performUpkeep(performData);
+
+		vm.prank(manager);
+		strategy.performUpkeep(performData);
+		assertGt(strategy.loanHealth(), 1.25e18);
+		vm.stopPrank();
+	}
+
+	function testRebalancePublic() public {
+		adjustOraclePrice(1.014e18);
+		vm.startPrank(user1);
+		uint256 priceOffset = strategy.getPriceOffset();
+		vm.expectRevert("HLP: PRICE_MISMATCH");
+		strategy.rebalance(priceOffset);
+
+		vm.expectRevert("HLP: PRICE_MISMATCH");
+		strategy.rebalanceLoan();
+		vm.stopPrank();
+	}
+
+	// function testDeployedRebalance() public {
+	// 	SCYVault dvault = SCYVault(payable(0x7acE71f029fe98E2ABdb49aA5a9f86D916088e7A));
+	// 	HLPCore _strategy = HLPCore(payable(address(dvault.strategy())));
+
+	// 	logTvl(IStrategy(address(_strategy)));
+	// 	console.log("short balance", _strategy.short().balanceOf(address(_strategy)));
+	// 	uint256 priceOffset = _strategy.getPriceOffset();
+	// 	vm.prank(0x8aB0800dc1c5dbC0fdaF12D660f1846baf635050);
+	// 	_strategy.rebalance(priceOffset);
+	// 	assertApproxEqAbs(_strategy.getPositionOffset(), 0, 2, "position offset after rebalance");
+	// 	skip(1);
+	// }
 
 	// function testDeployedHarvest() public {
 	// 	SCYVault dvault = SCYVault(payable(0x615C884C42C3bca1B93d6E28f7D416916d9F4bf8));

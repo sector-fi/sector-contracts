@@ -6,7 +6,9 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IMiniChefV2 } from "../../interfaces/uniswap/IStakingRewards.sol";
 import { IUniswapV2Pair } from "../../interfaces/uniswap/IUniswapV2Pair.sol";
 
-import { IUniFarm, IUniswapV2Router01, HarvestSwapParams } from "../mixins/IUniFarm.sol";
+import { IUniswapV2Router01 } from "../../interfaces/uniswap/IUniswapV2Router01.sol";
+
+import { IUniFarm, HarvestSwapParams } from "../mixins/IUniFarm.sol";
 import { UniUtils } from "../../libraries/UniUtils.sol";
 
 // import "hardhat/console.sol";
@@ -38,12 +40,12 @@ abstract contract MiniChefFarm is IUniFarm {
 
 	function _addFarmApprovals() internal override {
 		// farm approvals
-		IERC20(address(_pair)).safeApprove(address(_farm), type(uint256).max);
-		_farmToken.safeApprove(address(_router), type(uint256).max);
+		IERC20(address(_pair)).safeIncreaseAllowance(address(_farm), type(uint256).max);
+		_farmToken.safeIncreaseAllowance(address(_router), type(uint256).max);
 	}
 
-	function farmRouter() public view override returns (IUniswapV2Router01) {
-		return _router;
+	function farmRouter() public view override returns (address) {
+		return address(_router);
 	}
 
 	function pair() public view override returns (IUniswapV2Pair) {
@@ -68,7 +70,18 @@ abstract contract MiniChefFarm is IUniFarm {
 		harvested[0] = _farmToken.balanceOf(address(this));
 		if (harvested[0] == 0) return harvested;
 
-		_swap(_router, swapParams[0], address(_farmToken), harvested[0]);
+		HarvestSwapParams memory swapParam = swapParams[0];
+		_validatePath(address(_farmToken), swapParam.path);
+
+		uint256[] memory amounts = _router.swapExactTokensForTokens(
+			harvested[0],
+			swapParam.min,
+			swapParam.path, // optimal route determined externally
+			address(this),
+			swapParam.deadline
+		);
+
+		harvested[0] = amounts[amounts.length - 1];
 		emit HarvestedToken(address(_farmToken), harvested[0]);
 	}
 

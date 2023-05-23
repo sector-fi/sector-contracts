@@ -2,7 +2,6 @@
 pragma solidity 0.8.16;
 
 import { IBase, HarvestSwapParams } from "./IBase.sol";
-import { IFarmable, IUniswapV2Router01 } from "./IFarmable.sol";
 
 // import "hardhat/console.sol";
 
@@ -38,7 +37,7 @@ abstract contract ILending is IBase {
 		virtual
 		returns (uint256[] memory);
 
-	function lendFarmRouter() public view virtual returns (IUniswapV2Router01);
+	function lendFarmRouter() public view virtual returns (address);
 
 	function getCollateralRatio() public view virtual returns (uint256) {
 		return (_getCollateralFactor() * safeCollateralRatio()) / 1e18;

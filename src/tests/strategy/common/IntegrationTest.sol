@@ -20,10 +20,13 @@ abstract contract IntegrationTest is SectorTest, SCYStratUtils {
 		console.log("DEPOSIT 1");
 		deposit(user1, amnt);
 		noRebalance();
+		skip(1);
 		withdrawCheck(user1, .5e18);
 		console.log("DEPOSIT 2");
+		skip(1);
 		deposit(user1, amnt);
 		console.log("HARVEST");
+
 		harvest();
 		adjustPrice(0.9e18);
 		// this updates strategy tvl
@@ -33,9 +36,12 @@ abstract contract IntegrationTest is SectorTest, SCYStratUtils {
 		assertEq(vault.getFloatingAmount(address(underlying)), 0);
 		adjustPrice(1.2e18);
 		console.log("REBALANCE 2");
+		skip(1);
 		rebalance();
 		assertEq(vault.getFloatingAmount(address(underlying)), 0);
 		console.log("WITHDRAW ALL");
+		skip(1);
+
 		withdrawAll(user1);
 	}
 

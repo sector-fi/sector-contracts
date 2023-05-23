@@ -6,7 +6,8 @@ import { SafeERC20, IERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 import { IMasterChef } from "../../interfaces/uniswap/IStakingRewards.sol";
 import { IUniswapV2Pair } from "../../interfaces/uniswap/IUniswapV2Pair.sol";
 
-import { IUniFarm, IUniswapV2Router01, HarvestSwapParams } from "../mixins/IUniFarm.sol";
+import { IUniswapV2Router01 } from "../../interfaces/uniswap/IUniswapV2Router01.sol";
+import { IUniFarm, HarvestSwapParams } from "../mixins/IUniFarm.sol";
 import { IWETH } from "../../interfaces/uniswap/IWETH.sol";
 
 // import "hardhat/console.sol";
@@ -37,13 +38,13 @@ abstract contract MasterChefFarm is IUniFarm {
 
 	// assumption that _router and _farm are trusted
 	function _addFarmApprovals() internal override {
-		IERC20(address(_pair)).safeApprove(address(_farm), type(uint256).max);
+		IERC20(address(_pair)).safeIncreaseAllowance(address(_farm), type(uint256).max);
 		if (_farmToken.allowance(address(this), address(_router)) == 0)
-			_farmToken.safeApprove(address(_router), type(uint256).max);
+			_farmToken.safeIncreaseAllowance(address(_router), type(uint256).max);
 	}
 
-	function farmRouter() public view override returns (IUniswapV2Router01) {
-		return _router;
+	function farmRouter() public view override returns (address) {
+		return address(_router);
 	}
 
 	function pair() public view override returns (IUniswapV2Pair) {
@@ -67,7 +68,17 @@ abstract contract MasterChefFarm is IUniFarm {
 		uint256 farmHarvest = _farmToken.balanceOf(address(this));
 		if (farmHarvest == 0) return harvested;
 
-		uint256[] memory amounts = _swap(_router, swapParams[0], address(_farmToken), farmHarvest);
+		HarvestSwapParams memory swapParam = swapParams[0];
+		_validatePath(address(_farmToken), swapParam.path);
+
+		uint256[] memory amounts = _router.swapExactTokensForTokens(
+			farmHarvest,
+			swapParam.min,
+			swapParam.path, // optimal route determined externally
+			address(this),
+			swapParam.deadline
+		);
+
 		harvested = new uint256[](1);
 		harvested[0] = amounts[amounts.length - 1];
 		emit HarvestedToken(address(_farmToken), harvested[0]);

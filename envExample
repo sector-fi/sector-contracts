@@ -23,5 +23,12 @@ ALCHEMY_ARB =
 # fork params for forge tests
 AVAX_RPC_URL = 'https://api.avax.network/ext/bc/C/rpc'
 AVAX_BLOCK = 19910210
-OP_RPC_RUL = https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}
+
+MOVR_RPC_URL = https://rpc.api.moonriver.moonbeam.network
+MOVR_BLOCK =  3622933 
+
+ARBITRUM_RPC_URL = https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_ARB}
+ARBITRUM_BLOCK = 69543506
+
+OP_RPC_URL = https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_OP}
 OP_BLOCK = 27015671 # ETH Index, not OP block #

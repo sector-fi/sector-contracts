@@ -34,9 +34,9 @@ contract SynapseStrategy is MiniChef2Farm, ISCYStrategy, StratAuthLight {
 		synapsePool = ISynapseSwap(_synapsePool);
 		lpToken = IERC20(_lpToken);
 		underlying = synapsePool.getToken(coinId);
-		underlying.safeApprove(_synapsePool, type(uint256).max);
-		IERC20(lpToken).safeApprove(address(farm), type(uint256).max);
-		IERC20(lpToken).safeApprove(_synapsePool, type(uint256).max);
+		underlying.safeIncreaseAllowance(_synapsePool, type(uint256).max);
+		IERC20(lpToken).safeIncreaseAllowance(address(farm), type(uint256).max);
+		IERC20(lpToken).safeIncreaseAllowance(_synapsePool, type(uint256).max);
 		_nTokens = ISynapseSwap(synapsePool).calculateRemoveLiquidity(1).length;
 	}
 
