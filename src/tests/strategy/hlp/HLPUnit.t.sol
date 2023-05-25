@@ -12,6 +12,7 @@ import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { SectorErrors } from "interfaces/SectorErrors.sol";
 import { AggregatorVault } from "vaults/sectorVaults/AggregatorVault.sol";
+import { WithdrawRecord } from "../../../common/BatchedWithdraw.sol";
 import { INFTPool } from "strategies/modules/camelot/interfaces/INFTPool.sol";
 import { CamelotFarm } from "strategies/modules/camelot/CamelotFarm.sol";
 
@@ -426,5 +427,21 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	// 	assertGt(harvestAmnts[0], 0);
 	// 	assertGt(harvestLendAmnts[0], 0);
 	// 	assertGt(newTvl, tvl);
-	}
+	// }
+
+	// function testDepWithdraw() public {
+	// 	AggregatorVault dVault = AggregatorVault(
+	// 		payable(0xbe2Be6a2DAcf9dCC76903756ee8e085B1C5a2c30)
+	// 	);
+
+	// 	address acc = 0x4643731FA0406F21A6cC479E442BB4e59b742C69;
+	// 	WithdrawRecord memory w = dVault.getWithdrawStatus(acc);
+	// 	uint256 redeem = dVault.convertToAssets(dVault.pendingRedeem());
+
+	// 	console.log("shares value", w.shares, w.value);
+	// 	console.log("float, redeem", dVault.getFloat(), dVault.floatAmnt(), redeem);
+
+	// 	vm.prank(acc);
+	// 	dVault.redeem(acc);
+	// }
 }
