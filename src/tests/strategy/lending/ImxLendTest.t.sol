@@ -14,7 +14,7 @@ import { UnitTestVault } from "../common/UnitTestVault.sol";
 
 import { SCYVault, AuthConfig, FeeConfig } from "vaults/ERC5115/SCYVault.sol";
 import { SCYVaultConfig } from "interfaces/ERC5115/ISCYVault.sol";
-import { AggregatorVault } from "vaults/SectorVaults/AggregatorVault.sol";
+import { AggregatorVault } from "vaults/sectorVaults/AggregatorVault.sol";
 
 import "forge-std/StdJson.sol";
 
