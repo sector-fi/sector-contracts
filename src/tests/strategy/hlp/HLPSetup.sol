@@ -29,8 +29,8 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 
 	// string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Velo-Aave_optimism";
-	// string TEST_STRATEGY = "HLP_USDC-ETH_Xcal-Aave_arbitrum";
-	string TEST_STRATEGY = "HLP_USDC-ETH_Camelot-Aave_arbitrum";
+	string TEST_STRATEGY = "HLP_USDC-ETH_Xcal-Aave_arbitrum";
+	// string TEST_STRATEGY = "HLP_USDC-ETH_Camelot-Aave_arbitrum";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Sushi-Aave_arbitrum";
 
 	address xGrail = 0x3CAaE25Ee616f2C8E13C74dA0813402eae3F496b;

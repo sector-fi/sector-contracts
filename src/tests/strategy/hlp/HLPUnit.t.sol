@@ -316,7 +316,7 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 	function testRebalanceEdgeCase() public {
 		uint256 amnt = getAmnt();
 		deposit(self, amnt);
-		deal(address(short), address(strategy), 100e18);
+		deal(address(short), address(strategy), 10e18);
 
 		uint256 pOffset = strategy.getPositionOffset();
 		assertGt(pOffset, 400);
@@ -377,6 +377,31 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		strategy.rebalanceLoan();
 		vm.stopPrank();
 	}
+
+	// function testDeployedDeposit() public {
+	// 	address dVaultAddr = 0xcE94D3C4660dEF1Be6C2D79Ff7c0006cB1f6B324;
+	// 	SCYVault dvault = SCYVault(payable(dVaultAddr));
+	// 	address acc = 0x157875C30F83729Ce9c1E7A1568ec00250237862;
+	// 	uint256 amount = 2000e6 / 4;
+	// 	uint256 minSharesOut = dvault.underlyingToShares(amount);
+
+	// 	address stratAddr = address(dvault.strategy());
+
+	// 	bytes memory code = address(strategy).code;
+	// 	address targetAddr = stratAddr;
+	// 	vm.etch(targetAddr, code);
+
+	// 	HLPCore _strategy = HLPCore(payable(stratAddr));
+
+	// 	console.log("positionOffset", _strategy.getPositionOffset());
+	// 	logTvl(IStrategy(address(_strategy)));
+
+	// 	vm.startPrank(acc);
+	// 	underlying.approve(address(dvault), amount);
+	// 	dvault.deposit(acc, address(underlying), amount, (minSharesOut * 9930) / 10000);
+
+	// 	vm.stopPrank();
+	// }
 
 	// function testDeployedRebalance() public {
 	// 	SCYVault dvault = SCYVault(payable(0x7acE71f029fe98E2ABdb49aA5a9f86D916088e7A));

@@ -18,7 +18,7 @@ import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
-// import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 // @custom: alphabetize dependencies to avoid linearization conflicts
 abstract contract HLPCore is
@@ -505,7 +505,6 @@ abstract contract HLPCore is
 		if (targetShortLp <= shortLP) return;
 
 		uint256 addShort = targetShortLp - shortLP;
-		uint256 addUnderlying = _shortToUnderlying(addShort);
 
 		(uint256 addU, uint256 subtractU) = _tradeExact(
 			addShort,
@@ -516,12 +515,19 @@ abstract contract HLPCore is
 
 		uBalance = uBalance + addU - subtractU;
 
+		// we compute amount of undelrying we need after we have the final shortAmnt
+		// this accounts for the potential trade above
+		uint256 addUnderlying = _shortToUnderlying(addShort);
+
 		// we know that now our short balance is exact sBalance = sAmnt
 		// if we don't have enough underlying, we need to decrase sAmnt slighlty
 		// TODO have trades account for slippage
 		if (uBalance < addUnderlying) {
 			addUnderlying = uBalance;
+			// uint256 updatedAddShort = _underlyingToShort(uBalance);
+			// addShort = addShort > updatedAddShort ? updatedAddShort : addShort;
 			addShort = _underlyingToShort(uBalance);
+
 			// if we have short dust, we can leave it for next rebalance
 		} else if (uBalance > addUnderlying) {
 			// if we have extra underlying, lend it back to avoid extra float
@@ -641,7 +647,6 @@ abstract contract HLPCore is
 	function getPriceOffset() public view returns (uint256 offset) {
 		uint256 minPrice = _shortToUnderlying(1e18);
 		uint256 maxPrice = _oraclePriceOfShort(1e18);
-		// console.log("oracle | dex", maxPrice, minPrice);
 		(minPrice, maxPrice) = maxPrice > minPrice ? (minPrice, maxPrice) : (maxPrice, minPrice);
 		offset = ((maxPrice - minPrice) * BPS_ADJUST) / maxPrice;
 	}
