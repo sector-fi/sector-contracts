@@ -18,7 +18,7 @@ import { ISCYStrategy } from "../../interfaces/ERC5115/ISCYStrategy.sol";
 import { SectorErrors } from "../../interfaces/SectorErrors.sol";
 import { AutomationCompatibleInterface } from "@chainlink/contracts/src/v0.8/AutomationCompatible.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
 // @custom: alphabetize dependencies to avoid linearization conflicts
 abstract contract HLPCore is
