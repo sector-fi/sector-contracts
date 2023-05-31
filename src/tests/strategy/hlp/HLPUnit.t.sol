@@ -378,30 +378,34 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 		vm.stopPrank();
 	}
 
-	// function testDeployedDeposit() public {
-	// 	address dVaultAddr = 0xcE94D3C4660dEF1Be6C2D79Ff7c0006cB1f6B324;
-	// 	SCYVault dvault = SCYVault(payable(dVaultAddr));
-	// 	address acc = 0x157875C30F83729Ce9c1E7A1568ec00250237862;
-	// 	uint256 amount = 2000e6 / 4;
-	// 	uint256 minSharesOut = dvault.underlyingToShares(amount);
+	function testDeployedDeposit() public {
+		address dVaultAddr = 0xcE94D3C4660dEF1Be6C2D79Ff7c0006cB1f6B324;
+		SCYVault dvault = SCYVault(payable(dVaultAddr));
 
-	// 	address stratAddr = address(dvault.strategy());
+		address acc = 0x157875C30F83729Ce9c1E7A1568ec00250237862;
+		uint256 amount = 2000e6 / 4;
+		uint256 minSharesOut = dvault.underlyingToShares(amount);
 
-	// 	bytes memory code = address(strategy).code;
-	// 	address targetAddr = stratAddr;
-	// 	vm.etch(targetAddr, code);
+		address stratAddr = address(dvault.strategy());
 
-	// 	HLPCore _strategy = HLPCore(payable(stratAddr));
+		bytes memory code = address(strategy).code;
+		address targetAddr = stratAddr;
+		vm.etch(targetAddr, code);
 
-	// 	console.log("positionOffset", _strategy.getPositionOffset());
-	// 	logTvl(IStrategy(address(_strategy)));
+		HLPCore _strategy = HLPCore(payable(stratAddr));
 
-	// 	vm.startPrank(acc);
-	// 	underlying.approve(address(dvault), amount);
-	// 	dvault.deposit(acc, address(underlying), amount, (minSharesOut * 9930) / 10000);
+		uint256 depAmnt = dvault.getDepositAmnt(amount);
+		console.log(minSharesOut, depAmnt, (10000 * (minSharesOut - depAmnt)) / minSharesOut);
 
-	// 	vm.stopPrank();
-	// }
+		console.log("positionOffset", _strategy.getPositionOffset());
+		logTvl(IStrategy(address(_strategy)));
+
+		vm.startPrank(acc);
+		underlying.approve(address(dvault), amount);
+		dvault.deposit(acc, address(underlying), amount, (minSharesOut * 9930) / 10000);
+
+		vm.stopPrank();
+	}
 
 	// function testDeployedRebalance() public {
 	// 	SCYVault dvault = SCYVault(payable(0x7acE71f029fe98E2ABdb49aA5a9f86D916088e7A));

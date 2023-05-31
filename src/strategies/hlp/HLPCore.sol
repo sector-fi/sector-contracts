@@ -653,10 +653,12 @@ abstract contract HLPCore is
 
 	// used to estimate the expected return of lp tokens for first deposit
 	function collateralToUnderlying() public view returns (uint256) {
+		uint256 currentLp = _getLiquidity();
+		if (currentLp > MIN_LIQUIDITY) return (1e18 * getTvl()) / currentLp;
 		(uint256 uR, uint256 sR, ) = pair().getReserves();
 		(uR, sR) = address(_underlying) == pair().token0() ? (uR, sR) : (sR, uR);
-		uint256 lp = pair().totalSupply();
-		return (1e18 * (uR * _getLiquidity(1e18))) / lp / _totalToLp(1e18);
+		uint256 totalLp = pair().totalSupply();
+		return (uR * 1e18 * 1e18) / totalLp / _totalToLp(1e18);
 	}
 
 	function getLpToken() public view returns (address) {

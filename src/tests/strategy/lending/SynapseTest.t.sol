@@ -135,6 +135,7 @@ contract SynapseTest is IntegrationTest, UnitTestVault {
 		(uint256[] memory harvestAmnts, ) = vault.harvest(vault.getTvl(), 0, params1, params2);
 		uint256 newTvl = vault.getTvl();
 
+		console.log("harvestAmnts", harvestAmnts[0]);
 		assertGt(harvestAmnts[0], 0);
 		assertGt(newTvl, tvl);
 	}
