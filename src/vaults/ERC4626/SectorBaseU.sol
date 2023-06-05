@@ -41,46 +41,30 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 		return redeem(receiver);
 	}
 
-	function redeemNativeFor(address account) public virtual returns (uint256 amountOut) {
-		return _redeemNative(account, account);
-	}
-
 	function redeemNative(address receiver) public virtual returns (uint256 amountOut) {
-		return _redeemNative(msg.sender, receiver);
-	}
-
-	function _redeemNative(address from, address to) internal returns (uint256 amountOut) {
 		if (!useNativeAsset) revert NotNativeAsset();
-		if (from != msg.sender && from != to) revert NotAllowed();
 		uint256 shares;
 		(amountOut, shares) = _redeem(msg.sender);
 
 		beforeWithdraw(amountOut, shares);
 		_burn(address(this), shares);
 
-		emit Withdraw(msg.sender, to, from, amountOut, shares);
+		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
 
 		IWETH(address(asset)).withdraw(amountOut);
-		SafeETH.safeTransferETH(to, amountOut);
+		SafeETH.safeTransferETH(receiver, amountOut);
 	}
 
-	function redeem(address receiver) public virtual returns (uint256 amountOut) {
+	function redeem(address receiver) public returns (uint256 amountOut) {
 		return _redeemInternal(msg.sender, receiver);
 	}
 
-	///@dev this method is used to redeem shares for underlying, for other senders
-	function redeemFor(address account) public virtual returns (uint256 amountOut) {
+	/// @dev this method is used to redeem shares for underlying, for other senders
+	function redeemFor(address account) public returns (uint256 amountOut) {
 		return _redeemInternal(account, account);
 	}
 
-	/// @dev safest UI method
-	function redeem() public virtual returns (uint256 amountOut) {
-		return _redeemInternal(msg.sender, msg.sender);
-	}
-
 	function _redeemInternal(address from, address to) internal returns (uint256 amountOut) {
-		// additional safety check (should never happen)
-		if (from != msg.sender && from != to) revert NotAllowed();
 		uint256 shares;
 		(amountOut, shares) = _redeem(from);
 
@@ -89,6 +73,11 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 
 		emit Withdraw(msg.sender, to, from, amountOut, shares);
 		asset.safeTransfer(to, amountOut);
+	}
+
+	/// @dev safest UI method
+	function redeem() public virtual returns (uint256 amountOut) {
+		return redeem(msg.sender);
 	}
 
 	/// @dev safest UI method
@@ -251,7 +240,6 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 	error EmergencyRedeemEnabled();
 	error TooManyStrategies();
 	error WrongEpochType();
-	error NotAllowed();
 
 	uint256[50] private __gap;
 }

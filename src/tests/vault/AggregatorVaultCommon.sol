@@ -756,4 +756,27 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 		assertEq(vault.balanceOf(user1), 0, "user1 balance");
 		assertEq(underlying.balanceOf(user1), 1e18, "user1 underlying balance");
 	}
+
+	function testRedeemForNative() public {
+		vault = deployAggVault(true);
+		vault.addStrategy(strategy1);
+		sectDeposit(vault, owner, mLp);
+
+		vm.startPrank(user1);
+		uint256 amnt = 1000e18;
+		deal(user1, amnt);
+		vault.deposit{ value: amnt }(amnt, user1);
+		uint256 balance = vault.balanceOf(user1);
+		vault.requestRedeem(balance, user1);
+		vm.stopPrank();
+
+		skip(1);
+		sectHarvest(vault);
+		vault.redeemFor(user1);
+
+		assertEq(vault.balanceOf(user1), 0, "user1 balance");
+		assertEq(underlying.balanceOf(user1), balance, "user1 underlying balance");
+		// assertEq(vault.balanceOf(user1), 0, "user1 balance");
+		// assertEq(user1.balance, amnt, "user1 underlying balance");
+	}
 }
