@@ -55,15 +55,24 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 		SafeETH.safeTransferETH(receiver, amountOut);
 	}
 
-	function redeem(address receiver) public virtual returns (uint256 amountOut) {
+	function redeem(address receiver) public returns (uint256 amountOut) {
+		return _redeemInternal(msg.sender, receiver);
+	}
+
+	/// @dev this method is used to redeem shares for underlying, for other senders
+	function redeemFor(address account) public returns (uint256 amountOut) {
+		return _redeemInternal(account, account);
+	}
+
+	function _redeemInternal(address from, address to) internal returns (uint256 amountOut) {
 		uint256 shares;
-		(amountOut, shares) = _redeem(msg.sender);
+		(amountOut, shares) = _redeem(from);
 
 		beforeWithdraw(amountOut, shares);
 		_burn(address(this), shares);
 
-		emit Withdraw(msg.sender, receiver, msg.sender, amountOut, shares);
-		asset.safeTransfer(receiver, amountOut);
+		emit Withdraw(msg.sender, to, from, amountOut, shares);
+		asset.safeTransfer(to, amountOut);
 	}
 
 	/// @dev safest UI method

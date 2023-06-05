@@ -203,45 +203,45 @@ const config = {
         },
       },
     },
-    goerli: {
-      url: GOERLI_ALCHEMY,
-      accounts: keys.length ? keys : undefined,
-      chainId: 5,
-      layerZeroId: 10121,
-      supportMultichain: true,
-      verify: {
-        etherscan: {
-          apiKey: ETHERSCAN_API_KEY,
-          apiUrl: 'https://api-goerli.etherscan.io/',
-        },
-      },
-    },
-    fuji: {
-      url: 'https://api.avax-test.network/ext/bc/C/rpc',
-      accounts: keys.length ? keys : undefined,
-      chainId: 43113,
-      layerZeroId: 10106,
-      supportMultichain: false,
-      verify: {
-        etherscan: {
-          apiKey: SNOWTRACE_API_KEY,
-          apiUrl: `https://api-testnet.snowtrace.io/api?apikey=${SNOWTRACE_API_KEY}`,
-        },
-      },
-    },
-    fantom_testnet: {
-      url: 'https://rpc.testnet.fantom.network/',
-      accounts: keys.length ? keys : undefined,
-      chainId: 4002,
-      layerZeroId: 10112,
-      supportMultichain: true,
-      verify: {
-        etherscan: {
-          apiKey: FTM_TESTNET_API_KEY,
-          apiUrl: `https://api-testnet.ftmscan.com/api?apikey=${FTM_TESTNET_API_KEY}`,
-        },
-      },
-    },
+    // goerli: {
+    //   url: GOERLI_ALCHEMY,
+    //   accounts: keys.length ? keys : undefined,
+    //   chainId: 5,
+    //   layerZeroId: 10121,
+    //   supportMultichain: true,
+    //   verify: {
+    //     etherscan: {
+    //       apiKey: ETHERSCAN_API_KEY,
+    //       apiUrl: 'https://api-goerli.etherscan.io/',
+    //     },
+    //   },
+    // },
+    // fuji: {
+    //   url: 'https://api.avax-test.network/ext/bc/C/rpc',
+    //   accounts: keys.length ? keys : undefined,
+    //   chainId: 43113,
+    //   layerZeroId: 10106,
+    //   supportMultichain: false,
+    //   verify: {
+    //     etherscan: {
+    //       apiKey: SNOWTRACE_API_KEY,
+    //       apiUrl: `https://api-testnet.snowtrace.io/api?apikey=${SNOWTRACE_API_KEY}`,
+    //     },
+    //   },
+    // },
+    // fantom_testnet: {
+    //   url: 'https://rpc.testnet.fantom.network/',
+    //   accounts: keys.length ? keys : undefined,
+    //   chainId: 4002,
+    //   layerZeroId: 10112,
+    //   supportMultichain: true,
+    //   verify: {
+    //     etherscan: {
+    //       apiKey: FTM_TESTNET_API_KEY,
+    //       apiUrl: `https://api-testnet.ftmscan.com/api?apikey=${FTM_TESTNET_API_KEY}`,
+    //     },
+    //   },
+    // },
     arbitrum: {
       accounts: keys.length ? keys : undefined,
       url: `https://arb-mainnet.g.alchemy.com/v2/${ALCHEMY_ARB}`,
