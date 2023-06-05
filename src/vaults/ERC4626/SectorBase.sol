@@ -46,6 +46,18 @@ abstract contract SectorBase is BatchedWithdraw, ERC4626 {
 		return redeem(receiver);
 	}
 
+	///@dev this method is used to redeem shares for underlying, for other senders
+	function redeemFor(address account) public virtual returns (uint256 amountOut) {
+		uint256 shares;
+		(amountOut, shares) = _redeem(account);
+
+		beforeWithdraw(amountOut, shares);
+		_burn(address(this), shares);
+
+		emit Withdraw(msg.sender, account, account, amountOut, shares);
+		asset.safeTransfer(account, amountOut);
+	}
+
 	function redeemNative(address receiver) public virtual returns (uint256 amountOut) {
 		if (!useNativeAsset) revert NotNativeAsset();
 		uint256 shares;

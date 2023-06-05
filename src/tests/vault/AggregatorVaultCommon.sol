@@ -726,4 +726,34 @@ abstract contract AggregatorVaultCommon is SectorTest, SCYVaultUtils {
 		maxDeposit = vault.maxDeposit(user1);
 		assertEq(maxDeposit, 3e18 - vaultTvl - floatAmnt / 2 - s1Tvl - s2Tvl, "max deposit");
 	}
+
+	function testRequestRedeemFor() public {
+		sectDeposit(vault, user1, 1e18);
+		uint256 balance = vault.balanceOf(user1);
+		vm.expectRevert("ERC20: insufficient allowance");
+		vault.requestRedeem(balance, user1);
+
+		vm.prank(user1);
+		vault.approve(self, balance);
+
+		vault.requestRedeem(balance, user1);
+	}
+
+	function testRedeemFor() public {
+		sectDeposit(vault, user1, 1e18);
+		uint256 balance = vault.balanceOf(user1);
+		vm.expectRevert("ERC20: insufficient allowance");
+		vault.requestRedeem(balance, user1);
+
+		vm.prank(user1);
+		vault.requestRedeem(balance, user1);
+		skip(1);
+
+		sectHarvest(vault);
+
+		vault.redeemFor(user1);
+
+		assertEq(vault.balanceOf(user1), 0, "user1 balance");
+		assertEq(underlying.balanceOf(user1), 1e18, "user1 underlying balance");
+	}
 }
