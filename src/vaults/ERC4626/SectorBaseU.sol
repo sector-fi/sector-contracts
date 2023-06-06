@@ -65,6 +65,7 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 	}
 
 	function _redeemInternal(address from, address to) internal returns (uint256 amountOut) {
+		if (from != to && from != msg.sender) revert NotAllowed();
 		uint256 shares;
 		(amountOut, shares) = _redeem(from);
 
@@ -77,7 +78,7 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 
 	/// @dev safest UI method
 	function redeem() public virtual returns (uint256 amountOut) {
-		return redeem(msg.sender);
+		return _redeemInternal(msg.sender, msg.sender);
 	}
 
 	/// @dev safest UI method
@@ -240,6 +241,7 @@ abstract contract SectorBaseU is BatchedWithdraw, ERC4626U {
 	error EmergencyRedeemEnabled();
 	error TooManyStrategies();
 	error WrongEpochType();
+	error NotAllowed();
 
 	uint256[50] private __gap;
 }
