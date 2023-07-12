@@ -14,6 +14,7 @@ import { ISCYVault } from "interfaces/ERC5115/ISCYVault.sol";
 
 import { MasterChefCompMulti } from "strategies/hlp/MasterChefCompMulti.sol";
 import { SolidlyAave } from "strategies/hlp/SolidlyAave.sol";
+import { VeloV2Aave } from "strategies/hlp/VeloV2Aave.sol";
 import { CamelotAave } from "strategies/hlp/CamelotAave.sol";
 import { sectGrail } from "strategies/modules/camelot/sectGrail.sol";
 import { MiniChefAave } from "strategies/hlp/MiniChefAave.sol";
@@ -28,10 +29,10 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 	using stdJson for string;
 
 	// string TEST_STRATEGY = "HLP_USDC-MOVR_Solar-Well_moonriver";
-	// string TEST_STRATEGY = "HLP_USDC-ETH_Velo-Aave_optimism";
+	string TEST_STRATEGY = "HLP_USDC-ETH_Velo-Aave_optimism";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Xcal-Aave_arbitrum";
 	// string TEST_STRATEGY = "HLP_USDC-ETH_Camelot-Aave_arbitrum";
-	string TEST_STRATEGY = "HLP_USDC-ETH_Sushi-Aave_arbitrum";
+	// string TEST_STRATEGY = "HLP_USDC-ETH_Sushi-Aave_arbitrum";
 
 	address xGrail = 0x3CAaE25Ee616f2C8E13C74dA0813402eae3F496b;
 
@@ -135,6 +136,7 @@ contract HLPSetup is SCYStratUtils, UniswapMixin {
 		if (compare(contractType, "MasterChefCompMulti"))
 			strategy = new MasterChefCompMulti(authConfig, config);
 		if (compare(contractType, "SolidlyAave")) strategy = new SolidlyAave(authConfig, config);
+		if (compare(contractType, "VeloV2Aave")) strategy = new VeloV2Aave(authConfig, config);
 		if (compare(contractType, "CamelotAave")) {
 			vm.expectRevert("SectGrail address must be passed in");
 			new CamelotAave(authConfig, config);

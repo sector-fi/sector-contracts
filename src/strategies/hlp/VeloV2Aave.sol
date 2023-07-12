@@ -5,18 +5,18 @@ import { HLPConfig } from "../../interfaces/Structs.sol";
 import { HLPCore, IBase, IERC20 } from "./HLPCore.sol";
 import { AaveModule } from "../modules/aave/AaveModule.sol";
 import { AaveFarm } from "../modules/aave/AaveFarm.sol";
-import { MiniChefFarm } from "../adapters/MiniChefFarm.sol";
+import { VeloV2Farm } from "../modules/solidly/VeloV2Farm.sol";
 import { Auth, AuthConfig } from "../../common/Auth.sol";
 
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
-/// @title MiniChefAave
-/// @notice HLP Strategy using Sushi's MasterChef2 and Aaave money market
-contract MiniChefAave is HLPCore, AaveModule, AaveFarm, MiniChefFarm {
+/// @title SolidlyAave
+/// @notice HLP Strategy using Solidly exchange and Aaave money market
+contract VeloV2Aave is HLPCore, AaveModule, AaveFarm, VeloV2Farm {
 	// HLPCore should  be intialized last
 	constructor(AuthConfig memory authConfig, HLPConfig memory config)
 		Auth(authConfig)
-		MiniChefFarm(
+		VeloV2Farm(
 			config.uniPair,
 			config.uniFarm,
 			config.farmRouter,

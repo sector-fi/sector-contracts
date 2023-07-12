@@ -6,10 +6,10 @@ const type = StratType.HLP;
 export const strategies = [
   {
     name: genStratName(type, 'USDC', ['ETH'], ['Velo', 'Aave'], 'optimism'),
-    contract: 'SolidlyAave',
+    contract: 'VeloV2Aave',
     underlying: tokens.optimism.USDC,
     short: tokens.optimism.ETH,
-    uniPair: '0x79c912FEF520be002c2B6e57EC4324e260f38E50', // ETH/USDC Velodrome pair
+    uniPair: '0x0493Bf8b6DBB159Ce2Db2E0E8403E753Abd1235b', // ETH/USDC Velodrome pair
 
     // auto fill?
     cTokenLend: '0x625E7708f30cA75bfd92586e17077590C60eb4cD', // aUSDC
@@ -17,12 +17,12 @@ export const strategies = [
     /// @dev address of the lending pool
     comptroller: '0x794a61358D6845594F94dc1DB02A252b5b4814aD',
 
-    farmToken: '0x3c8B650257cFb5f272f799F5e2b4e65093a11a05', // velo
+    farmToken: '0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db', // velo
     farmId: 0, // not needed
-    uniFarm: '0xE2CEc8aB811B648bA7B1691Ce08d5E800Dd0a60a', // gauge
-    farmRouter: '0xa132DAB612dB5cB9fC9Ac426A0Cc215A3423F9c9', // velo router
+    uniFarm: '0xE7630c9560C59CCBf5EEd8f33dd0ccA2E67a3981', // gauge
+    farmRouter: '0xa062aE8A9c5e11aaA026fc2670B0D65cCc8B2858',
     harvestPath: [
-      '0x3c8B650257cFb5f272f799F5e2b4e65093a11a05',
+      '0x9560e827aF36c94D2Ac33a39bCE1Fe78631088Db',
       tokens.optimism.ETH,
       tokens.optimism.USDC,
     ],
