@@ -194,7 +194,7 @@ contract AggregatorWEpochVault is SectorBaseWEpoch {
 				: totalChildHoldings - amountOut;
 
 			// update underlying float accounting
-			afterDeposit(amountOut, 0);
+			floatAmnt += amountOut;
 			emit WithdrawFromStrategy(msg.sender, address(strategy), amountOut);
 		}
 	}

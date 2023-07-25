@@ -11,7 +11,7 @@ import { HLPSetup, SCYVault, HLPCore } from "./HLPSetup.sol";
 import { UnitTestVault } from "../common/UnitTestVault.sol";
 import { UnitTestStrategy } from "../common/UnitTestStrategy.sol";
 import { SectorErrors } from "interfaces/SectorErrors.sol";
-import { AggregatorVault } from "vaults/sectorVaults/AggregatorVault.sol";
+import { AggregatorVault, RedeemParams, IVaultStrategy } from "vaults/sectorVaults/AggregatorVault.sol";
 import { WithdrawRecord } from "../../../common/BatchedWithdraw.sol";
 import { INFTPool } from "strategies/modules/camelot/interfaces/INFTPool.sol";
 import { CamelotFarm } from "strategies/modules/camelot/CamelotFarm.sol";
@@ -460,17 +460,30 @@ contract HLPUnit is HLPSetup, UnitTestStrategy, UnitTestVault {
 
 	// function testDepWithdraw() public {
 	// 	AggregatorVault dVault = AggregatorVault(
-	// 		payable(0x6dC873656fCde76dFAe75146D9B2B4b6697a0594)
+	// 		payable(0x40375Db8A4e733c2d2f515473cebE56970D1192b)
+	// 	);
+	// 	SCYVault dstrat = SCYVault(payable(address(0x7acE71f029fe98E2ABdb49aA5a9f86D916088e7A)));
+
+	// 	address acc = 0x157875C30F83729Ce9c1E7A1568ec00250237862;
+	// 	vm.startPrank(acc);
+	// 	uint256 reqRedeem = dstrat.balanceOf(address(dVault));
+	// 	uint256 redeem = dVault.convertToAssets(reqRedeem);
+	// 	console.log("redeem", redeem);
+
+	// 	RedeemParams[] memory rParams = new RedeemParams[](1);
+	// 	rParams[0] = (
+	// 		RedeemParams(IVaultStrategy(address(dstrat)), dstrat.vaultType(), reqRedeem, 0)
 	// 	);
 
-	// 	address acc = 0xf578475B51f9f77b2421C321D4c0D530942a5448;
-	// 	WithdrawRecord memory w = dVault.getWithdrawStatus(acc);
-	// 	uint256 redeem = dVault.convertToAssets(dVault.pendingRedeem());
+	// 	// bytes memory code = address(strategy).code;
+	// 	// address targetAddr = address(dstrat);
+	// 	// vm.etch(targetAddr, code);
 
-	// 	console.log("shares value", w.shares, w.value);
-	// 	console.log("float, redeem", dVault.getFloat(), dVault.floatAmnt(), redeem);
+	// 	// dVault.withdrawFromStrategies(rParams);
 
-	// 	vm.prank(acc);
-	// 	dVault.redeem(acc);
+	// 	uint256 expectedTvl = dVault.getTvl();
+	// 	uint256 maxDelta = expectedTvl / 1000; // .1%
+	// 	dVault.harvest(expectedTvl, maxDelta);
+	// 	vm.stopPrank();
 	// }
 }
