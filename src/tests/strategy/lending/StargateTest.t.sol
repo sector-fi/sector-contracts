@@ -26,8 +26,8 @@ import "hardhat/console.sol";
 contract StargateTest is IntegrationTest, UnitTestVault {
 	using stdJson for string;
 
-	string TEST_STRATEGY = "LND_USDC_Stargate_arbitrum";
-	// string TEST_STRATEGY = "LND_ETH_Stargate_arbitrum";
+	// string TEST_STRATEGY = "LND_USDC_Stargate_arbitrum";
+	string TEST_STRATEGY = "LND_ETH_Stargate_arbitrum";
 
 	// string TEST_STRATEGY = "LND_USDC_Stargate_optimism";
 	// string TEST_STRATEGY = "LND_ETH_Stargate_optimism";
@@ -163,10 +163,10 @@ contract StargateTest is IntegrationTest, UnitTestVault {
 	function adjustPrice(uint256 fraction) public override {}
 
 	function testStratMaxTvl() public {
-		uint256 maxTvl = strategy.getMaxTvl();
 		IStargatePool pool = strategy.stargatePool();
 		uint256 uBlance = pool.totalLiquidity();
-		console.log("maxTvl", maxTvl);
+		uint256 maxTvl = strategy.getMaxTvl();
+		console.log("maxTvl", maxTvl, uBlance);
 		assertEq(maxTvl, uBlance / 5);
 	}
 

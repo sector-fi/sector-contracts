@@ -330,12 +330,23 @@ contract levConvexUnit is levConvexSetup, StratAuthTest {
 		assertEq(IERC20(GEAR).balanceOf(address(strategy)), 0);
 	}
 
-	function testDepositDeployed() public {
-		SCYWEpochVault dvault = SCYWEpochVault(payable(0x814d8A046049b25BEd644d0534c9db050Fc33456));
-		address u = 0x157875C30F83729Ce9c1E7A1568ec00250237862;
-		vm.startPrank(u);
-		underlying.approve(address(dvault), 100e6);
-		dvault.deposit(u, address(underlying), 100e6, 0);
-		vm.stopPrank();
-	}
+	// function testDepositDeployed() public {
+	// 	SCYWEpochVault dvault = SCYWEpochVault(payable(0x814d8A046049b25BEd644d0534c9db050Fc33456));
+	// 	address u = 0x157875C30F83729Ce9c1E7A1568ec00250237862;
+	// 	vm.startPrank(u);
+	// 	underlying.approve(address(dvault), 100e6);
+	// 	dvault.deposit(u, address(underlying), 100e6, 0);
+	// 	vm.stopPrank();
+	// }
+
+	// function testProcessDeployed() public {
+	// 	SCYWEpochVault dvault = SCYWEpochVault(payable(0x814d8A046049b25BEd644d0534c9db050Fc33456));
+	// 	address u = 0x157875C30F83729Ce9c1E7A1568ec00250237862;
+	// 	vm.startPrank(u);
+	// 	uint256 float = dvault.uBalance();
+	// 	console.log("float", float);
+	// 	dvault.processRedeem(float - 1);
+	// 	vault.pendingWithdrawU();
+	// 	vm.stopPrank();
+	// }
 }

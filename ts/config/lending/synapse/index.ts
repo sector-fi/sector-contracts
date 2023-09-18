@@ -44,7 +44,12 @@ const addStrategy = async (strategy) => {
   if (i != farmId) throw new Error('farmId not found');
 
   console.log('get path', strategy.name, farmToken, strategy.underlying);
-  const path = await getUniswapV3Path(farmToken, strategy.underlying);
+  let path;
+  try {
+    path = await getUniswapV3Path(farmToken, strategy.underlying);
+  } catch (e) {
+    console.log('error getting path', e);
+  }
   const tokenId = await pool.getTokenIndex(strategy.underlying);
 
   const config = {

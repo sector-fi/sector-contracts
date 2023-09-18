@@ -1,6 +1,7 @@
 import { getNamedAccounts, ethers } from 'hardhat';
 import type { TxOptions } from 'hardhat-deploy/types';
 import { Contract, constants, utils } from 'ethers';
+import { SectorTimelock } from 'typechain';
 
 interface TxData {
   target: string;
@@ -18,7 +19,10 @@ export const schedule = async (
   args: any[] = []
 ): Promise<TxData> => {
   const { deployer } = await getNamedAccounts();
-  const timelock = await ethers.getContract('ScionTimelock', deployer);
+  const timelock = (await ethers.getContract(
+    'ScionTimelock',
+    deployer
+  )) as SectorTimelock;
 
   const delay = await timelock.getMinDelay();
 

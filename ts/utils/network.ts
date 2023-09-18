@@ -30,7 +30,7 @@ export const setupAccount = async (address: string): Promise<Signer> => {
   });
 
   await fundAccount(address, '10000');
-  return await ethers.getSigner(address);
+  return (await ethers.getSigner(address)) as unknown as Signer;
 };
 
 export const updateOwner = async (

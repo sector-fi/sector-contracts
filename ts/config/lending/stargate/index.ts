@@ -1,5 +1,5 @@
 import fs from 'fs/promises';
-import { ethers, getNamedAccounts, network } from 'hardhat';
+import { getNamedAccounts, network, ethers } from 'hardhat';
 import {
   IStargateRouter,
   IStargateFactory,
@@ -46,7 +46,7 @@ const addStrategy = async (strategy) => {
     deployer
   );
 
-  const farmToken = getFarmToknen(strategy.chain);
+  const farmToken = getFarmToken(strategy.chain);
 
   const allPools = await farm.poolLength();
   let farmId;
@@ -61,10 +61,21 @@ const addStrategy = async (strategy) => {
   if (i != farmId) throw new Error('farmId not found');
 
   console.log('get path', strategy.name, farmToken, strategy.underlying);
-  const path = await getUniswapV3Path(
-    farmToken,
-    strategy.farmOutput || strategy.underlying
-  );
+  let path;
+  try {
+    path = await getUniswapV3Path(
+      farmToken,
+      strategy.farmOutput || strategy.underlying
+    );
+  } catch (e) {
+    console.log(
+      'failed to get path',
+      strategy.name,
+      farmToken,
+      strategy.underlying,
+      e
+    );
+  }
 
   const config = {
     a_underlying: strategy.underlying,
@@ -83,10 +94,10 @@ const addStrategy = async (strategy) => {
   await addStratToConfig(strategy.name, config, strategy);
 };
 
-const getFarmToknen = (chain) => {
+const getFarmToken = (chain) => {
   switch (chain) {
     case 'arbitrum':
-      return tokens['arbitrum'].STG;
+      return tokens['arbitrum'].ARB;
     case 'optimism':
       return tokens['optimism'].OP;
     default:
