@@ -1,8 +1,9 @@
-import { ethers, getNamedAccounts, network } from 'hardhat';
+import { ethers, getNamedAccounts, network, config } from 'hardhat';
 import { AlphaRouter } from '@uniswap/smart-order-router';
-import { Token, CurrencyAmount, TradeType } from '@uniswap/sdk-core';
+import { Token, CurrencyAmount, TradeType, Percent } from '@uniswap/sdk-core';
 import { encodeRouteToPath } from '@uniswap/v3-sdk';
 import fs from 'fs/promises';
+import { chain } from '../utils';
 
 export const CONFIG_PATH = './ts/config/strategies.json';
 export const EXPORT_PATH = './ts/config/strategiesExport.json';
@@ -36,6 +37,7 @@ export const tokens = {
     XCAL: '0xd2568acCD10A4C98e87c44E9920360031ad89fCB',
     STG: '0x6694340fc020c5E6B96567843da2df01b2CE1eb6',
     SGETH: '0x82CbeCF39bEe528B5476FE6d1550af59a9dB6Fc0',
+    ARB: '0x912CE59144191C1204E64559FE8253a0e49E6548',
   },
 };
 
@@ -68,6 +70,10 @@ export const getUniswapV3Path = async (token0: string, token1: string) => {
   const alphaRouter = new AlphaRouter({
     chainId,
     provider: ethers.provider,
+    // provider: new ethers.providers.JsonRpcProvider(
+    //   // @ts-ignore
+    //   config.networks[chain].url
+    // ),
   });
 
   const amount = ethers.utils.parseUnits('100');
@@ -79,6 +85,7 @@ export const getUniswapV3Path = async (token0: string, token1: string) => {
     CurrencyAmount.fromRawAmount(TOKEN0, amount.toString()),
     TOKEN1,
     TradeType.EXACT_INPUT
+    // options
   );
   if (!trade) throw new Error('no trade found');
 

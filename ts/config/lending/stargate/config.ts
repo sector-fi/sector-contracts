@@ -11,7 +11,8 @@ const factory = {
 };
 
 const farms = {
-  arbitrum: '0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176',
+  // arbitrum: '0xeA8DfEE1898a7e0a59f7527F076106d7e44c2176',
+  arbitrum: '0x9774558534036Ff2E236331546691b4eB70594b1', // new ARB farm
   optimism: '0x4DeA9e918c6289a52cd469cAC652727B7b412Cd2',
 };
 
